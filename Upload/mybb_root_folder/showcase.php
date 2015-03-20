@@ -15,7 +15,7 @@
  * Only user edits required
 */
 
-$forumdir = "./foros"; //no trailing slash
+$forumdir = ""; //no trailing slash
 
 /*
  * Stop editing
@@ -54,7 +54,7 @@ $templatelist .= "myshowcase_orderarrow, myshowcase_list_custom_header, multipag
 $templatelist .= "multipage_nextpage, multipage, myshowcase_list_custom_fields, myshowcase_inlinemod_item, myshowcase_list_items, myshowcase_list, ";
 $templatelist .= "myshowcase_top, myshowcase_new_button, myshowcase_field_date, myshowcase_js_header, ";
 $templatelist .= "myshowcase_view_admin_edit, myshowcase_view_admin_delete, myshowcase_view_admin, myshowcase_table_header, myshowcase_view_data_1, myshowcase_view_data_2, myshowcase_view_data_3, myshowcase_view_attachments_image, ";
-$templatelist .= "myshowcase_new_attachments_input, myshowcase_new_attachments, myshowcase_new_top, myshowcase_field_textbox, myshowcase_new_fields, myshowcase_field_db, myshowcase_field_textarea, myshowcase_new_bottom, myshowcase_unapproved, myshowcase_reported";
+$templatelist .= "myshowcase_new_attachments_input, myshowcase_new_attachments, myshowcase_new_top, myshowcase_field_textbox, myshowcase_new_fields, myshowcase_field_db, myshowcase_field_textarea, myshowcase_new_bottom, ";
 
 //get MyBB stuff
 require_once $change_dir."/global.php";
@@ -290,12 +290,12 @@ if($forumdir != "" && $forumdir != ".")
 if($mybb->settings['seourls'] == "yes" || ($mybb->settings['seourls'] == "auto" && $_SERVER['SEO_SUPPORT'] == 1))
 {
 	$showcase_name = strtolower($me->name);
-	define('SHOWCASE_URL', $URLStart."noticias");
-	define('SHOWCASE_URL_PAGED', $URLStart."noticias-pagina-{page}");
-	define('SHOWCASE_URL_VIEW', $URLStart."noticias-ver-{gid}");
-	define('SHOWCASE_URL_NEW', $URLStart."noticias-nueva");
-	define('SHOWCASE_URL_VIEW_ATTACH', $URLStart."noticias-attachment-{aid}");
-	define('SHOWCASE_URL_ITEM', $URLStart."noticias-item-{aid}.php");
+	define('SHOWCASE_URL', $URLStart.$me->clean_name.".html");
+	define('SHOWCASE_URL_PAGED', $URLStart.$me->clean_name."-page-{page}.html");
+	define('SHOWCASE_URL_VIEW', $URLStart.$me->clean_name."-view-{gid}.html");
+	define('SHOWCASE_URL_NEW', $URLStart.$me->clean_name."-new.html");
+	define('SHOWCASE_URL_VIEW_ATTACH', $URLStart.$me->clean_name."-attachment-{aid}.html");
+	define('SHOWCASE_URL_ITEM', $URLStart.$me->clean_name."-item-{aid}.php");
 	$amp = '?';
 }
 else
@@ -464,7 +464,6 @@ if(!is_array($fieldcache[$me->fieldsetid]))
 
 //init dynamic field info
 $showcase_fields = array();
-$showcase_fields_parsed = array();
 $showcase_fields_enabled = array();
 $showcase_fields_showinlist = array();
 $showcase_fields_searchable = array();
@@ -529,7 +528,12 @@ ksort($showcase_fields_showinlist);
 ksort($showcase_fields_searchable);
 
 //clean up/default expected inputs
+if(!isset($mybb->input['action']))
+{
+	$mybb->input['action'] = "list";
+}
 $mybb->input['action'] = $db->escape_string($mybb->input['action']);
+
 
 if(!isset($mybb->input['showall']) || $mybb->input['showall'] != 1)
 {
@@ -556,753 +560,12 @@ eval("\$showcase_top = \"".$templates->get("myshowcase_top")."\";");
 //main showcase code
 switch($mybb->input['action'])
 {
-	case "view":
-	{
-		$mybb->input['gid'] = intval($mybb->input['gid']);
-
-		$plugins->run_hooks("myshowcase_view_start");
-
-		if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
-		{
-			error($lang->myshowcase_invalid_id);
-		}
-
-		$addon_join = '';
-		$addon_fields = '';
-		reset($showcase_fields);
-		foreach($showcase_fields_enabled as $fname => $ftype)
-		{
-			if($ftype == 'db' || $ftype == 'radio')
-			{
-				$addon_join .= " LEFT JOIN ".TABLE_PREFIX."myshowcase_field_data tbl_".$fname." ON (tbl_".$fname.".valueid = g.".$fname." AND tbl_".$fname.".name = '".$fname."') ";
-				$addon_fields .= ", tbl_".$fname.".value AS `".$fname."`";
-				$view_where_clause .= " AND tbl_".$fname.".setid = ".$me->fieldsetid;
-			}
-			else
-			{
-				$addon_fields .= ", `".$fname."`";
-			}
-		}
- 		// start getting showcase base data
-		$query = $db->query("
-			SELECT `gid`, g.uid, `username`, `views`, `comments`, `dateline`, `approved`, `approved_by`, `posthash`".$addon_fields."
-			FROM ".TABLE_PREFIX.$me->table_name." g
-			LEFT JOIN ".TABLE_PREFIX."users u ON (u.uid = g.uid)
-			".$addon_join."
-			WHERE g.gid=".$mybb->input['gid'].$view_where_clause
-			);
-
-		if($db->num_rows($query) == 0)
-		{
-			error($lang->myshowcase_invalid_id);
-		}
-
-		$showcase = $db->fetch_array($query);
-
-		if($showcase['approved'] != 1)
-		{
-			error($lang->myshowcase_invalid_id);
-		}
-
-		if($showcase['username'] == '')
-		{
-			$showcase['username'] = $lang->guest;
-			$showcase['uid'] = 0;
-		}
-
-		$showcase_viewing_user = str_replace("{username}", $showcase['username'], $lang->myshowcase_viewing_user);
-		add_breadcrumb($showcase_viewing_user, $showcase['username']);
-
-		//set up jump to links
-		$jumpto = $lang->myshowcase_jumpto;
-
-		$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
-		if($me->allow_attachments && $me->userperms['canviewattach'])
-		{
-			$jumpto .= ' <a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#images">'.$lang->myshowcase_attachments.'</a>';
-		}
-
-		if($me->allow_comments && $me->userperms['canviewcomment'])
-		{
-			$jumpto .= ' <a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#comments">'.$lang->myshowcase_comments.'</a>';
-		}
-
-		$jumptop = '(<a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#top">'.$lang->myshowcase_top.'</a>)';
-
-		$posthash = $showcase['posthash'];
-
-		$showcase_gid = $mybb->input['gid'];
-		$showcase_views = $showcase['views'];
-		$showcase_numcomments = $showcase['comments'];
-
-		$showcase_header_label = $lang->myshowcase_specifications;
-		$showcase_header_jumpto = $jumpto;
-
-		$showcase_admin_url = SHOWCASE_URL;
-
-		if($me->userperms['canmodedit'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit']))
-		{
-			eval("\$showcase_view_admin_edit = \"".$templates->get("myshowcase_view_admin_edit")."\";");
-		}
-
-		if($me->userperms['canmoddelete'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit']))
-		{
-			eval("\$showcase_view_admin_delete = \"".$templates->get("myshowcase_view_admin_delete")."\";");
-		}
-
-		if($showcase_view_admin_edit != '' || $showcase_view_admin_delete != '')
-		{
-			eval("\$showcase_header_special = \"".$templates->get("myshowcase_view_admin")."\";");
-		}
-
-		eval("\$showcase_data_header = \"".$templates->get("myshowcase_table_header")."\";");
-
-		//trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
-		//doing this now should not impact anyhting. no issues with gomobile beta4
-	 	define("IN_ARCHIVE", 1);
-	 	
-	 	$mybb->input['highlight'] = $db->escape_string($mybb->input['highlight']);
-	 	$mybb->input['search'] = $db->escape_string($mybb->input['search']);
-
-		require_once(MYBB_ROOT.'inc/class_parser.php');
-		$parser = new postParser;
-
-		reset($showcase_fields_enabled);
-		$trow_style = alt_trow();
-		foreach($showcase_fields_enabled as $fname => $ftype)
-		{
-			$temp = 'myshowcase_field_'.$fname;
-			$field_header = $lang->$temp;
-
-			//change style is unapproved
-			if($showcase['approved'] != 1)
-			{
-				$trow_style = 'trow_shaded';
-			}
-			else
-			{
-				$trow_style = alt_trow();
-			}
-
-			//if we have search handle search term highlighting
-			$highlight = 0;
-			if($mybb->input['highlight'] != '' && $mybb->input['search'] == $fname)
-			{
-				$highlight = $mybb->input['highlight'];
-			}
-			
-			//set parser options for current field				 	
-			$parser_options = array('filter_badwords' => 1,
-									'allow_html' => $me->allowhtml,
-									'allow_mycode' => $me->allowbbcode,
-									'allow_imgcode' => $me->allowbbcode,
-									'allow_videocode' => $me->allowbbcode,
-									'me_username' => 0,
-									'allow_smilies' => $me->allowsmilies,
-									'highlight' => $highlight,
-									'nl2br' => 1);
-
-			if($mybb->user['showimages'] != 1 && $mybb->user['uid'] != 0 || $mybb->settings['guestimages'] != 1 && $mybb->user['uid'] == 0)
-			{
-				$parser_options['allow_imgcode'] = 0;
-			}
-
-			if($mybb->user['showvideos'] != 1 && $mybb->user['uid'] != 0 || $mybb->settings['guestvideos'] != 1 && $mybb->user['uid'] == 0)
-			{
-				$parser_options['allow_videocode'] = 0;
-			}
-
-			switch($ftype)
-			{
-				case "textarea":
-					$field_data = &$showcase[$fname];
-					if($field_data != '' || $me->disp_empty == 1)
-					{
-						if($showcase_fields_parse[$fname] || $highlight)
-						{
-							$field_data = $parser->parse_message($field_data,$parser_options);
-						}
-						else
-						{
-							$field_data = htmlspecialchars_uni($field_data);
-							$field_data = nl2br($field_data);
-						}
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_2")."\";");
-					}
-				break;
-
-				case "textbox":
-					$field_data = &$showcase[$fname];
-
-					//format numbers as requested
-					switch($showcase_fields_format[$fname])
-					{
-						case 'no':
-							$field_data = $field_data;
-						break;
-						
-						case 'decimal0':
-							$field_data = number_format(floatval($field_data));
-						break;
-
-						case 'decimal1':
-							$field_data = number_format(floatval($field_data), 1);
-						break;
-						
-						case 'decimal2':
-							$field_data = number_format(floatval($field_data), 2);
-						break;
-					}
-					
-					if($field_data != '' || $me->disp_empty == 1)
-					{
-						$field_data = htmlspecialchars_uni($field_data);
-						if($showcase_fields_parse[$fname] || $highlight)
-						{
-							$field_data = $parser->parse_message($field_data,$parser_options);
-						}
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-					}
-				break;
-
-				case "url":
-					$field_data = &$showcase[$fname];
-					if($field_data != '' || $me->disp_empty == 1)
-					{
-						$field_data = $parser->mycode_parse_url($showcase[$fname]);
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_2")."\";");
-					}
-				break;
-
-				case "date":
-					$field_data = &$showcase[$fname];
-					if($field_data != '')
-					{
-						$date_bits = explode('|',$showcase[$fname]);
-						$date_bits = array_map('intval', $date_bits);
-
-						if($date_bits[0] > 0 && $date_bits[1] > 0 && $date_bits[2] > 0)
-						{
-							$field_data = my_date($mybb->settings['dateformat'], mktime(0, 0, 0, $date_bits[0], $date_bits[1], $date_bits[2]));
-						}
-						else
-						{
-							$field_data = '';
-							if($date_bits[0]) $field_data .= $date_bits[0];
-							if($date_bits[1]) $field_data .= ($field_data != '' ? '-' : '').$date_bits[1];
-							if($date_bits[2]) $field_data .= ($field_data != '' ? '-' : '').$date_bits[2];
-						}
-					}
-					else
-					{
-						$field_data = '';
-					}
-					if(($field_data != '') || $me->disp_empty == 1)
-					{
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-					}
-				break;
-
-				case "db":
-					$field_data = &$showcase[$fname];
-					if(($field_data != '') || $me->disp_empty == 1)
-					{
-						if($showcase_fields_parse[$fname] || $highlight)
-						{
-							$field_data = $parser->parse_message($field_data,$parser_options);
-						}
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-					}
-				break;
-
-				case "radio":
-					$field_data = &$showcase[$fname];
-					if(($field_data != '') || $me->disp_empty == 1)
-					{
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-					}
-				break;
-
-				case "checkbox":
-					if(($showcase[$fname] != '') || $me->disp_empty == 1)
-					{
-						if($showcase[$fname] == 1)
-						{
-							$field_data = '<img src="'.$mybb->settings['bburl'].'/images/valid.gif" alt="Yes">';
-						}
-						else
-						{
-							$field_data = '<img src="'.$mybb->settings['bburl'].'/images/invalid.gif" alt="No">';
-						}
-						$showcase[$fname] = &$field_data;
-						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-					}
-				break;
-			}
-			$showcase_fields_parsed[$fname] = $field_data;
-		}
-
-		$showcase_submit_date = my_date('relative', $showcase['submit_date']);
-		$showcase_createdate = my_date('relative', $showcase['createdate']);
-		$showcase_dateline = my_date('relative', $showcase['dateline']);
-
-		if($showcase['createdate'] == $showcase['dateline'])
-		{
-			$last_edited = $lang->sprintf($lang->myshowcase_last_edited, $lang->never);
-		}
-		else
-		{
-			$last_edited = $lang->sprintf($lang->myshowcase_last_edited, $showcase_dateline);
-		}
-
-		//for moderators, show who last approved the entry
-		if($me->userperms['canmodapprove'] && $showcase['approved'])
-		{
-			$field_header = $lang->myshowcase_last_approved;
-			$modapproved = get_user($showcase['approved_by']);
-			$field_data = build_profile_link($modapproved['username'], $modapproved['uid'], '','', $forumdir.'/');
-			eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
-		}
-
-		//output bottom row for report button and future add-ons
-//		$entry_final_row = '<a href="'.SHOWCASE_URL.'?action=report&gid='.$mybb->input['gid'].'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
-		$entry_final_row = '<a href="javascript:Showcase.reportShowcase('.$mybb->input['gid'].');"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
-		eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_3")."\";");
-
-		if($me->allow_comments && $me->userperms['canviewcomment'])
-		{
-			// start getting comments
-			$query = $db->query("
-				SELECT gc.*, u.username
-				FROM ".TABLE_PREFIX."myshowcase_comments gc
-				LEFT JOIN ".TABLE_PREFIX."users u ON (u.uid = gc.uid)
-				WHERE gc.gid=".$mybb->input['gid']." AND gc.id=".$me->id."
-				ORDER BY dateline DESC".
-				($mybb->input['showall'] == 1 ? '' : " LIMIT ".$me->comment_dispinit)
-				);
-
-			$trow_style = alt_trow();
-			$showcase_comments = '';
-			while($gcomments = $db->fetch_array($query))
-			{
-				$trow_style = alt_trow();
-
-				//clean up comment and timestamp
-				$comment_date = my_date($mybb->settings['dateformat'], $gcomments['dateline']);
-				$comment_time = my_date($mybb->settings['timeformat'], $gcomments['dateline']);
-				$comment_posted = $comment_date." ".$comment_time;
-				$comment_poster = $item_member = build_profile_link($gcomments['username'], $gcomments['uid'], '','', $forumdir.'/');
-				$comment_data = $parser->parse_message($gcomments['comment'],$parser_options);
-			
-				//setup comment admin options
-				//only mods, original author (if allowed) or owner (if allowed) can delete comments
-				if(
-				($me->userperms['canmoddelcomment']) ||
-				($gcomments['uid'] == $mybb->user['uid'] && $me->userperms['candelowncomment']) ||
-				($showcase['uid'] == $mybb->user['uid'] && $me->userperms['candelauthcomment'])
-				)
-				{
-					eval("\$showcase_comments_admin = \"".$templates->get("myshowcase_view_comments_admin")."\";");
-				}
-
-				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments")."\";");
-			}
-
-			$showcase_show_all = '';
-			if($mybb->input['showall'] != 1 && $showcase_numcomments > $me->comment_dispinit)
-			{
-				$showcase_show_all = '(<a href="'.$item_viewcode.$amp.'showall=1#comments">'.str_replace("{count}", $showcase['comments'], $lang->myshowcase_comment_show_all).'</a>)'."<br>";
-			}
-
-			$showcase_comment_form_url = SHOWCASE_URL;//.'?action=view&gid='.$mybb->input['gid'];
-			$showcase_header_label = '<a name="comments"><form action="'.$showcase_comment_form_url.'" method="post" name="comment">'.$lang->myshowcase_comments.'</a>';
-			$showcase_header_jumpto = $jumptop;
-			$showcase_header_special = $showcase_show_all;
-			eval("\$showcase_comment_header = \"".$templates->get("myshowcase_table_header")."\";");
-
-			$trow_style = alt_trow();
-			if($showcase_comments == '')
-			{
-				eval("\$showcase_comments = \"".$templates->get("myshowcase_view_comments_none")."\";");
-			}
-
-			//check if logged in for ability to add comments
-			$trow_style = alt_trow();
-			if(!$mybb->user['uid'])
-			{
-				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments_add_login")."\";");
-			}
-			elseif($me->userperms['cancomment'])
-			{
-				$comment_text_limit = str_replace("{text_limit}", $me->comment_length, $lang->myshowcase_comment_text_limit);
-				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments_add")."\";");
-			}
-		}
-
-		if($me->allow_attachments && $me->userperms['canviewattach'])
-		{
-			// start getting attachments
-			$query = $db->query("
-				SELECT ga.*
-				FROM ".TABLE_PREFIX."myshowcase_attachments ga
-				WHERE ga.gid=".$mybb->input['gid']." AND ga.id=".$me->id
-				);
-
-			$attach_count = 0;
-			$showcase_attachment_data = '';
-			while($gattachments = $db->fetch_array($query))
-			{
-				//setup default and non-JS enabled URLs
-				$item_attachurljs = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_ITEM);
-				$item_attachurl = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_VIEW_ATTACH);
-
-				//if mime is image
-				if(stristr($gattachments['filetype'], 'image/'))
-				{	
-					//determine what image to use for thumbnail
-					if($gattachments['thumbnail'] != "SMALL" && file_exists($me->imgfolder."/".$gattachments['thumbnail']))
-					{
-						$item_image = './'.$me->imgfolder."/".$gattachments['thumbnail'];
-					}
-					else
-					{
-						$item_image = $item_attachurljs;
-					}
-
-					//see if the Fancybox code is being used and if not go back to the actual attachment for the link url
-					if(stripos($showcase_top, "[rel=showcase_images]"))
-					{
-						$item_class = "rel=\\\"showcase_images\\\"";
-					}
-					else
-					{
-						$item_attachurljs = $item_attachurl;
-					}
-
-				}
-				else //it's any other allowed type, so use this
-				{
-					$item_class = "class=\\\"attachment\\\"";
-					$attachtypes = $cache->read('attachtypes');
-					$ext = get_extension($gattachments['filename']);
-					$item_image = $theme['imgdir']."/error.gif";
-					if(array_key_exists($ext, $attachtypes))
-					{
-						$item_image = $mybb->settings['bburl']."/".$attachtypes[$ext]['icon'];
-					}
-				}
-				
-				$item_alt = $lang->sprintf($lang->myshowcase_attachment_alt, $gattachments['filename'], $showcase['username']);
-
-				eval("\$showcase_attachment_data .= \"".$templates->get("myshowcase_view_attachments_image")."\";");
-
-				$attach_count++;
-				if($attach_count == $me->disp_attachcols && $me->disp_attachcols != 0)
-				{
-					$showcase_attachment_data .= '<br />';
-					$attach_count = 0;
-				}
-				else
-				{
-					$showcase_attachment_data .= '&nbsp;';
-				}
-			}
-
-			if(substr($showcase_attachment_data,-6) == '&nbsp;')
-			{
-				$showcase_attachment_data = substr($showcase_attachment_data,0,-6);
-			}
-
-			$showcase_header_label = '<a name="images">'.$lang->myshowcase_attachments.'</a>';
-			$showcase_header_jumpto = $jumptop;
-			$showcase_header_special = "";
-			eval("\$showcase_attachment_header = \"".$templates->get("myshowcase_table_header")."\";");
-
-
- 			if($showcase_attachment_data != '')
-			{
-				eval("\$showcase_attachments = \"".$templates->get("myshowcase_view_attachments")."\";");
-			}
-			else
-			{
-				eval("\$showcase_attachments = \"".$templates->get("myshowcase_view_attachments_none")."\";");
-			}
-		}
-
-		// Update view count
-		$db->shutdown_query("UPDATE ".TABLE_PREFIX.$me->table_name." SET views=views+1 WHERE gid=".$mybb->input['gid']);
-
-		$plugins->run_hooks("myshowcase_view_end");
-
-		eval("\$showcase_page = \"".$templates->get("myshowcase_view")."\";");
-
-	break;
-	}
-	
-	case "report":
-	case "do_report":
-	case "reports":
-	case "do_reports":
-	case "allreports":
-	{
-		require_once(MYBB_ROOT.'inc/plugins/myshowcase/report.php');
-		break;
-	}
-
-	case "addcomment":
-	{
-		if(!$mybb->user['uid'])
-		{
-			error($lang->myshowcase_comments_not_logged_in);
-		}
-
-		if($me->userperms['cancomment'] && $mybb->request_method == "post")
-		{
-			verify_post_check($mybb->input['my_post_key']);
-			
-			$plugins->run_hooks("myshowcase_add_comment_start");
-
-			$mybb->input['gid'] = intval($mybb->input['gid']);
-
-			if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
-			{
-				error($lang->myshowcase_invalid_id);
-			}
-
-			if($mybb->input['comments'] == "")
-			{
-				error($lang->myshowcase_comment_empty);
-			}
-
-			$query = $db->simple_select($me->table_name, "gid, uid", "gid=".$mybb->input['gid']);
-			if($db->num_rows($query) == 0)
-			{
-				error($lang->myshowcase_invalid_id);
-			}
-			
-			$authorid = $db->fetch_field($query, "uid");
-
-			//don't trust the myshowcase_data comment count, get the real count at time of insert to cover deletions and edits at same time.
-			$query = $db->query("
-				SELECT COUNT(*) AS num_comments
-				FROM ".TABLE_PREFIX."myshowcase_comments
-				WHERE gid = ".$mybb->input['gid']." AND id=".$me->id."
-				GROUP BY gid
-				LIMIT 1
-			");
-
-			$showcase = $db->fetch_array($query);
-			$num_comments = $showcase['num_comments'];
-
-			$mybb->input['comments'] = $db->escape_string($mybb->input['comments']);
-
-			if($mybb->input['comments'] != '')
-			{
-				$comment_insert_data = array(
-					"id" => $me->id,
-					"gid" => $mybb->input['gid'],
-					"uid" => $mybb->user['uid'],
-					"ipaddress" => get_ip(),
-					"comment" => $mybb->input['comments'],
-					"dateline" => $dateline
-					);
-
-				$plugins->run_hooks("myshowcase_add_comment_commit");
-
-				$db->insert_query("myshowcase_comments", $comment_insert_data);
-
-				$db->update_query($me->table_name, array("comments" => $num_comments + 1),"gid=".$mybb->input['gid']);
-
-				//notify showcase owner of new comment by others
-				$author = get_user($authorid);
-				if($author['allownotices'] && $author['uid'] != $mybb->user['uid'])
-				{
-					require_once MYBB_ROOT.'inc/class_parser.php';
-					$parser = new Postparser;
-
-					$excerpt = $parser->text_parse_message($mybb->input['comments'], array('me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1));
-					$excerpt = my_substr($excerpt, 0, $mybb->settings['subscribeexcerpt']).$lang->myshowcase_comment_more;
-					
-					$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
-					
-					if($forumdir == '' || $forumdir == './')
-					{
-						$showcase_url = $mybb->settings['bburl'].'/'.$item_viewcode;
-					}
-					else
-					{
-						$forumdir = str_replace('.', '', $forumdir);
-						$showcase_url = str_replace($forumdir, '', $mybb->settings['bburl']).'/'.$item_viewcode;
-					}
-					
-					
-					$emailsubject = $lang->sprintf($lang->myshowcase_comment_emailsubject, $me->name);
-					$emailmessage = $lang->sprintf($lang->myshowcase_comment_email, $author['username'], $mybb->user['username'], $me->name, $excerpt, $showcase_url, $mybb->settings['bbname'], $mybb->settings['bburl']);
-					
-					$new_email = array(
-						"mailto" => $db->escape_string($author['email']),
-						"mailfrom" => '',
-						"subject" => $db->escape_string($emailsubject),
-						"message" => $db->escape_string($emailmessage),
-						"headers" => ''
-						);
-
-					$db->insert_query("mailqueue", $new_email);
-					$cache->update_mailqueue();
-				}
-						
-				$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
-
-				redirect($item_viewcode.'#comments', $lang->myshowcase_comment_added);
-			}
-		}
-		else
-		{
-			error($lang->myshowcase_not_authorized);
-		}
-
-		break;
-	}
-	case "delcomment":
-	{
-		$plugins->run_hooks("myshowcase_del_comment_start");
-
-		$mybb->input['cid'] = intval($mybb->input['cid']);
-
-		if($mybb->input['cid'] == "" || $mybb->input['cid'] == 0)
-		{
-			error($lang->myshowcase_invalid_cid);
-		}
-
-		$query = $db->query("SELECT c.cid, g.uid AS owner, c.uid AS author, c.gid FROM ".TABLE_PREFIX."myshowcase_comments c
-				LEFT JOIN ".TABLE_PREFIX.$me->table_name." g
-				ON g.gid = c.gid
-				WHERE c.cid = ".$mybb->input['cid']);
-
-		if($db->num_rows($query) == 0)
-		{
-			error($lang->myshowcase_invalid_cid);
-		}
-
-		$gcomments = $db->fetch_array($query);
-
-		if(
-			(($mybb->user['uid'] == $gcomments['author'] && $me->userperms['candelowncomment']) ||
-			($mybb->user['uid'] == $gcomments['owner'] && $me->userperms['candelauthcomment']) ||
-			($me->userperms['canmoddelcomment']) && $mybb->request_method == "post")
-		)
-		{
-			verify_post_check($mybb->input['my_post_key']);
-		
-			$query = $db->delete_query("myshowcase_comments", "id=".$me->id." AND cid=".$mybb->input['cid']);
-			if($db->affected_rows($query) != 1)
-			{
-				error($lang->myshowcase_comment_error);
-			}
-			else
-			{
-				$query = $db->query("
-					SELECT COUNT(*) AS num_comments
-					FROM ".TABLE_PREFIX."myshowcase_comments
-					WHERE gid = ".$gcomments['gid']." AND id=".$me->id."
-					GROUP BY gid
-					LIMIT 1
-				");
-
-				$showcase = $db->fetch_array($query);
-				$num_comments = $showcase['num_comments'];
-
-				$plugins->run_hooks("myshowcase_del_comment_commit");
-
-				$db->update_query($me->table_name, array("comments" => $num_comments),"gid=".$gcomments['gid']);
-
-				$item_viewcode = str_replace('{gid}', $gcomments['gid'], SHOWCASE_URL_VIEW);
-
-				redirect($item_viewcode.'#comments', $lang->myshowcase_comment_deleted);
-			}
-		}
-		else
-		{
-			error($lang->myshowcase_not_authorized);
-		}
-
-		break;
-	}
-	case "delete";
-	{
-		if($mybb->request_method == "post")
-		{
-			verify_post_check($mybb->input['my_post_key']);
-
-			if(!$mybb->user['uid'] || !$me->userperms['canedit'])
-			{
-				error($lang->myshowcase_not_authorized);
-			}
-
-			$plugins->run_hooks("myshowcase_delete_start");
-
-			$mybb->input['gid'] = intval($mybb->input['gid']);
-
-			if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
-			{
-				error($lang->myshowcase_invalid_id);
-			}
-
-			$query = $db->simple_select($me->table_name, "*", "gid=".$mybb->input['gid']);
-			if($db->num_rows($query) == 0)
-			{
-				error($lang->myshowcase_invalid_id);
-			}
-
-			$showcase_data = $db->fetch_array($query);
-
-			if(!$me->userperms['canmoddelete'] && $mybb->user['uid'] != $showcase_data['uid'])
-			{
-				error($lang->myshowcase_not_authorized);
-			}
-
-			$gid = $showcase_data['gid'];
-			$me->delete($gid);
-
-			//log_moderator_action($modlogdata, $lang->multi_deleted_threads);
-
-			$plugins->run_hooks("myshowcase_delete_end");
-		}
-		redirect(SHOWCASE_URL, $lang->redirect_myshowcase_delete);
-		exit;
-
-		break;
-	}
-
-	case "edit":
-	case "new":
-	case "do_editshowcase":
-	case "do_newshowcase":
-	{
-		require_once(MYBB_ROOT.'inc/plugins/myshowcase/newedit.php');
-		break;
-	}
-
-	case "multiapprove":
-	case "multiunapprove":
-	case "multidelete":
-	case "do_multidelete":
-	{
-		require_once(MYBB_ROOT.'inc/plugins/myshowcase/inlinemod.php');
-		break;
-	}
-
-	#case "list":
-	default:
+	case "list":
 	{
 		$showcase_url_new = SHOWCASE_URL_NEW;
 
-		require_once(MYBB_ROOT.'inc/class_parser.php');
-		$parser = new postParser;
-
 		$plugins->run_hooks("myshowcase_list_start");
 
-		$new_button = '';
 		if($me->userperms['canadd'])
 		{
 			eval("\$new_button = \"".$templates->get("myshowcase_new_button")."\";");
@@ -1541,12 +804,12 @@ switch($mybb->input['action'])
 
 			$multipage = multipage($showcasecount, $perpage, $page, SHOWCASE_URL_PAGED.$amp."sortby=".$mybb->input['sortby']."&amp;order=".$sortordernow.($mybb->input['unapproved'] ? "&amp;unapproved=".$mybb->input['unapproved'] : "").($mybb->input['search'] <> '' ? "&amp;search=".$mybb->input['search'] : "").($mybb->input['search'] <> '' ? "&amp;searchterm=".$mybb->input['searchterm'] : ""));
 
-			$trow_style = alt_trow();
+			$trow_style = "trow2";
 
 			
 			// start getting showcases
 			$query = $db->query("
-				SELECT `gid`, u.username, u.avatar, u.avatardimensions, `views`, `comments`, `dateline`, `createdate`, `approved`, `approved_by`, `posthash`, g.uid".$addon_fields."
+				SELECT `gid`, u.username, `views`, `comments`, `dateline`, `createdate`, `approved`, `approved_by`, `posthash`, g.uid".$addon_fields."
 				FROM ".TABLE_PREFIX.$me->table_name." g
 				LEFT JOIN ".TABLE_PREFIX."users u ON (u.uid = g.uid)
 				".$addon_join."
@@ -1590,27 +853,7 @@ switch($mybb->input['action'])
 			
 			unset($showcase_items);
 
-			//if we have search handle search term highlighting
-			$parser_options = array('filter_badwords' => 1,
-									'allow_html' => $me->allowhtml,
-									'allow_mycode' => $me->allowbbcode,
-									'allow_imgcode' => $me->allowbbcode,
-									'allow_videocode' => $me->allowbbcode,
-									'me_username' => 0,
-									'allow_smilies' => $me->allowsmilies,
-									'nl2br' => 1);
-
-			if($mybb->user['showimages'] != 1 && $mybb->user['uid'] != 0 || $mybb->settings['guestimages'] != 1 && $mybb->user['uid'] == 0)
-			{
-				$parser_options['allow_imgcode'] = 0;
-			}
-
-			if($mybb->user['showvideos'] != 1 && $mybb->user['uid'] != 0 || $mybb->settings['guestvideos'] != 1 && $mybb->user['uid'] == 0)
-			{
-				$parser_options['allow_videocode'] = 0;
-			}
-
-			$trow_style = alt_trow();
+			$trow_style = "trow2";
 			while($showcase = $db->fetch_array($query))
 			{
 				//obtain fixed field items
@@ -1620,26 +863,11 @@ switch($mybb->input['action'])
 				$item_numview = $showcase['views'];
 				$item_numcomment = $showcase['comments'];
 
-				$item_avatar = format_avatar(htmlspecialchars_uni($showcase['avatar']), $showcase['avatardimensions']);
-
 				$usersearch = $mybb->input['searchterm'];
 
 				$lasteditdate = my_date($mybb->settings['dateformat'], $showcase['dateline']);
 				$lastedittime = my_date($mybb->settings['timeformat'], $showcase['dateline']);
 				$item_lastedit = $lasteditdate."<br />".$lastedittime;
-
-				$showcase_submit_date = my_date('relative', $showcase['submit_date']);
-				$showcase_createdate = my_date('relative', $showcase['createdate']);
-				$showcase_dateline = my_date('relative', $showcase['dateline']);
-
-				if($showcase['createdate'] == $showcase['dateline'])
-				{
-					$last_edited = $lang->sprintf($lang->myshowcase_last_edited, $lang->never);
-				}
-				else
-				{
-					$last_edited = $lang->sprintf($lang->myshowcase_last_edited, $showcase_dateline);
-				}
 
 				if($showcase['username'] == '')
 				{
@@ -1698,12 +926,12 @@ switch($mybb->input['action'])
 				}
 
 				//set row style for default use
-				$trow_style = alt_trow();
+				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 
 				//change style is unapproved
 				if($showcase['approved'] != 1)
 				{
-					$trow_style = 'trow_shaded';
+					$trow_style = "trow_shaded";
 				}
 
 				//build custom list items based on field settings
@@ -1757,21 +985,8 @@ switch($mybb->input['action'])
 							}
 						break;
 					}
-
-					$parser_options['highlight'] = null;
-					if($mybb->input['highlight'] != '' && $mybb->input['search'] == $fname)
-					{
-						$parser_options['highlight'] = $mybb->input['highlight'];
-					}
-
-					if($showcase_fields_parse[$fname])
-					{
-						$item_text = $parser->parse_message($item_text,$parser_options);
-					}
-					else
-					{
-						$item_text = htmlspecialchars_uni($item_text);
-					}
+					
+					$item_text = htmlspecialchars_uni($item_text);
 					eval("\$showcase_list_custom_fields .= \"".$templates->get("myshowcase_list_custom_fields")."\";");
 				}
 				if($me->userperms['canmodapprove'] || $me->userperms['canmoddelete'])
@@ -1804,7 +1019,7 @@ switch($mybb->input['action'])
 		}
 		else
 		{
-			$trow_style = alt_trow();
+			$trow_style = "trow1";
 			$colcount = 5;
 			if($me->userperms['canmodapprove'] || $me->userperms['canmoddelete'])
 			{
@@ -1827,9 +1042,707 @@ switch($mybb->input['action'])
 
 		eval("\$showcase_page = \"".$templates->get("myshowcase_list")."\";");
 
-		break;
+	break;
 	}
+	case "view":
+	{
+		$mybb->input['gid'] = intval($mybb->input['gid']);
+
+		$plugins->run_hooks("myshowcase_view_start");
+
+		if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
+		{
+			error($lang->myshowcase_invalid_id);
+		}
+
+		$addon_join = '';
+		$addon_fields = '';
+		reset($showcase_fields);
+		foreach($showcase_fields_enabled as $fname => $ftype)
+		{
+			if($ftype == 'db' || $ftype == 'radio')
+			{
+				$addon_join .= " LEFT JOIN ".TABLE_PREFIX."myshowcase_field_data tbl_".$fname." ON (tbl_".$fname.".valueid = g.".$fname." AND tbl_".$fname.".name = '".$fname."') ";
+				$addon_fields .= ", tbl_".$fname.".value AS `".$fname."`";
+				$view_where_clause .= " AND tbl_".$fname.".setid = ".$me->fieldsetid;
+			}
+			else
+			{
+				$addon_fields .= ", `".$fname."`";
+			}
+		}
+ 		// start getting showcase base data
+		$query = $db->query("
+			SELECT `gid`, g.uid, `username`, `views`, `comments`, `dateline`, `approved`, `approved_by`, `posthash`".$addon_fields."
+			FROM ".TABLE_PREFIX.$me->table_name." g
+			LEFT JOIN ".TABLE_PREFIX."users u ON (u.uid = g.uid)
+			".$addon_join."
+			WHERE g.gid=".$mybb->input['gid'].$view_where_clause
+			);
+
+		if($db->num_rows($query) == 0)
+		{
+			error($lang->myshowcase_invalid_id);
+		}
+
+		$showcase = $db->fetch_array($query);
+
+		if($showcase['username'] == '')
+		{
+			$showcase['username'] = $lang->guest;
+			$showcase['uid'] = 0;
+		}
+
+		$showcase_viewing_user = str_replace("{username}", $showcase['username'], $lang->myshowcase_viewing_user);
+		add_breadcrumb($showcase_viewing_user, SHOWCASE_URL);
+
+		//set up jump to links
+		$jumpto = $lang->myshowcase_jumpto;
+
+		$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+		if($me->allow_attachments && $me->userperms['canviewattach'])
+		{
+			$jumpto .= ' <a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#images">'.$lang->myshowcase_attachments.'</a>';
+		}
+
+		if($me->allow_comments && $me->userperms['canviewcomment'])
+		{
+			$jumpto .= ' <a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#comments">'.$lang->myshowcase_comments.'</a>';
+		}
+
+		$jumptop = '(<a href="'.$item_viewcode.($mybb->input['showall'] == 1 ? '&showall=1' : '').'#top">'.$lang->myshowcase_top.'</a>)';
+
+		$posthash = $showcase['posthash'];
+
+		$showcase_gid = $mybb->input['gid'];
+		$showcase_views = $showcase['views'];
+		$showcase_numcomments = $showcase['comments'];
+
+		$showcase_header_label = $lang->myshowcase_specifications;
+		$showcase_header_jumpto = $jumpto;
+
+		$showcase_admin_url = SHOWCASE_URL;
+
+		if($me->userperms['canmodedit'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit']))
+		{
+			eval("\$showcase_view_admin_edit = \"".$templates->get("myshowcase_view_admin_edit")."\";");
+		}
+
+		if($me->userperms['canmoddelete'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit']))
+		{
+			eval("\$showcase_view_admin_delete = \"".$templates->get("myshowcase_view_admin_delete")."\";");
+		}
+
+		if($showcase_view_admin_edit != '' || $showcase_view_admin_delete != '')
+		{
+			eval("\$showcase_header_special = \"".$templates->get("myshowcase_view_admin")."\";");
+		}
+
+		eval("\$showcase_data_header = \"".$templates->get("myshowcase_table_header")."\";");
+
+		//trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
+		//doing this now should not impact anyhting. no issues with gomobile beta4
+	 	define("IN_ARCHIVE", 1);
+	 	
+	 	$mybb->input['highlight'] = $db->escape_string($mybb->input['highlight']);
+	 	$mybb->input['search'] = $db->escape_string($mybb->input['search']);
+
+		require_once(MYBB_ROOT.'inc/class_parser.php');
+		$parser = new postParser;
+
+		reset($showcase_fields_enabled);
+		$trow_style = "trow2";
+		foreach($showcase_fields_enabled as $fname => $ftype)
+		{
+			$temp = 'myshowcase_field_'.$fname;
+			$field_header = $lang->$temp;
+
+			$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
+
+			//if we have search handle search term highlighting
+			$highlight = 0;
+			if($mybb->input['highlight'] != '' && $mybb->input['search'] == $fname)
+			{
+				$highlight = $mybb->input['highlight'];
+			}
+			
+			//set parser options for current field				 	
+			$parser_options = array('filter_badwords' => 1,
+									'allow_html' => $me->allowhtml,
+									'allow_mycode' => $me->allowbbcode,
+									'me_username' => 0,
+									'allow_smilies' => $me->allowsmilies,
+									'highlight' => $highlight,
+									'nl2br' => 1);
+
+			switch($ftype)
+			{
+				case "textarea":
+					$field_data = $showcase[$fname];
+					if($field_data != '' || $me->disp_empty == 1)
+					{
+						if($showcase_fields_parse[$fname] || $highlight)
+						{
+							$field_data = $parser->parse_message($field_data,$parser_options);
+						}
+						else
+						{
+							$field_data = htmlspecialchars_uni($field_data);
+							$field_data = nl2br($field_data);
+						}
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_2")."\";");
+					}
+				break;
+
+				case "textbox":
+					$field_data = $showcase[$fname];
+
+					//format numbers as requested
+					switch($showcase_fields_format[$fname])
+					{
+						case 'no':
+							$field_data = $field_data;
+						break;
+						
+						case 'decimal0':
+							$field_data = number_format(floatval($field_data));
+						break;
+
+						case 'decimal1':
+							$field_data = number_format(floatval($field_data), 1);
+						break;
+						
+						case 'decimal2':
+							$field_data = number_format(floatval($field_data), 2);
+						break;
+					}
+					
+					if($field_data != '' || $me->disp_empty == 1)
+					{
+						$field_data = htmlspecialchars_uni($field_data);
+						if($showcase_fields_parse[$fname] || $highlight)
+						{
+							$field_data = $parser->parse_message($field_data,$parser_options);
+						}
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+					}
+				break;
+
+				case "url":
+					$field_data = $showcase[$fname];
+					if($field_data != '' || $me->disp_empty == 1)
+					{
+						$field_data = $parser->mycode_parse_url($showcase[$fname]);
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_2")."\";");
+					}
+				break;
+
+				case "date":
+					$field_data = $showcase[$fname];
+					if($field_data != '')
+					{
+						$date_bits = explode('|',$showcase[$fname]);
+						$date_bits = array_map('intval', $date_bits);
+
+						if($date_bits[0] > 0 && $date_bits[1] > 0 && $date_bits[2] > 0)
+						{
+							$field_data = my_date($mybb->settings['dateformat'], mktime(0, 0, 0, $date_bits[0], $date_bits[1], $date_bits[2]));
+						}
+						else
+						{
+							$field_data = '';
+							if($date_bits[0]) $field_data .= $date_bits[0];
+							if($date_bits[1]) $field_data .= ($field_data != '' ? '-' : '').$date_bits[1];
+							if($date_bits[2]) $field_data .= ($field_data != '' ? '-' : '').$date_bits[2];
+						}
+					}
+					else
+					{
+						$field_data = '';
+					}
+					if(($field_data != '') || $me->disp_empty == 1)
+					{
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+					}
+				break;
+
+				case "db":
+					$field_data = $showcase[$fname];
+					if(($field_data != '') || $me->disp_empty == 1)
+					{
+						if($showcase_fields_parse[$fname] || $highlight)
+						{
+							$field_data = $parser->parse_message($field_data,$parser_options);
+						}
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+					}
+				break;
+
+				case "radio":
+					$field_data = $showcase[$fname];
+					if(($field_data != '') || $me->disp_empty == 1)
+					{
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+					}
+				break;
+
+				case "checkbox":
+					if(($showcase[$fname] != '') || $me->disp_empty == 1)
+					{
+						if($showcase[$fname] == 1)
+						{
+							$field_data = '<img src="'.$mybb->settings['bburl'].'/images/valid.gif" alt="Yes">';
+						}
+						else
+						{
+							$field_data = '<img src="'.$mybb->settings['bburl'].'/images/invalid.gif" alt="No">';
+						}
+						eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+					}
+				break;
+			}
+		}
+
+		//for moderators, show who last approved the entry
+		if($me->userperms['canmodapprove'] && $showcase['approved'])
+		{
+			$field_header = $lang->myshowcase_last_approved;
+			$modapproved = get_user($showcase['approved_by']);
+			$field_data = build_profile_link($modapproved['username'], $modapproved['uid'], '','', $forumdir.'/');
+			eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_1")."\";");
+		}
+
+		//output bottom row for report button and future add-ons
+//		$entry_final_row = '<a href="'.SHOWCASE_URL.'?action=report&gid='.$mybb->input['gid'].'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
+		$entry_final_row = '<a href="javascript:Showcase.reportShowcase('.$mybb->input['gid'].');"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
+		eval("\$showcase_data .= \"".$templates->get("myshowcase_view_data_3")."\";");
+
+		if($me->allow_comments && $me->userperms['canviewcomment'])
+		{
+			// start getting comments
+			$query = $db->query("
+				SELECT gc.*, u.username
+				FROM ".TABLE_PREFIX."myshowcase_comments gc
+				LEFT JOIN ".TABLE_PREFIX."users u ON (u.uid = gc.uid)
+				WHERE gc.gid=".$mybb->input['gid']." AND gc.id=".$me->id."
+				ORDER BY dateline DESC".
+				($mybb->input['showall'] == 1 ? '' : " LIMIT ".$me->comment_dispinit)
+				);
+
+			$trow_style = "trow2";
+			$showcase_comments = '';
+			while($gcomments = $db->fetch_array($query))
+			{
+
+				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
+
+				//clean up comment and timestamp
+				$comment_date = my_date($mybb->settings['dateformat'], $gcomments['dateline']);
+				$comment_time = my_date($mybb->settings['timeformat'], $gcomments['dateline']);
+				$comment_posted = $comment_date." ".$comment_time;
+				$comment_poster = $item_member = build_profile_link($gcomments['username'], $gcomments['uid'], '','', $forumdir.'/');
+				$comment_data = $parser->parse_message($gcomments['comment'],$parser_options);
+			
+				//setup comment admin options
+				//only mods, original author (if allowed) or owner (if allowed) can delete comments
+				if(
+				($me->userperms['canmoddelcomment']) ||
+				($gcomments['uid'] == $mybb->user['uid'] && $me->userperms['candelowncomment']) ||
+				($showcase['uid'] == $mybb->user['uid'] && $me->userperms['candelauthcomment'])
+				)
+				{
+					eval("\$showcase_comments_admin = \"".$templates->get("myshowcase_view_comments_admin")."\";");
+				}
+
+				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments")."\";");
+			}
+
+			$showcase_show_all = '';
+			if($mybb->input['showall'] != 1 && $showcase_numcomments > $me->comment_dispinit)
+			{
+				$showcase_show_all = '(<a href="'.$item_viewcode.$amp.'showall=1#comments">'.str_replace("{count}", $showcase['comments'], $lang->myshowcase_comment_show_all).'</a>)'."<br>";
+			}
+
+			$showcase_comment_form_url = SHOWCASE_URL;//.'?action=view&gid='.$mybb->input['gid'];
+			$showcase_header_label = '<a name="comments"><form action="'.$showcase_comment_form_url.'" method="post" name="comment">'.$lang->myshowcase_comments.'</a>';
+			$showcase_header_jumpto = $jumptop;
+			$showcase_header_special = $showcase_show_all;
+			eval("\$showcase_comment_header = \"".$templates->get("myshowcase_table_header")."\";");
+
+			$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
+			if($showcase_comments == '')
+			{
+				eval("\$showcase_comments = \"".$templates->get("myshowcase_view_comments_none")."\";");
+			}
+
+			//check if logged in for ability to add comments
+			$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
+			if(!$mybb->user['uid'])
+			{
+				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments_add_login")."\";");
+			}
+			elseif($me->userperms['cancomment'])
+			{
+				$comment_text_limit = str_replace("{text_limit}", $me->comment_length, $lang->myshowcase_comment_text_limit);
+				eval("\$showcase_comments .= \"".$templates->get("myshowcase_view_comments_add")."\";");
+			}
+		}
+
+		if($me->allow_attachments && $me->userperms['canviewattach'])
+		{
+			// start getting attachments
+			$query = $db->query("
+				SELECT ga.*
+				FROM ".TABLE_PREFIX."myshowcase_attachments ga
+				WHERE ga.gid=".$mybb->input['gid']." AND ga.id=".$me->id
+				);
+
+			$attach_count = 0;
+			$showcase_attachment_data = '';
+			while($gattachments = $db->fetch_array($query))
+			{
+				//setup default and non-JS enabled URLs
+				$item_attachurljs = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_ITEM);
+				$item_attachurl = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_VIEW_ATTACH);
+
+				//if mime is image
+				if(stristr($gattachments['filetype'], 'image/'))
+				{	
+					//determine what image to use for thumbnail
+					if($gattachments['thumbnail'] != "SMALL" && file_exists($me->imgfolder."/".$gattachments['thumbnail']))
+					{
+						$item_image = './'.$me->imgfolder."/".$gattachments['thumbnail'];
+					}
+					else
+					{
+						$item_image = $item_attachurljs;
+					}
+
+					//see if the Fancybox code is being used and if not go back to the actual attachment for the link url
+					if(stripos($showcase_top, "[rel=showcase_images]"))
+					{
+						$item_class = "rel=\\\"showcase_images\\\"";
+					}
+					else
+					{
+						$item_attachurljs = $item_attachurl;
+					}
+
+				}
+				else //it's any other allowed type, so use this
+				{
+					$item_class = "class=\\\"attachment\\\"";
+					$attachtypes = $cache->read('attachtypes');
+					$ext = get_extension($gattachments['filename']);
+					$item_image = $theme['imgdir']."/error.gif";
+					if(array_key_exists($ext, $attachtypes))
+					{
+						$item_image = $mybb->settings['bburl']."/".$attachtypes[$ext]['icon'];
+					}
+				}
+				
+				$item_alt = $lang->sprintf($lang->myshowcase_attachment_alt, $gattachments['filename'], $showcase['username']);
+
+				eval("\$showcase_attachment_data .= \"".$templates->get("myshowcase_view_attachments_image")."\";");
+
+				$attach_count++;
+				if($attach_count == $me->disp_attachcols && $me->disp_attachcols != 0)
+				{
+					$showcase_attachment_data .= '<br />';
+					$attach_count = 0;
+				}
+				else
+				{
+					$showcase_attachment_data .= '&nbsp;';
+				}
+			}
+
+			if(substr($showcase_attachment_data,-6) == '&nbsp;')
+			{
+				$showcase_attachment_data = substr($showcase_attachment_data,0,-6);
+			}
+
+			$showcase_header_label = '<a name="images">'.$lang->myshowcase_attachments.'</a>';
+			$showcase_header_jumpto = $jumptop;
+			$showcase_header_special = "";
+			eval("\$showcase_attachment_header = \"".$templates->get("myshowcase_table_header")."\";");
+
+
+ 			if($showcase_attachment_data != '')
+			{
+				eval("\$showcase_attachments = \"".$templates->get("myshowcase_view_attachments")."\";");
+			}
+			else
+			{
+				eval("\$showcase_attachments = \"".$templates->get("myshowcase_view_attachments_none")."\";");
+			}
+		}
+
+		// Update view count
+		$db->shutdown_query("UPDATE ".TABLE_PREFIX.$me->table_name." SET views=views+1 WHERE gid=".$mybb->input['gid']);
+
+		$plugins->run_hooks("myshowcase_view_end");
+
+		eval("\$showcase_page = \"".$templates->get("myshowcase_view")."\";");
+
+	break;
+	}
+	
+	case "report":
+	case "do_report":
+	case "reports":
+	case "do_reports":
+	case "allreports":
+	{
+		require_once(MYBB_ROOT.'inc/plugins/myshowcase/report.php');
+	}
+	break;
+	
+	case "addcomment":
+	{
+		if(!$mybb->user['uid'])
+		{
+			error($lang->myshowcase_comments_not_logged_in);
+		}
+
+		if($me->userperms['cancomment'] && $mybb->request_method == "post")
+		{
+			verify_post_check($mybb->input['my_post_key']);
+			
+			$plugins->run_hooks("myshowcase_add_comment_start");
+
+			$mybb->input['gid'] = intval($mybb->input['gid']);
+
+			if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
+			{
+				error($lang->myshowcase_invalid_id);
+			}
+
+			if($mybb->input['comments'] == "")
+			{
+				error($lang->myshowcase_comment_empty);
+			}
+
+			$query = $db->simple_select($me->table_name, "gid, uid", "gid=".$mybb->input['gid']);
+			if($db->num_rows($query) == 0)
+			{
+				error($lang->myshowcase_invalid_id);
+			}
+			
+			$authorid = $db->fetch_field($query, "uid");
+
+			//don't trust the myshowcase_data comment count, get the real count at time of insert to cover deletions and edits at same time.
+			$query = $db->query("
+				SELECT COUNT(*) AS num_comments
+				FROM ".TABLE_PREFIX."myshowcase_comments
+				WHERE gid = ".$mybb->input['gid']." AND id=".$me->id."
+				GROUP BY gid
+				LIMIT 1
+			");
+
+			$showcase = $db->fetch_array($query);
+			$num_comments = $showcase['num_comments'];
+
+			$mybb->input['comments'] = $db->escape_string($mybb->input['comments']);
+
+			if($mybb->input['comments'] != '')
+			{
+				$comment_insert_data = array(
+					"id" => $me->id,
+					"gid" => $mybb->input['gid'],
+					"uid" => $mybb->user['uid'],
+					"ipaddress" => get_ip(),
+					"comment" => $mybb->input['comments'],
+					"dateline" => $dateline
+					);
+
+				$plugins->run_hooks("myshowcase_add_comment_commit");
+
+				$db->insert_query("myshowcase_comments", $comment_insert_data);
+
+				$db->update_query($me->table_name, array("comments" => $num_comments + 1),"gid=".$mybb->input['gid']);
+
+				//notify showcase owner of new comment by others
+				$author = get_user($authorid);
+				if($author['allownotices'] && $author['uid'] != $mybb->user['uid'])
+				{
+					require_once MYBB_ROOT.'inc/class_parser.php';
+					$parser = new Postparser;
+
+					$excerpt = $parser->text_parse_message($mybb->input['comments'], array('me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1));
+					$excerpt = my_substr($excerpt, 0, $mybb->settings['subscribeexcerpt']).$lang->myshowcase_comment_more;
+					
+					$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+					
+					if($forumdir == '' || $forumdir == './')
+					{
+						$showcase_url = $mybb->settings['bburl'].'/'.$item_viewcode;
+					}
+					else
+					{
+						$forumdir = str_replace('.', '', $forumdir);
+						$showcase_url = str_replace($forumdir, '', $mybb->settings['bburl']).'/'.$item_viewcode;
+					}
+					
+					
+					$emailsubject = $lang->sprintf($lang->myshowcase_comment_emailsubject, $me->name);
+					$emailmessage = $lang->sprintf($lang->myshowcase_comment_email, $author['username'], $mybb->user['username'], $me->name, $excerpt, $showcase_url, $mybb->settings['bbname'], $mybb->settings['bburl']);
+					
+					$new_email = array(
+						"mailto" => $db->escape_string($author['email']),
+						"mailfrom" => '',
+						"subject" => $db->escape_string($emailsubject),
+						"message" => $db->escape_string($emailmessage),
+						"headers" => ''
+						);
+
+					$db->insert_query("mailqueue", $new_email);
+					$cache->update_mailqueue();
+				}
+						
+				$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+
+				redirect($item_viewcode.'#comments', $lang->myshowcase_comment_added);
+			}
+		}
+		else
+		{
+			error($lang->myshowcase_not_authorized);
+		}
+
+
+	break;
+	}
+	case "delcomment":
+	{
+		$plugins->run_hooks("myshowcase_del_comment_start");
+
+		$mybb->input['cid'] = intval($mybb->input['cid']);
+
+		if($mybb->input['cid'] == "" || $mybb->input['cid'] == 0)
+		{
+			error($lang->myshowcase_invalid_cid);
+		}
+
+		$query = $db->query("SELECT c.cid, g.uid AS owner, c.uid AS author, c.gid FROM ".TABLE_PREFIX."myshowcase_comments c
+				LEFT JOIN ".TABLE_PREFIX.$me->table_name." g
+				ON g.gid = c.gid
+				WHERE c.cid = ".$mybb->input['cid']);
+
+		if($db->num_rows($query) == 0)
+		{
+			error($lang->myshowcase_invalid_cid);
+		}
+
+		$gcomments = $db->fetch_array($query);
+
+		if(
+			(($mybb->user['uid'] == $gcomments['author'] && $me->userperms['candelowncomment']) ||
+			($mybb->user['uid'] == $gcomments['owner'] && $me->userperms['candelauthcomment']) ||
+			($me->userperms['canmoddelcomment']) && $mybb->request_method == "post")
+		)
+		{
+			verify_post_check($mybb->input['my_post_key']);
+		
+			$query = $db->delete_query("myshowcase_comments", "id=".$me->id." AND cid=".$mybb->input['cid']);
+			if($db->affected_rows($query) != 1)
+			{
+				error($lang->myshowcase_comment_error);
+			}
+			else
+			{
+				$query = $db->query("
+					SELECT COUNT(*) AS num_comments
+					FROM ".TABLE_PREFIX."myshowcase_comments
+					WHERE gid = ".$gcomments['gid']." AND id=".$me->id."
+					GROUP BY gid
+					LIMIT 1
+				");
+
+				$showcase = $db->fetch_array($query);
+				$num_comments = $showcase['num_comments'];
+
+				$plugins->run_hooks("myshowcase_del_comment_commit");
+
+				$db->update_query($me->table_name, array("comments" => $num_comments),"gid=".$gcomments['gid']);
+
+				$item_viewcode = str_replace('{gid}', $gcomments['gid'], SHOWCASE_URL_VIEW);
+
+				redirect($item_viewcode.'#comments', $lang->myshowcase_comment_deleted);
+			}
+		}
+		else
+		{
+			error($lang->myshowcase_not_authorized);
+		}
+
+	break;
+	}
+	case "delete";
+	{
+		if($mybb->request_method == "post")
+		{
+			verify_post_check($mybb->input['my_post_key']);
+
+			if(!$mybb->user['uid'] || !$me->userperms['canedit'])
+			{
+				error($lang->myshowcase_not_authorized);
+			}
+
+			$plugins->run_hooks("myshowcase_delete_start");
+
+			$mybb->input['gid'] = intval($mybb->input['gid']);
+
+			if($mybb->input['gid'] == "" || $mybb->input['gid'] == 0)
+			{
+				error($lang->myshowcase_invalid_id);
+			}
+
+			$query = $db->simple_select($me->table_name, "*", "gid=".$mybb->input['gid']);
+			if($db->num_rows($query) == 0)
+			{
+				error($lang->myshowcase_invalid_id);
+			}
+
+			$showcase_data = $db->fetch_array($query);
+
+			if(!$me->userperms['canmoddelete'] && $mybb->user['uid'] != $showcase_data['uid'])
+			{
+				error($lang->myshowcase_not_authorized);
+			}
+
+			$gid = $showcase_data['gid'];
+			$me->delete($gid);
+
+			//log_moderator_action($modlogdata, $lang->multi_deleted_threads);
+
+			$plugins->run_hooks("myshowcase_delete_end");
+		}
+		redirect(SHOWCASE_URL, $lang->redirect_myshowcase_delete);
+		exit;
+	break;
+	}
+
+	case "edit":
+	case "new":
+	case "do_editshowcase":
+	case "do_newshowcase":
+	{
+		require_once(MYBB_ROOT.'inc/plugins/myshowcase/newedit.php');
+	}
+	break;
+
+	case "multiapprove":
+	case "multiunapprove":
+	case "multidelete":
+	case "do_multidelete":
+	{
+		require_once(MYBB_ROOT.'inc/plugins/myshowcase/inlinemod.php');
+	}
+	break;
+
 }
+
 
 $plugins->run_hooks("myshowcase_end");
 output_page($showcase_page);
