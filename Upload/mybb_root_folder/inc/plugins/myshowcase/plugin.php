@@ -34,8 +34,7 @@ function myshowcase_plugin_info()
 		"author"	=> "CommunityPlugins.com",
 		"authorsite"	=> "http://www.communityplugins.com",
 		"version"	=> "2.5.2",
-		"guid"		=> "211a3098d1864a1e36f31c5becaf7c89",
-		"compatibility" => "16*",
+		"compatibility" => "18*",
 	);
 }
 
@@ -313,75 +312,8 @@ function myshowcase_plugin_install()
 		}
 	}
 
-	// DELETE ALL SETTINGS TO AVOID DUPLICATES
-	$db->write_query("DELETE FROM ".TABLE_PREFIX."settings WHERE name IN(
-		'myshowcase_delete_on_uninstall')");
-
-	$db->delete_query("settinggroups", "name = 'myshowcase'");
-
-	//start new setting group
-	$settings_group = array(
-		"name" => "myshowcase",
-		"title" => "MyShowcase Section",
-		"description" => "Options on how to configure the MyShowcase section.",
-		"disporder" => "50",
-		"isdefault" => "0",
-        );
-
-	$db->insert_query("settinggroups", $settings_group);
-	$gid = $db->insert_id();
-
-	//start new settings (THERE IS NO MAIN SWITCH AS EACH SHOWCASE IS ENABLED INDIVIDUALLY IN THE SHOWCASE ADMIN)
-	$pluginsetting = array();
-	$disporder = 1;
-
-	$pluginsetting[] = array(
-		"name"		=> "myshowcase_delete_tables_on_uninstall",
-		"title"		=> "Drop MyShowcase tables when uninstalling?",
-		"description"	=> "When uninstalling, do you want to drop the showcase tables and delete the data in them? Reinstalling will not overwrite existing data if you select [no].",
-		"optionscode"	=> "yesno",
-		"value"		=> "0",
-		"disporder"	=> $disporder,
-		"gid"		=> $gid
-	);
-
-	reset($pluginsetting);
-	foreach($pluginsetting as $setting)
-	{
-		$db->insert_query("settings", $setting);
-	}
-
     //upgrade procedure for post-table install
 	myshowcase_upgrade_install_post_table($need_upgrade);
-
-	rebuild_settings();
-	
-	//insert template group
-	$insert_array = array(
-		'prefix' => 'myshowcase',
-		'title' => '<lang:group_myshowcase>'
-	);
-	$db->insert_query("templategroups", $insert_array);
-
-	//insert new base templates
-	if(file_exists(MYBB_ROOT."inc/plugins/myshowcase/templates.php"))
-	{
-		require_once(MYBB_ROOT."inc/plugins/myshowcase/templates.php");
-		ksort($myshowcase_templates);
-		reset($myshowcase_templates);
-		foreach($myshowcase_templates as $title => $template)
-		{
-			$insert_array = array(
-				'title' => $title,
-				'template' => $db->escape_string($template),
-				'sid' => -2,
-				'version' => 2300,
-				'dateline' => TIME_NOW
-				);
-			
-			$db->insert_query('templates', $insert_array);
-		}
-	}
 
     //upgrade procedure for post-template install
 	myshowcase_upgrade_install_post_template($need_upgrade);
@@ -416,15 +348,7 @@ function myshowcase_plugin_is_installed()
 {
 	global $db;
 
-	$query = $db->simple_select("settinggroups", "gid", "name='myshowcase'");
-	if($db->num_rows($query) == 1 && $db->table_exists('myshowcase_fields'))
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return $db->table_exists('myshowcase_fields');
 }
 
 /**
@@ -433,7 +357,8 @@ function myshowcase_plugin_is_installed()
  */
 function myshowcase_plugin_activate()
 {
-    global $db, $cache, $plugins;
+    global $db, $cache, $plugins, $PL;
+	$PL or require_once PLUGINLIBRARY;
 
     //load upgrade code
     include_once(MYBB_ROOT."inc/plugins/myshowcase/upgrade.php");
@@ -456,7 +381,7 @@ function myshowcase_plugin_activate()
 		$need_upgrade['this'] = $myshowcase['version'];
 	}
 
-    include MYBB_ROOT.'/inc/adminfunctions_templates.php';
+    include_once MYBB_ROOT.'/inc/adminfunctions_templates.php';
     find_replace_templatesets('header', '#'.preg_quote('<navigation>').'#', "{\$myshowcase_unapproved}{\$myshowcase_reported}<navigation>");
 
     //upgrade procedure for activation
@@ -475,7 +400,23 @@ function myshowcase_plugin_activate()
 	myshowcase_update_cache('moderators');
 	myshowcase_update_cache('reports');
 
-    rebuild_settings();
+	//start new settings (THERE IS NO MAIN SWITCH AS EACH SHOWCASE IS ENABLED INDIVIDUALLY IN THE SHOWCASE ADMIN)
+	$PL->settings('myshowcase', 'MyShowcase Section', 'Options on how to configure the MyShowcase section.', array(
+		'delete_tables_on_uninstall'		=> array(
+		   'title'			=> 'Drop MyShowcase tables when uninstalling?',
+		   'description'	=> 'When uninstalling, do you want to drop the showcase tables and delete the data in them? Reinstalling will not overwrite existing data if you select [no].',
+		   'optionscode'	=> 'yesno',
+		   'value'			=> 0
+		),
+	));
+
+	//insert new base templates
+	if(file_exists(MYBB_ROOT."inc/plugins/myshowcase/templates.php"))
+	{
+		require_once(MYBB_ROOT."inc/plugins/myshowcase/templates.php");
+
+		$PL->templates('myshowcase', '<lang:group_myshowcase>', $myshowcase_templates);
+	}
     
     /*---- Enable Task ---*/
 	$db->update_query("tasks", array("enabled" => 1), "title='".$db->escape_string('MyShowcase')."'");
@@ -512,7 +453,8 @@ function myshowcase_plugin_deactivate()
  */
 function myshowcase_plugin_uninstall()
 {
-	global $db, $mybb, $cache, $plugins;
+	global $db, $mybb, $cache, $plugins, $PL;
+	$PL or require_once PLUGINLIBRARY;
 
 	//drop tables but only if setting specific to allow uninstall is enabled
 	if($mybb->settings['myshowcase_delete_tables_on_uninstall'] == 1)
@@ -579,19 +521,10 @@ function myshowcase_plugin_uninstall()
 		}
 	}
 
-	// DELETE ALL SETTINGS
-	$db->write_query("DELETE FROM ".TABLE_PREFIX."settings WHERE name IN(
-		'myshowcase_delete_on_uninstall')");
-
-	$db->delete_query("settinggroups", "name = 'myshowcase'");
+	$PL->settings_delete('myshowcase');
 
 	//delete old base templates
-	$db->write_query("DELETE FROM ".TABLE_PREFIX."templates WHERE title LIKE '%myshowcase%' AND sid = -2");
-	$db->write_query("DELETE FROM ".TABLE_PREFIX."templates WHERE title = 'portal_basic_box' AND sid = -2");
-	
-	$db->delete_query("templategroups", "prefix = 'myshowcase'");
-
-	rebuild_settings();
+	$PL->templates_delete('myshowcase');
     
 /*---- Remove Task ---*/
 	include('../inc/functions_task.php');
@@ -601,6 +534,3 @@ function myshowcase_plugin_uninstall()
 	$cache->update_tasks();    
     return true;
 }
-
-
-?>

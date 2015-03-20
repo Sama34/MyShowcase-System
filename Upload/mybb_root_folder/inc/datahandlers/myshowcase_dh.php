@@ -165,7 +165,7 @@ class MyShowcaseDataHandler extends DataHandler
 			//$myshowcase_data[$fname] = $db->escape_string($myshowcase_data[$fname]);
 		}
 
-		$plugins->run_hooks_by_ref("datahandler_post_validate_post", $this);
+		$plugins->run_hooks("datahandler_post_validate_post", $this);
 
 		// We are done validating, return.
 		$this->set_validated(true);
@@ -205,7 +205,7 @@ class MyShowcaseDataHandler extends DataHandler
 		{
 			$this->myshowcase_insert_data[$key] = $value;
 		}
-		$plugins->run_hooks_by_ref("datahandler_myshowcase_insert", $this);
+		$plugins->run_hooks("datahandler_myshowcase_insert", $this);
 
 		$this->gid = $db->insert_query($me->table_name, $this->myshowcase_insert_data);
 
@@ -249,10 +249,15 @@ class MyShowcaseDataHandler extends DataHandler
 
 		foreach($myshowcase_data as $key => $value)
 		{
+			/*if(in_array($key, array("createdate", "submit_date")))
+			{
+				continue;
+			}*/
+
 			$this->myshowcase_update_data[$key] = $value;
 		}
 
-		$plugins->run_hooks_by_ref("datahandler_myshowcase_update", $this);
+		$plugins->run_hooks("datahandler_myshowcase_update", $this);
 
 		$db->update_query($me->table_name, $this->myshowcase_update_data, "gid=".$myshowcase_data['gid']);
 

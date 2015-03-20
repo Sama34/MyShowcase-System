@@ -28,7 +28,7 @@ function myshowcase_meta()
 	$sub_menu['40'] = array("id" => "cache", "title" => $lang->myshowcase_admin_cache, "link" => "index.php?module=myshowcase-cache");
 	$sub_menu['50'] = array("id" => "help", "title" => $lang->myshowcase_admin_help, "link" => "index.php?module=myshowcase-help");
 
-	$plugins->run_hooks_by_ref("admin_myshowcase_menu", $sub_menu);
+	$plugins->run_hooks("admin_myshowcase_menu", $sub_menu);
 
 	$page->add_menu_item($lang->myshowcase_admin_myshowcase, "myshowcase", "index.php?module=myshowcase", 60, $sub_menu);
 	return true;
@@ -49,7 +49,7 @@ function myshowcase_action_handler($action)
 		'help' => array('active' => 'help', 'file' => 'help.php')
 	);
 
-	$plugins->run_hooks_by_ref("admin_myshowcase_action_handler", $actions);
+	$plugins->run_hooks("admin_myshowcase_action_handler", $actions);
 
 	if(isset($actions[$action]))
 	{
@@ -76,7 +76,7 @@ function myshowcase_admin_permissions()
 		"help" => $lang->myshowcase_admin_perm_help,
 	);
 
-	$plugins->run_hooks_by_ref("admin_myshowcase_permissions", $admin_permissions);
+	$plugins->run_hooks("admin_myshowcase_permissions", $admin_permissions);
 
 	return array("name" => $lang->myshowcase_admin_myshowcase, "permissions" => $admin_permissions, "disporder" => 60);
 }

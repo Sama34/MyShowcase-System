@@ -438,6 +438,8 @@ switch($mybb->input['action'])
 			// Set the post data that came from the input to the $post array.
 			$default_data = array(
 				"uid" => $showcase_data['uid'],
+				/*"submit_date" => TIME_NOW,
+				"createdate" => TIME_NOW,*/
 				"dateline" => $dateline,
 				"approved" => $approved,
 				"approved_by" => $approved_by,

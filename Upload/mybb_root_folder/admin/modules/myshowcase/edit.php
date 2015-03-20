@@ -107,7 +107,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 						'defaultimage' => $db->escape_string($mybb->input['defaultimage']),
 						'watermarkimage' => $db->escape_string($mybb->input['watermarkimage']),
 						'watermarkloc' => $mybb->input['watermarkloc'],						
-						'use_attach' => $mybb->input['use_attach'],
+						'use_attach' => $mybb->get_input('use_attach', 1),
 						'f2gpath' => $db->escape_string($mybb->input['f2gpath'])
 						);
 
@@ -137,21 +137,21 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					//update other myshowcase settings
 					$update_array = array(
 						'modnewedit' => $mybb->input['modnewedit'],
-						'othermaxlength' => $db->escape_string($mybb->input['othermaxlength']),
-						'allow_attachments' => $mybb->input['allow_attachments'],
-						'allow_comments' => $mybb->input['allow_comments'],
+						'othermaxlength' => $mybb->get_input('othermaxlength', 1),
+						'allow_attachments' => $mybb->get_input('allow_attachments', 1),
+						'allow_comments' => $mybb->get_input('allow_comments', 1),
 						'thumb_width' => $db->escape_string($mybb->input['thumb_width']),
 						'thumb_height' => $db->escape_string($mybb->input['thumb_height']),
 						'comment_length' => $db->escape_string($mybb->input['comment_length']),
 						'comment_dispinit' => $db->escape_string($mybb->input['comment_dispinit']),
 						'disp_attachcols' => $db->escape_string($mybb->input['disp_attachcols']),
 						'disp_empty' => $mybb->input['disp_empty'],
-						'link_in_postbit' => $mybb->input['link_in_postbit'],
-						'portal_random' => $mybb->input['portal_random'],
+						'link_in_postbit' => $mybb->get_input('link_in_postbit', 1),
+						'portal_random' => $mybb->get_input('portal_random', 1),
 						'prunetime' => $mybb->input['prunetime'].'|'.$mybb->input['interval'],
-						'allowsmilies' => $mybb->input['allowsmilies'],
-						'allowbbcode' => $mybb->input['allowbbcode'],
-						'allowhtml' => $mybb->input['allowhtml']
+						'allowsmilies' => $mybb->get_input('allowsmilies', 1),
+						'allowbbcode' => $mybb->get_input('allowbbcode', 1),
+						'allowhtml' => $mybb->get_input('allowhtml', 1)
 						);
 
 					$db->update_query("myshowcase_config", $update_array, "id='{$mybb->input['id']}'");
@@ -516,12 +516,12 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					$perm_options = array();
 					if($moderator['isgroup'])
 					{
-						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/group.gif\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
+						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/group.png\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
 						$perm_options[] = $form_container->output_cell("{$moderator['img']} <a href=\"index.php?module=user-groups&amp;action=edit&amp;gid={$moderator['id']}\">".htmlspecialchars_uni($moderator['title'])."</a>");
 					}
 					else
 					{
-						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/user.gif\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
+						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/user.png\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
 						$perm_options[] = $form_container->output_cell("{$moderator['img']} <a href=\"index.php?module=user-users&amp;action=edit&amp;uid={$moderator['id']}\">".htmlspecialchars_uni($moderator['username'])."</a>");
 					}
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmodapprove]", 1, "", array('checked' => $moderator['canmodapprove'], 'id' => "modapprove{$moderator['mid']}")),array("class" => "align_center"));

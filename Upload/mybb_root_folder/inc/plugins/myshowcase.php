@@ -17,6 +17,9 @@ if(!defined("IN_MYBB"))
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
+// PLUGINLIBRARY
+defined('PLUGINLIBRARY') or define('PLUGINLIBRARY', MYBB_ROOT.'inc/plugins/pluginlibrary.php');
+
 //deal with usegroup changes
 $plugins->add_hook('admin_user_groups_edit', 'myshowcase_insert_group_perms');
 $plugins->add_hook('admin_user_groups_delete_commit', 'myshowcase_delete_group_perms');
@@ -627,7 +630,7 @@ function myshowcase_get_random()
 			$rand_img = $rand_showcase['imgfolder'].'/' .$rand_entry_thumb;   
 		}
 		
-		eval("\$portal_rand_showcase = \"".$templates->get("portal_rand_showcase")."\";");
+		eval("\$portal_rand_showcase = \"".$templates->get("myshowcase_portal_rand_showcase")."\";");
 		return $portal_rand_showcase;
 	}
 }
