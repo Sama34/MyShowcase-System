@@ -269,7 +269,7 @@ if($mybb->input['action'] == "attachment")
 $lang->load("index");
 
 //load language file specific to this showcase's assigned fieldset
-$lang->load("myshowcase_fs".$me->fieldsetid);
+$lang->load("myshowcase_fs".$me->fieldsetid, false, true);
 
 //see if current user can view this showcase
 if(!$me->userperms['canview'])
