@@ -163,6 +163,7 @@ if($mybb->input['action'] == "item")
 		default:
 			header("Content-type: application/force-download");
 			$disposition = "attachment";
+			break;
 	}
 
 	if(strpos(strtolower($_SERVER['HTTP_USER_AGENT']), "msie") !== false)
