@@ -477,7 +477,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 						$perm_options[] = $form_container->output_cell($form->generate_check_box("permissions[{$group['gid']}][{$field}]", 1, "", array('checked' => $showcase_group_perms[$group['gid']][$field], 'id' => $field.$group['gid'])),array("class" => "align_center"));
 					}
 				}
-				$form_container->construct_row("", "", "<div class=\"permssisons_settings_bit\">".implode("</div><div class=\"permssisons_settings_bit\">", $perm_options)."</div>");
+				$form_container->construct_row();
 			}
 
 			$form_container->end();
@@ -516,12 +516,12 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					$perm_options = array();
 					if($moderator['isgroup'])
 					{
-						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/group.gif\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
+						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/group.png\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
 						$perm_options[] = $form_container->output_cell("{$moderator['img']} <a href=\"index.php?module=user-groups&amp;action=edit&amp;gid={$moderator['id']}\">".htmlspecialchars_uni($moderator['title'])."</a>");
 					}
 					else
 					{
-						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/user.gif\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
+						$moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/user.png\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
 						$perm_options[] = $form_container->output_cell("{$moderator['img']} <a href=\"index.php?module=user-users&amp;action=edit&amp;uid={$moderator['id']}\">".htmlspecialchars_uni($moderator['username'])."</a>");
 					}
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmodapprove]", 1, "", array('checked' => $moderator['canmodapprove'], 'id' => "modapprove{$moderator['mid']}")),array("class" => "align_center"));
@@ -529,7 +529,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmoddelete]", 1, "", array('checked' => $moderator['canmoddelete'], 'id' => "moddelete{$moderator['mid']}")),array("class" => "align_center"));
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmoddelcomment]", 1, "", array('checked' => $moderator['canmoddelcomment'], 'id' => "moddelcomment{$moderator['mid']}")),array("class" => "align_center"));
 					$perm_options[] = $form_container->output_cell("<a href=\"index.php?module=myshowcase-edit&amp;action=del-mod&amp;id={$mybb->input['id']}&amp;mid={$moderator['mid']}&amp;my_post_key={$mybb->post_code}#tab_moderators\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myshowcase_moderators_confirm_deletion}')\">{$lang->myshowcase_moderators_delete}</a>",array("class" => "align_center"));
-					$form_container->construct_row("", "", "<div class=\"permssisons_settings_bit\">".implode("</div><div class=\"permssisons_settings_bit\">", $perm_options)."</div>");
+					$form_container->construct_row();
 				}
 				
 				if($form_container->num_rows() == 0)

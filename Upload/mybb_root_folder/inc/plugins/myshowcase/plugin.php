@@ -33,9 +33,9 @@ function myshowcase_plugin_info()
 		"website"	=> "http://www.communityplugins.com",
 		"author"	=> "CommunityPlugins.com",
 		"authorsite"	=> "http://www.communityplugins.com",
-		"version"	=> "2.5.2",
-		"guid"		=> "211a3098d1864a1e36f31c5becaf7c89",
-		"compatibility" => "16*",
+		"version"	=> "3.0.0",
+		"versioncode"	=> 3000,
+		"compatibility" => "18*",
 	);
 }
 

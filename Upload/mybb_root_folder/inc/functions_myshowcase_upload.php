@@ -434,7 +434,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment=false, $do
 		}
 	}
 
-	$plugins->run_hooks_by_ref("myshowcase_upload_attachment_do_insert", $attacharray);
+	$plugins->run_hooks("myshowcase_upload_attachment_do_insert", $attacharray);
 
 	if($prevattach['aid'] && $update_attachment == true)
 	{
@@ -486,7 +486,7 @@ function myshowcase_upload_file($file, $path, $filename="")
 	$upload['path'] = $path;
 	$upload['type'] = $file['type'];
 	$upload['size'] = $file['size'];
-	$plugins->run_hooks_by_ref("myshowcase_upload_file_end", $upload);
+	$plugins->run_hooks("myshowcase_upload_file_end", $upload);
 	return $upload;
 }
 ?>

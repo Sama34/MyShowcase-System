@@ -505,7 +505,7 @@ if($mybb->input['action'] == 'show_seo')
 			//grab status images at same time
 			if($result['enabled'] == 1)
 			{
-				$status_image = "styles/{$page->style}/images/icons/bullet_on.gif";
+				$status_image = "styles/{$page->style}/images/icons/bullet_on.png";
 				$status_alt = $lang->myshowcase_summary_status_enabled;
 				if($table_ready)
 				{
@@ -514,7 +514,7 @@ if($mybb->input['action'] == 'show_seo')
 			}
 			else
 			{
-				$status_image = "styles/{$page->style}/images/icons/bullet_off.gif";
+				$status_image = "styles/{$page->style}/images/icons/bullet_off.png";
 				$status_alt = $lang->myshowcase_summary_status_disabled;
 				if($table_ready)
 				{
@@ -525,7 +525,7 @@ if($mybb->input['action'] == 'show_seo')
 			//override status if table does not exist
 			if(!$table_ready)
 			{
-				$status_image = "styles/{$page->style}/images/icons/error.gif";
+				$status_image = "styles/{$page->style}/images/icons/error.png";
 				$status_alt = $lang->myshowcase_summary_status_notable;
 				$popup->add_item($lang->myshowcase_summary_createtable, "index.php?module=myshowcase-summary&amp;action=createtable&amp;id={$result['id']}");
 			}

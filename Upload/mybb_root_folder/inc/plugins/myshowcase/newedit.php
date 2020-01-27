@@ -143,7 +143,7 @@ switch($mybb->input['action'])
 			{
 
 				$temp = 'myshowcase_field_'.$fname;
-				$field_header = $lang->$temp;
+				$field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
 				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 
@@ -534,7 +534,7 @@ switch($mybb->input['action'])
 			{
 
 				$temp = 'myshowcase_field_'.$fname;
-				$field_header = $lang->$temp;
+				$field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
 				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 
