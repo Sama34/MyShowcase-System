@@ -143,7 +143,7 @@ switch($mybb->input['action'])
 			{
 
 				$temp = 'myshowcase_field_'.$fname;
-				$field_header = $lang->$temp;
+				$field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
 				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 
@@ -438,8 +438,6 @@ switch($mybb->input['action'])
 			// Set the post data that came from the input to the $post array.
 			$default_data = array(
 				"uid" => $showcase_data['uid'],
-				/*"submit_date" => TIME_NOW,
-				"createdate" => TIME_NOW,*/
 				"dateline" => $dateline,
 				"approved" => $approved,
 				"approved_by" => $approved_by,
@@ -536,7 +534,7 @@ switch($mybb->input['action'])
 			{
 
 				$temp = 'myshowcase_field_'.$fname;
-				$field_header = $lang->$temp;
+				$field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
 				$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 

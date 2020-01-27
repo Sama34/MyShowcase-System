@@ -1,4 +1,4 @@
-<?php
+<?
 /**
  * MyShowcase Plugin for MyBB - Sample Data
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved

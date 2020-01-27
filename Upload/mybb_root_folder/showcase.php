@@ -23,7 +23,7 @@ $forumdir = ""; //no trailing slash
 
 define("IN_MYBB", 1);
 define("IN_SHOWCASE", 1);
-define("VERSION_OF_FILE", "2.5.2");
+define("VERSION_OF_FILE", "3.0.0");
 
 $filename = substr($_SERVER['SCRIPT_NAME'], -strpos(strrev($_SERVER['SCRIPT_NAME']), "/"));
 define('THIS_SCRIPT', $filename);
@@ -85,13 +85,14 @@ $me = new MyShowcaseSystem();
 //global $showcase_proper, $showcase_lower;
 
 //try to load showcase specific language file
+$lang->load("myshowcase");
 $lang->load("myshowcase".$me->id, false, true);
-
+/*
 //if loaded then this will be set, if not load generic lang file
 if($lang->myshowcase == '')
 {
 	$lang->load("myshowcase");
-}
+}*/
 
 $lang->nav_myshowcase = $lang->myshowcase = $showcase_proper = ucwords(strtolower($me->name));
 $showcase_lower = strtolower($me->name);
@@ -163,7 +164,6 @@ if($mybb->input['action'] == "item")
 		default:
 			header("Content-type: application/force-download");
 			$disposition = "attachment";
-			break;
 	}
 
 	if(strpos(strtolower($_SERVER['HTTP_USER_AGENT']), "msie") !== false)
@@ -269,7 +269,7 @@ if($mybb->input['action'] == "attachment")
 $lang->load("index");
 
 //load language file specific to this showcase's assigned fieldset
-$lang->load("myshowcase_fs".$me->fieldsetid, false, true);
+$lang->load("myshowcase_fs".$me->fieldsetid, false, true); // 3.0.0 TODO
 
 //see if current user can view this showcase
 if(!$me->userperms['canview'])
@@ -376,7 +376,7 @@ if(!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->in
 	{
 		if($_FILES['attachment']['size'] > 0)
 		{
-			if(!function_exists(myshowcase_upload_attachment))
+			if(!function_exists('myshowcase_upload_attachment'))
 			{
 				require_once MYBB_ROOT."inc/functions_myshowcase_upload.php";
 			}
@@ -529,7 +529,7 @@ ksort($showcase_fields_showinlist);
 ksort($showcase_fields_searchable);
 
 //clean up/default expected inputs
-if(!isset($mybb->input['action']))
+if(empty($mybb->input['action']))
 {
 	$mybb->input['action'] = "list";
 }
@@ -1156,7 +1156,7 @@ switch($mybb->input['action'])
 		foreach($showcase_fields_enabled as $fname => $ftype)
 		{
 			$temp = 'myshowcase_field_'.$fname;
-			$field_header = $lang->$temp;
+			$field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
 			$trow_style = ($trow_style == "trow1" ? "trow2" : "trow1");
 
@@ -1743,7 +1743,6 @@ switch($mybb->input['action'])
 	break;
 
 }
-
 
 $plugins->run_hooks("myshowcase_end");
 output_page($showcase_page);

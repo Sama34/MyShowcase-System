@@ -19,13 +19,7 @@ if(!defined("IN_MYBB"))
 
 function myshowcase_meta()
 {
-	global $page, $lang, $plugins, $cache;
-
-	$plugins_cache = $cache->read('plugins');
-	if(empty($plugins_cache['active']['myshowcase']))
-	{
-		return false;
-	}
+	global $page, $lang, $plugins;
 
 	$sub_menu = array();
 	$sub_menu['10'] = array("id" => "summary", "title" => $lang->myshowcase_admin_summary, "link" => "index.php?module=myshowcase-summary");

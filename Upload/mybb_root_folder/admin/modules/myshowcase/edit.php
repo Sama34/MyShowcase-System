@@ -107,7 +107,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 						'defaultimage' => $db->escape_string($mybb->input['defaultimage']),
 						'watermarkimage' => $db->escape_string($mybb->input['watermarkimage']),
 						'watermarkloc' => $mybb->input['watermarkloc'],						
-						'use_attach' => $mybb->get_input('use_attach', 1),
+						'use_attach' => $mybb->input['use_attach'],
 						'f2gpath' => $db->escape_string($mybb->input['f2gpath'])
 						);
 
@@ -137,21 +137,21 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					//update other myshowcase settings
 					$update_array = array(
 						'modnewedit' => $mybb->input['modnewedit'],
-						'othermaxlength' => $mybb->get_input('othermaxlength', 1),
-						'allow_attachments' => $mybb->get_input('allow_attachments', 1),
-						'allow_comments' => $mybb->get_input('allow_comments', 1),
+						'othermaxlength' => $db->escape_string($mybb->input['othermaxlength']),
+						'allow_attachments' => $mybb->input['allow_attachments'],
+						'allow_comments' => $mybb->input['allow_comments'],
 						'thumb_width' => $db->escape_string($mybb->input['thumb_width']),
 						'thumb_height' => $db->escape_string($mybb->input['thumb_height']),
 						'comment_length' => $db->escape_string($mybb->input['comment_length']),
 						'comment_dispinit' => $db->escape_string($mybb->input['comment_dispinit']),
 						'disp_attachcols' => $db->escape_string($mybb->input['disp_attachcols']),
 						'disp_empty' => $mybb->input['disp_empty'],
-						'link_in_postbit' => $mybb->get_input('link_in_postbit', 1),
-						'portal_random' => $mybb->get_input('portal_random', 1),
+						'link_in_postbit' => $mybb->input['link_in_postbit'],
+						'portal_random' => $mybb->input['portal_random'],
 						'prunetime' => $mybb->input['prunetime'].'|'.$mybb->input['interval'],
-						'allowsmilies' => $mybb->get_input('allowsmilies', 1),
-						'allowbbcode' => $mybb->get_input('allowbbcode', 1),
-						'allowhtml' => $mybb->get_input('allowhtml', 1)
+						'allowsmilies' => $mybb->input['allowsmilies'],
+						'allowbbcode' => $mybb->input['allowbbcode'],
+						'allowhtml' => $mybb->input['allowhtml']
 						);
 
 					$db->update_query("myshowcase_config", $update_array, "id='{$mybb->input['id']}'");
@@ -477,7 +477,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 						$perm_options[] = $form_container->output_cell($form->generate_check_box("permissions[{$group['gid']}][{$field}]", 1, "", array('checked' => $showcase_group_perms[$group['gid']][$field], 'id' => $field.$group['gid'])),array("class" => "align_center"));
 					}
 				}
-				$form_container->construct_row("", "", "<div class=\"permssisons_settings_bit\">".implode("</div><div class=\"permssisons_settings_bit\">", $perm_options)."</div>");
+				$form_container->construct_row();
 			}
 
 			$form_container->end();
@@ -529,7 +529,7 @@ if(isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmoddelete]", 1, "", array('checked' => $moderator['canmoddelete'], 'id' => "moddelete{$moderator['mid']}")),array("class" => "align_center"));
 					$perm_options[] = $form_container->output_cell($form->generate_check_box("modperms[{$moderator['mid']}][canmoddelcomment]", 1, "", array('checked' => $moderator['canmoddelcomment'], 'id' => "moddelcomment{$moderator['mid']}")),array("class" => "align_center"));
 					$perm_options[] = $form_container->output_cell("<a href=\"index.php?module=myshowcase-edit&amp;action=del-mod&amp;id={$mybb->input['id']}&amp;mid={$moderator['mid']}&amp;my_post_key={$mybb->post_code}#tab_moderators\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myshowcase_moderators_confirm_deletion}')\">{$lang->myshowcase_moderators_delete}</a>",array("class" => "align_center"));
-					$form_container->construct_row("", "", "<div class=\"permssisons_settings_bit\">".implode("</div><div class=\"permssisons_settings_bit\">", $perm_options)."</div>");
+					$form_container->construct_row();
 				}
 				
 				if($form_container->num_rows() == 0)

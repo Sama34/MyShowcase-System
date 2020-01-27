@@ -249,11 +249,6 @@ class MyShowcaseDataHandler extends DataHandler
 
 		foreach($myshowcase_data as $key => $value)
 		{
-			/*if(in_array($key, array("createdate", "submit_date")))
-			{
-				continue;
-			}*/
-
 			$this->myshowcase_update_data[$key] = $value;
 		}
 

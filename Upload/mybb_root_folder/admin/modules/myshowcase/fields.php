@@ -920,18 +920,18 @@ if($mybb->input['action'] == '')
 			{
 				if(is_writable($langfile))
 				{
-					$status_image = "styles/{$page->style}/images/icons/tick.png";
+					$status_image = "styles/{$page->style}/images/icons/tick.gif";
 					$status_alt = $lang->myshowcase_fields_lang_exists_yes;
 				}
 				else
 				{
-					$status_image = "styles/{$page->style}/images/icons/warning.png";
+					$status_image = "styles/{$page->style}/images/icons/warning.gif";
 					$status_alt = $lang->myshowcase_fields_lang_exists_write;
 				}
 			}
 			else
 			{
-				$status_image = "styles/{$page->style}/images/icons/error.png";
+				$status_image = "styles/{$page->style}/images/icons/error.gif";
 				$status_alt = $lang->myshowcase_fields_lang_exists_no;
 			}
 
