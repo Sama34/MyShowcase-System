@@ -559,6 +559,9 @@ if($mybb->input['action'] == 'show_seo')
 	$form->end();
 
 	unset($fieldsets);
+
+	$fieldsets  = [];
+
 	$query = $db->simple_select("myshowcase_fieldsets", "*", "");
 	while($result = $db->fetch_array($query))
 	{
