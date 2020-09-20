@@ -1,0 +1,11 @@
+<span style="float:right">
+<form name="admin" method="post" action="{$showcase_admin_url}" />
+<input type="hidden" name="my_post_key" value="{$mybb->post_code}" />
+{$showcase_view_admin_edit}
+{$showcase_view_admin_delete}
+<input type="hidden" name="posthash" value="{$posthash}" />
+<input type="hidden" name="gid" value="{$mybb->input['gid']}" />
+<input type="hidden" name="showcasegid" value="" />
+<input type="hidden" name="showcaseact" value="" />
+</form>
+</span>

@@ -1,0 +1,30 @@
+<script type="text/javascript" src="{$mybb->settings['bburl']}/jscripts/myshowcase_inline.js?ver=2502"></script>
+<form action="{$me->mainfile}" method="post">
+<input type="hidden" name="my_post_key" value="{$mybb->post_code}" />
+<input type="hidden" name="modtype" value="inlineshowcase" />
+<input type="hidden" name="sortby" value="{$mybb->input['sortby']}" />
+<input type="hidden" name="order" value="{$mybb->input['order']}" />
+<input type="hidden" name="page" value="{$mybb->input['page']}" />
+<input type="hidden" name="search" value="{$mybb->input['search']}" />
+<input type="hidden" name="searchterm" value="{$mybb->input['searchterm']}" />
+<input type="hidden" name="exact" value="{$mybb->input['exactmatch']}" />
+<span class="smalltext"><strong>{$lang->myshowcase_inline_moderation}</strong></span>
+<select name="action">
+	<optgroup label="{$lang->standard_mod_tools}">
+		<option value="multiapprove">{$lang->myshowcase_mod_approve}</option>
+		<option value="multiunapprove">{$lang->myshowcase_mod_unapprove}</option>
+		<option value="multidelete">{$lang->myshowcase_mod_delete}</option>
+	</optgroup>
+	{$customthreadtools}
+</select>
+<input type="submit" class="button" name="go" value="{$lang->myshowcase_inline_go} ({$inlinecount})" id="inline_go" />&nbsp;
+<input type="button" onclick="javascript:inlineModeration.clearChecked();" value="{$lang->myshowcase_clear}" class="button" />
+</form>
+<script type="text/javascript">
+<!--
+	var go_text = "{$lang->myshowcase_inline_go}";
+	var inlineType = "showcase";
+	var inlineId = "all";
+// -->
+</script>
+<br />

@@ -10,266 +10,122 @@
  * File: \inc\plugins\myshowcase.php
  *
  */
-
-// Disallow direct access to this file for security reasons
-if(!defined("IN_MYBB"))
+ 
+// Die if IN_MYBB is not defined, for security reasons.
+if(!defined('IN_MYBB'))
 {
-	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
+	die('This file cannot be accessed directly.');
 }
 
-//deal with usegroup changes
-$plugins->add_hook('admin_user_groups_edit', 'myshowcase_insert_group_perms');
-$plugins->add_hook('admin_user_groups_delete_commit', 'myshowcase_delete_group_perms');
+define('MYSHOWCASE_ROOT', MYBB_ROOT . 'inc/plugins/myshowcase');
 
-//deal with who's online
-$plugins->add_hook('fetch_wol_activity_end', 'myshowcase_fetch_wol_activity');
-$plugins->add_hook('build_friendly_wol_location_end', 'myshowcase_friendly_wol_location_end');
+require_once MYSHOWCASE_ROOT.'/core.php';
 
-//links in postbit
-$plugins->add_hook('showthread_start', 'myshowcase_get_user_myshowcases_from_thread');
-$plugins->add_hook('postbit', 'myshowcase_postbit');
+// PLUGINLIBRARY
+defined('PLUGINLIBRARY') or define('PLUGINLIBRARY', MYBB_ROOT.'inc/plugins/pluginlibrary.php');
 
-//portal
-$plugins->add_hook('portal_start', 'myshowcase_portal_random');
+// Add our hooks
+if(defined('IN_ADMINCP'))
+{
+	require_once MYSHOWCASE_ROOT.'/admin.php';
 
-//modcp/reported posts
-$plugins->add_hook('global_start', 'myshowcase_global_notices');
+	require_once MYSHOWCASE_ROOT.'/admin_hooks.php';
 
-/**
- * Plugin info
- *
- */
+	\MyShowcase\Core\addHooks('MyShowcase\AdminHooks');
+}
+else
+{
+	require_once MYSHOWCASE_ROOT.'/forum_hooks.php';
+
+	\MyShowcase\Core\addHooks('MyShowcase\ForumHooks');
+}
+/*
+require MYSHOWCASE_ROOT.'/myalerts.php';
+
+if(\MyShowcase\MyAlerts\MyAlertsIsIntegrable())
+{
+	\MyShowcase\MyAlerts\initMyalerts();
+
+	\MyShowcase\MyAlerts\initLocations();
+}*/
+
+// Plugin API
 function myshowcase_info()
 {
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_info();
+	return \MyShowcase\Admin\_info();
 }
 
-/**
- * Plugin install
- *
- */
-function myshowcase_install()
-{
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_install();
-}
-
-/**
- * Plugin is_installed
- *
- */
-function myshowcase_is_installed()
-{
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_is_installed();
-}
-
-/**
- * Plugin activate
- *
- */
+// Activate the plugin.
 function myshowcase_activate()
 {
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_activate();
+	\MyShowcase\Admin\_activate();
 }
 
-/**
- * Plugin deactivate
- *
- */
+// Deactivate the plugin.
 function myshowcase_deactivate()
 {
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_deactivate();
+	\MyShowcase\Admin\_deactivate();
 }
 
+// Install the plugin.
+function myshowcase_install()
+{
+	\MyShowcase\Admin\_install();
+}
 
-/**
- * Plugin uninstall
- *
- */
+// Check if installed.
+function myshowcase_is_installed()
+{
+	return \MyShowcase\Admin\_is_installed();
+}
+
+// Unnstall the plugin.
 function myshowcase_uninstall()
 {
-	include_once(MYBB_ROOT."inc/plugins/myshowcase/plugin.php");
-	return myshowcase_plugin_uninstall();
+	\MyShowcase\Admin\_uninstall();
 }
 
-/**
- * Add global notices for unapproved and reported showcases
- *
- */
-function myshowcase_global_notices()
+// control_object by Zinga Burga from MyBBHacks ( mybbhacks.zingaburga.com ), 1.62
+if(!function_exists('control_object'))
 {
-	global $mybb, $db, $cache, $myshowcase_unapproved, $myshowcase_reported, $theme, $templates, $lang;
-	
-	//get showcases and mods
-	$showcases = $cache->read('myshowcase_config');
-	$moderators = $cache->read('myshowcase_moderators');
-	
-	//loop through showcases
-	$rep_ids = array();
-	foreach($showcases as $id => $showcase)
+	function control_object(&$obj, $code)
 	{
-		//if showcase is enabled...
-		if($showcase['enabled'])
+		static $cnt = 0;
+		$newname = '_objcont_'.(++$cnt);
+		$objserial = serialize($obj);
+		$classname = get_class($obj);
+		$checkstr = 'O:'.strlen($classname).':"'.$classname.'":';
+		$checkstr_len = strlen($checkstr);
+		if(substr($objserial, 0, $checkstr_len) == $checkstr)
 		{
-			///get array of all user's groups
-			$usergroups = explode(',', $mybb->user['additionalgroups']);
-			$usergroups[] = $mybb->user['usergroup'];
-			
-			//...loop through mods 
-			$canapprove = 0;
-			$caneditdel = 0;
-			if(is_array($moderators[$id]))
+			$vars = array();
+			// grab resources/object etc, stripping scope info from keys
+			foreach((array)$obj as $k => $v)
 			{
-				foreach($moderators[$id] as $mid => $mod)
+				if($p = strrpos($k, "\0"))
 				{
-					//check if user is specifically a mod 
-					if($mybb->user['uid'] == $mod[$mod['id']]['uid'] && $mod[$mod['id']]['isgroup'] == 0 )
-					{
-						if($mod[$mod['id']]['canmodapprove'] == 1)
-						{
-							$canapprove = 1;
-						}
-
-						if($mod[$mod['id']]['canmodedit'] == 1 || $mod[$mod['id']]['canmoddelete'] == 1 || $mod[$mod['id']]['canmoddelcomment'] == 1)
-						{
-							$caneditdel = 1;
-						}
-						continue;
-					}
-					
-					//check if user in mod group
-					if(array_key_exists($mod[$mod['id']]['uid'], $usergroups) && $mod[$mod['id']]['isgroup'] == 1)
-					{
-						if($mod[$mod['id']]['canmodapprove'] == 1)
-						{
-							$canapprove = 1;
-						}
-
-						if($mod[$mod['id']]['canmodedit'] == 1 || $mod[$mod['id']]['canmoddelete'] == 1 || $mod[$mod['id']]['canmoddelcomment'] == 1)
-						{
-							$caneditdel = 1;
-						}
-						continue;
-					}
-
+					$k = substr($k, $p+1);
 				}
+				$vars[$k] = $v;
 			}
-			
-			//check if user in default mod groups
-			if(count(array_intersect(array(3,4), $usergroups)))
+			if(!empty($vars))
 			{
-				$canapprove = 1;
-				$caneditdel = 1;
-			}
-	
-			//load language if we are going to use it
-			if($canapprove || $caneditdel)
-			{
-				$lang->load("myshowcase");
-			}
-			
-			$showcase_path = $mybb->settings['bburl'].'/'.$showcase['f2gpath'].$showcase['mainfile'];
-			
-			//awaiting approval
-			if($canapprove)
-			{
-				$query = $db->query("SELECT COUNT(*) AS total FROM ".TABLE_PREFIX."myshowcase_data".$id." WHERE approved=0 GROUP BY approved");
-				$num_unapproved = $db->fetch_field($query,'total');
-				if($num_unapproved > 0)
-				{
-					$unapproved_text = str_replace("{num}", $num_unapproved, $lang->myshowcase_unapproved_count);
-					$unapproved_text = str_replace("{name}", $showcase['name'], $unapproved_text);
-					if($unapproved_notice != '')
-					{
-						$unapproved_notice .= '<br />';
+				$code .= '
+					function ___setvars(&$a) {
+						foreach($a as $k => &$v)
+							$this->$k = $v;
 					}
-					$unapproved_notice .= "<a href=\"".$showcase_path."?unapproved=1\" />{$unapproved_text}</a>";
-				}	
+				';
 			}
-	
-			//report notices
-			if($caneditdel)
+			eval('class '.$newname.' extends '.$classname.' {'.$code.'}');
+			$obj = unserialize('O:'.strlen($newname).':"'.$newname.'":'.substr($objserial, $checkstr_len));
+			if(!empty($vars))
 			{
-				$rep_ids[$id]['name'] = $showcase['name'];
-				$rep_ids[$id]['path'] = $showcase_path;
+				$obj->___setvars($vars);
 			}
 		}
-	}	
-
-	if(count($rep_ids) > 0)
-	{
-		$ids = implode(',', array_keys($rep_ids));
-		$query = $db->query("SELECT `id`, COUNT(*) AS total FROM ".TABLE_PREFIX."myshowcase_reports WHERE `id` IN (".$ids.") AND `status`=0 GROUP BY `id`, `status`");
-		while($reports = $db->fetch_array($query))
-		{
-			$reported_text = str_replace("{num}", $reports['total'], $lang->myshowcase_report_count);
-			$reported_text = str_replace("{name}", $rep_ids[$reports['id']]['name'], $reported_text);
-			if($reported_notice != '')
-			{
-				$reported_notice .= '<br />';
-			}
-			$reported_notice .= "<a href=\"".$rep_ids[$reports['id']]['path']."?action=reports\" />{$reported_text}</a>";
-		}	
+		// else not a valid object or PHP serialize has changed
 	}
-	
-	//get templates
-	if($unapproved_notice != '')
-	{
-		eval("\$myshowcase_unapproved = \"".$templates->get("myshowcase_unapproved")."\";");
-	}
-
-	if($reported_notice != '')
-	{
-		eval("\$myshowcase_reported = \"".$templates->get("myshowcase_reported")."\";");
-	}
-}
-
-/**
- * Insert default permissions for any new groups.
- * since we can't get new group ID from add group hook,
- * we need to use the edit group hook which is called
- * after a successful add group
- */
-function myshowcase_insert_group_perms()
-{
-	global $db, $cache, $config;
-
-	require_once(MYBB_ROOT.$config['admin_dir'].'/modules/myshowcase/module_meta.php');
-
-	$curgroups = $cache->read('usergroups');
-	$showgroups = $cache->read('myshowcase_permissions');
-	$myshowcases = $cache->read('myshowcase_config');
-
-	//see if added group is in each enabled myshowcase's permission set
-	foreach($myshowcases as $myshowcase)
-	{
-		foreach($curgroups as $group)
-		{
-			if(!array_key_exists($group['gid'], $showgroups[$myshowcase['id']]))
-			{
-				$myshowcase_defaultperms['id'] = $myshowcase['id'];
-				$myshowcase_defaultperms['gid'] = $group['gid'];
-
-				$db->insert_query('myshowcase_permissions', $myshowcase_defaultperms);
-			}
-		}
-	}
-	myshowcase_update_cache('permissions');
-}
-
-/**
- * delete default permissions for any new groups.
- */
-function myshowcase_delete_group_perms()
-{
-	global $db, $cache, $usergroup;
-
-	$db->delete_query('myshowcase_permissions', "gid='{$usergroup['gid']}'");
-	myshowcase_update_cache('permissions');
 }
 
 /**
@@ -288,6 +144,7 @@ function myshowcase_update_cache($area, $empty=false)
 	else
 	{
 		global $db;
+
 		switch ($area)
 		{
 			case 'config':
@@ -359,117 +216,6 @@ function myshowcase_update_cache($area, $empty=false)
 				}
 				$cache->update('myshowcase_reports',$set_data);
 			break;
-		}
-	}
-}
-
-//get the myshowcase counts for users that posted in the thread. keeps
-//from having to do it every post, just every page view
-function myshowcase_get_user_myshowcases_from_thread()
-{
-	global $db, $mybb, $thread, $cache, $myshowcase_uids;
-
-	//get list of enabled myshowcases with postbit links turned on
-	$myshowcase_uids = array();
-	
-	$myshowcases = $cache->read('myshowcase_config');
-	foreach($myshowcases as $id => $myshowcase)
-	{
-		if($myshowcase['enabled'] && $myshowcase['link_in_postbit'])
-		{
-			$myshowcase_uids[$myshowcase['id']]['name'] = $myshowcase['name'];
-			$myshowcase_uids[$myshowcase['id']]['mainfile'] = $myshowcase['mainfile'];
-			$myshowcase_uids[$myshowcase['id']]['f2gpath'] = $myshowcase['f2gpath'];
-		}
-	}
-
-	//if we have any myshowcases to link....
-	if(count($myshowcase_uids) > 0)
-	{
-		$gidlist = implode(',', array_keys($myshowcase_uids));
-
-		//get uids for users that posted to the thread
-		$query = $db->query("SELECT uid FROM ".TABLE_PREFIX."posts WHERE tid=".(int)$thread['tid']." AND uid > 0 GROUP BY uid");
-		$uids = array();
-		while($result = $db->fetch_array($query))
-		{
-			$uids[$result['uid']] = 0;
-		}
-		$uidlist = implode(',', array_keys($uids));
-		unset($query);
-		unset($result);
-
-		//get myshowcase counts for users in thread
-		if(count($uids))
-		{
-			foreach($myshowcase_uids as $gid => $data)
-			{
-				$query = $db->query("SELECT uid, count(uid) AS total FROM ".TABLE_PREFIX."myshowcase_data".$gid." WHERE uid IN ({$uidlist}) AND approved = 1 GROUP BY uid");
-				while($result = $db->fetch_array($query))
-				{
-					$myshowcase_uids[$gid]['uids'][$result['uid']] = $result['total'];
-				}
-			}
-		}
-		unset($query);
-		unset($result);
-	}
-
-}
-
-//add myshowcase links/counts
-function myshowcase_postbit(&$post)
-{
-	global $mybb, $_SERVER, $lang, $myshowcase_uids;
-
-	if(count($myshowcase_uids) > 0)
-	{
-		foreach($myshowcase_uids as $myshowcase => $data)
-		{
-			$showcase_name = $data['name'];
-			$showcase_file = $data['mainfile'];
-			$showcase_fldr = $data['f2gpath'];
-
-			/* URL Definitions */
-			if($mybb->settings['seourls'] == "yes" || ($mybb->settings['seourls'] == "auto" && $_SERVER['SEO_SUPPORT'] == 1))
-			{
-				$showcase_file = strtolower($data['name']).".html";
-			}
-			else
-			{
-				$showcase_file = $data['mainfile'];
-			}
-
-			if($data['uids'][$post['uid']] > 0)
-			{
-				
-				$post['user_details'] .= '<br />'.$showcase_name.':  <a href="'.$showcase_fldr.$showcase_file.'?search=username&searchterm='.rawurlencode($post['username']).'&exactmatch=1">'.$data['uids'][$post['uid']].'</a>';
-			}
-		}
-	}
-	
-	return $post;
-}
-
-//function to pull a random entry from a random showcase (if enabled)
-function myshowcase_portal_random()
-{
-	global $db, $lang, $mybb, $cache, $templates, $portal_rand_showcase;
-
-	//if user is guest or no showcases set to show on portal output something else?
-	/*
-	if($mybb->user['uid'] == 0)		
-	{
-		//add code here to display something for guests
-	}
-	else
-	*/
-	{
-		$portal_rand_showcase = myshowcase_get_random();
-		if(!$portal_rand_showcase)
-		{
-			//add code here to use portal_basic_box template box or some 
-			//other output if a random showcase with attachments is not found
 		}
 	}
 }
@@ -631,195 +377,3 @@ function myshowcase_get_random()
 		return $portal_rand_showcase;
 	}
 }
-
-//build info for who's online
-function myshowcase_fetch_wol_activity(&$user_activity)
-{
-	global $user, $mybb, $cache;
-
-	//get filename of location
-	$split_loc = explode(".php", $user_activity['location']);
-	if($split_loc[0] == $user['location'])
-	{
-		$filename = '';
-	}
-	else
-	{
-		$filename = my_substr($split_loc[0], -my_strpos(strrev($split_loc[0]), "/"));
-	}
-	
-	//get query params
-	if($split_loc[1])
-	{
-		$temp = explode("&", my_substr($split_loc[1], 1));
-		foreach($temp as $param)
-		{
-			$temp2 = explode("=", $param, 2);
-			$temp2[0] = str_replace("amp;", '', $temp2[0]);
-			$parameters[$temp2[0]] = $temp2[1];
-		}
-	}
-
-	//get cache of configured myshowcases
-	$myshowcase_config = $cache->read("myshowcase_config");
-	
-	//check cache for matching filename
-	//have to do it this way since the filename can vary for each myshowcase
-    if(is_array($myshowcase_config))
-    {
-        foreach($myshowcase_config as $id => $myshowcase)
-        {
-            $split_mainfile = explode(".php", $myshowcase['mainfile']);
-            if($split_mainfile[0] == $filename)
-            {
-                //preload here so we don't need to get it in next function
-                $user_activity['myshowcase_filename'] = $filename;
-                $user_activity['myshowcase_name'] = $myshowcase['name'];
-                $user_activity['myshowcase_id'] = $myshowcase['id'];
-                $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
-                
-                if($parameters['action'] == "view")
-                {
-                    $user_activity['activity'] = "myshowcase_view";
-                    if(is_numeric($parameters['gid']))
-                    {
-                        $user_activity['gid'] = $parameters['gid'];
-                    }
-                }
-                elseif($parameters['action'] == "new")
-                {
-                    $user_activity['activity'] = "myshowcase_new";
-                }
-                elseif($parameters['action'] == "attachment")
-                {
-                    $user_activity['activity'] = "myshowcase_view_attach";
-                    if(is_numeric($parameters['aid']))
-                    {
-                        $user_activity['aid'] = $parameters['aid'];
-                    }
-                }
-                elseif($parameters['action'] == "edit")
-                {
-                    $user_activity['activity'] = "myshowcase_edit";
-                    if(is_numeric($parameters['gid']))
-                    {
-                        $user_activity['gid'] = $parameters['gid'];
-                    }
-                }
-                else
-                {
-                    $user_activity['activity'] = "myshowcase_list";
-                }
-
-                //if here, we found the lcoation, so exit loop
-                continue;
-            }
-        }
-    }
-    
-    return $user_activity;
-}
-
-//setup friendly WOL locations 
-function myshowcase_friendly_wol_location_end(&$plugin_array)
-{
-	global $db, $lang, $mybb, $_SERVER, $user;
-
-	$lang->load('myshowcase');
-	
-	//get filename of location
-	$split_loc = explode(".php", $plugin_array['user_activity']['location']);
-	if($split_loc[0] == $user['location'])
-	{
-		$filename = '';
-	}
-	else
-	{
-		$filename = my_substr($split_loc[0], -my_strpos(strrev($split_loc[0]), "/"));
-	}
-
-	/* URL Definitions */
-	if($mybb->settings['seourls'] == "yes" || ($mybb->settings['seourls'] == "auto" && $_SERVER['SEO_SUPPORT'] == 1))
-	{
-		$myshowcase_name = strtolower($plugin_array['user_activity']['myshowcase_name']);
-
-        //clean the name and make it suitable for SEO
-        //cleaning borrowed from Google SEO plugin
-        $pattern = '!"#$%&\'( )*+,-./:;<=>?@[\]^_`{|}~';
-        $pattern = preg_replace("/[\\\\\\^\\-\\[\\]\\/]/u",
-                        "\\\\\\0",
-                        $pattern);
-
-        // Cut off punctuation at beginning and end.
-        $myshowcase_name = preg_replace("/^[$pattern]+|[$pattern]+$/u",
-                        "",
-                        strtolower($myshowcase_name));
-
-        // Replace middle punctuation with one separator.
-        $myshowcase_name = preg_replace("/[$pattern]+/u",
-                        '-',
-                        $myshowcase_name);
- 
-		$myshowcase_url = $myshowcase_name.".html";
-		$myshowcase = $myshowcase_name."-page-{page}.html";
-		$myshowcase_url_view  = $myshowcase_name."-view-{gid}.html";
-		$myshowcase_url_new  = $myshowcase_name."-new.html";
-		$myshowcase_url_view_attach  = $myshowcase_name."-attachment-{aid}.html";
-		$amp = '?';
-	}
-	else
-	{
-		$myshowcase_url = $plugin_array['user_activity']['myshowcase_mainfile'];
-		$myshowcase_url_paged = $plugin_array['user_activity']['myshowcase_mainfile']."?page={page}";
-		$myshowcase_url_view  = $plugin_array['user_activity']['myshowcase_mainfile']."?action=view&gid={gid}";
-		$myshowcase_url_new  = $plugin_array['user_activity']['myshowcase_mainfile']."?action=new";
-		$myshowcase_url_view_attach  = $plugin_array['user_activity']['myshowcase_mainfile']."?action=attachment&aid={aid}";
-		$amp = '&';
-	}
-
-	switch($plugin_array['user_activity']['activity'])
-	{
-		case "myshowcase_list":
-			$plugin_array['location_name'] = $lang->sprintf($lang->viewing_myshowcase_list, $myshowcase_url,$plugin_array['user_activity']['myshowcase_name']);
-		break;
-
-		case "myshowcase_view":
-			if(array_key_exists('gid', $plugin_array['user_activity']))
-			{
-				$query = $db->simple_select("myshowcase_data{$plugin_array['user_activity']['myshowcase_id']}", "gid,uid", "gid=".$plugin_array['user_activity']['gid']);
-				while($myshowcase = $db->fetch_array($query))
-				{
-					$uid = $myshowcase['uid'];
-					$userinfo = get_user($uid);
-				}
-			}
-			$plugin_array['location_name'] = $lang->sprintf($lang->viewing_myshowcase, str_replace('{gid}', $plugin_array['user_activity']['gid'], $myshowcase_url_view), $plugin_array['user_activity']['myshowcase_name'], get_profile_link($uid), $userinfo['username']);
-		break;
-
-		case "myshowcase_new":
-			$plugin_array['location_name'] = $lang->sprintf($lang->viewing_myshowcase_new, $myshowcase_url_new, $plugin_array['user_activity']['myshowcase_name']);
-		break;
-
-		case "myshowcase_edit":
-			$plugin_array['location_name'] = $lang->sprintf($lang->viewing_myshowcase_edit, $plugin_array['user_activity']['myshowcase_name']);
-		break;
-
-		case "myshowcase_view_attach":
-			if(array_key_exists('aid', $plugin_array['user_activity']))
-			{
-				$query = $db->simple_select("myshowcase_attachments", "aid,gid,uid", "aid=".$plugin_array['user_activity']['aid']);
-				while($showcase = $db->fetch_array($query))
-				{
-					$uid = $showcase['uid'];
-					$gid = $showcase['gid'];
-					$userinfo = get_user($uid);
-				}
-			}
-			$plugin_array['location_name'] = $lang->sprintf($lang->viewing_myshowcase_attach, str_replace('{aid}', $plugin_array['user_activity']['aid'], $myshowcase_url_view_attach), str_replace('{gid}', $gid, $myshowcase_view_url), $plugin_array['user_activity']['myshowcase_name'], get_profile_link($uid), $userinfo['username']);
-		break;
-	}
-	
-	return $plugin_array;
-}
-
-?>

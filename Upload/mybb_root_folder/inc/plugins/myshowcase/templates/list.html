@@ -1,0 +1,47 @@
+{$showcase_top}
+{$unapproved}
+<div class="float_right" style="padding-bottom: 4px;">
+<a href="{$showcase_url_new}"><img src="{$theme['imglangdir']}/newshowcase.png" alt="{$lang->myshowcase_new}" /></a>
+</div><br /><br />
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+<tr>
+<td class="thead"><strong>{$lang->myshowcase}</strong></td>
+</tr>
+</table>
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+<tr>
+<td class="tcat" align="center" width="75"><span class="smalltext"><strong>{$lang->myshowcase_view}</strong></span></td>
+<td class="tcat" align="center" width="150"><span class="smalltext"><strong>{$lang->myshowcase_member} {$orderarrow['username']}</strong></span></td>
+{$showcase_list_custom_header}
+<td class="tcat" align="center" width="50"><span class="smalltext"><strong>{$lang->myshowcase_views}  {$orderarrow['views']}</strong></span></td>
+<td class="tcat" align="center" width="50"><span class="smalltext"><strong>{$lang->myshowcase_comments}  {$orderarrow['comments']}</strong></span></td>
+<td class="tcat" align="center" width="150"><span class="smalltext"><strong>{$lang->myshowcase_lastedit} {$orderarrow['dateline']}</strong></span></td>
+{$showcase_inlinemod_col}
+</tr>
+{$showcase_list_items}
+</table>
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+<tr>
+<td class="thead"><span class="tfoot"><div style="text-align: center;"><form action="{$form_page}" method="post">
+<input type="hidden" name="page" value="{$page}" />
+{$lang->myshowcase_sort_by} <select name="sortby">
+{$showcase_orderby}
+</select> 
+{$lang->myshowcase_sort_in} <select name="order">
+<option value="ASC" {$orderascsel}>{$lang->myshowcase_sort_asc}</option>
+<option value="DESC" {$orderdescsel}>{$lang->myshowcase_sort_desc}</option>
+</select> 
+{$lang->myshowcase_search} <select name="search">
+{$showcase_search}
+</select> {$lang->myshowcase_for} <input type="text" class="textbox" name="searchterm" value="{$mybb->input['searchterm']}" size="20" /> {$lang->myshowcase_exact_match} <input type="checkbox" name="exactmatch" checked > {$gobutton}
+</form></div></span>
+</td>
+</tr>
+</table>
+<table align="center" width="100%"><tr>
+<td align="right">{$multipage}</td>
+</tr></table>
+<div align="right"><br>{$showcase_inlinemod}</div>
+{$footer}
+</body>
+</html>

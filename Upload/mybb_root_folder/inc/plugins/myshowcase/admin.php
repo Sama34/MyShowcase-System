@@ -32,7 +32,7 @@ function _info()
 
 	return [
 		'name'			=> 'MyShowcase System',
-		'description'	=> $donate_button.$myalerts_desc,
+		'description'	=> $donate_button.$lang->setting_group_myshowcase_desc.$myalerts_desc,
 		'website'		=> '',
 		'author'		=> 'CommunityPlugins.com',
 		'authorsite'	=> '',
@@ -54,107 +54,20 @@ function _info()
 function _activate()
 {
 	global $PL, $lang, $cache, $db;
-
+	_uninstall();
 	\MyShowcase\Core\load_pluginlibrary();
 
-	$PL->settings('myshowcase', $lang->setting_group_myshowcase, $lang->setting_group_myshowcase_desc, [
-		'groups' => [
-			'title' => $lang->setting_myshowcase_groups,
-			'description' => $lang->setting_myshowcase_groups_desc,
-			'optionscode' => 'groupselect',
-			'value' =>	-1,
-		],
-		'forums' => [
-			'title' => $lang->setting_myshowcase_forums,
-			'description' => $lang->setting_myshowcase_forums_desc,
-			'optionscode' => 'forumselect',
-			'value' =>	-1,
-		],
-		'allowempty' => [
-			'title' => $lang->setting_myshowcase_allowempty,
-			'description' => $lang->setting_myshowcase_allowempty_desc,
-			'optionscode' => 'yesno',
-			'value' =>	0,
-		],
-		'deletesubscriptions' => [
-			'title' => $lang->setting_myshowcase_deletesubscriptions,
-			'description' => $lang->setting_myshowcase_deletesubscriptions_desc,
+	$PL->settings('myshowcase', "MyShowcase Section", "Options on how to configure the MyShowcase section.", [
+		'delete_tables_on_uninstall' => [
+			'title' => "Drop MyShowcase tables when uninstalling?",
+			'description' => "When uninstalling, do you want to drop the showcase tables and delete the data in them? Reinstalling will not overwrite existing data if you select [no].",
 			'optionscode' => 'yesno',
 			'value' =>	1,
-		],
-		'allowgroupsbypass' => [
-			'title' => $lang->setting_myshowcase_allowgroupsbypass,
-			'description' => $lang->setting_myshowcase_allowgroupsbypass_desc,
-			'optionscode' => 'groupselect',
-			'value' =>	4,
-		],
-		'allowmodbypass' => [
-			'title' => $lang->setting_myshowcase_allowmodbypass,
-			'description' => $lang->setting_myshowcase_allowmodbypass_desc,
-			'optionscode' => 'yesno',
-			'value' =>	1,
-		],
-		'allowmodbypass' => [
-			'title' => $lang->setting_myshowcase_allowmodbypass,
-			'description' => $lang->setting_myshowcase_allowmodbypass_desc,
-			'optionscode' => 'yesno',
-			'value' =>	1,
-		],
-		'allowsearch' => [
-			'title' => $lang->setting_myshowcase_allowsearch,
-			'description' => $lang->setting_myshowcase_allowsearch_desc,
-			'optionscode' => 'groupselect',
-			'value' =>	-1,
-		],
-		'displayprefix' => [
-			'title' => $lang->setting_myshowcase_displayprefix,
-			'description' => $lang->setting_myshowcase_displayprefix_desc,
-			'optionscode' => 'yesno',
-			'value' =>	1,
-		],
-		'displaystyle' => [
-			'title' => $lang->setting_myshowcase_displaystyle,
-			'description' => $lang->setting_myshowcase_displaystyle_desc,
-			'optionscode' => 'text',
-			'value' =>	'trow_private',
-		],
-		'displaylist' => [
-			'title' => $lang->setting_myshowcase_displaylist,
-			'description' => $lang->setting_myshowcase_displaylist_desc,
-			'optionscode' => 'yesno',
-			'value' =>	1,
-		],
-		'allowchange' => [
-			'title' => $lang->setting_myshowcase_allowchange,
-			'description' => $lang->setting_myshowcase_allowchange_desc,
-			'optionscode' => 'yesno',
-			'value' =>	1,
-		],
-		'notifications' => [
-			'title' => $lang->setting_myshowcase_notifications,
-			'description' => $lang->setting_myshowcase_notifications_desc,
-			'optionscode' => "checkbox
-myalerts={$lang->setting_myshowcase_notifications_mylaerts}
-pm={$lang->setting_myshowcase_notifications_pm}",
-			'value' =>	'pm',
-		],
-		'fixforumlastpost' => [
-			'title' => $lang->setting_myshowcase_fixforumlastpost,
-			'description' => $lang->setting_myshowcase_fixforumlastpost_desc,
-			'optionscode' => 'onoff',
-			'value' =>	1,
-		],
-		'fixforumcount' => [
-			'title' => $lang->setting_myshowcase_fixforumcount,
-			'description' => $lang->setting_myshowcase_fixforumcount_desc,
-			'optionscode' => 'onoff',
-			'value' =>	0,
 		],
 	]);
 	
 	// Add template group
-	_dump('templates');
-   /* $templatesDirIterator = new \DirectoryIterator(MYSHOWCASE_ROOT.'/templates');
+	$templatesDirIterator = new \DirectoryIterator(MYSHOWCASE_ROOT.'/templates');
 
 	$templates = [];
 
@@ -173,7 +86,7 @@ pm={$lang->setting_myshowcase_notifications_pm}",
 		{
             $templates[$pathInfo['filename']] = file_get_contents($pathName);
 		}
-    }*/
+    }
 
 	if($templates)
 	{
@@ -190,9 +103,9 @@ pm={$lang->setting_myshowcase_notifications_pm}",
 
 	$_info = \MyShowcase\Admin\_info();
 
-	if(!isset($plugins['privatethreads']))
+	if(!isset($plugins['myshowcase']))
 	{
-		$plugins['privatethreads'] = $_info['versioncode'];
+		$plugins['myshowcase'] = $_info['versioncode'];
 	}
 
 	_db_verify_tables();
@@ -203,31 +116,20 @@ pm={$lang->setting_myshowcase_notifications_pm}",
 
 	require_once MYBB_ROOT.'inc/adminfunctions_templates.php';
 
-	find_replace_templatesets('newthread', '#'.preg_quote('{$pollbox}').'#', '{$pollbox}{$myshowcase_hide}');
-
-	find_replace_templatesets('editpost', '#'.preg_quote('{$pollbox}').'#', '{$pollbox}{$myshowcase_hide}');
-
-	find_replace_templatesets('showthread', '#'.preg_quote('{$usersbrowsing}').'#', '{$usersbrowsing}{$myshowcase_hidden_list}');
-
-	find_replace_templatesets('search', '#'.preg_quote('{$lang->show_results_posts}').'#', '{$lang->show_results_posts}{$myshowcase_search}');
-
-	find_replace_templatesets('search_results_threads_thread', '#'.preg_quote('{$thread[\'threadprefix\']}').'#', '{$thread[\'threadprefix\']}{$thread[\'privateprefix\']}');
-
-	find_replace_templatesets('search_results_posts_post', '#'.preg_quote('{$lang->post_thread}').'#', '{$lang->post_thread}{$post[\'privateprefix\']}');
-
-	find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$prefix}').'#', '{$prefix}{$thread[\'privateprefix\']}');
-
-	find_replace_templatesets('forumdisplay_thread_modbit', '#'.preg_quote('{$bgcolor}').'#', '{$bgcolor}{$thread[\'myshowcase_class\']}');
-
-	find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$bgcolor}').'#', '{$bgcolor}{$thread[\'myshowcase_class\']}');
+	find_replace_templatesets('header', '#'.preg_quote('{$pm_notice}').'#', '{$pm_notice}{$myshowcase_unapproved}{$myshowcase_reported}');
 
 	/*~*~* RUN UPDATES START *~*~*/
 
 	/*~*~* RUN UPDATES END *~*~*/
 
-	$plugins['privatethreads'] = $_info['versioncode'];
+	$plugins['myshowcase'] = $_info['versioncode'];
 
 	$cache->update('ougc_plugins', $plugins);
+
+	foreach(['config','field_data','fieldsets','fields','permissions','moderators','reports'] as $key)
+	{
+		myshowcase_update_cache($key);
+	}
 }
 
 function _deactivate()
@@ -243,34 +145,100 @@ function _deactivate()
 
 function _install()
 {
-	global $cache;
+	global $cache, $db;
 
 	_db_verify_tables();
 
 	_db_verify_columns();
 
+	//grab sample data if it exists
+	/*$insert_sample_data = false;
+
+	if(file_exists(MYSHOWCASE_ROOT.'/sample_data.php'))
+	{
+		require_once MYSHOWCASE_ROOT.'/sample_data.php';
+
+		$insert_sample_data = isset($custom_fieldsets);
+	}
+
+	if($insert_sample_data)
+	{
+		$db->delete_query('myshowcase_fieldsets');
+
+		$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fieldsets (`setname`) VALUES ";
+
+		reset($custom_fieldsets);
+		foreach($custom_fieldsets as $fieldinfo)
+		{
+			$sql .= "('".$fieldinfo[0]."'),";
+		}
+	
+		$sql = substr($sql, 0, strlen($sql)-1);
+	
+		$db->write_query($sql);
+
+		$db->delete_query('myshowcase_fields');
+	
+		$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fields (`setid`, `name`, `html_type`, `enabled`, `field_type`, `min_length`, `max_length`, `require`, `parse`, `field_order`, `list_table_order`, `searchable`, `format`) VALUES ";
+
+		reset($custom_fields);
+		foreach($custom_fields as $fieldinfo)
+		{
+			$sql .= "('".$fieldinfo[0]."', '".$fieldinfo[1]."','".$fieldinfo[2]."','".$fieldinfo[3]."','".$fieldinfo[4]."','".$fieldinfo[5]."','".$fieldinfo[6]."','".$fieldinfo[7]."','".$fieldinfo[8]."','".$fieldinfo[9]."','".$fieldinfo[10]."','".$fieldinfo[11]."', 'no'),";
+		}
+
+		$sql = substr($sql, 0, strlen($sql)-1);
+
+		$db->write_query($sql);
+
+		$db->delete_query('myshowcase_field_data');
+	
+		$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_field_data (`setid`, `fid`, `name`, `valueid`, `value`, `disporder`) VALUES ";
+
+		reset($custom_field_data);
+		foreach($custom_field_data as $fieldinfo)
+		{
+			$sql .= "(1,".$fieldinfo[0].",'".$fieldinfo[1]."', ".$fieldinfo[2].",'".$fieldinfo[3]."',".$fieldinfo[4]."),";
+		}
+
+		$sql = substr($sql, 0, strlen($sql)-1);
+
+		$db->write_query($sql);
+	}
+
     // MyAlerts
-    $MyAlertLocationsInstalled = array_filter(
+	$MyAlertLocationsInstalled = array_filter(
         \MyShowcase\MyAlerts\getAvailableLocations(),
         '\\MyShowcase\MyAlerts\\isLocationAlertTypePresent'
     );
 
     $cache->update('myshowcase', [
         'MyAlertLocationsInstalled' => $MyAlertLocationsInstalled,
-    ]);
+	]);
+	*/
 }
 
 function _is_installed()
 {
-	global $db;
+	global $db, $cache;
 
 	static $installed = null;
 
 	if($installed === null)
 	{
+		// Insert/update version into cache
+		$plugins = $cache->read('ougc_plugins');
+	
+		if(!$plugins)
+		{
+			$plugins = [];
+		}
+	
+		$installed = isset($plugins['myshowcase']);
+
 		foreach(_db_tables() as $name => $table)
 		{
-			$installed = $db->table_exists($name);
+			$installed = $installed && $db->table_exists($name);
 
 			break;
 		}
@@ -286,7 +254,7 @@ function _uninstall()
 	\MyShowcase\Core\load_pluginlibrary();
 
 	//drop tables but only if setting specific to allow uninstall is enabled
-	if($mybb->settings['myshowcase_delete_tables_on_uninstall'] == 1)
+	if($mybb->settings['myshowcase_delete_tables_on_uninstall'])
 	{
 		//get list of possible tables from config and delete
 		$query = $db->simple_select("myshowcase_config", "id");
@@ -454,7 +422,7 @@ function _db_tables()
 			'primary_key' => "mid",
 			'unique_key' => ['id' => 'id,uid']
 		],
-		'myshowcase_moderators' => [
+		'myshowcase_reports' => [
 			'rid' => "INT( 10 ) UNSIGNED NOT NULL AUTO_INCREMENT",
 			'id' => "INT( 3 ) UNSIGNED NOT NULL",
 			'gid' => "INT( 10 ) UNSIGNED NOT NULL",
@@ -481,7 +449,7 @@ function _db_tables()
 			'searchable' => "smallint(1) NOT NULL default '0'",
 			'format' => "varchar(10) NOT NULL default 'no'",
 			'primary_key' => "fid",
-			'unique_key' => ['id' => 'setid']
+			'unique_key' => ['id' => 'setid,fid']
 		],
 		'myshowcase_field_data' => [
 			'setid' => "smallint(3) NOT NULL",
@@ -490,7 +458,6 @@ function _db_tables()
 			'valueid' => "smallint(3) NOT NULL default '0'",
 			'value' => "varchar(15) NOT NULL",
 			'disporder' => "smallint(6) NOT NULL",
-			'primary_key' => "setid",
 			'unique_key' => ['setid' => 'setid', 'name' => 'name']
 		],
 	];
@@ -500,10 +467,6 @@ function _db_tables()
 function _db_columns()
 {
 	return [
-		'threads'	=> [
-			'ougc_private_thread' => "int UNSIGNED NOT NULL DEFAULT '0'",
-			'ougc_private_thread_users' => "text NULL",
-		],
 	];
 }
 
@@ -566,16 +529,20 @@ function _db_verify_tables()
 		{
 			$query = "CREATE TABLE IF NOT EXISTS `{$db->table_prefix}{$table}` (";
 
+			$comma = '';
+
 			foreach($fields as $field => $definition)
 			{
 				if($field == 'primary_key')
 				{
-					$query .= "PRIMARY KEY (`{$definition}`)";
+					$query .= "{$comma}PRIMARY KEY (`{$definition}`)";
 				}
 				elseif($field != 'unique_key')
 				{
-					$query .= "`{$field}` {$definition},";
+					$query .= "{$comma}`{$field}` {$definition}";
 				}
+
+				$comma = ',';
 			}
 
 			$query .= ") ENGINE=MyISAM{$collation};";
@@ -667,230 +634,11 @@ function _uninstall_task()
 
 function _deactivate_task()
 {
-	global $db, $cache;
+	global $db, $cache, $plugins;
 
 	_install_task(0);
 
 	$plugins->run_hooks("admin_tools_tasks_edit_commit");
 
 	$cache->update_tasks();
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Plugin install
- *
- */
-function myshowcase_plugin_install()
-{
-	global $db, $mybb, $config, $cache, $need_upgrade, $plugins;
-
-    //load upgrade code
-    include_once(MYBB_ROOT."inc/plugins/myshowcase/upgrade.php");
-    
-    //get this plugin's info so we have current version number
-	$myshowcase = myshowcase_info();
-
-    //get currently installed version, if there is one
-    $oldver = '2.0.0'; //from beta release
-    $cpcom_plugins = $cache->read('cpcom_plugins');
-    if(is_array($cpcom_plugins))
-    {
-        $oldver = $cpcom_plugins['versions']['myshowcase'];
-    }
-    
-    //check versions
-	if(version_compare($oldver, $myshowcase['version']) == -1)
-	{
-		$need_upgrade = array();
-		$need_upgrade['prev'] = $oldver;
-		$need_upgrade['this'] = $myshowcase['version'];
-	}
-
-    //write new version 
-    //don't write new version here as this function is called before activate() and we need old version information in that function as well
-   
-    //upgrade procedure for pre-table install
-	myshowcase_upgrade_install_pre_table($need_upgrade);
-    
-	//grab sample data if it exists
-	$insert_sample_data = 0;
-	if(file_exists(MYBB_ROOT."inc/plugins/myshowcase/sample_data.php"))
-	{
-		require_once(MYBB_ROOT."inc/plugins/myshowcase/sample_data.php");
-		$insert_sample_data = 1;
-	}
-
-	//create table for field sets
-	if(!$db->table_exists("myshowcase_fieldsets"))
-	{
-		//insert default data based on 4x4 trucks
-		if($insert_sample_data)
-		{
-			$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fieldsets (`setname`) VALUES ";
-
-			reset($custom_fieldsets);
-			foreach($custom_fieldsets as $fieldinfo)
-			{
-				$sql .= "('".$fieldinfo[0]."'),";
-			}
-
-			$sql = substr($sql, 0, strlen($sql)-1);
-
-			$db->query($sql);
-		}
-	}
-
-	//create data for fields in a field set
-	if(!$db->table_exists("myshowcase_fields"))
-	{
-		//insert default data based on 4x4 trucks
-		if($insert_sample_data)
-		{
-			$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fields (`setid`, `name`, `html_type`, `enabled`, `field_type`, `min_length`, `max_length`, `require`, `parse`, `field_order`, `list_table_order`, `searchable`, `format`) VALUES ";
-
-			reset($custom_fields);
-			foreach($custom_fields as $fieldinfo)
-			{
-				$sql .= "('".$fieldinfo[0]."', '".$fieldinfo[1]."','".$fieldinfo[2]."','".$fieldinfo[3]."','".$fieldinfo[4]."','".$fieldinfo[5]."','".$fieldinfo[6]."','".$fieldinfo[7]."','".$fieldinfo[8]."','".$fieldinfo[9]."','".$fieldinfo[10]."','".$fieldinfo[11]."', 'no'),";
-			}
-
-			$sql = substr($sql, 0, strlen($sql)-1);
-
-			$db->query($sql);
-		}
-	}
-
-	//create table for field data used in option fields
-	if(!$db->table_exists("myshowcase_field_data"))
-	{
-		//insert default data based on 4x4 trucks
-		if($insert_sample_data)
-		{
-			$sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_field_data (`setid`, `fid`, `name`, `valueid`, `value`, `disporder`) VALUES ";
-
-			reset($custom_field_data);
-			foreach($custom_field_data as $fieldinfo)
-			{
-				$sql .= "(1,".$fieldinfo[0].",'".$fieldinfo[1]."', ".$fieldinfo[2].",'".$fieldinfo[3]."',".$fieldinfo[4]."),";
-			}
-
-			$sql = substr($sql, 0, strlen($sql)-1);
-
-			$db->query($sql);
-		}
-	}
-
-	// DELETE ALL SETTINGS TO AVOID DUPLICATES
-	$db->write_query("DELETE FROM ".TABLE_PREFIX."settings WHERE name IN(
-		'myshowcase_delete_on_uninstall')");
-
-	$db->delete_query("settinggroups", "name = 'myshowcase'");
-
-	//start new setting group
-	$settings_group = array(
-		"name" => "myshowcase",
-		"title" => "MyShowcase Section",
-		"description" => "Options on how to configure the MyShowcase section.",
-		"disporder" => "50",
-		"isdefault" => "0",
-        );
-
-	$db->insert_query("settinggroups", $settings_group);
-	$gid = $db->insert_id();
-
-	//start new settings (THERE IS NO MAIN SWITCH AS EACH SHOWCASE IS ENABLED INDIVIDUALLY IN THE SHOWCASE ADMIN)
-	$pluginsetting = array();
-	$disporder = 1;
-
-	$pluginsetting[] = array(
-		"name"		=> "myshowcase_delete_tables_on_uninstall",
-		"title"		=> "Drop MyShowcase tables when uninstalling?",
-		"description"	=> "When uninstalling, do you want to drop the showcase tables and delete the data in them? Reinstalling will not overwrite existing data if you select [no].",
-		"optionscode"	=> "yesno",
-		"value"		=> "0",
-		"disporder"	=> $disporder,
-		"gid"		=> $gid
-	);
-
-	reset($pluginsetting);
-	foreach($pluginsetting as $setting)
-	{
-		$db->insert_query("settings", $setting);
-	}
-
-    //upgrade procedure for post-table install
-	myshowcase_upgrade_install_post_table($need_upgrade);
-
-    //upgrade procedure for post-template install
-	myshowcase_upgrade_install_post_template($need_upgrade);
-}
-
-/**
- * Plugin activate
- *
- */
-function myshowcase_plugin_activate()
-{
-    global $db, $cache, $plugins;
-
-    //load upgrade code
-    include_once(MYBB_ROOT."inc/plugins/myshowcase/upgrade.php");
-    
-    //get this plugin's info so we have current version number
-	$myshowcase = myshowcase_info();
-
-    //get currently installed version, if there is one
-    $oldver = '2.0.0'; //from beta release
-    $cpcom_plugins = $cache->read('cpcom_plugins');
-    if(is_array($cpcom_plugins))
-    {
-        $oldver = $cpcom_plugins['versions']['myshowcase'];
-    }
-    
-	if(version_compare($oldver, $myshowcase['version']) == -1)
-	{
-		$need_upgrade = array();
-		$need_upgrade['prev'] = $oldver;
-		$need_upgrade['this'] = $myshowcase['version'];
-	}
-
-    include MYBB_ROOT.'/inc/adminfunctions_templates.php';
-    find_replace_templatesets('header', '#'.preg_quote('<navigation>').'#', "{\$myshowcase_unapproved}{\$myshowcase_reported}<navigation>");
-
-    //upgrade procedure for activation
-	myshowcase_upgrade_activate($need_upgrade);
-
-    //update version cache to latest
-    $cpcom_plugins['versions']['myshowcase'] = $myshowcase['version'];
-    $cache->update('cpcom_plugins', $cpcom_plugins);
-    
-	//update cahce to latest
-	myshowcase_update_cache('config');
-	myshowcase_update_cache('field_data');
-	myshowcase_update_cache('fieldsets');
-	myshowcase_update_cache('fields');
-	myshowcase_update_cache('permissions');
-	myshowcase_update_cache('moderators');
-	myshowcase_update_cache('reports');
-
-	_install_task();
 }
