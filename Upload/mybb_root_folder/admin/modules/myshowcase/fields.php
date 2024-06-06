@@ -11,10 +11,17 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\showcaseDataTableExists;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
+
+global $lang, $cache, $db, $plugins, $mybb;
+global $page;
 
 $page->add_breadcrumb_item($lang->myshowcase_admin_fields, 'index.php?module=myshowcase-fields');
 
@@ -128,7 +135,7 @@ if ($mybb->input['action'] == 'editset') {
         $can_edit = true;
         $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
         $result = $db->fetch_array($query);
-        if ($db->num_rows($query) != 0 && $db->table_exists('myshowcase_data' . $result['id'])) {
+        if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
             $can_edit = false;
         }
 
@@ -444,7 +451,7 @@ if ($mybb->input['action'] == 'editset') {
                     $form_container->output_cell(
                         $form->generate_text_box(
                             'label[' . $result['fid'] . ']',
-                            $l['myshowcase_field_' . $result['name']],
+                            $l['myshowcase_field_' . $result['name']] ?? '',
                             array('id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px')
                         ),
                         array('class' => 'align_left')
@@ -765,7 +772,7 @@ if ($mybb->input['action'] == 'editopt') {
         $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
         $result = $db->fetch_array($query);
 
-        if ($db->num_rows($query) != 0 && $db->table_exists('myshowcase_data' . $result['id'])) {
+        if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
             //flash_message($lang->myshowcase_fields_in_use, 'error');
             //admin_redirect("index.php?module=myshowcase-fields");
             $can_edit = false;
@@ -1061,7 +1068,7 @@ if ($mybb->input['action'] == 'delfield') {
             $query = $db->simple_select('myshowcase_config', 'id', 'fieldsetid=' . $mybb->input['setid']);
             $field_in_use = false;
             while ($result = $db->fetch_array($query)) {
-                if ($db->table_exists('myshowcase_data' . $result['id'])) {
+                if (showcaseDataTableExists($result['id'])) {
                     $field_in_use = true;
                 }
             }
@@ -1124,7 +1131,8 @@ if ($mybb->input['action'] == 'do_delfield') {
 
         //edit language file if can be edited
         $retval = modify_lang(
-            'myshowcase_fs' . $mybb->input['setid'], array(),
+            'myshowcase_fs' . $mybb->input['setid'],
+            array(),
             array('myshowcase_field_' . $fieldname => ''),
             'english',
             false
@@ -1197,7 +1205,7 @@ if ($mybb->input['action'] == '') {
             $query_tables = $db->simple_select('myshowcase_config', 'id', 'fieldsetid=' . $result['setid']);
             $tables = 0;
             while ($usetable = $db->fetch_array($query_tables)) {
-                if ($db->table_exists('myshowcase_data' . $usetable['id'])) {
+                if (showcaseDataTableExists($usetable['id'])) {
                     $tables++;
                 }
             }
@@ -1217,14 +1225,14 @@ if ($mybb->input['action'] == '') {
             $langfile = $langpath . '/myshowcase_fs' . $result['setid'] . '.lang.php';
             if (file_exists($langfile)) {
                 if (is_writable($langfile)) {
-                    $status_image = "styles/{$page->style}/images/icons/tick.gif";
+                    $status_image = "styles/{$page->style}/images/icons/tick.png";
                     $status_alt = $lang->myshowcase_fields_lang_exists_yes;
                 } else {
-                    $status_image = "styles/{$page->style}/images/icons/warning.gif";
+                    $status_image = "styles/{$page->style}/images/icons/warning.png";
                     $status_alt = $lang->myshowcase_fields_lang_exists_write;
                 }
             } else {
-                $status_image = "styles/{$page->style}/images/icons/error.gif";
+                $status_image = "styles/{$page->style}/images/icons/error.png";
                 $status_alt = $lang->myshowcase_fields_lang_exists_no;
             }
 
@@ -1355,7 +1363,6 @@ function modify_lang($name, $items_add = array(), $items_drop = array(), $langua
         fwrite($fp, $new_line);
     }
 
-    fwrite($fp, '?>' . PHP_EOL);
     fclose($fp);
 
     unset($l);
@@ -1364,5 +1371,3 @@ function modify_lang($name, $items_add = array(), $items_drop = array(), $langua
 
     return true;
 }
-
-?>

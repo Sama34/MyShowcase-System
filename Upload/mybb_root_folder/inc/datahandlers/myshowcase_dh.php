@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -210,8 +212,7 @@ class MyShowcaseDataHandler extends DataHandler
 
         // Return the post's pid and whether or not it is visible.
         return array(
-            'gid' => $this->gid,
-            'visible' => $visible
+            'gid' => $this->gid
         );
     }
 
@@ -257,12 +258,9 @@ class MyShowcaseDataHandler extends DataHandler
 
         // Return the post's pid and whether or not it is visible.
         return array(
-            'gid' => $this->gid,
-            'visible' => $visible
+            'gid' => $this->gid
         );
     }
 
 
 }
-
-?>

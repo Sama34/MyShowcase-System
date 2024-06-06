@@ -11,6 +11,9 @@
  * File: \inc\tasks\myshowcase.php
  *
  */
+
+declare(strict_types=1);
+
 function task_myshowcase($task)
 {
     global $mybb, $db, $cache;
@@ -43,5 +46,3 @@ function task_myshowcase($task)
     //log task
     add_task_log($task, 'Showcase Pruning Run');
 }
-
-?>

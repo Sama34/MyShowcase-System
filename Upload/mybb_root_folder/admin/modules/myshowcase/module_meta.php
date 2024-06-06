@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -102,22 +104,3 @@ function myshowcase_admin_permissions()
 
     return array('name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'disporder' => 60);
 }
-
-//set default permissions for all groups in all myshowcases
-//if you edit or reorder these, you need to also edit
-//the edit.php file (starting line 225) so the fields match this order
-$showcase_defaultperms = array();
-$showcase_defaultperms['canadd'] = 0;
-$showcase_defaultperms['canedit'] = 0;
-$showcase_defaultperms['canattach'] = 0;
-$showcase_defaultperms['canview'] = 1;
-$showcase_defaultperms['canviewcomment'] = 1;
-$showcase_defaultperms['canviewattach'] = 1;
-$showcase_defaultperms['cancomment'] = 0;
-$showcase_defaultperms['candelowncomment'] = 0;
-$showcase_defaultperms['candelauthcomment'] = 0;
-$showcase_defaultperms['cansearch'] = 1;
-$showcase_defaultperms['canwatermark'] = 0;
-$showcase_defaultperms['attachlimit'] = 0;
-
-?>

@@ -11,6 +11,13 @@
  *
  */
 
+declare(strict_types=1);
+
+use function MyShowcase\Core\getTemplate;
+
+global $mybb, $lang, $db, $templates, $plugins;
+global $me;
+
 switch ($mybb->input['action']) {
     case 'multiapprove';
     {
@@ -114,7 +121,7 @@ switch ($mybb->input['action']) {
 
         $return_url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
         //$return_url = htmlspecialchars_uni($mybb->input['url']);
-        eval("\$multidelete = \"" . $templates->get('myshowcase_inline_deleteshowcases') . "\";");
+        $multidelete = eval(getTemplate('inline_deleteshowcases'));
         output_page($multidelete);
         break;
     }
@@ -162,5 +169,3 @@ switch ($mybb->input['action']) {
         break;
     }
 }
-
-?>

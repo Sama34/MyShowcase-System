@@ -6,12 +6,14 @@
  * Website: http://www.communityplugins.com
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
-				http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+ * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
  * File: \inc\languages\<language>\admin\myshowcase_help.lang.php
  *
  */
 
- $l['myshowcase_help_main'] = <<<EOT
+declare(strict_types=1);
+
+$l['myshowcase_help_main'] = <<<EOT
 <h3>Welcome</h3>
 Welcome to the CommunityForums.com MyShowcase System and Plugin for MyBB 1.6. The MyShowcase System allows admins to add multiple showcases to thier MyBB installation so that visitors can insert information about and images of nearly any item for others to view. The MyShowcase System is fully customizable and supports SEO, multiple showcase types, permissions, custom data fields, custom searches, images, comments and moderation. The content below outlines many of the uses of and usage of the MyShowcase System.
 <p />
@@ -224,4 +226,3 @@ If the MyBB installation supports multiple languages, the non-default languages 
 All language files are also editable via the built-in MyBB language modification functionality. However, the on-the-fly language edits within the MyShowcase System require the proper filesystem permissions on the langauge folders in order to create/modify them. This is the same permissions required for the built-in MyBB language editor to work.
 </ul>
 EOT;
-?>

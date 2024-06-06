@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 //main words
 $l['myshowcase_edit_title'] = 'Editing Showcase';
 
@@ -121,5 +123,3 @@ $l['myshowcase_lower_right'] = 'Lower Right';
 $l['myshowcase_center'] = 'Center';
 $l['myshowcase_upper_left'] = 'Upper Left';
 $l['myshowcase_upper_right'] = 'Upper Right';
-
-?>

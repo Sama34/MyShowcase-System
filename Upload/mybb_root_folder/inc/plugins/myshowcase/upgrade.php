@@ -11,10 +11,16 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\getTemplatesList;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
+
+global $cache;
 
 /*
 * Code to upgrade cache name to new one
@@ -83,7 +89,7 @@ function myshowcase_upgrade_activate($need_upgrade)
         global $db, $mybb, $config, $lang, $cache, $plugins;
 
         //make template corrections
-        include_once(MYBB_ROOT . '/inc/plugins/myshowcase/templates.php');
+        $myshowcase_templates = getTemplatesList();
 
         if (version_compare($need_upgrade['prev'], '2.1.0', '<')) {
             //create table for reported showcase entries
@@ -657,5 +663,3 @@ function myshowcase_upgrade_activate($need_upgrade)
         }
     }
 }
-
-?>

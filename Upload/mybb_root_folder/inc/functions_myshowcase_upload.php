@@ -18,6 +18,9 @@
  * @param string The posthash if available
  * @param int The attachment ID
  */
+
+declare(strict_types=1);
+
 function myshowcase_remove_attachment($gid, $posthash, $aid)
 {
     global $db, $mybb, $plugins, $me;
@@ -474,5 +477,3 @@ function myshowcase_upload_file($file, $path, $filename = '')
     $plugins->run_hooks('myshowcase_upload_file_end', $upload);
     return $upload;
 }
-
-?>

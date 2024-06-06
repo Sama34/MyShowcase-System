@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 // Die if IN_MYBB is not defined, for security reasons.
 use function MyShowcase\Admin\_activate;
 use function MyShowcase\Admin\_deactivate;
@@ -20,31 +22,39 @@ use function MyShowcase\Admin\_is_installed;
 use function MyShowcase\Admin\_uninstall;
 use function MyShowcase\Core\addHooks;
 
-if (!defined('IN_MYBB')) {
-    die('This file cannot be accessed directly.');
-}
+use const MyShowcase\ROOT;
 
-define('MYSHOWCASE_ROOT', MYBB_ROOT . 'inc/plugins/myshowcase');
+defined('IN_MYBB') || die('This file cannot be accessed directly.');
 
-require_once MYSHOWCASE_ROOT . '/core.php';
+// You can uncomment the lines below to avoid storing some settings in the DB
+define('MyShowcase\Core\SETTINGS', [
+    //'key' => '',
+    'moderatorGroups' => '3,4',
+]);
+
+define('MyShowcase\Core\DEBUG', false);
+
+define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
+
+require_once ROOT . '/core.php';
 
 // PLUGINLIBRARY
 defined('PLUGINLIBRARY') or define('PLUGINLIBRARY', MYBB_ROOT . 'inc/plugins/pluginlibrary.php');
 
 // Add our hooks
 if (defined('IN_ADMINCP')) {
-    require_once MYSHOWCASE_ROOT . '/admin.php';
+    require_once ROOT . '/admin.php';
 
-    require_once MYSHOWCASE_ROOT . '/admin_hooks.php';
+    require_once ROOT . '/admin_hooks.php';
 
     addHooks('MyShowcase\AdminHooks');
 } else {
-    require_once MYSHOWCASE_ROOT . '/forum_hooks.php';
+    require_once ROOT . '/forum_hooks.php';
 
     addHooks('MyShowcase\ForumHooks');
 }
 /*
-require MYSHOWCASE_ROOT.'/myalerts.php';
+require \MyShowcase\ROOT.'/myalerts.php';
 
 if(\MyShowcase\MyAlerts\MyAlertsIsIntegrable())
 {
@@ -345,7 +355,7 @@ function myshowcase_get_random()
             $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_thumb;
         }
 
-        eval("\$portal_rand_showcase = \"" . $templates->get('portal_rand_showcase') . "\";");
+        $portal_rand_showcase = eval($templates->render('portal_rand_showcase'));
         return $portal_rand_showcase;
     }
 }

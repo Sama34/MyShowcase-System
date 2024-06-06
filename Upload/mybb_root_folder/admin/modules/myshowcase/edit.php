@@ -11,10 +11,18 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\showcasePermissions;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
+
+global $lang, $cache, $db, $plugins;
+global $page;
 
 $page->add_breadcrumb_item($lang->myshowcase_admin_edit_existing, 'index.php?module=myshowcase-edit');
 
@@ -49,7 +57,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
     if ($mybb->input['action'] == 'edit-main' || $mybb->input['action'] == 'edit-other' || $mybb->input['action'] == 'edit-perms' || $mybb->input['action'] == 'edit-mod' || $mybb->input['action'] == 'del-mod') {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
-        if ($db->table_exists('myshowcase_data' . $mybb->input['id'])) {
+        if (showcaseDataTableExists($mybb->input['id'])) {
             $can_edit = false;
         }
 
@@ -67,7 +75,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 
                         $update_array = array();
 
-                        foreach ($showcase_defaultperms as $field => $value) {
+                        foreach (showcasePermissions() as $field => $value) {
                             $update_array[$field] = (isset($groupdata[$field]) ? $groupdata[$field] : 0);
                         }
                         $db->update_query(
@@ -467,6 +475,8 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 ) . '</div>'
             );
 
+            $fieldset_note = $fieldset_note ?? '';
+
             if ($can_edit) {
                 $general_options = array();
                 $general_options[] = $form->generate_select_box(
@@ -497,7 +507,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $form_container->end();
 
             $buttons = array();
-            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_main, $submit_options);
+            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_main);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
 
@@ -687,7 +697,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $form_container->end();
 
             $buttons = array();
-            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_other, $submit_options);
+            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_other);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
 
@@ -756,8 +766,11 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             );
             $form_container->output_row_header($lang->myshowcase_attachlimit, array('class' => 'align_center'));
 
+            $defaultShowcasePermissions = showcasePermissions();
+
             reset($usergroups);
-            reset($showcase_defaultperms);
+            reset($defaultShowcasePermissions);
+
             foreach ($usergroups as $group) {
                 $perm_options = array();
 
@@ -766,7 +779,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                     array('class' => 'align_left')
                 );
 
-                foreach ($showcase_defaultperms as $field => $value) {
+                foreach ($defaultShowcasePermissions as $field => $value) {
                     $lang_field = 'myshowcase_' . $field;
                     if ($field == 'attachlimit') {
                         $perm_options[] = $form_container->output_cell(
@@ -798,7 +811,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $form_container->end();
 
             $buttons = array();
-            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_perms, $submit_options);
+            $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_perms);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
 
@@ -815,9 +828,15 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 'management'
             );
             echo $form->generate_hidden_field('edit', 'modperms');
+
+            $forum_cache = cache_forums();
+
+            $fid = $fid ?? 0;
+
             $form_container = new FormContainer(
-                $lang->sprintf($lang->myshowcase_moderators_assigned, $forum_cache[$fid]['name'])
+                $lang->sprintf($lang->myshowcase_moderators_assigned, $forum_cache[$fid]['name'] ?? '')
             );
+
             $form_container->output_row_header($lang->myshowcase_moderators_name, array('width' => '50%'));
             $form_container->output_row_header(
                 $lang->myshowcase_canapprove,
@@ -1117,7 +1136,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                     'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_moderators WHERE id=' . $mybb->input['id']
                 );
 
-                if ($db->table_exists('myshowcase_data' . $mybb->input['id'])) {
+                if (showcaseDataTableExists($mybb->input['id'])) {
                     $query = $db->query('DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->input['id']);
                 }
 
@@ -1134,6 +1153,3 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
     flash_message($lang->myshowcase_edit_missing_action, 'error');
     admin_redirect('index.php?module=myshowcase-summary');
 }
-
-
-?>

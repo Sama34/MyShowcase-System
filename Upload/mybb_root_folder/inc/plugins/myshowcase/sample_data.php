@@ -6,11 +6,13 @@
  * Website: http://www.communityplugins.com
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
-				http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+ * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
  * File: \inc\plugins\garage\sample_data.php
  *
  */
- 
+
+declare(strict_types=1);
+
 //----------------------------------------------------------
 //
 // sample entries for the fieldset, based on 4x4 trucks
@@ -19,6 +21,8 @@
 //
 // name - string, lowercase name of fieldset
 //----------------------------------------------------------
+global $custom_fieldsets;
+
 $custom_fieldsets = array();
 
 $custom_fieldsets[] = array('Trucks');
@@ -42,6 +46,8 @@ $custom_fieldsets[] = array('Trucks');
 // list_table_order - int, order in which fields are listed in the list view (default view). '-1' excludes field from list view
 // searchable - int, 1 to enable the field in search option at bottom of page, 0 to no include
 //----------------------------------------------------------
+global $custom_fields;
+
 $custom_fields = array();
 
 $custom_fields[] = array(1, 'year', 'textbox', 1, 'int', 0, 4, 1, 0, 1, 1, 1);
@@ -78,83 +84,83 @@ $custom_fields[] = array(1, 'other', 'textarea', 1, 'text', 0, 15, 0, 0, 20, -1,
 // value - string, display value
 // disporderorder - int, order in which data is displayed in input form during new/edit
 //----------------------------------------------------------
+global $custom_field_data;
+
 $custom_field_data = array();
 
-$custom_field_data[] = array(2,'make', 1, 'Acura', 1);
-$custom_field_data[] = array(2,'make', 2, 'AM General', 2);
-$custom_field_data[] = array(2,'make', 3, 'Chevrolet', 3);
-$custom_field_data[] = array(2,'make', 4, 'Datsun', 4);
-$custom_field_data[] = array(2,'make', 5, 'Dodge', 5);
-$custom_field_data[] = array(2,'make', 6, 'Eagle', 6);
-$custom_field_data[] = array(2,'make', 7, 'Ford', 7);
-$custom_field_data[] = array(2,'make', 8, 'Geo', 8);
-$custom_field_data[] = array(2,'make', 9, 'GMC', 9);
-$custom_field_data[] = array(2,'make', 10, 'Honda', 10);
-$custom_field_data[] = array(2,'make', 11, 'Hyundai', 11);
-$custom_field_data[] = array(2,'make', 12, 'Infinity', 12);
-$custom_field_data[] = array(2,'make', 13, 'International', 13);
-$custom_field_data[] = array(2,'make', 14, 'Isuzu', 14);
-$custom_field_data[] = array(2,'make', 15, 'Jeep', 15);
-$custom_field_data[] = array(2,'make', 16, 'Kia', 16);
-$custom_field_data[] = array(2,'make', 17, 'Land Rover', 17);
-$custom_field_data[] = array(2,'make', 18, 'Lexus', 18);
-$custom_field_data[] = array(2,'make', 19, 'Lincoln', 19);
-$custom_field_data[] = array(2,'make', 20, 'Mazda', 20);
-$custom_field_data[] = array(2,'make', 21, 'Mercedes', 21);
-$custom_field_data[] = array(2,'make', 22, 'Mercury', 22);
-$custom_field_data[] = array(2,'make', 23, 'Mitsubishi', 23);
-$custom_field_data[] = array(2,'make', 24, 'Nissan', 24);
-$custom_field_data[] = array(2,'make', 25, 'Oldsmobile', 25);
-$custom_field_data[] = array(2,'make', 26, 'Pontiac', 26);
-$custom_field_data[] = array(2,'make', 27, 'Subaru', 27);
-$custom_field_data[] = array(2,'make', 28, 'Suzuki', 28);
-$custom_field_data[] = array(2,'make', 29, 'Toyota', 29);
-$custom_field_data[] = array(2,'make', 30, 'Volkswagen', 30);
-$custom_field_data[] = array(2,'make', 31, 'Volvo', 31);
-$custom_field_data[] = array(2,'make', 32, 'Willys', 32);
-$custom_field_data[] = array(2,'make', 0, 'Not Specified', 0);
-$custom_field_data[] = array(6,'transtype', 1, 'Auto', 1);
-$custom_field_data[] = array(6,'transtype', 2, 'Manual', 2);
-$custom_field_data[] = array(6,'transtype', 0, 'Not Specified', 0);
-$custom_field_data[] = array(11,'bedsize', 1, 'Short', 1);
-$custom_field_data[] = array(11,'bedsize', 2, 'Long', 2);
-$custom_field_data[] = array(11,'bedsize', 3, 'Flat Bed', 3);
-$custom_field_data[] = array(11,'bedsize', 4, 'No Bed (SUV)', 4);
-$custom_field_data[] = array(11,'bedsize', 0, 'Not Specified', 0);
-$custom_field_data[] = array(18,'bodylift', 1, 'None', 1);
-$custom_field_data[] = array(18,'bodylift', 2, '1 in.', 2);
-$custom_field_data[] = array(18,'bodylift', 3, '2 in.', 3);
-$custom_field_data[] = array(18,'bodylift', 4, '3 in.', 4);
-$custom_field_data[] = array(18,'bodylift', 5, '4 in.', 5);
-$custom_field_data[] = array(18,'bodylift', 0, 'Not Specified', 0);
-$custom_field_data[] = array(10,'cabstyle', 1, 'Regular Cab', 1);
-$custom_field_data[] = array(10,'cabstyle', 2, 'Ext. Cab 2dr', 2);
-$custom_field_data[] = array(10,'cabstyle', 3, 'Ext. Cab 3dr', 3);
-$custom_field_data[] = array(10,'cabstyle', 4, 'Ext. Cab 4dr', 4);
-$custom_field_data[] = array(10,'cabstyle', 5, 'Crew Cab', 5);
-$custom_field_data[] = array(10,'cabstyle', 6, '2 dr. SUV', 6);
-$custom_field_data[] = array(10,'cabstyle', 7, '4 dr. SUV', 7);
-$custom_field_data[] = array(10,'cabstyle', 0, 'Not Specified', 0);
-$custom_field_data[] = array(16,'susplift', 1, 'None', 1);
-$custom_field_data[] = array(16,'susplift', 2, '1 in.', 2);
-$custom_field_data[] = array(16,'susplift', 3, '2 in.', 3);
-$custom_field_data[] = array(16,'susplift', 4, '3 in.', 4);
-$custom_field_data[] = array(16,'susplift', 5, '4 in.', 5);
-$custom_field_data[] = array(16,'susplift', 6, '5 in.', 6);
-$custom_field_data[] = array(16,'susplift', 7, '6 in.', 7);
-$custom_field_data[] = array(16,'susplift', 8, '7 in.', 8);
-$custom_field_data[] = array(16,'susplift', 9, '8 in.', 9);
-$custom_field_data[] = array(16,'susplift', 10, '9 in.', 10);
-$custom_field_data[] = array(16,'susplift', 11, '10 in.', 11);
-$custom_field_data[] = array(16,'susplift', 12, '11 in.', 12);
-$custom_field_data[] = array(16,'susplift', 13, '12 in.', 13);
-$custom_field_data[] = array(16,'susplift', 14, '13+ in.', 14);
-$custom_field_data[] = array(16,'susplift', 0, 'Not Specified', 0);
-$custom_field_data[] = array(5,'transspeed', 1, '2', 1);
-$custom_field_data[] = array(5,'transspeed', 2, '3', 2);
-$custom_field_data[] = array(5,'transspeed', 3, '4', 3);
-$custom_field_data[] = array(5,'transspeed', 4, '5', 4);
-$custom_field_data[] = array(5,'transspeed', 5, '6', 5);
-$custom_field_data[] = array(5,'transspeed', 0, 'Not Specified', 0);
-
-?>
+$custom_field_data[] = array(2, 'make', 1, 'Acura', 1);
+$custom_field_data[] = array(2, 'make', 2, 'AM General', 2);
+$custom_field_data[] = array(2, 'make', 3, 'Chevrolet', 3);
+$custom_field_data[] = array(2, 'make', 4, 'Datsun', 4);
+$custom_field_data[] = array(2, 'make', 5, 'Dodge', 5);
+$custom_field_data[] = array(2, 'make', 6, 'Eagle', 6);
+$custom_field_data[] = array(2, 'make', 7, 'Ford', 7);
+$custom_field_data[] = array(2, 'make', 8, 'Geo', 8);
+$custom_field_data[] = array(2, 'make', 9, 'GMC', 9);
+$custom_field_data[] = array(2, 'make', 10, 'Honda', 10);
+$custom_field_data[] = array(2, 'make', 11, 'Hyundai', 11);
+$custom_field_data[] = array(2, 'make', 12, 'Infinity', 12);
+$custom_field_data[] = array(2, 'make', 13, 'International', 13);
+$custom_field_data[] = array(2, 'make', 14, 'Isuzu', 14);
+$custom_field_data[] = array(2, 'make', 15, 'Jeep', 15);
+$custom_field_data[] = array(2, 'make', 16, 'Kia', 16);
+$custom_field_data[] = array(2, 'make', 17, 'Land Rover', 17);
+$custom_field_data[] = array(2, 'make', 18, 'Lexus', 18);
+$custom_field_data[] = array(2, 'make', 19, 'Lincoln', 19);
+$custom_field_data[] = array(2, 'make', 20, 'Mazda', 20);
+$custom_field_data[] = array(2, 'make', 21, 'Mercedes', 21);
+$custom_field_data[] = array(2, 'make', 22, 'Mercury', 22);
+$custom_field_data[] = array(2, 'make', 23, 'Mitsubishi', 23);
+$custom_field_data[] = array(2, 'make', 24, 'Nissan', 24);
+$custom_field_data[] = array(2, 'make', 25, 'Oldsmobile', 25);
+$custom_field_data[] = array(2, 'make', 26, 'Pontiac', 26);
+$custom_field_data[] = array(2, 'make', 27, 'Subaru', 27);
+$custom_field_data[] = array(2, 'make', 28, 'Suzuki', 28);
+$custom_field_data[] = array(2, 'make', 29, 'Toyota', 29);
+$custom_field_data[] = array(2, 'make', 30, 'Volkswagen', 30);
+$custom_field_data[] = array(2, 'make', 31, 'Volvo', 31);
+$custom_field_data[] = array(2, 'make', 32, 'Willys', 32);
+$custom_field_data[] = array(2, 'make', 0, 'Not Specified', 0);
+$custom_field_data[] = array(6, 'transtype', 1, 'Auto', 1);
+$custom_field_data[] = array(6, 'transtype', 2, 'Manual', 2);
+$custom_field_data[] = array(6, 'transtype', 0, 'Not Specified', 0);
+$custom_field_data[] = array(11, 'bedsize', 1, 'Short', 1);
+$custom_field_data[] = array(11, 'bedsize', 2, 'Long', 2);
+$custom_field_data[] = array(11, 'bedsize', 3, 'Flat Bed', 3);
+$custom_field_data[] = array(11, 'bedsize', 4, 'No Bed (SUV)', 4);
+$custom_field_data[] = array(11, 'bedsize', 0, 'Not Specified', 0);
+$custom_field_data[] = array(18, 'bodylift', 1, 'None', 1);
+$custom_field_data[] = array(18, 'bodylift', 2, '1 in.', 2);
+$custom_field_data[] = array(18, 'bodylift', 3, '2 in.', 3);
+$custom_field_data[] = array(18, 'bodylift', 4, '3 in.', 4);
+$custom_field_data[] = array(18, 'bodylift', 5, '4 in.', 5);
+$custom_field_data[] = array(18, 'bodylift', 0, 'Not Specified', 0);
+$custom_field_data[] = array(10, 'cabstyle', 1, 'Regular Cab', 1);
+$custom_field_data[] = array(10, 'cabstyle', 2, 'Ext. Cab 2dr', 2);
+$custom_field_data[] = array(10, 'cabstyle', 3, 'Ext. Cab 3dr', 3);
+$custom_field_data[] = array(10, 'cabstyle', 4, 'Ext. Cab 4dr', 4);
+$custom_field_data[] = array(10, 'cabstyle', 5, 'Crew Cab', 5);
+$custom_field_data[] = array(10, 'cabstyle', 6, '2 dr. SUV', 6);
+$custom_field_data[] = array(10, 'cabstyle', 7, '4 dr. SUV', 7);
+$custom_field_data[] = array(10, 'cabstyle', 0, 'Not Specified', 0);
+$custom_field_data[] = array(16, 'susplift', 1, 'None', 1);
+$custom_field_data[] = array(16, 'susplift', 2, '1 in.', 2);
+$custom_field_data[] = array(16, 'susplift', 3, '2 in.', 3);
+$custom_field_data[] = array(16, 'susplift', 4, '3 in.', 4);
+$custom_field_data[] = array(16, 'susplift', 5, '4 in.', 5);
+$custom_field_data[] = array(16, 'susplift', 6, '5 in.', 6);
+$custom_field_data[] = array(16, 'susplift', 7, '6 in.', 7);
+$custom_field_data[] = array(16, 'susplift', 8, '7 in.', 8);
+$custom_field_data[] = array(16, 'susplift', 9, '8 in.', 9);
+$custom_field_data[] = array(16, 'susplift', 10, '9 in.', 10);
+$custom_field_data[] = array(16, 'susplift', 11, '10 in.', 11);
+$custom_field_data[] = array(16, 'susplift', 12, '11 in.', 12);
+$custom_field_data[] = array(16, 'susplift', 13, '12 in.', 13);
+$custom_field_data[] = array(16, 'susplift', 14, '13+ in.', 14);
+$custom_field_data[] = array(16, 'susplift', 0, 'Not Specified', 0);
+$custom_field_data[] = array(5, 'transspeed', 1, '2', 1);
+$custom_field_data[] = array(5, 'transspeed', 2, '3', 2);
+$custom_field_data[] = array(5, 'transspeed', 3, '4', 3);
+$custom_field_data[] = array(5, 'transspeed', 4, '5', 4);
+$custom_field_data[] = array(5, 'transspeed', 5, '6', 5);
+$custom_field_data[] = array(5, 'transspeed', 0, 'Not Specified', 0);

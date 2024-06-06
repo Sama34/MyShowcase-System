@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 $l['myshowcase_admin_myshowcase'] = 'MyShowcase Admin';
 $l['myshowcase_admin_summary'] = 'Summary';
 $l['myshowcase_admin_create_new'] = 'Create New';
@@ -50,4 +52,3 @@ $l[''] = "";
 $l[''] = "";
 $l[''] = "";
 */
-?>

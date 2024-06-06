@@ -11,7 +11,13 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace MyShowcase\AdminHooks;
+
+use function MyShowcase\Core\getSetting;
+use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\getTemplate;
 
 /**
  * Add global notices for unapproved and reported showcases
@@ -98,14 +104,14 @@ function global_start()
             }
 
             //check if user in default mod groups
-            if (count(array_intersect(array(3, 4), $usergroups))) {
+            if (is_member(getSetting('moderatorGroups'))) {
                 $canapprove = 1;
                 $caneditdel = 1;
             }
 
             //load language if we are going to use it
             if ($canapprove || $caneditdel) {
-                $lang->load('myshowcase');
+                loadLanguage();
             }
 
             $showcase_path = $mybb->settings['bburl'] . '/' . $showcase['f2gpath'] . $showcase['mainfile'];
@@ -151,11 +157,11 @@ function global_start()
 
     //get templates
     if ($unapproved_notice != '') {
-        eval("\$myshowcase_unapproved = \"" . $templates->get('myshowcase_unapproved') . "\";");
+        $myshowcase_unapproved = eval(getTemplate('unapproved'));
     }
 
     if ($reported_notice != '') {
-        eval("\$myshowcase_reported = \"" . $templates->get('myshowcase_reported') . "\";");
+        $myshowcase_reported = eval(getTemplate('reported'));
     }
 }
 
@@ -232,7 +238,7 @@ function build_friendly_wol_location_end(&$plugin_array)
 {
     global $db, $lang, $mybb, $_SERVER, $user;
 
-    $lang->load('myshowcase');
+    loadLanguage();
 
     //get filename of location
     $split_loc = explode('.php', $plugin_array['user_activity']['location']);
@@ -345,7 +351,7 @@ function build_friendly_wol_location_end(&$plugin_array)
             $plugin_array['location_name'] = $lang->sprintf(
                 $lang->viewing_myshowcase_attach,
                 str_replace('{aid}', $plugin_array['user_activity']['aid'], $myshowcase_url_view_attach),
-                str_replace('{gid}', $gid, $myshowcase_view_url),
+                str_replace('{gid}', $gid, $myshowcase_view_url ?? ''),
                 $plugin_array['user_activity']['myshowcase_name'],
                 get_profile_link($uid),
                 $userinfo['username']

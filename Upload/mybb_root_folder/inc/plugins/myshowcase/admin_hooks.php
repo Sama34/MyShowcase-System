@@ -11,11 +11,13 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace MyShowcase\AdminHooks;
 
 use MyBB;
 
-use function MyShowcase\Core\load_language;
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\MyAlerts\getAvailableLocations;
 use function MyShowcase\MyAlerts\getInstalledLocations;
 use function MyShowcase\MyAlerts\installLocation;
@@ -29,7 +31,7 @@ function admin_config_plugins_begin01()
         return;
     }
 
-    load_language();
+    loadLanguage();
 
     if ($mybb->request_method != 'post') {
         $page->output_confirm_action(

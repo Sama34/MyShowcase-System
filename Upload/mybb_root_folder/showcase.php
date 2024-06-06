@@ -11,9 +11,14 @@
  *
  */
 
+declare(strict_types=1);
+
 /*
  * Only user edits required
 */
+
+use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\getTemplate;
 
 $forumdir = ''; //no trailing slash
 
@@ -81,14 +86,16 @@ $me = new MyShowcaseSystem();
 //global $showcase_proper, $showcase_lower;
 
 //try to load showcase specific language file
-$lang->load('myshowcase');
-$lang->load('myshowcase' . $me->id, false, true);
+loadLanguage();
+loadLanguage('myshowcase' . $me->id, false, true);
 /*
 //if loaded then this will be set, if not load generic lang file
 if($lang->myshowcase == '')
 {
-	$lang->load("myshowcase");
+                \MyShowcase\Core\loadLanguage();
 }*/
+
+global $lang, $mybb, $cache, $db, $plugins;
 
 $lang->nav_myshowcase = $lang->myshowcase = $showcase_proper = ucwords(strtolower($me->name));
 $showcase_lower = strtolower($me->name);
@@ -106,8 +113,8 @@ if ($me->userperms['canmodapprove']) {
         $list_where_clause = 'g.approved=0';
     }
     $inlinecount = 0;
-    eval("\$showcase_inlinemod_col = \"" . $templates->get('myshowcase_inlinemod_col') . "\";");
-    eval("\$showcase_inlinemod = \"" . $templates->get('myshowcase_inlinemod') . "\";");
+    $showcase_inlinemod_col = eval(getTemplate('inlinemod_col'));
+    $showcase_inlinemod = eval(getTemplate('inlinemod'));
 } else {
     $ismod = false;
     $list_where_clause = '(g.approved=1 OR g.uid=' . $mybb->user['uid'] . ')';
@@ -221,13 +228,13 @@ if ($mybb->input['action'] == 'attachment') {
         $item_lastedit = $lasteditdate . '&nbsp;' . $lastedittime;
 
         $showcase_attachment_description = $lang->myshowcase_attachment_filename . $attachment['filename'] . '<br />' . $lang->myshowcase_attachment_uploaded . $item_lastedit;
-        eval("\$showcase_table_header = \"" . $templates->get('myshowcase_table_header') . "\";");
+        $showcase_table_header = eval(getTemplate('table_header'));
         $showcase_attachment = str_replace(
             '{aid}',
             $attachment['aid'],
             SHOWCASE_URL_ITEM
         );//$me->imgfolder."/".$attachment['attachname'];
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_attachment_view') . "\";");
+        $showcase_page = eval(getTemplate('attachment_view'));
 
         $plugins->run_hooks('myshowcase_attachment_end');
         output_page($showcase_page);
@@ -250,10 +257,10 @@ if ($mybb->input['action'] == 'attachment') {
 }
 
 //need a few items from the index language file
-$lang->load('index');
+loadLanguage('index');
 
 //load language file specific to this showcase's assigned fieldset
-$lang->load('myshowcase_fs' . $me->fieldsetid, false, true); // 3.0.0 TODO
+loadLanguage('myshowcase_fs' . $me->fieldsetid, false, true); // 3.0.0 TODO
 
 //see if current user can view this showcase
 if (!$me->userperms['canview']) {
@@ -261,7 +268,7 @@ if (!$me->userperms['canview']) {
 }
 
 //init time
-$dateline = time();
+$dateline = TIME_NOW;
 
 /* URL Definitions */
 
@@ -362,7 +369,7 @@ if (!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->i
             );
         }
         if ($attachedfile['error']) {
-            eval("\$attacherror = \"" . $templates->get('error_attacherror') . "\";");
+            $attacherror = eval($templates->render('error_attacherror'));
             $mybb->input['action'] = 'new';
         }
     }
@@ -431,6 +438,8 @@ $showcase_fields_require = array();
 $showcase_fields_require['uid'] = 1;
 $showcase_fields_format = array();
 
+$showcase_fields_min_length = $showcase_fields_min_length ?? [];
+
 foreach ($fieldcache[$me->fieldsetid] as $field) {
     $showcase_fields[$field['name']] = $field['html_type'];
 
@@ -488,7 +497,7 @@ if (!isset($mybb->input['showall']) || $mybb->input['showall'] != 1) {
 
 // Setup our posthash for managing attachments.
 if (!$mybb->input['posthash']) {
-    mt_srand((double)microtime() * 1000000);
+    mt_srand((int)(microtime() * 1000000));
     $mybb->input['posthash'] = md5(intval($mybb->input['gid']) . $mybb->user['uid'] . mt_rand());
 }
 
@@ -497,9 +506,9 @@ $form_page = $me->mainfile;
 
 //get FancyBox JS for header if viewing
 if ($mybb->input['action'] == 'view') {
-    eval("\$myshowcase_js_header = \"" . $templates->get('myshowcase_js_header') . "\";");
+    $myshowcase_js_header = eval(getTemplate('js_header'));
 }
-eval("\$showcase_top = \"" . $templates->get('myshowcase_top') . "\";");
+$showcase_top = eval(getTemplate('top'));
 
 //main showcase code
 switch ($mybb->input['action']) {
@@ -510,7 +519,7 @@ switch ($mybb->input['action']) {
         $plugins->run_hooks('myshowcase_list_start');
 
         if ($me->userperms['canadd']) {
-            eval("\$new_button = \"" . $templates->get('myshowcase_new_button') . "\";");
+            $new_button = eval(getTemplate('new_button'));
         }
 
         //init fixed fields for list view and insert the custom fields into the options list array
@@ -519,7 +528,7 @@ switch ($mybb->input['action']) {
         $showcase_order_fields['dateline'] = $lang->myshowcase_sort_editdate;
         $showcase_order_fields['username'] = $lang->myshowcase_sort_username;
         foreach ($showcase_fields_showinlist as $forder => $fname) {
-            eval("\$order_text = \"\$lang->myshowcase_field_" . $fname . "\";");
+            $order_text = $lang->{"myshowcase_field_{$fname}"};
             $showcase_order_fields[$fname] = $order_text;
         }
         $showcase_order_fields['views'] = $lang->myshowcase_sort_views;
@@ -529,7 +538,7 @@ switch ($mybb->input['action']) {
         $showcase_search_fields = array();
         $showcase_search_fields['username'] = $lang->myshowcase_sort_username;
         foreach ($showcase_fields_searchable as $forder => $fname) {
-            eval("\$order_text = \"\$lang->myshowcase_field_" . $fname . "\";");
+            $order_text = $lang->{"myshowcase_field_{$fname}"};
             $showcase_search_fields[$fname] = $order_text;
         }
 
@@ -605,7 +614,7 @@ switch ($mybb->input['action']) {
 
         //set alternate sort code
         $matchchecked = ($mybb->input['exactmatch'] == 'on' ? 'checked' : '');
-        eval("\$orderarrow[\$mybb->input['sortby']] = \"" . $templates->get('myshowcase_orderarrow') . "\";");
+        $orderarrow[$mybb->input['sortby']] = eval(getTemplate('orderarrow'));
 
         if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
             $amp = '?';
@@ -616,9 +625,9 @@ switch ($mybb->input['action']) {
         //build custom list header based on field settings
         $showcase_list_custom_header = '';
         foreach ($showcase_fields_showinlist as $forder => $fname) {
-            eval("\$custom_header = \"\$lang->myshowcase_field_" . $fname . "\";");
+            $custom_header = $lang->{"myshowcase_field_{$fname}"};
             $custom_orderarrow = $orderarrow[$fname];
-            eval("\$showcase_list_custom_header .= \"" . $templates->get('myshowcase_list_custom_header') . "\";");
+            $showcase_list_custom_header .= eval(getTemplate('list_custom_header'));
         }
 
         //setup joins for query and build where clause based on search terms
@@ -677,6 +686,8 @@ switch ($mybb->input['action']) {
 
         $result = $db->fetch_array($query);
         $showcasecount = $result['total'];
+
+        $showcase_list_items = '';
 
         if ($showcasecount != 0) {
             // How many pages are there?
@@ -882,21 +893,17 @@ switch ($mybb->input['action']) {
                     }
 
                     $item_text = htmlspecialchars_uni($item_text);
-                    eval(
-                        "\$showcase_list_custom_fields .= \"" . $templates->get(
-                            'myshowcase_list_custom_fields'
-                        ) . "\";"
-                    );
+                    $showcase_list_custom_fields .= eval(getTemplate('list_custom_fields'));
                 }
                 if ($me->userperms['canmodapprove'] || $me->userperms['canmoddelete']) {
                     $multigid = $showcase['gid'];
-                    eval("\$showcase_inlinemod_item = \"" . $templates->get('myshowcase_inlinemod_item') . "\";");
+                    $showcase_inlinemod_item = eval(getTemplate('inlinemod_item'));
                 }
 
-                eval("\$showcase_list_items .= \"" . $templates->get('myshowcase_list_items') . "\";");
+                $showcase_list_items .= eval(getTemplate('list_items'));
 
                 //add row indicating report
-                if (is_array($reports[$showcase['gid']])) {
+                if (!empty($reports) && is_array($reports[$showcase['gid']])) {
                     foreach ($reports[$showcase['gid']] as $rid => $report) {
                         $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
                         $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
@@ -919,7 +926,7 @@ switch ($mybb->input['action']) {
                             $report['reason']
                         );
                         $showcase_num_headers = ($showcase_inlinemod_item ? 6 : 5) + count($showcase_fields_showinlist);
-                        eval("\$showcase_list_items .= \"" . $templates->get('myshowcase_list_message') . "\";");
+                        $showcase_list_items .= eval(getTemplate('list_message'));
                     }
                 }
             }
@@ -932,16 +939,16 @@ switch ($mybb->input['action']) {
             $showcase_num_headers = $colcount + count($showcase_fields_showinlist);
             if ($mybb->input['searchterm'] == '') {
                 $message = $lang->myshowcase_empty;
-                eval("\$showcase_list_items .= \"" . $templates->get('myshowcase_list_message') . "\";");
+                $showcase_list_items .= eval(getTemplate('list_message'));
             } else {
                 $message = $lang->myshowcase_no_results;
-                eval("\$showcase_list_items .= \"" . $templates->get('myshowcase_list_message') . "\";");
+                $showcase_list_items .= eval(getTemplate('list_message'));
             }
         }
 
         $plugins->run_hooks('myshowcase_list_end');
 
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_list') . "\";");
+        $showcase_page = eval(getTemplate('list'));
 
         break;
     }
@@ -994,7 +1001,7 @@ switch ($mybb->input['action']) {
         //set up jump to links
         $jumpto = $lang->myshowcase_jumpto;
 
-        $item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+        $item_viewcode = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
         if ($me->allow_attachments && $me->userperms['canviewattach']) {
             $jumpto .= ' <a href="' . $item_viewcode . ($mybb->input['showall'] == 1 ? '&showall=1' : '') . '#images">' . $lang->myshowcase_attachments . '</a>';
         }
@@ -1017,18 +1024,18 @@ switch ($mybb->input['action']) {
         $showcase_admin_url = SHOWCASE_URL;
 
         if ($me->userperms['canmodedit'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit'])) {
-            eval("\$showcase_view_admin_edit = \"" . $templates->get('myshowcase_view_admin_edit') . "\";");
+            $showcase_view_admin_edit = eval(getTemplate('view_admin_edit'));
         }
 
         if ($me->userperms['canmoddelete'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit'])) {
-            eval("\$showcase_view_admin_delete = \"" . $templates->get('myshowcase_view_admin_delete') . "\";");
+            $showcase_view_admin_delete = eval(getTemplate('view_admin_delete'));
         }
 
         if ($showcase_view_admin_edit != '' || $showcase_view_admin_delete != '') {
-            eval("\$showcase_header_special = \"" . $templates->get('myshowcase_view_admin') . "\";");
+            $showcase_header_special = eval(getTemplate('view_admin'));
         }
 
-        eval("\$showcase_data_header = \"" . $templates->get('myshowcase_table_header') . "\";");
+        $showcase_data_header = eval(getTemplate('table_header'));
 
         //trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
         //doing this now should not impact anyhting. no issues with gomobile beta4
@@ -1075,7 +1082,7 @@ switch ($mybb->input['action']) {
                             $field_data = htmlspecialchars_uni($field_data);
                             $field_data = nl2br($field_data);
                         }
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_2') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_2'));
                     }
                     break;
 
@@ -1106,7 +1113,7 @@ switch ($mybb->input['action']) {
                         if ($showcase_fields_parse[$fname] || $highlight) {
                             $field_data = $parser->parse_message($field_data, $parser_options);
                         }
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_1'));
                     }
                     break;
 
@@ -1114,7 +1121,7 @@ switch ($mybb->input['action']) {
                     $field_data = $showcase[$fname];
                     if ($field_data != '' || $me->disp_empty == 1) {
                         $field_data = $parser->mycode_parse_url($showcase[$fname]);
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_2') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_2'));
                     }
                     break;
 
@@ -1145,7 +1152,7 @@ switch ($mybb->input['action']) {
                         $field_data = '';
                     }
                     if (($field_data != '') || $me->disp_empty == 1) {
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_1'));
                     }
                     break;
 
@@ -1155,14 +1162,14 @@ switch ($mybb->input['action']) {
                         if ($showcase_fields_parse[$fname] || $highlight) {
                             $field_data = $parser->parse_message($field_data, $parser_options);
                         }
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_1'));
                     }
                     break;
 
                 case 'radio':
                     $field_data = $showcase[$fname];
                     if (($field_data != '') || $me->disp_empty == 1) {
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_1'));
                     }
                     break;
 
@@ -1173,7 +1180,7 @@ switch ($mybb->input['action']) {
                         } else {
                             $field_data = '<img src="' . $mybb->settings['bburl'] . '/images/invalid.gif" alt="No">';
                         }
-                        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+                        $showcase_data .= eval(getTemplate('view_data_1'));
                     }
                     break;
             }
@@ -1184,13 +1191,13 @@ switch ($mybb->input['action']) {
             $field_header = $lang->myshowcase_last_approved;
             $modapproved = get_user($showcase['approved_by']);
             $field_data = build_profile_link($modapproved['username'], $modapproved['uid'], '', '', $forumdir . '/');
-            eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_1') . "\";");
+            $showcase_data .= eval(getTemplate('view_data_1'));
         }
 
         //output bottom row for report button and future add-ons
 //		$entry_final_row = '<a href="'.SHOWCASE_URL.'?action=report&gid='.$mybb->input['gid'].'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
         $entry_final_row = '<a href="javascript:Showcase.reportShowcase(' . $mybb->input['gid'] . ');"><img src="' . $theme['imglangdir'] . '/postbit_report.gif"></a>';
-        eval("\$showcase_data .= \"" . $templates->get('myshowcase_view_data_3') . "\";");
+        $showcase_data .= eval(getTemplate('view_data_3'));
 
         if ($me->allow_comments && $me->userperms['canviewcomment']) {
             // start getting comments
@@ -1229,10 +1236,10 @@ switch ($mybb->input['action']) {
                     ($gcomments['uid'] == $mybb->user['uid'] && $me->userperms['candelowncomment']) ||
                     ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['candelauthcomment'])
                 ) {
-                    eval("\$showcase_comments_admin = \"" . $templates->get('myshowcase_view_comments_admin') . "\";");
+                    $showcase_comments_admin = eval(getTemplate('view_comments_admin'));
                 }
 
-                eval("\$showcase_comments .= \"" . $templates->get('myshowcase_view_comments') . "\";");
+                $showcase_comments .= eval(getTemplate('view_comments'));
             }
 
             $showcase_show_all = '';
@@ -1248,24 +1255,24 @@ switch ($mybb->input['action']) {
             $showcase_header_label = '<a name="comments"><form action="' . $showcase_comment_form_url . '" method="post" name="comment">' . $lang->myshowcase_comments . '</a>';
             $showcase_header_jumpto = $jumptop;
             $showcase_header_special = $showcase_show_all;
-            eval("\$showcase_comment_header = \"" . $templates->get('myshowcase_table_header') . "\";");
+            $showcase_comment_header = eval(getTemplate('table_header'));
 
             $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
             if ($showcase_comments == '') {
-                eval("\$showcase_comments = \"" . $templates->get('myshowcase_view_comments_none') . "\";");
+                $showcase_comments = eval(getTemplate('view_comments_none'));
             }
 
             //check if logged in for ability to add comments
             $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
             if (!$mybb->user['uid']) {
-                eval("\$showcase_comments .= \"" . $templates->get('myshowcase_view_comments_add_login') . "\";");
+                $showcase_comments .= eval(getTemplate('view_comments_add_login'));
             } elseif ($me->userperms['cancomment']) {
                 $comment_text_limit = str_replace(
                     '{text_limit}',
-                    $me->comment_length,
+                    (string)$me->comment_length,
                     $lang->myshowcase_comment_text_limit
                 );
-                eval("\$showcase_comments .= \"" . $templates->get('myshowcase_view_comments_add') . "\";");
+                $showcase_comments .= eval(getTemplate('view_comments_add'));
             }
         }
 
@@ -1319,7 +1326,7 @@ switch ($mybb->input['action']) {
                     $showcase['username']
                 );
 
-                eval("\$showcase_attachment_data .= \"" . $templates->get('myshowcase_view_attachments_image') . "\";");
+                $showcase_attachment_data .= eval(getTemplate('view_attachments_image'));
 
                 $attach_count++;
                 if ($attach_count == $me->disp_attachcols && $me->disp_attachcols != 0) {
@@ -1337,13 +1344,13 @@ switch ($mybb->input['action']) {
             $showcase_header_label = '<a name="images">' . $lang->myshowcase_attachments . '</a>';
             $showcase_header_jumpto = $jumptop;
             $showcase_header_special = '';
-            eval("\$showcase_attachment_header = \"" . $templates->get('myshowcase_table_header') . "\";");
+            $showcase_attachment_header = eval(getTemplate('table_header'));
 
 
             if ($showcase_attachment_data != '') {
-                eval("\$showcase_attachments = \"" . $templates->get('myshowcase_view_attachments') . "\";");
+                $showcase_attachments = eval(getTemplate('view_attachments'));
             } else {
-                eval("\$showcase_attachments = \"" . $templates->get('myshowcase_view_attachments_none') . "\";");
+                $showcase_attachments = eval(getTemplate('view_attachments_none'));
             }
         }
 
@@ -1354,7 +1361,7 @@ switch ($mybb->input['action']) {
 
         $plugins->run_hooks('myshowcase_view_end');
 
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_view') . "\";");
+        $showcase_page = eval(getTemplate('view'));
 
         break;
     }
@@ -1420,7 +1427,7 @@ switch ($mybb->input['action']) {
                     'uid' => $mybb->user['uid'],
                     'ipaddress' => get_ip(),
                     'comment' => $mybb->input['comments'],
-                    'dateline' => $dateline
+                    'dateline' => TIME_NOW
                 );
 
                 $plugins->run_hooks('myshowcase_add_comment_commit');
@@ -1449,7 +1456,7 @@ switch ($mybb->input['action']) {
                             $mybb->settings['subscribeexcerpt']
                         ) . $lang->myshowcase_comment_more;
 
-                    $item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+                    $item_viewcode = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
 
                     if ($forumdir == '' || $forumdir == './') {
                         $showcase_url = $mybb->settings['bburl'] . '/' . $item_viewcode;
@@ -1623,4 +1630,3 @@ output_page($showcase_page);
 /*
 SELECT title, template, -2 as sid , 1600 as version , status, unix_timestamp() as dateline FROM `myforum_templates` WHERE tid in (SELECT distinct max(tid) as tid FROM `myforum_templates` WHERE title like '%showcase%'  group by title order by title, dateline desc)
 */
-?>

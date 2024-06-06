@@ -11,6 +11,15 @@
  *
  */
 
+declare(strict_types=1);
+
+use function MyShowcase\Core\getTemplate;
+
+global $mybb, $lang, $db, $templates, $plugins;
+global $me, $showcase_fields_max_length, $showcase_fields_format, $showcase_fields_require, $showcase_fields_min_length, $showcase_url;
+
+$showcase_page = '';
+
 switch ($mybb->input['action']) {
     case 'edit':
     {
@@ -79,7 +88,7 @@ switch ($mybb->input['action']) {
 
             // Setup our posthash for managing attachments.
             if (!$mybb->input['posthash']) {
-                mt_srand((double)microtime() * 1000000);
+                mt_srand((int)(microtime() * 1000000));
                 $mybb->input['posthash'] = md5($mybb->user['uid'] . mt_rand());
             }
             $posthash = $mybb->input['posthash'];
@@ -102,13 +111,9 @@ switch ($mybb->input['action']) {
 
                     $attach_mod_options = '';
                     if ($attachment['visible'] != 1) {
-                        eval(
-                            "\$attachments .= \"" . $templates->get(
-                                'myshowcase_new_attachments_attachment_unapproved'
-                            ) . "\";"
-                        );
+                        $attachments .= eval(getTemplate('new_attachments_attachment_unapproved'));
                     } else {
-                        eval("\$attachments .= \"" . $templates->get('myshowcase_new_attachments_attachment') . "\";");
+                        $attachments .= eval(getTemplate('new_attachments_attachment'));
                     }
                     $attachcount++;
                 }
@@ -121,21 +126,17 @@ switch ($mybb->input['action']) {
                     if ($me->userperms['canwatermark'] && $me->watermarkimage != '' && @file_exists(
                             $me->watermarkimage
                         )) {
-                        eval("\$showcase_watermark = \"" . $templates->get('myshowcase_watermark') . "\";");
+                        $showcase_watermark = eval(getTemplate('watermark'));
                     }
-                    eval(
-                        "\$showcase_new_attachments_input = \"" . $templates->get(
-                            'myshowcase_new_attachments_input'
-                        ) . "\";"
-                    );
+                    $showcase_new_attachments_input = eval(getTemplate('new_attachments_input'));
                 }
 
                 if ($showcase_new_attachments_input != '' || $attachments != '') {
-                    eval("\$showcase_attachments = \"" . $templates->get('myshowcase_new_attachments') . "\";");
+                    $showcase_attachments = eval(getTemplate('new_attachments'));
                 }
             }
 
-            eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_top') . "\";");
+            $showcase_page .= eval(getTemplate('new_top'));
 
             $trow_style = 'trow2';
 
@@ -162,7 +163,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textbox'));
 
                         if ($showcase_fields_format[$fname] != 'no') {
                             $showcase_field_input .= '&nbsp;' . $lang->myshowcase_editing_number;
@@ -177,7 +178,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textbox'));
                         break;
 
                     case 'textarea':
@@ -188,7 +189,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = '';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textarea') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textarea'));
                         break;
 
                     case 'radio':
@@ -213,7 +214,7 @@ switch ($mybb->input['action']) {
                             $showcase_field_value = $results['valueid'];
                             $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == $results['valueid'] ? ' checked' : '');
                             $showcase_field_text = $results['value'];
-                            eval("\$showcase_field_input .= \"" . $templates->get('myshowcase_field_radio') . "\";");
+                            $showcase_field_input .= eval(getTemplate('field_radio'));
                         }
                         break;
 
@@ -225,7 +226,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == 1 ? ' checked="checked"' : '');
                         $showcase_field_options = '';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_checkbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_checkbox'));
                         break;
 
                     case 'db':
@@ -249,7 +250,7 @@ switch ($mybb->input['action']) {
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($showcase_field_value == $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                         }
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_db') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_db'));
                         break;
 
                     case 'date':
@@ -293,17 +294,17 @@ switch ($mybb->input['action']) {
                         for ($i = $showcase_fields_max_length[$fname]; $i >= $showcase_fields_min_length[$fname]; $i--) {
                             $showcase_field_options_y .= '<option value="' . $i . '" ' . ($showcase_field_value_y == $i ? ' selected' : '') . '>' . $i . '</option>';
                         }
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_date') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_date'));
                         break;
                 }
 
                 $field_header = ($showcase_fields_require[$fname] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
-                eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_fields') . "\";");
+                $showcase_page .= eval(getTemplate('new_fields'));
             }
 
             $plugins->run_hooks('myshowcase_editnew_end');
 
-            eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_bottom') . "\";");
+            $showcase_page .= eval(getTemplate('new_bottom'));
         } else {
             error($lang->myshowcase_not_authorized);
         }
@@ -364,7 +365,7 @@ switch ($mybb->input['action']) {
 
         // Setup our posthash for managing attachments.
         if (!$mybb->input['posthash']) {
-            mt_srand((double)microtime() * 1000000);
+            mt_srand((int)(microtime() * 1000000));
             $mybb->input['posthash'] = md5($mybb->user['uid'] . mt_rand());
         }
         $posthash = $db->escape_string($mybb->input['posthash']);
@@ -388,13 +389,9 @@ switch ($mybb->input['action']) {
 
                 $attach_mod_options = '';
                 if ($attachment['visible'] != 1) {
-                    eval(
-                        "\$attachments .= \"" . $templates->get(
-                            'myshowcase_new_attachments_attachment_unapproved'
-                        ) . "\";"
-                    );
+                    $attachments .= eval(getTemplate('new_attachments_attachment_unapproved'));
                 } else {
-                    eval("\$attachments .= \"" . $templates->get('myshowcase_new_attachments_attachment') . "\";");
+                    $attachments .= eval(getTemplate('new_attachments_attachment'));
                 }
                 $attachcount++;
             }
@@ -405,15 +402,11 @@ switch ($mybb->input['action']) {
                 ) . '<br>';
             if ($attach_limit == -1 || ($attach_limit != 0 && ($attachcount < $attach_limit))) {
                 if ($me->userperms['canwatermark']) {
-                    eval("\$showcase_watermark = \"" . $templates->get('myshowcase_watermark') . "\";");
+                    $showcase_watermark = eval(getTemplate('watermark'));
                 }
-                eval(
-                    "\$showcase_new_attachments_input = \"" . $templates->get(
-                        'myshowcase_new_attachments_input'
-                    ) . "\";"
-                );
+                $showcase_new_attachments_input = eval(getTemplate('new_attachments_input'));
             }
-            eval("\$showcase_attachments = \"" . $templates->get('myshowcase_new_attachments') . "\";");
+            $showcase_attachments = eval(getTemplate('new_attachments'));
         }
 
         if ($mybb->request_method == 'post' && $mybb->input['submit']) {
@@ -446,7 +439,7 @@ switch ($mybb->input['action']) {
             // Set the post data that came from the input to the $post array.
             $default_data = array(
                 'uid' => $showcase_data['uid'],
-                'dateline' => $dateline,
+                'dateline' => TIME_NOW,
                 'approved' => $approved,
                 'approved_by' => $approved_by,
                 'posthash' => $posthash
@@ -492,7 +485,7 @@ switch ($mybb->input['action']) {
             }
             if (count($showcase_errors) > 0) {
                 $error = inline_error($showcase_errors);
-                eval("\$showcase_page = \"" . $templates->get('error') . "\";");
+                $showcase_page = eval($templates->render('error'));
             } else {
                 //update showcase
                 if ($mybb->input['action'] == 'do_editshowcase') {
@@ -519,7 +512,7 @@ switch ($mybb->input['action']) {
         } else {
             $plugins->run_hooks('myshowcase_newedit_start');
 
-            eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_top') . "\";");
+            $showcase_page .= eval(getTemplate('new_top'));
 
             reset($showcase_fields_enabled);
             foreach ($showcase_fields_enabled as $fname => $ftype) {
@@ -543,7 +536,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textbox'));
 
                         if ($showcase_fields_format[$fname] != 'no') {
                             $showcase_field_input .= '&nbsp;' . $lang->myshowcase_editing_number;
@@ -558,7 +551,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textbox'));
                         break;
 
                     case 'textarea':
@@ -569,7 +562,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = '';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_textarea') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_textarea'));
                         break;
 
                     case 'radio':
@@ -594,7 +587,7 @@ switch ($mybb->input['action']) {
                             $showcase_field_value = $results['valueid'];
                             $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == $results['valueid'] ? ' checked' : '');
                             $showcase_field_text = $results['value'];
-                            eval("\$showcase_field_input .= \"" . $templates->get('myshowcase_field_radio') . "\";");
+                            $showcase_field_input .= eval(getTemplate('field_radio'));
                         }
                         break;
 
@@ -606,7 +599,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == 1 ? ' checked="checked"' : '');
                         $showcase_field_options = '';
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_checkbox') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_checkbox'));
                         break;
 
                     case 'db':
@@ -630,7 +623,7 @@ switch ($mybb->input['action']) {
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($showcase_field_value == $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                         }
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_db') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_db'));
                         break;
 
                     case 'date':
@@ -669,20 +662,18 @@ switch ($mybb->input['action']) {
                         for ($i = $showcase_fields_max_length[$fname]; $i >= $showcase_fields_min_length[$fname]; $i--) {
                             $showcase_field_options_y .= '<option value="' . $i . '" ' . ($showcase_field_value_y == $i ? ' selected' : '') . '>' . $i . '</option>';
                         }
-                        eval("\$showcase_field_input = \"" . $templates->get('myshowcase_field_date') . "\";");
+                        $showcase_field_input = eval(getTemplate('field_date'));
                         break;
                 }
 
                 $field_header = ($showcase_fields_require[$fname] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
-                eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_fields') . "\";");
+                $showcase_page .= eval(getTemplate('new_fields'));
             }
 
             $plugins->run_hooks('myshowcase_newedit_end');
 
-            eval("\$showcase_page .= \"" . $templates->get('myshowcase_new_bottom') . "\";");
+            $showcase_page .= eval(getTemplate('new_bottom'));
         }
         break;
     }
 }
-
-?>

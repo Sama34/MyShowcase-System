@@ -11,8 +11,14 @@
  *
  */
 
+declare(strict_types=1);
+
+use function MyShowcase\Core\getTemplatesList;
+
 define('IN_MYBB', 1);
 require_once '../../../global.php';
+
+global $mybb, $db;
 
 if ($mybb->user['uid'] == 0) {
     die('You are not logged in.');
@@ -26,7 +32,7 @@ echo 'Starting template update...<br /><br />';
 
 require_once 'templates.php';
 
-foreach ($myshowcase_templates as $title => $template) {
+foreach (getTemplatesList() as $title => $template) {
     $db->delete_query('templates', "title='" . $title . "' and sid=-2");
     $insert_array = array(
         'title' => $title,
@@ -44,7 +50,3 @@ foreach ($myshowcase_templates as $title => $template) {
 echo '<br /><br />Done with template update.';
 
 echo '<br /><br />Please delete this file now!!!!!!!';
-
-?>
-
- 

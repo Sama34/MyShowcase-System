@@ -11,10 +11,15 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
+
+global $lang, $cache, $db, $plugins;
+global $page;
 
 $page->add_breadcrumb_item($lang->myshowcase_admin_help, 'index.php?module=myshowcase-help');
 $page->output_header($lang->myshowcase_admin_help);
@@ -66,6 +71,5 @@ echo "</div>\n";
 $plugins->run_hooks('admin_myshowcase_help_end');
 
 $showcase_info = myshowcase_info();
-echo '<p /><small>' . $showcase_info['name'] . ' version ' . $showcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $showcase_info['website'] . '">' . $myshowcase_info['author'] . '</a>.</small>';
+echo '<p /><small>' . $showcase_info['name'] . ' version ' . $showcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $showcase_info['website'] . '">' . $showcase_info['author'] . '</a>.</small>';
 $page->output_footer();
-?>

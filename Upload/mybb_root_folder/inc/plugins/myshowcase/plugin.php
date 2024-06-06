@@ -11,17 +11,24 @@
  *
  */
 
+declare(strict_types=1);
+
 namespace MyShowcase\Admin;
 
-use function MyShowcase\Core\load_language;
-use function MyShowcase\Core\load_pluginlibrary;
+use DirectoryIterator;
+
+use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\loadPluginLibrary;
+use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\MyAlerts\getAvailableLocations;
+
+use const MyShowcase\ROOT;
 
 function _info()
 {
     global $lang;
 
-    load_language();
+    loadLanguage();
 
     $myalerts_desc = '';
 
@@ -59,7 +66,7 @@ function _activate()
 {
     global $PL, $lang, $cache, $db;
 
-    load_pluginlibrary();
+    loadPluginLibrary();
 
     $PL->settings('myshowcase', $lang->setting_group_myshowcase, $lang->setting_group_myshowcase_desc, [
         'groups' => [
@@ -157,27 +164,23 @@ pm={$lang->setting_myshowcase_notifications_pm}",
     ]);
 
     // Add template group
-    _dump('templates');
-    /* $templatesDirIterator = new \DirectoryIterator(MYSHOWCASE_ROOT.'/templates');
+    $templatesDirIterator = new DirectoryIterator(ROOT . '/templates');
 
-     $templates = [];
+    $templates = [];
 
-     foreach($templatesDirIterator as $template)
-     {
-         if(!$template->isFile())
-         {
-             continue;
-         }
+    foreach ($templatesDirIterator as $template) {
+        if (!$template->isFile()) {
+            continue;
+        }
 
-         $pathName = $template->getPathname();
+        $pathName = $template->getPathname();
 
-         $pathInfo = pathinfo($pathName);
+        $pathInfo = pathinfo($pathName);
 
-         if($pathInfo['extension'] === 'html')
-         {
-             $templates[$pathInfo['filename']] = file_get_contents($pathName);
-         }
-     }*/
+        if ($pathInfo['extension'] === 'html') {
+            $templates[$pathInfo['filename']] = file_get_contents($pathName);
+        }
+    }
 
     if ($templates) {
         $PL->templates('myshowcase', 'MyShowcase System', $templates);
@@ -310,7 +313,7 @@ function _uninstall()
 {
     global $db, $PL, $mybb;
 
-    load_pluginlibrary();
+    loadPluginLibrary();
 
     //drop tables but only if setting specific to allow uninstall is enabled
     if ($mybb->settings['myshowcase_delete_tables_on_uninstall'] == 1) {
@@ -318,7 +321,7 @@ function _uninstall()
         $query = $db->simple_select('myshowcase_config', 'id');
 
         while ($result = $db->fetch_array($query)) {
-            if ($db->table_exists('myshowcase_data' . $result['id'])) {
+            if (showcaseDataTableExists($result['id'])) {
                 $db->drop_table('myshowcase_data' . $result['id']);
             }
         }
@@ -608,7 +611,7 @@ function _install_task($action = 1)
 {
     global $db, $lang, $cache, $plugins, $new_task;
 
-    load_language();
+    loadLanguage();
 
     $query = $db->simple_select('tasks', '*', "file='myshowcase'", ['limit' => 1]);
 
@@ -659,7 +662,7 @@ function _uninstall_task()
 
 function _deactivate_task()
 {
-    global $db, $cache;
+    global $db, $cache, $plugins;
 
     _install_task(0);
 
@@ -704,10 +707,12 @@ function myshowcase_plugin_install()
     myshowcase_upgrade_install_pre_table($need_upgrade);
 
     //grab sample data if it exists
-    $insert_sample_data = 0;
+    $insert_sample_data = false;
     if (file_exists(MYBB_ROOT . 'inc/plugins/myshowcase/sample_data.php')) {
         require_once(MYBB_ROOT . 'inc/plugins/myshowcase/sample_data.php');
-        $insert_sample_data = 1;
+        $insert_sample_data = true;
+
+        global $custom_fieldsets, $custom_fields, $custom_field_data;
     }
 
     //create table for field sets

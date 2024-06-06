@@ -11,13 +11,21 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\showcasePermissions;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
 
 $full_path = $_SERVER['SCRIPT_FILENAME'];
 $base_name = $_SERVER['SCRIPT_NAME'];
+
+global $lang, $cache, $db, $plugins, $mybb;
+global $page;
 
 $page->add_breadcrumb_item($lang->myshowcase_admin_summary, 'index.php?module=myshowcase-summary');
 
@@ -79,15 +87,17 @@ if ($mybb->input['action'] == 'new') {
             $plugins->run_hooks('admin_myshowcase_summary_insert_end');
 
             //insert default permissions
-            require_once(MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php');
+            require_once(MYBB_ROOT . $mybb->config['admin_dir'] . '/modules/myshowcase/module_meta.php');
+
+            $defaultShowcasePermissions = showcasePermissions();
 
             $curgroups = $cache->read('usergroups');
             ksort($curgroups);
             foreach ($curgroups as $group) {
-                $showcase_defaultperms['id'] = $newid;
-                $showcase_defaultperms['gid'] = $group['gid'];
+                $defaultShowcasePermissions['id'] = $newid;
+                $defaultShowcasePermissions['gid'] = $group['gid'];
 
-                $db->insert_query('myshowcase_permissions', $showcase_defaultperms);
+                $db->insert_query('myshowcase_permissions', $defaultShowcasePermissions);
             }
 
             myshowcase_update_cache('config');
@@ -243,7 +253,7 @@ if ($mybb->input['action'] == 'createtable') {
             //create the table
             $db->write_query($create_sql);
 
-            if ($db->table_exists('myshowcase_data' . $mybb->input['id'])) {
+            if (showcaseDataTableExists($mybb->input['id'])) {
                 $log = array('id' => $mybb->input['id']);
                 log_admin_action($log);
 
@@ -308,7 +318,7 @@ if ($mybb->input['action'] == 'do_deletetable') {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');
             admin_redirect('index.php?module=myshowcase-summary');
         } else {
-            if ($db->table_exists('myshowcase_data' . $mybb->input['id'])) {
+            if (showcaseDataTableExists($mybb->input['id'])) {
                 $query = $db->query('DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->input['id']);
                 $update_array = array(
                     'enabled' => 0
@@ -445,7 +455,7 @@ if ($mybb->input['action'] == 'show_seo') {
             $query_fieldset = $db->simple_select('myshowcase_fieldsets', 'setname', 'setid=' . $result['fieldsetid']);
             $result_fieldset = $db->fetch_array($query_fieldset);
 
-            $table_ready = $db->table_exists('myshowcase_data' . $result['id']);
+            $table_ready = showcaseDataTableExists($result['id']);
 
             if ($table_ready) {
                 $query_myshowcase = $db->query(
@@ -629,5 +639,3 @@ if ($mybb->input['action'] == 'show_seo') {
 
     $page->output_footer();
 }
-
-?>

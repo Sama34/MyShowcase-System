@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 global $showcase_proper, $showcase_lower;
 
 //$l['nav_myshowcase'] = $showcase_proper; //for breadcrumb
@@ -195,4 +197,3 @@ $l['viewing_myshowcase'] = "Viewing <a href=\"../{1}\">{2} entry</a> of <a href=
 $l['viewing_myshowcase_new'] = "Creating <a href=\"../{1}\">New {2}</a>";
 $l['viewing_myshowcase_edit'] = 'Editing a {1} entry';
 $l['viewing_myshowcase_attach'] = "Viewing <a href=\"../{1}\">Attachment</a> in a <a href=\"../{2}\">{3} entry</a> of <a href=\"{4}\">{5}</a>";
-?>

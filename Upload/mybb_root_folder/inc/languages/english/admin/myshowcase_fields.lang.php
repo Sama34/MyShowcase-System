@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 /**
  * FIELDSETS
  */
@@ -115,6 +117,3 @@ $l['myshowcase_field_option_text'] = 'Option text';
 $l['myshowcase_field_invalid_opt'] = 'The selected field option is invalid.';
 
 $l['myshowcase_field_year_order'] = 'For the DATE field the MIN and MAX values need to be in the proper order.';
-
-
-?>

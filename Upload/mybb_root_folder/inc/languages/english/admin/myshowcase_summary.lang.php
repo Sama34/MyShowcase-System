@@ -11,6 +11,8 @@
  *
  */
 
+declare(strict_types=1);
+
 //main words
 $l['myshowcase_summary_id'] = 'ID';
 $l['myshowcase_summary_name'] = 'Name';
@@ -77,5 +79,3 @@ $l['myshowcase_summary_disable'] = 'Disable';
 $l['myshowcase_summary_createtable'] = 'Create Table';
 $l['myshowcase_summary_deletetable'] = 'Delete Table';
 $l['myshowcase_summary_seo'] = 'Show SEO';
-
-?>

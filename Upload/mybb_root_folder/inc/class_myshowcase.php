@@ -11,6 +11,12 @@
  *
  */
 
+declare(strict_types=1);
+
+use function MyShowcase\Core\getSetting;
+use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\showcasePermissions;
+
 class MyShowcaseSystem
 {
 
@@ -262,7 +268,7 @@ class MyShowcaseSystem
         );
 
         //make sure data table exists and assign table name var if it does
-        if ($db->table_exists('myshowcase_data' . $this->id)) {
+        if (showcaseDataTableExists($this->id)) {
             $this->table_name = 'myshowcase_data' . $this->id;
         }
 
@@ -320,18 +326,18 @@ class MyShowcaseSystem
             if (!array_key_exists($group['gid'], $showcase_group_perms)) {
                 $showcase_group_perms[$group['gid']]['id'] = $group['gid'];
                 $showcase_group_perms[$group['gid']]['name'] = $group['title'];
-                $showcase_group_perms[$group['gid']]['canview'] = $showcase_defaultperms['canview'];
-                $showcase_group_perms[$group['gid']]['canadd'] = $showcase_defaultperms['canadd'];
-                $showcase_group_perms[$group['gid']]['canedit'] = $showcase_defaultperms['canedit'];
-                $showcase_group_perms[$group['gid']]['cancomment'] = $showcase_defaultperms['cancomment'];
-                $showcase_group_perms[$group['gid']]['canattach'] = $showcase_defaultperms['canattach'];
-                $showcase_group_perms[$group['gid']]['candelowncomment'] = $showcase_defaultperms['candelowncomment'];
-                $showcase_group_perms[$group['gid']]['candelauthcomment'] = $showcase_defaultperms['candelauthcomment'];
-                $showcase_group_perms[$group['gid']]['canviewcomment'] = $showcase_defaultperms['canviewcomment'];
-                $showcase_group_perms[$group['gid']]['canviewattach'] = $showcase_defaultperms['canviewattach'];
-                $showcase_group_perms[$group['gid']]['cansearch'] = $showcase_defaultperms['cansearch'];
-                $showcase_group_perms[$group['gid']]['canwatermark'] = $showcase_defaultperms['canwatermark'];
-                $showcase_group_perms[$group['gid']]['attachlimit'] = $showcase_defaultperms['attachlimit'];
+                $showcase_group_perms[$group['gid']]['canview'] = showcasePermissions()['canview'];
+                $showcase_group_perms[$group['gid']]['canadd'] = showcasePermissions()['canadd'];
+                $showcase_group_perms[$group['gid']]['canedit'] = showcasePermissions()['canedit'];
+                $showcase_group_perms[$group['gid']]['cancomment'] = showcasePermissions()['cancomment'];
+                $showcase_group_perms[$group['gid']]['canattach'] = showcasePermissions()['canattach'];
+                $showcase_group_perms[$group['gid']]['candelowncomment'] = showcasePermissions()['candelowncomment'];
+                $showcase_group_perms[$group['gid']]['candelauthcomment'] = showcasePermissions()['candelauthcomment'];
+                $showcase_group_perms[$group['gid']]['canviewcomment'] = showcasePermissions()['canviewcomment'];
+                $showcase_group_perms[$group['gid']]['canviewattach'] = showcasePermissions()['canviewattach'];
+                $showcase_group_perms[$group['gid']]['cansearch'] = showcasePermissions()['cansearch'];
+                $showcase_group_perms[$group['gid']]['canwatermark'] = showcasePermissions()['canwatermark'];
+                $showcase_group_perms[$group['gid']]['attachlimit'] = showcasePermissions()['attachlimit'];
                 $showcase_group_perms[$group['gid']]['intable'] = 0;
             }
         }
@@ -393,8 +399,7 @@ class MyShowcaseSystem
             //check moderator perms
 
             //assign full mod perms as default for supermod, admin groups if user in those groups
-            $result = array_intersect(array(3, 4), $groups);
-            if (count($result) > 0) {
+            if (is_member(getSetting('moderatorGroups'), $user)) {
                 $modperms = array(
                     'canmodapprove' => 1,
                     'canmodedit' => 1,
@@ -540,5 +545,3 @@ class MyShowcaseSystem
     }
 
 }
-
-?>

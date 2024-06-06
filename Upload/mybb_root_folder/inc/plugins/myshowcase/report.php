@@ -11,11 +11,19 @@
  *
  */
 
+declare(strict_types=1);
+
+use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\getTemplate;
+
+global $mybb, $lang, $db, $templates, $plugins;
+global $me, $forumdir;
+
 switch ($mybb->input['action']) {
     case 'report':
     {
         //load report lang and update with our items
-        $lang->load('report');
+        loadLanguage('report');
         $lang->only_report = $lang->myshowcase_report_warning;
         $lang->report_error = $lang->myshowcase_report_error;
         $lang->report_reason = $lang->myshowcase_report_reason;
@@ -32,7 +40,7 @@ switch ($mybb->input['action']) {
         }
 
         $report_url = SHOWCASE_URL;
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_report') . "\";");
+        $showcase_page = eval(getTemplate('report'));
 
         break;
     }
@@ -44,14 +52,14 @@ switch ($mybb->input['action']) {
         }
 
         //load report lang and update with our items
-        $lang->load('report');
+        loadLanguage('report');
         $lang->report_error = $lang->myshowcase_report_error;
         $lang->post_reported = $lang->myshowcase_report_success;
 
         verify_post_check($mybb->input['my_post_key']);
 
         if (!trim($mybb->input['reason'])) {
-            eval("\$report = \"" . $templates->get('report_noreason') . "\";");
+            $report = eval($templates->render('report_noreason'));
             output_page($report);
             exit;
         }
@@ -80,12 +88,12 @@ switch ($mybb->input['action']) {
         myshowcase_update_cache('reports');
 
         if (!$rid) {
-            eval("\$report = \"" . $templates->get('report_error') . "\";");
+            $report = eval($templates->render('report_error'));
             output_page($report);
             exit;
 //			error($lang->myshowcase_report_error);
         } else {
-            eval("\$report = \"" . $templates->get('report_thanks') . "\";");
+            $report = eval($templates->render('report_thanks'));
             output_page($report);
             exit;
 //			$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
@@ -104,7 +112,7 @@ switch ($mybb->input['action']) {
             error_no_permission();
         }
 
-        $lang->load('modcp');
+        loadLanguage('modcp');
 
         if (!$mybb->settings['threadsperpage']) {
             $mybb->settings['threadsperpage'] = 20;
@@ -156,7 +164,7 @@ switch ($mybb->input['action']) {
 
         $multipage = multipage($postcount, $perpage, $page, $me->mainfile . '?action=reports');
         if ($postcount > $perpage) {
-            eval("\$reportspages = \"" . $templates->get('myshowcase_reports_multipage') . "\";");
+            $reportspages = eval(getTemplate('reports_multipage'));
         }
 
         $reports = '';
@@ -195,14 +203,14 @@ switch ($mybb->input['action']) {
 
             $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
             $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
-            eval("\$reports .= \"" . $templates->get('myshowcase_reports_report') . "\";");
+            $reports .= eval(getTemplate('reports_report'));
         }
         if (!$reports) {
-            eval("\$reports = \"" . $templates->get('modcp_reports_noreports') . "\";");
+            $reports = eval($templates->render('modcp_reports_noreports'));
         }
 
         $showcase_file = SHOWCASE_URL;
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_reports') . "\";");
+        $showcase_page = eval(getTemplate('reports'));
 
         break;
     }
@@ -213,7 +221,7 @@ switch ($mybb->input['action']) {
             error_no_permission();
         }
 
-        $lang->load('modcp');
+        loadLanguage('modcp');
 
         // Verify incoming POST request
         verify_post_check($mybb->input['my_post_key']);
@@ -243,7 +251,7 @@ switch ($mybb->input['action']) {
             error_no_permission();
         }
 
-        $lang->load('modcp');
+        loadLanguage('modcp');
 
         if (!$mybb->settings['threadsperpage']) {
             $mybb->settings['threadsperpage'] = 20;
@@ -295,7 +303,7 @@ switch ($mybb->input['action']) {
 
         $multipage = multipage($postcount, $perpage, $page, $me->mainfile . '?action=allreports');
         if ($postcount > $perpage) {
-            eval("\$reportspages = \"" . $templates->get('myshowcase_reports_multipage') . "\";");
+            $reportspages = eval(getTemplate('reports_multipage'));
         }
 
         $reports = '';
@@ -338,16 +346,15 @@ switch ($mybb->input['action']) {
 
             $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
             $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
-            eval("\$reports .= \"" . $templates->get('myshowcase_reports_allreport') . "\";");
+            $reports .= eval(getTemplate('reports_allreport'));
         }
         if (!$reports) {
-            eval("\$reports = \"" . $templates->get('modcp_reports_noreports') . "\";");
+            $reports = eval($templates->render('modcp_reports_noreports'));
         }
 
         $showcase_file = SHOWCASE_URL;
-        eval("\$showcase_page = \"" . $templates->get('myshowcase_allreports') . "\";");
+        $showcase_page = eval(getTemplate('allreports'));
 
         break;
     }
 }
-?>

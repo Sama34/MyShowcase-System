@@ -11,10 +11,15 @@
  *
  */
 
+declare(strict_types=1);
+
 // Disallow direct access to this file for security reasons
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
+
+global $lang, $cache, $db, $plugins;
+global $page;
 
 $page->add_breadcrumb_item($lang->myshowcase_admin_summary, 'index.php?module=myshowcase-cache');
 
@@ -43,4 +48,3 @@ log_admin_action($log);
 
 flash_message($lang->myshowcase_cache_update_success, 'success');
 admin_redirect('index.php?module=myshowcase-summary');
-?>
