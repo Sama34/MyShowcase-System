@@ -49,6 +49,7 @@ if (defined('IN_ADMINCP')) {
     require_once ROOT . '/forum_hooks.php';
 
     addHooks('MyShowcase\ForumHooks');
+}
 
 function myshowcase_info(): array
 {
