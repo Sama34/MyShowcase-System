@@ -121,28 +121,25 @@ if ($mybb->get_input('action') == 'enable') {
         $result = $db->fetch_array($query);
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
+        } elseif (!@is_dir(MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']) || !@is_writable(
+                MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']
+            )) {//check if image folder exists and do not enable if folder does not exist
+            flash_message($lang->myshowcase_summary_no_folder, 'error');
         } else {
-            //check if image folder exists and do not enable if folder does not exist
-            if (!@is_dir(MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']) || !@is_writable(
-                    MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']
-                )) {
-                flash_message($lang->myshowcase_summary_no_folder, 'error');
+            $plugins->run_hooks('admin_myshowcase_summary_enable_begin');
+
+            $update_array = [
+                'enabled' => 1
+            ];
+            $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
+
+            if ($db->affected_rows()) {
+                $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
+                log_admin_action($log);
+
+                flash_message($lang->myshowcase_summary_enable_success, 'success');
             } else {
-                $plugins->run_hooks('admin_myshowcase_summary_enable_begin');
-
-                $update_array = [
-                    'enabled' => 1
-                ];
-                $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
-
-                if ($db->affected_rows()) {
-                    $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
-                    log_admin_action($log);
-
-                    flash_message($lang->myshowcase_summary_enable_success, 'success');
-                } else {
-                    flash_message($lang->myshowcase_summary_enable_failed, 'error');
-                }
+                flash_message($lang->myshowcase_summary_enable_failed, 'error');
             }
         }
         myshowcase_update_cache('config');
