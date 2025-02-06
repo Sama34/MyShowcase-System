@@ -14,7 +14,13 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\showcaseDataTableExists;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -113,13 +119,13 @@ if ($mybb->get_input('action') == 'new') {
             log_admin_action($log);
 
             // Reset new myshowcase info
-            unset($mybb->get_input('newname'));
+            unset($mybb->input['newname']);
         }
 
-        myshowcase_update_cache('config');
-        myshowcase_update_cache('fields');
-        myshowcase_update_cache('field_data');
-        myshowcase_update_cache('fieldsets');
+        cacheUpdate(CACHE_TYPE_CONFIG);
+        cacheUpdate(CACHE_TYPE_FIELDS);
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
     }
 
     $plugins->run_hooks('admin_myshowcase_fields_insert_end');
@@ -130,7 +136,7 @@ if ($mybb->get_input('action') == 'new') {
 
 //edit fields in a field set
 if ($mybb->get_input('action') == 'editset') {
-    if (isset($mybb->get_input('setid', MyBB::INPUT_INT)) && is_numeric($mybb->get_input('setid', MyBB::INPUT_INT))) {
+    if ($mybb->get_input('setid', MyBB::INPUT_INT)) {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
         $query = $db->simple_select(
@@ -272,29 +278,29 @@ if ($mybb->get_input('action') == 'editset') {
                 $do_default_option_insert = 0;
                 switch ($mybb->get_input('newhtml_type')) {
                     case 'db':
-                        $mybb->get_input('newfield_type') = 'int';
-                        $mybb->get_input('newmax_length', MyBB::INPUT_INT) = 3;
+                        $mybb->input['newfield_type'] = 'int';
+                        $mybb->input['newmax_length'] = 3;
                         $do_default_option_insert = 1;
                         break;
 
                     case 'radio':
-                        $mybb->get_input('newfield_type') = 'int';
-                        $mybb->get_input('newmax_length', MyBB::INPUT_INT) = 1;
+                        $mybb->input['newfield_type'] = 'int';
+                        $mybb->input['newmax_length'] = 1;
                         $do_default_option_insert = 1;
                         break;
 
                     case 'checkbox':
-                        $mybb->get_input('newfield_type') = 'int';
-                        $mybb->get_input('newmax_length', MyBB::INPUT_INT) = 1;
+                        $mybb->input['newfield_type'] = 'int';
+                        $mybb->input['newmax_length'] = 1;
                         break;
 
                     case 'date':
-                        $mybb->get_input('newfield_type') = 'varchar';
-                        $mybb->get_input('newmin_length', MyBB::INPUT_INT) = max(
+                        $mybb->input['newfield_type'] = 'varchar';
+                        $mybb->input['newmin_length'] = max(
                             intval($mybb->get_input('newmin_length', MyBB::INPUT_INT)),
                             1901
                         );
-                        $mybb->get_input('newmax_length', MyBB::INPUT_INT) = min(
+                        $mybb->input['newmax_length'] = min(
                             intval($mybb->get_input('newmax_length', MyBB::INPUT_INT)),
                             2038
                         );
@@ -315,8 +321,8 @@ if ($mybb->get_input('action') == 'editset') {
                         break;
 
                     case 'url':
-                        $mybb->get_input('newfield_type') = 'varchar';
-                        $mybb->get_input('newmax_length', MyBB::INPUT_INT) = 255;
+                        $mybb->input['newfield_type'] = 'varchar';
+                        $mybb->input['newmax_length'] = 255;
                         break;
                 }
 
@@ -338,11 +344,11 @@ if ($mybb->get_input('action') == 'editset') {
                     'max_length' => intval($mybb->get_input('newmax_length', MyBB::INPUT_INT)),
                     'field_order' => intval($mybb->get_input('newfield_order', MyBB::INPUT_INT)),
                     'list_table_order' => intval($mybb->get_input('newlist_table_order', MyBB::INPUT_INT)),
-                    'enabled' => (isset($mybb->get_input('newenabled', MyBB::INPUT_INT)) ? 1 : 0),
-                    'require' => (isset($mybb->get_input('newrequire', MyBB::INPUT_INT)) ? 1 : 0),
-                    'parse' => (isset($mybb->get_input('newparse', MyBB::INPUT_INT)) ? 1 : 0),
-                    'searchable' => (isset($mybb->get_input('newsearchable', MyBB::INPUT_INT)) ? 1 : 0),
-                    'format' => $mybb->get_input('newformat')
+                    'enabled' => intval($mybb->get_input('newenabled', MyBB::INPUT_INT)),
+                    'require' => intval($mybb->get_input('newrequire', MyBB::INPUT_INT)),
+                    'parse' => intval($mybb->get_input('newparse', MyBB::INPUT_INT)),
+                    'searchable' => intval($mybb->get_input('newsearchable', MyBB::INPUT_INT)),
+                    'format' => intval($mybb->get_input('newformat', MyBB::INPUT_INT)),
                 ];
 
                 $insert_query = $db->insert_query('myshowcase_fields', $insert_array);
@@ -469,6 +475,8 @@ if ($mybb->get_input('action') == 'editset') {
             ['width' => '4%', 'class' => 'align_center']
         );
         $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
+
+        $max_order = 0;
 
         $query = $db->simple_select(
             'myshowcase_fields',
@@ -750,10 +758,10 @@ if ($mybb->get_input('action') == 'editset') {
         $form->end();
         $plugins->run_hooks('admin_myshowcase_fields_editset_end');
 
-        myshowcase_update_cache('config');
-        myshowcase_update_cache('fields');
-        myshowcase_update_cache('field_data');
-        myshowcase_update_cache('fieldsets');
+        cacheUpdate(CACHE_TYPE_CONFIG);
+        cacheUpdate(CACHE_TYPE_FIELDS);
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
     } else {
         flash_message($lang->myshowcase_fields_invalid_id, 'error');
         admin_redirect('index.php?module=myshowcase-fields');
@@ -762,7 +770,7 @@ if ($mybb->get_input('action') == 'editset') {
 
 //delete field set
 if ($mybb->get_input('action') == 'delset') {
-    if (isset($mybb->get_input('setid', MyBB::INPUT_INT)) && is_numeric($mybb->get_input('setid', MyBB::INPUT_INT))) {
+    if ($mybb->get_input('setid', MyBB::INPUT_INT)) {
         $query = $db->simple_select(
             'myshowcase_fieldsets',
             '*',
@@ -814,9 +822,7 @@ if ($mybb->get_input('action') == 'delset') {
 
 //delete field set
 if ($mybb->get_input('action') == 'do_delset') {
-    if (isset($mybb->get_input('setid', MyBB::INPUT_INT)) && is_numeric(
-            $mybb->get_input('setid', MyBB::INPUT_INT)
-        ) && $mybb->request_method == 'post') {
+    if ($mybb->get_input('setid', MyBB::INPUT_INT) && $mybb->request_method == 'post') {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
@@ -843,10 +849,10 @@ if ($mybb->get_input('action') == 'do_delset') {
 
             $plugins->run_hooks('admin_myshowcase_fields_dodeleteset_end');
 
-            myshowcase_update_cache('config');
-            myshowcase_update_cache('fields');
-            myshowcase_update_cache('field_data');
-            myshowcase_update_cache('fieldsets');
+            cacheUpdate(CACHE_TYPE_CONFIG);
+            cacheUpdate(CACHE_TYPE_FIELDS);
+            cacheUpdate(CACHE_TYPE_FIELD_DATA);
+            cacheUpdate(CACHE_TYPE_FIELD_SETS);
 
             // Log admin action
             $log = ['setid' => $mybb->get_input('setid', MyBB::INPUT_INT)];
@@ -860,7 +866,7 @@ if ($mybb->get_input('action') == 'do_delset') {
 
 //edit specific field in a field set (DB or select types)
 if ($mybb->get_input('action') == 'editopt') {
-    if (isset($mybb->get_input('fid', MyBB::INPUT_INT)) && is_numeric($mybb->get_input('fid', MyBB::INPUT_INT))) {
+    if ($mybb->get_input('fid', MyBB::INPUT_INT)) {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
         $query = $db->simple_select(
@@ -959,10 +965,10 @@ if ($mybb->get_input('action') == 'editopt') {
                 $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
             }
 
-            myshowcase_update_cache('config');
-            myshowcase_update_cache('fields');
-            myshowcase_update_cache('field_data');
-            myshowcase_update_cache('fieldsets');
+            cacheUpdate(CACHE_TYPE_CONFIG);
+            cacheUpdate(CACHE_TYPE_FIELDS);
+            cacheUpdate(CACHE_TYPE_FIELD_DATA);
+            cacheUpdate(CACHE_TYPE_FIELD_SETS);
 
             flash_message($lang->myshowcase_field_update_opt_success, 'success');
             admin_redirect(
@@ -1002,6 +1008,8 @@ if ($mybb->get_input('action') == 'editopt') {
             ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
+
+        $max_order = 0;
 
         $query = $db->simple_select(
             'myshowcase_field_data',
@@ -1114,9 +1122,7 @@ if ($mybb->get_input('action') == 'editopt') {
 
 //delete field option
 if ($mybb->get_input('action') == 'delopt') {
-    if (isset($mybb->get_input('valueid', MyBB::INPUT_INT)) && is_numeric(
-            $mybb->get_input('valueid', MyBB::INPUT_INT)
-        )) {
+    if ($mybb->get_input('valueid', MyBB::INPUT_INT)) {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
@@ -1168,10 +1174,10 @@ if ($mybb->get_input('action') == 'delopt') {
 
                 $plugins->run_hooks('admin_myshowcase_fields_delopt_end');
 
-                myshowcase_update_cache('config');
-                myshowcase_update_cache('fields');
-                myshowcase_update_cache('field_data');
-                myshowcase_update_cache('fieldsets');
+                cacheUpdate(CACHE_TYPE_CONFIG);
+                cacheUpdate(CACHE_TYPE_FIELDS);
+                cacheUpdate(CACHE_TYPE_FIELD_DATA);
+                cacheUpdate(CACHE_TYPE_FIELD_SETS);
 
                 // Log admin action
                 $log = [
@@ -1195,7 +1201,7 @@ if ($mybb->get_input('action') == 'delopt') {
 
 //delete specific field
 if ($mybb->get_input('action') == 'delfield') {
-    if (isset($mybb->get_input('fid', MyBB::INPUT_INT)) && is_numeric($mybb->get_input('fid', MyBB::INPUT_INT))) {
+    if ($mybb->get_input('fid', MyBB::INPUT_INT)) {
         //check if set exists
         $query = $db->simple_select(
             'myshowcase_fieldsets',
@@ -1283,9 +1289,7 @@ if ($mybb->get_input('action') == 'delfield') {
 
 //delete field set
 if ($mybb->get_input('action') == 'do_delfield') {
-    if (isset($mybb->get_input('fid', MyBB::INPUT_INT)) && is_numeric(
-            $mybb->get_input('fid', MyBB::INPUT_INT)
-        ) && $mybb->request_method == 'post') {
+    if ($mybb->get_input('fid', MyBB::INPUT_INT) && $mybb->request_method == 'post') {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
@@ -1341,10 +1345,10 @@ if ($mybb->get_input('action') == 'do_delfield') {
 
         $plugins->run_hooks('admin_myshowcase_fields_dodelete_end');
 
-        myshowcase_update_cache('config');
-        myshowcase_update_cache('fields');
-        myshowcase_update_cache('field_data');
-        myshowcase_update_cache('fieldsets');
+        cacheUpdate(CACHE_TYPE_CONFIG);
+        cacheUpdate(CACHE_TYPE_FIELDS);
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
 
         // Log admin action
         $log = [

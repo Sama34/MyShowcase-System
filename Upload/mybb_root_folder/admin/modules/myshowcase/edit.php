@@ -14,8 +14,13 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcasePermissions;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -53,9 +58,9 @@ $watermark_locs['lower-right'] = $lang->myshowcase_lower_right;
 
 $plugins->run_hooks('admin_myshowcase_edit_begin');
 
-if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
-        $mybb->get_input('id', MyBB::INPUT_INT)
-    ) && $mybb->get_input('action') != '') {
+global $mybb;
+
+if ($mybb->get_input('id', MyBB::INPUT_INT) && $mybb->get_input('action') != '') {
     if ($mybb->get_input('action') == 'edit-main' || $mybb->get_input('action') == 'edit-other' || $mybb->get_input(
             'action'
         ) == 'edit-perms' || $mybb->get_input('action') == 'edit-mod' || $mybb->get_input('action') == 'del-mod') {
@@ -89,7 +94,7 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                         );
                     }
 
-                    myshowcase_update_cache('permissions');
+                    cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
                     if ($db->affected_rows()) {
                         flash_message(
@@ -138,7 +143,7 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                         "id='{$mybb->get_input('id', MyBB::INPUT_INT)}'"
                     );
 
-                    myshowcase_update_cache('config');
+                    cacheUpdate(CACHE_TYPE_CONFIG);
 
                     if ($db->affected_rows()) {
                         flash_message(
@@ -190,7 +195,7 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                         "id='{$mybb->get_input('id', MyBB::INPUT_INT)}'"
                     );
 
-                    myshowcase_update_cache('config');
+                    cacheUpdate(CACHE_TYPE_CONFIG);
 
                     if ($db->affected_rows()) {
                         flash_message(
@@ -235,7 +240,7 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                     //insert new user or group as mod
                     if ($mybb->get_input('add') == 'modgroup') {
                         //since MyBB 1.6.3 autocomplete adds "(Usergroup X)" and we need to remove that
-                        $mybb->get_input('usergroup') = trim(
+                        $mybb->input['usergroup'] = trim(
                             preg_replace('/\(' . $lang->usergroup . '(.+)\)/i', '', $mybb->get_input('usergroup'))
                         );
 
@@ -255,15 +260,10 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                             'id' => $mybb->get_input('id', MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
-                            'canmodapprove' => (isset($mybb->get_input('gcanmodapprove', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmodedit' => (isset($mybb->get_input('gcanmodedit', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmoddelete' => (isset($mybb->get_input('gcanmoddelete', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmoddelcomment' => (isset(
-                                $mybb->get_input(
-                                    'gcanmoddelcomment',
-                                    MyBB::INPUT_INT
-                                )
-                            ) ? 1 : 0)
+                            'canmodapprove' => $mybb->get_input('gcanmodapprove', MyBB::INPUT_INT),
+                            'canmodedit' => $mybb->get_input('gcanmodedit', MyBB::INPUT_INT),
+                            'canmoddelete' => $mybb->get_input('gcanmoddelete', MyBB::INPUT_INT),
+                            'canmoddelcomment' => $mybb->get_input('gcanmoddelcomment', MyBB::INPUT_INT),
                         ];
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
@@ -286,21 +286,16 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                             'id' => $mybb->get_input('id', MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
-                            'canmodapprove' => (isset($mybb->get_input('ucanmodapprove', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmodedit' => (isset($mybb->get_input('ucanmodedit', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmoddelete' => (isset($mybb->get_input('ucanmoddelete', MyBB::INPUT_INT)) ? 1 : 0),
-                            'canmoddelcomment' => (isset(
-                                $mybb->get_input(
-                                    'ucanmoddelcomment',
-                                    MyBB::INPUT_INT
-                                )
-                            ) ? 1 : 0)
+                            'canmodapprove' => $mybb->get_input('ucanmodapprove', MyBB::INPUT_INT),
+                            'canmodedit' => $mybb->get_input('ucanmodedit', MyBB::INPUT_INT),
+                            'canmoddelete' => $mybb->get_input('ucanmoddelete', MyBB::INPUT_INT),
+                            'canmoddelcomment' => $mybb->get_input('ucanmoddelcomment', MyBB::INPUT_INT),
                         ];
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
                     }
 
-                    myshowcase_update_cache('moderators');
+                    cacheUpdate(CACHE_TYPE_MODERATORS);
 
                     flash_message(
                         $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_moderators,
@@ -320,7 +315,7 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
         if ($mybb->get_input('action') == 'del-mod') {
             $db->delete_query('myshowcase_moderators', "mid={$mybb->get_input('mid', MyBB::INPUT_INT)}");
 
-            myshowcase_update_cache('moderators');
+            cacheUpdate(CACHE_TYPE_MODERATORS);
 
             if ($db->affected_rows() == 0) {
                 flash_message($lang->myshowcase_mod_delete_error . ': ' . $lang->myshowcase_admin_moderators, 'error');
@@ -1235,8 +1230,8 @@ if (isset($mybb->get_input('id', MyBB::INPUT_INT)) && is_numeric(
                     );
                 }
 
-                myshowcase_update_cache('config');
-                myshowcase_update_cache('permissions');
+                cacheUpdate(CACHE_TYPE_CONFIG);
+                cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
                 flash_message($lang->myshowcase_edit_delete_success, 'success');
                 admin_redirect('index.php?module=myshowcase-summary');

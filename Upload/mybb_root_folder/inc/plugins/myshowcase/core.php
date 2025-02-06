@@ -17,7 +17,7 @@ namespace MyShowcase\Core;
 
 use DirectoryIterator;
 
-use function MyShowcase\Admin\_info;
+use function MyShowcase\Admin\pluginInformation;
 
 use const MyShowcase\ROOT;
 
@@ -26,6 +26,20 @@ const SHOWCASE_STATUS_ENABLED = 1;
 const SHOWCASE_UPLOAD_STATUS_INVALID = 1;
 
 const SHOWCASE_UPLOAD_STATUS_FAILED = 2;
+
+const CACHE_TYPE_CONFIG = 'config';
+
+const CACHE_TYPE_PERMISSIONS = 'permissions';
+
+const CACHE_TYPE_FIELD_SETS = 'fields';
+
+const CACHE_TYPE_FIELDS = 'fields';
+
+const CACHE_TYPE_FIELD_DATA = 'field_data';
+
+const CACHE_TYPE_MODERATORS = 'moderators';
+
+const CACHE_TYPE_REPORTS = 'reports';
 
 function loadLanguage(
     string $languageFileName = 'myshowcase',
@@ -52,14 +66,14 @@ function loadPluginLibrary(bool $check = true): bool
     if ($file_exists = file_exists(PLUGINLIBRARY)) {
         global $PL;
 
-        $PL or require_once PLUGINLIBRARY;
+        $PL || require_once PLUGINLIBRARY;
     }
 
     if (!$check) {
         return false;
     }
 
-    $_info = _info();
+    $_info = pluginInformation();
 
     if (!$file_exists || $PL->version < $_info['pl']['version']) {
         flash_message(
@@ -202,11 +216,117 @@ function getTemplatesList(): array
     return $templatesList;
 }
 
-function cacheGet(): array
+/**
+ * Update the cache.
+ *
+ * @param string The cache item.
+ * @param bool Clear the cache item.
+ */
+function cacheUpdate(string $cacheKey): bool
+{
+    global $db, $cache;
+
+    $cacheData = [];
+
+    switch ($cacheKey) {
+        case CACHE_TYPE_CONFIG:
+            $query = $db->simple_select(
+                'myshowcase_config',
+                'id, name, description, mainfile, fieldsetid, imgfolder, defaultimage, watermarkimage, watermarkloc, use_attach, f2gpath, enabled, allowsmilies, allowbbcode, allowhtml, prunetime, modnewedit, othermaxlength, allow_attachments, allow_comments, thumb_width, thumb_height, comment_length, comment_dispinit, disp_attachcols, disp_empty, link_in_postbit, portal_random'
+            );
+
+            while ($showcaseData = $db->fetch_array($query)) {
+                $cacheData[(int)$showcaseData['id']] = [
+                    'mainfile' => (string)$showcaseData['mainfile'],
+                    'enabled' => (bool)$showcaseData['enabled'],
+                    'prunetime' => (int)$showcaseData['prunetime']
+                ];
+            }
+
+            break;
+        case CACHE_TYPE_PERMISSIONS:
+            $query = $db->simple_select(
+                'myshowcase_permissions',
+                'pid, id, gid, canview, canadd, canedit, cancomment, canattach, canviewcomment, canviewattach, candelowncomment, candelauthcomment, cansearch, canwatermark, attachlimit'
+            );
+
+            while ($permissionData = $db->fetch_array($query)) {
+                $cacheData[(int)$permissionData['id']][(int)$permissionData['gid']] = $permissionData;
+            }
+
+            break;
+        case CACHE_TYPE_FIELD_SETS:
+            $query = $db->simple_select(
+                'myshowcase_fieldsets'
+            );
+
+            while ($fieldsetData = $db->fetch_array($query)) {
+                $cacheData[(int)$fieldsetData['setid']] = $fieldsetData;
+            }
+
+            break;
+        case CACHE_TYPE_FIELDS:
+            $query = $db->simple_select(
+                'myshowcase_fields',
+                '*',
+                '1=1',
+                ['order_by' => 'setid, field_order']
+            );
+
+            while ($fieldData = $db->fetch_array($query)) {
+                $cacheData[(int)$fieldData['setid']][(int)$fieldData['fid']] = $fieldData;
+            }
+
+            break;
+        case CACHE_TYPE_FIELD_DATA;
+            $query = $db->simple_select(
+                'myshowcase_field_data',
+                '*',
+                '1=1',
+                ['order_by' => 'setid, fid, disporder']
+            );
+
+            while ($fieldValueData = $db->fetch_array($query)) {
+                $cacheData[(int)$fieldValueData['setid']][(int)$fieldValueData['fid']][(int)$fieldValueData['valueid']] = $fieldValueData;
+            }
+
+            break;
+        case CACHE_TYPE_MODERATORS;
+            $query = $db->simple_select(
+                'myshowcase_moderators'
+            );
+
+            while ($moderatorData = $db->fetch_array($query)) {
+                $cacheData[(int)$moderatorData['id']][(int)$moderatorData['mid']] = $moderatorData;
+            }
+
+            break;
+        case CACHE_TYPE_REPORTS;
+            $query = $db->simple_select(
+                'myshowcase_reports',
+                '*',
+                'status=0'
+            );
+
+            while ($reportData = $db->fetch_array($query)) {
+                $cacheData[(int)$reportData['id']][(int)$reportData['gid']][(int)$reportData['rid']] = $reportData;
+            }
+
+            break;
+    }
+
+    if ($cacheData) {
+        $cache->update("myshowcase_{$cacheKey}", $cacheData);
+    }
+
+    return true;
+}
+
+function cacheGet(string $cacheKey): array
 {
     global $cache;
 
-    return $cache->read('myshowcase_config') ?? [];
+    return $cache->read("myshowcase_{$cacheKey}") ?? [];
 }
 
 function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): array
@@ -709,4 +829,140 @@ function fileUpload(array $fileData, string $uploadsPath, string $fileName = '')
     $returnData['size'] = $fileData['size'];
 
     return hooksRun('upload_file_end', $returnData);
+}
+
+function entryGetRandom(): string
+{
+    global $db, $lang, $mybb, $cache, $templates;
+
+    //get list of enabled myshowcases with random in portal turned on
+    $showcase_list = [];
+
+    $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
+    foreach ($myshowcases as $id => $myshowcase) {
+        //$myshowcase['portal_random'] == 1;
+        if ($myshowcase['enabled'] == 1 && $myshowcase['portal_random'] == 1) {
+            $showcase_list[$id]['name'] = $myshowcase['name'];
+            $showcase_list[$id]['mainfile'] = $myshowcase['mainfile'];
+            $showcase_list[$id]['imgfolder'] = $myshowcase['imgfolder'];
+            $showcase_list[$id]['fieldsetid'] = $myshowcase['fieldsetid'];
+        }
+    }
+
+    //if no showcases set to show on portal return
+    if (count($showcase_list) == 0) {
+        return '';
+    } else {
+        //get a random showcase id of those enabled
+        $rand_id = array_rand($showcase_list, 1);
+        $rand_showcase = $showcase_list[$rand_id];
+
+        /* URL Definitions */
+        if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
+            $showcase_file = strtolower($rand_showcase['name']) . '-view-{gid}.html';
+        } else {
+            $showcase_file = $rand_showcase['mainfile'] . '?action=view&gid={gid}';
+        }
+
+        //init fixed fields
+        $fields_fixed = [];
+        $fields_fixed[0]['name'] = 'g.uid';
+        $fields_fixed[0]['type'] = 'default';
+        $fields_fixed[1]['name'] = 'dateline';
+        $fields_fixed[1]['type'] = 'default';
+
+        //get dynamic field info for the random showcase
+        $field_list = [];
+        $fields = cacheGet(CACHE_TYPE_FIELD_SETS);
+
+        //get subset specific to the showcase given assigned field set
+        $fields = $fields[$rand_showcase['fieldsetid']];
+
+        //get fields that are enabled and set for list display with pad to help sorting fixed fields)
+        $description_list = [];
+        foreach ($fields as $id => $field) {
+            if ($field['list_table_order'] != -1 && $field['enabled'] == 1) {
+                $field_list[$field['list_table_order'] + 10]['name'] = $field['name'];
+                $field_list[$field['list_table_order'] + 10]['type'] = $field['html_type'];
+                $description_list[$field['list_table_order']] = $field['name'];
+            }
+        }
+
+        //merge dynamic and fixed fields
+        $fields_for_search = array_merge($fields_fixed, $field_list);
+
+        //sort array of header fields by their list display order
+        ksort($fields_for_search);
+
+        //build where clause based on search terms
+        $addon_join = '';
+        $addon_fields = '';
+        reset($fields_for_search);
+        foreach ($fields_for_search as $id => $field) {
+            if ($field['type'] == 'db' || $field['type'] == 'radio') {
+                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['name'] . ' ON (tbl_' . $field['name'] . '.valueid = g.' . $field['name'] . ' AND tbl_' . $field['name'] . ".name = '" . $field['name'] . "') ";
+                $addon_fields .= ', tbl_' . $field['name'] . '.value AS ' . $field['name'];
+            } else {
+                $addon_fields .= ', ' . $field['name'];
+            }
+        }
+
+
+        $rand_entry = 0;
+        while ($rand_entry == 0) {
+            $query = $db->query(
+                'SELECT gid, attachname, thumbnail FROM `' . TABLE_PREFIX . "myshowcase_attachments` WHERE filetype LIKE 'image%' AND gid <> 0 AND visible =1 AND id=" . $rand_id . ' ORDER BY RAND( ) LIMIT 0 , 1'
+            );
+            $result = $db->fetch_array($query);
+            $rand_entry = $result['gid'];
+            $rand_entry_img = $result['attachname'];
+            $rand_entry_thumb = $result['thumbnail'];
+
+            if ($rand_entry) {
+                $query = $db->query(
+                    '
+					SELECT gid, username, g.views, comments' . $addon_fields . '
+					FROM ' . TABLE_PREFIX . 'myshowcase_data' . $rand_id . ' g
+					LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.uid)
+					' . $addon_join . '
+					WHERE approved = 1 AND gid=' . $rand_entry . '
+					LIMIT 0, 1'
+                );
+
+                if ($db->num_rows($query) == 0) {
+                    $rand_entry = 0;
+                }
+            } else {
+                return '';
+            }
+        }
+
+        $trow_style = 'trow2';
+        $entry = $db->fetch_array($query);
+
+        $lasteditdate = my_date($mybb->settings['dateformat'], $entry['dateline']);
+        $lastedittime = my_date($mybb->settings['timeformat'], $entry['dateline']);
+        $item_lastedit = $lasteditdate . '<br>' . $lastedittime;
+
+        $item_member = build_profile_link($entry['username'], $entry['uid'], '', '', $mybb->settings['bburl'] . '/');
+
+        $item_view_user = str_replace('{username}', $entry['username'], $lang->myshowcase_view_user);
+
+        $item_viewcode = str_replace('{gid}', $entry['gid'], $showcase_file);
+
+        $entry['description'] = '';
+        foreach ($description_list as $order => $name) {
+            $entry['description'] .= $entry[$name] . ' ';
+        }
+
+        $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
+
+        if ($rand_entry_thumb == 'SMALL') {
+            $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_img;
+        } else {
+            $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_thumb;
+        }
+
+        return eval($templates->render('portal_rand_showcase'));
+    }
 }

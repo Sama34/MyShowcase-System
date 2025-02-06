@@ -13,54 +13,17 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\Admin;
+namespace MyShowcase\Admin2;
 
 use DirectoryIterator;
 
+use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\loadPluginLibrary;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\MyAlerts\getAvailableLocations;
 
 use const MyShowcase\ROOT;
-
-function _info()
-{
-    global $lang;
-
-    loadLanguage();
-
-    $myalerts_desc = '';
-
-    /*if(_is_installed() && \MyShowcase\MyAlerts\MyAlertsIsIntegrable())
-    {
-        $myalerts_desc .= $lang->myshowcase_myalerts_desc;
-    }*/
-    $donate_button =
-        '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NZ574GV99KXTU&item_name=Donation%20for%20MyShowcase" style="float:right;margin-top:-8px;padding:4px;" target="_blank"><img src="https://www.paypalobjects.com/WEBSCR-640-20110306-1/en_US/i/btn/btn_donate_SM.gif" /></a>';
-
-    $lang->setting_group_myshowcase_desc = 'Create and manage showcase sections for user to enter information about their property or collections.';
-
-    return [
-        'name' => 'MyShowcase System',
-        'description' => $donate_button . $myalerts_desc,
-        'website' => '',
-        'author' => 'CommunityPlugins.com',
-        'authorsite' => '',
-        'version' => '3.0.0',
-        'versioncode' => 3000,
-        'compatibility' => '18*',
-        'codename' => 'ougc_myshowcase',
-        'pl' => [
-            'version' => 13,
-            'url' => 'https://community.mybb.com/mods.php?action=view&pid=573'
-        ],
-        'myalerts' => [
-            'version' => '2.0.4',
-            'url' => 'https://community.mybb.com/thread-171301.html'
-        ]
-    ];
-}
 
 function _activate()
 {
@@ -163,27 +126,10 @@ pm={$lang->setting_myshowcase_notifications_pm}",
         ],
     ]);
 
-    // Add template group
-    $templatesDirIterator = new DirectoryIterator(ROOT . '/templates');
+    $templatesList = getTemplatesList();
 
-    $templates = [];
-
-    foreach ($templatesDirIterator as $template) {
-        if (!$template->isFile()) {
-            continue;
-        }
-
-        $pathName = $template->getPathname();
-
-        $pathInfo = pathinfo($pathName);
-
-        if ($pathInfo['extension'] === 'html') {
-            $templates[$pathInfo['filename']] = file_get_contents($pathName);
-        }
-    }
-
-    if ($templates) {
-        $PL->templates('myshowcase', 'MyShowcase System', $templates);
+    if ($templatesList) {
+        $PL->templates('myshowcase', 'MyShowcase System', $templatesList);
     }
 
     // Insert/update version into cache
@@ -193,7 +139,7 @@ pm={$lang->setting_myshowcase_notifications_pm}",
         $plugins = [];
     }
 
-    $_info = _info();
+    $_info = pluginInformation();
 
     if (!isset($plugins['privatethreads'])) {
         $plugins['privatethreads'] = $_info['versioncode'];
@@ -260,117 +206,6 @@ pm={$lang->setting_myshowcase_notifications_pm}",
     $plugins['privatethreads'] = $_info['versioncode'];
 
     $cache->update('ougc_plugins', $plugins);
-}
-
-function _deactivate()
-{
-    include MYBB_ROOT . '/inc/adminfunctions_templates.php';
-
-    find_replace_templatesets('header', '#' . preg_quote('{$myshowcase_unapproved}') . '#', '');
-
-    find_replace_templatesets('header', '#' . preg_quote('{$myshowcase_reported}') . '#', '');
-
-    _deactivate_task();
-}
-
-function _install()
-{
-    global $cache;
-
-    _db_verify_tables();
-
-    _db_verify_columns();
-
-    // MyAlerts
-    $MyAlertLocationsInstalled = array_filter(
-        getAvailableLocations(),
-        '\\MyShowcase\MyAlerts\\isLocationAlertTypePresent'
-    );
-
-    $cache->update('myshowcase', [
-        'MyAlertLocationsInstalled' => $MyAlertLocationsInstalled,
-    ]);
-}
-
-function _is_installed()
-{
-    global $db;
-
-    static $installed = null;
-
-    if ($installed === null) {
-        foreach (_db_tables() as $name => $table) {
-            $installed = $db->table_exists($name);
-
-            break;
-        }
-    }
-
-    return $installed;
-}
-
-function _uninstall()
-{
-    global $db, $PL, $mybb;
-
-    loadPluginLibrary();
-
-    //drop tables but only if setting specific to allow uninstall is enabled
-    if ($mybb->settings['myshowcase_delete_tables_on_uninstall'] == 1) {
-        //get list of possible tables from config and delete
-        $query = $db->simple_select('myshowcase_config', 'id');
-
-        while ($result = $db->fetch_array($query)) {
-            if (showcaseDataTableExists($result['id'])) {
-                $db->drop_table('myshowcase_data' . $result['id']);
-            }
-        }
-
-        // Drop DB entries
-        foreach (_db_tables() as $name => $table) {
-            $db->drop_table($name);
-        }
-
-        foreach (_db_columns() as $table => $columns) {
-            foreach ($columns as $name => $definition) {
-                !$db->field_exists($name, $table) || $db->drop_column($table, $name);
-            }
-        }
-    }
-
-    $PL->settings_delete('myshowcase_');
-
-    $PL->templates_delete('myshowcase_');
-
-    // Delete version from cache
-    $plugins = (array)$mybb->cache->read('ougc_plugins');
-
-    if (isset($plugins['myshowcase_'])) {
-        unset($plugins['myshowcase_']);
-    }
-
-    if (!empty($plugins)) {
-        $mybb->cache->update('ougc_plugins', $plugins);
-    } else {
-        $mybb->cache->delete('ougc_plugins');
-    }
-
-    foreach (
-        [
-            'myshowcase_mylaerts',
-            'myshowcase_config',
-            'myshowcase_fields',
-            'myshowcase_field_data',
-            'myshowcase_fieldsets',
-            'myshowcase_permissions',
-            'myshowcase_moderators',
-            'myshowcase_version'
-        ] as $cache_name
-    ) {
-        $mybb->cache->delete($cache_name);
-    }
-
-    _uninstall_task();
 }
 
 // List of tables
@@ -810,57 +645,4 @@ function myshowcase_plugin_install()
 
     //upgrade procedure for post-template install
     myshowcase_upgrade_install_post_template($need_upgrade);
-}
-
-/**
- * Plugin activate
- *
- */
-function myshowcase_plugin_activate()
-{
-    global $db, $cache, $plugins;
-
-    //load upgrade code
-    include_once(MYBB_ROOT . 'inc/plugins/myshowcase/upgrade.php');
-
-    //get this plugin's info so we have current version number
-    $myshowcase = myshowcase_info();
-
-    //get currently installed version, if there is one
-    $oldver = '2.0.0'; //from beta release
-    $cpcom_plugins = $cache->read('cpcom_plugins');
-    if (is_array($cpcom_plugins)) {
-        $oldver = $cpcom_plugins['versions']['myshowcase'];
-    }
-
-    if (version_compare($oldver, $myshowcase['version']) == -1) {
-        $need_upgrade = [];
-        $need_upgrade['prev'] = $oldver;
-        $need_upgrade['this'] = $myshowcase['version'];
-    }
-
-    include MYBB_ROOT . '/inc/adminfunctions_templates.php';
-    find_replace_templatesets(
-        'header',
-        '#' . preg_quote('<navigation>') . '#',
-        "{\$myshowcase_unapproved}{\$myshowcase_reported}<navigation>"
-    );
-
-    //upgrade procedure for activation
-    myshowcase_upgrade_activate($need_upgrade);
-
-    //update version cache to latest
-    $cpcom_plugins['versions']['myshowcase'] = $myshowcase['version'];
-    $cache->update('cpcom_plugins', $cpcom_plugins);
-
-    //update cahce to latest
-    myshowcase_update_cache('config');
-    myshowcase_update_cache('field_data');
-    myshowcase_update_cache('fieldsets');
-    myshowcase_update_cache('fields');
-    myshowcase_update_cache('permissions');
-    myshowcase_update_cache('moderators');
-    myshowcase_update_cache('reports');
-
-    _install_task();
 }

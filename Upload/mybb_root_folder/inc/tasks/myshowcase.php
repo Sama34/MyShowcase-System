@@ -18,6 +18,7 @@ use MyShowcase\Core\System;
 
 use function MyShowcase\Core\cacheGet;
 
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\SHOWCASE_STATUS_ENABLED;
 use const MyShowcase\ROOT;
 
@@ -27,7 +28,7 @@ function task_myshowcase(array $taskData): array
 
     require_once ROOT . '/class_showcase.php';
 
-    foreach (cacheGet() as $showcaseID => $showcaseData) {
+    foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
         $showcasePruneTime = explode('|', $showcaseData['prunetime']);
 
         if ($showcasePruneTime[0] > 0 && $showcaseData['enabled'] === SHOWCASE_STATUS_ENABLED) {

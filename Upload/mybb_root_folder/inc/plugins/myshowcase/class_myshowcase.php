@@ -230,10 +230,10 @@ class System
         }
 
         //get this showcase's config info
-        $showcases = $cache->read('myshowcase_config');
+        $showcases = cacheGet(CACHE_TYPE_CONFIG);
         if (!is_array($showcases)) {
-            myshowcase_update_cache('config');
-            $showcases = $cache->read('myshowcase_config');
+            cacheUpdate(CACHE_TYPE_CONFIG);
+            $showcases = cacheGet(CACHE_TYPE_CONFIG);
         }
         //check if the requesting file is in the cache
         foreach ($showcases as $showcase) {
@@ -304,7 +304,7 @@ class System
         //load permsissions already in cache
 //		$query = $db->simple_select("myshowcase_permissions", "*", "id={$this->id}");
 //		while($showperms = $db->fetch_array($query))
-        $permcache = $cache->read('myshowcase_permissions');
+        $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
         foreach ($permcache[$this->id] as $id => $showperms) {
             $showcase_group_perms[$showperms['gid']]['id'] = $showperms['gid'];
             $showcase_group_perms[$showperms['gid']]['name'] = $usergroups[$showperms['gid']]['title'];
@@ -411,7 +411,7 @@ class System
             }
 
             //get showcase moderator cache to handle additional mods/modgroups
-            $modcache = $cache->read('myshowcase_moderators');
+            $modcache = cacheGet(CACHE_TYPE_MODERATORS);
             if (is_array($modcache[$this->id])) {
                 //get moderators specific to this myshowcase
                 $mods = $modcache[$this->id];
@@ -542,7 +542,7 @@ class System
         global $mybb;
 
         my_setcookie("inlinemod_$type.$id", '', TIME_NOW + 3600);
-        
+
         return true;
     }
 

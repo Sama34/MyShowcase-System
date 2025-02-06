@@ -14,8 +14,12 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcasePermissions;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -100,8 +104,8 @@ if ($mybb->get_input('action') == 'new') {
                 $db->insert_query('myshowcase_permissions', $defaultShowcasePermissions);
             }
 
-            myshowcase_update_cache('config');
-            myshowcase_update_cache('permissions');
+            cacheUpdate(CACHE_TYPE_CONFIG);
+            cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
             // Log admin action
             $log = ['id' => $newid, 'myshowcase' => $mybb->get_input('newname')];
@@ -142,7 +146,7 @@ if ($mybb->get_input('action') == 'enable') {
                 flash_message($lang->myshowcase_summary_enable_failed, 'error');
             }
         }
-        myshowcase_update_cache('config');
+        cacheUpdate(CACHE_TYPE_CONFIG);
     }
 }
 
@@ -168,7 +172,7 @@ if ($mybb->get_input('action') == 'disable') {
                 flash_message($lang->myshowcase_summary_disable_failed, 'error');
             }
         }
-        myshowcase_update_cache('config');
+        cacheUpdate(CACHE_TYPE_CONFIG);
     }
 }
 
@@ -266,7 +270,7 @@ if ($mybb->get_input('action') == 'createtable') {
                 flash_message($lang->myshowcase_summary_create_failed, 'error');
             }
         }
-        myshowcase_update_cache('config');
+        cacheUpdate(CACHE_TYPE_CONFIG);
     }
 }
 
@@ -321,7 +325,7 @@ if ($mybb->get_input('action') == 'do_deletetable') {
         $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
 
-        myshowcase_update_cache('config');
+        cacheUpdate(CACHE_TYPE_CONFIG);
 
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');

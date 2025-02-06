@@ -13,8 +13,11 @@
 
 declare(strict_types=1);
 
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
+
+use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 
 global $mybb, $lang, $db, $templates, $plugins;
 global $me, $forumdir;
@@ -85,7 +88,7 @@ switch ($mybb->get_input('action')) {
 
         $rid = $db->insert_query('myshowcase_reports', $insert_array);
 
-        myshowcase_update_cache('reports');
+        cacheUpdate(CACHE_TYPE_REPORTS);
 
         if (!$rid) {
             $report = eval($templates->render('report_error'));

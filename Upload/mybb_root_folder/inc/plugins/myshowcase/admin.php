@@ -17,13 +17,15 @@ namespace MyShowcase\Admin;
 
 use DirectoryIterator;
 
+use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\loadPluginLibrary;
 use function MyShowcase\Core\showcaseDataTableExists;
 
 use const MyShowcase\ROOT;
 
-function _info()
+function pluginInformation()
 {
     global $lang;
 
@@ -61,10 +63,10 @@ function _info()
     ];
 }
 
-function _activate()
+function pluginActivation(): bool
 {
     global $PL, $lang, $cache, $db;
-    _uninstall();
+    pluginUninstallation();
     loadPluginLibrary();
 
     $PL->settings('myshowcase', 'MyShowcase System', 'Options on how to configure the MyShowcase section.', [
@@ -76,27 +78,10 @@ function _activate()
         ],
     ]);
 
-    // Add template group
-    $templatesDirIterator = new DirectoryIterator(ROOT . '/templates');
+    $templatesList = getTemplatesList();
 
-    $templates = [];
-
-    foreach ($templatesDirIterator as $template) {
-        if (!$template->isFile()) {
-            continue;
-        }
-
-        $pathName = $template->getPathname();
-
-        $pathInfo = pathinfo($pathName);
-
-        if ($pathInfo['extension'] === 'html') {
-            $templates[$pathInfo['filename']] = file_get_contents($pathName);
-        }
-    }
-
-    if ($templates) {
-        $PL->templates('myshowcase', 'MyShowcase System', $templates);
+    if ($templatesList) {
+        $PL->templates('myshowcase', 'MyShowcase System', $templatesList);
     }
 
     // Insert/update version into cache
@@ -106,10 +91,10 @@ function _activate()
         $plugins = [];
     }
 
-    $_info = _info();
+    $pluginInformation = pluginInformation();
 
     if (!isset($plugins['myshowcase'])) {
-        $plugins['myshowcase'] = $_info['versioncode'];
+        $plugins['myshowcase'] = $pluginInformation['versioncode'];
     }
 
     _db_verify_tables();
@@ -130,16 +115,18 @@ function _activate()
 
     /*~*~* RUN UPDATES END *~*~*/
 
-    $plugins['myshowcase'] = $_info['versioncode'];
+    $plugins['myshowcase'] = $pluginInformation['versioncode'];
 
     $cache->update('ougc_plugins', $plugins);
 
     foreach (['config', 'field_data', 'fieldsets', 'fields', 'permissions', 'moderators', 'reports'] as $key) {
-        myshowcase_update_cache($key);
+        cacheUpdate($key);
     }
+
+    return true;
 }
 
-function _deactivate()
+function pluginDeactivation(): bool
 {
     include MYBB_ROOT . '/inc/adminfunctions_templates.php';
 
@@ -148,110 +135,37 @@ function _deactivate()
     find_replace_templatesets('header', '#' . preg_quote('{$myshowcase_reported}') . '#', '');
 
     _deactivate_task();
+
+    return true;
 }
 
-function _install()
+function pluginInstallation(): bool
 {
-    global $cache, $db;
-
     _db_verify_tables();
 
     _db_verify_columns();
 
-    //grab sample data if it exists
-    /*$insert_sample_data = false;
-
-    if(file_exists(\MyShowcase\ROOT.'/sample_data.php'))
-    {
-        require_once \MyShowcase\ROOT.'/sample_data.php';
-
-        $insert_sample_data = isset($custom_fieldsets);
-    }
-
-    if($insert_sample_data)
-    {
-        $db->delete_query('myshowcase_fieldsets');
-
-        $sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fieldsets (`setname`) VALUES ";
-
-        reset($custom_fieldsets);
-        foreach($custom_fieldsets as $fieldinfo)
-        {
-            $sql .= "('".$fieldinfo[0]."'),";
-        }
-
-        $sql = substr($sql, 0, strlen($sql)-1);
-
-        $db->write_query($sql);
-
-        $db->delete_query('myshowcase_fields');
-
-        $sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_fields (`setid`, `name`, `html_type`, `enabled`, `field_type`, `min_length`, `max_length`, `require`, `parse`, `field_order`, `list_table_order`, `searchable`, `format`) VALUES ";
-
-        reset($custom_fields);
-        foreach($custom_fields as $fieldinfo)
-        {
-            $sql .= "('".$fieldinfo[0]."', '".$fieldinfo[1]."','".$fieldinfo[2]."','".$fieldinfo[3]."','".$fieldinfo[4]."','".$fieldinfo[5]."','".$fieldinfo[6]."','".$fieldinfo[7]."','".$fieldinfo[8]."','".$fieldinfo[9]."','".$fieldinfo[10]."','".$fieldinfo[11]."', 'no'),";
-        }
-
-        $sql = substr($sql, 0, strlen($sql)-1);
-
-        $db->write_query($sql);
-
-        $db->delete_query('myshowcase_field_data');
-
-        $sql = "INSERT INTO ".TABLE_PREFIX."myshowcase_field_data (`setid`, `fid`, `name`, `valueid`, `value`, `disporder`) VALUES ";
-
-        reset($custom_field_data);
-        foreach($custom_field_data as $fieldinfo)
-        {
-            $sql .= "(1,".$fieldinfo[0].",'".$fieldinfo[1]."', ".$fieldinfo[2].",'".$fieldinfo[3]."',".$fieldinfo[4]."),";
-        }
-
-        $sql = substr($sql, 0, strlen($sql)-1);
-
-        $db->write_query($sql);
-    }
-
-    // MyAlerts
-    $MyAlertLocationsInstalled = array_filter(
-        \MyShowcase\MyAlerts\getAvailableLocations(),
-        '\\MyShowcase\MyAlerts\\isLocationAlertTypePresent'
-    );
-
-    $cache->update('myshowcase', [
-        'MyAlertLocationsInstalled' => $MyAlertLocationsInstalled,
-    ]);
-    */
+    return true;
 }
 
-function _is_installed()
+function pluginIsInstalled(): bool
 {
-    global $db, $cache;
+    global $db;
 
-    static $installed = null;
+    static $isInstalledEach = null;
 
-    if ($installed === null) {
-        // Insert/update version into cache
-        $plugins = $cache->read('ougc_plugins');
+    if ($isInstalledEach === null) {
+        $isInstalledEach = true;
 
-        if (!$plugins) {
-            $plugins = [];
-        }
-
-        $installed = isset($plugins['myshowcase']);
-
-        foreach (_db_tables() as $name => $table) {
-            $installed = $installed && $db->table_exists($name);
-
-            break;
+        foreach (_db_tables() as $tableName => $tableData) {
+            $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
         }
     }
 
-    return $installed;
+    return $isInstalledEach;
 }
 
-function _uninstall()
+function pluginUninstallation(): bool
 {
     global $db, $PL, $mybb;
 
@@ -313,6 +227,8 @@ function _uninstall()
     }
 
     _uninstall_task();
+
+    return true;
 }
 
 // List of tables

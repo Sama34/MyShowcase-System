@@ -17,11 +17,15 @@ namespace MyShowcase\AdminHooks;
 
 use MyBB;
 
+use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\MyAlerts\getAvailableLocations;
 use function MyShowcase\MyAlerts\getInstalledLocations;
 use function MyShowcase\MyAlerts\installLocation;
 use function MyShowcase\MyAlerts\MyAlertsIsIntegrable;
+
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
 function admin_config_plugins_begin01(): bool
 {
@@ -97,8 +101,8 @@ function admin_user_groups_edit(): bool
     require_once(MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php');
 
     $curgroups = $cache->read('usergroups');
-    $showgroups = $cache->read('myshowcase_permissions');
-    $myshowcases = $cache->read('myshowcase_config');
+    $showgroups = cacheGet(CACHE_TYPE_PERMISSIONS);
+    $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
 
     //see if added group is in each enabled myshowcase's permission set
     foreach ($myshowcases as $myshowcase) {
@@ -111,7 +115,7 @@ function admin_user_groups_edit(): bool
             }
         }
     }
-    myshowcase_update_cache('permissions');
+    cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
     return true;
 }
@@ -124,7 +128,7 @@ function admin_user_groups_delete_commit(): bool
     global $db, $cache, $usergroup;
 
     $db->delete_query('myshowcase_permissions', "gid='{$usergroup['gid']}'");
-    myshowcase_update_cache('permissions');
+    cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
     return true;
 }

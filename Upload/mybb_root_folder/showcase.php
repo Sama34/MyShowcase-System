@@ -21,9 +21,12 @@ use MyShowcase\Core\System;
 
 use function MyShowcase\Core\attachmentRemove;
 use function MyShowcase\Core\attachmentUpload;
+use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
 
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\ROOT;
 
 $forumdir = ''; //no trailing slash
@@ -447,10 +450,10 @@ if ($mybb->get_input('showcasegid') && $mybb->get_input('posthash')) {
 }
 
 //get this showcase's field info
-$fieldcache = $cache->read('myshowcase_fields');
+$fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
 if (!is_array($fieldcache[$me->fieldsetid])) {
-    myshowcase_update_cache('fields');
-    $fieldcache = $cache->read('myshowcase_fields');
+    cacheUpdate(CACHE_TYPE_FIELDS);
+    $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
 }
 
 //init dynamic field info

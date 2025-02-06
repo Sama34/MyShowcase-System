@@ -14,6 +14,16 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheUpdate;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\CACHE_TYPE_REPORTS;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
@@ -32,13 +42,13 @@ if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $
 
 $plugins->run_hooks('admin_myshowcase_cache_begin');
 
-myshowcase_update_cache('config');
-myshowcase_update_cache('field_data');
-myshowcase_update_cache('fieldsets');
-myshowcase_update_cache('fields');
-myshowcase_update_cache('permissions');
-myshowcase_update_cache('moderators');
-myshowcase_update_cache('reports');
+cacheUpdate(CACHE_TYPE_CONFIG);
+cacheUpdate(CACHE_TYPE_FIELD_DATA);
+cacheUpdate(CACHE_TYPE_FIELD_SETS);
+cacheUpdate(CACHE_TYPE_FIELDS);
+cacheUpdate(CACHE_TYPE_PERMISSIONS);
+cacheUpdate(CACHE_TYPE_MODERATORS);
+cacheUpdate(CACHE_TYPE_REPORTS);
 
 $plugins->run_hooks('admin_myshowcase_cache_end');
 

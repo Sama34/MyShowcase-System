@@ -14,6 +14,12 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\cacheUpdate;
+
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
@@ -72,17 +78,17 @@ class MyShowcaseDataHandler extends DataHandler
         $myshowcase_data = &$this->data;
 
         //get this myshowcase's field info
-        $fieldcache = $cache->read('myshowcase_fields');
+        $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
         if (!is_array($fieldcache[$me->fieldsetid])) {
-            myshowcase_update_cache('fields');
-            $fieldcache = $cache->read('myshowcase_fields');
+            cacheUpdate(CACHE_TYPE_FIELDS);
+            $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
         }
 
         //get this myshowcase's permissions
-        $permcache = $cache->read('myshowcase_permissions');
+        $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
         if (!is_array($permcache[1])) {
-            myshowcase_update_cache('permissions');
-            $permcache = $cache->read('myshowcase_permissions');
+            cacheUpdate(CACHE_TYPE_PERMISSIONS);
+            $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
         }
 
         // Don't have a user ID at all - not good or guest is posting which usually is not allowed but check anyway.

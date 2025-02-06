@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace MyShowcase\AdminHooks;
 
+use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
@@ -60,8 +62,8 @@ function global_start(): bool
     global $mybb, $db, $cache, $myshowcase_unapproved, $myshowcase_reported, $theme, $templates, $lang;
 
     //get showcases and mods
-    $showcases = $cache->read('myshowcase_config');
-    $moderators = $cache->read('myshowcase_moderators');
+    $showcases = cacheGet(CACHE_TYPE_CONFIG);
+    $moderators = cacheGet(CACHE_TYPE_MODERATORS);
 
     //loop through showcases
     $rep_ids = [];
@@ -191,7 +193,7 @@ function fetch_wol_activity_end(array &$user_activity): array
     }
 
     //get cache of configured myshowcases
-    $myshowcase_config = $cache->read('myshowcase_config');
+    $myshowcase_config = cacheGet(CACHE_TYPE_CONFIG);
 
     //check cache for matching filename
     //have to do it this way since the filename can vary for each myshowcase
@@ -373,7 +375,7 @@ function showthread_start(): bool
     //get list of enabled myshowcases with postbit links turned on
     $myshowcase_uids = [];
 
-    $myshowcases = $cache->read('myshowcase_config');
+    $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
     foreach ($myshowcases as $id => $myshowcase) {
         if ($myshowcase['enabled'] && $myshowcase['link_in_postbit']) {
             $myshowcase_uids[$myshowcase['id']]['name'] = $myshowcase['name'];
@@ -459,7 +461,7 @@ function portal_start(): bool
     else
     */
     {
-        $portal_rand_showcase = myshowcase_get_random();
+        $portal_rand_showcase = entryGetRandom();
         if (!$portal_rand_showcase) {
             //add code here to use portal_basic_box template box or some
             //other output if a random showcase with attachments is not found
