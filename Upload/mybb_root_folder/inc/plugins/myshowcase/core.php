@@ -15,15 +15,11 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
-use MybbStuff_MyAlerts_AlertManager;
-use MybbStuff_MyAlerts_AlertTypeManager;
-use MybbStuff_MyAlerts_Entity_Alert;
-use PMDataHandler;
+use DirectoryIterator;
 
 use function MyShowcase\Admin\_info;
 
-use const ougc\MyShowcase\Core\DEBUG;
-use const ougc\MyShowcase\ROOT;
+use const MyShowcase\ROOT;
 
 const SHOWCASE_STATUS_ENABLED = 1;
 
@@ -35,7 +31,7 @@ function loadLanguage(
     string $languageFileName = 'myshowcase',
     bool $forceUserArea = false,
     bool $suppressError = false
-) {
+): bool {
     global $lang;
 
     $lang->load(
@@ -43,9 +39,11 @@ function loadLanguage(
         $forceUserArea,
         $suppressError
     );
+
+    return true;
 }
 
-function loadPluginLibrary($check = true)
+function loadPluginLibrary(bool $check = true): bool
 {
     global $PL, $lang;
 
@@ -58,7 +56,7 @@ function loadPluginLibrary($check = true)
     }
 
     if (!$check) {
-        return;
+        return false;
     }
 
     $_info = _info();
@@ -71,6 +69,8 @@ function loadPluginLibrary($check = true)
 
         admin_redirect('index.php?module=config-plugins');
     }
+
+    return true;
 }
 
 function addHooks(string $namespace): bool
@@ -181,7 +181,7 @@ function showcaseDataTableExists(int $showcaseID): bool
 
 function getTemplatesList(): array
 {
-    $templatesDirIterator = new DirectoryIterator(\MyShowcase\ROOT . '/templates');
+    $templatesDirIterator = new DirectoryIterator(ROOT . '/templates');
 
     $templatesList = [];
 
@@ -420,10 +420,10 @@ function attachmentUpload(
         $returnData['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail;
 
         switch ($fileData['error']) {
-            case \MyShowcase\Core\SHOWCASE_UPLOAD_STATUS_INVALID:
+            case SHOWCASE_UPLOAD_STATUS_INVALID:
                 $returnData['error'] .= $lang->error_uploadfailed_nothingtomove;
                 break;
-            case \MyShowcase\Core\SHOWCASE_UPLOAD_STATUS_FAILED:
+            case SHOWCASE_UPLOAD_STATUS_FAILED:
                 $returnData['error'] .= $lang->error_uploadfailed_movefailed;
                 break;
         }

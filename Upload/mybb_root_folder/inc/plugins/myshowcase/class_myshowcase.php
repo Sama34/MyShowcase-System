@@ -217,7 +217,7 @@ class System
     /**
      * Constructor of class.
      *
-     * @return Showcase
+     * @return System
      */
     public function __construct(string $filename = THIS_SCRIPT)
     {
@@ -292,7 +292,7 @@ class System
      *
      * @return array group permissions for the specific showcase
      */
-    public function get_group_permissions()
+    public function get_group_permissions(): array
     {
         global $db, $cache, $config;
 
@@ -353,7 +353,7 @@ class System
      * @param int The User array for the user to build permissions for
      * @return array user permissions for the specific showcase
      */
-    public function get_user_permissions($user)
+    public function get_user_permissions(array $user): array
     {
         global $cache, $mybb;
 
@@ -465,7 +465,7 @@ class System
     /**
      * get ids from cookie inline moderation
      */
-    public function getids($id, $type)
+    public function getids(int $id, string $type): array
     {
         global $mybb;
         $cookie = 'inlinemod_' . $type . $id;
@@ -489,7 +489,7 @@ class System
 
         $this->delete_comments($gid, $this->id);
 
-        $query = $db->delete_query($this->table_name, 'gid=' . $gid);
+        $db->delete_query($this->table_name, 'gid=' . $gid);
 
         return true;
     }
@@ -505,7 +505,7 @@ class System
 
         if ($db->num_rows($query)) {
             while ($attachmentID = $db->fetch_field($query, 'aid')) {
-                \MyShowcase\Core\attachmentRemove($this, '', (int)$attachmentID);
+                attachmentRemove($this, '', (int)$attachmentID);
             }
         }
 
@@ -515,32 +515,35 @@ class System
     /**
      * delete a comment
      */
-    public function delete_comments($gid, $id)
+    public function delete_comments(int $gid, int $id): bool
     {
         global $db;
 
-        $gid = intval($gid);
-        $id = intval($id);
+        $db->delete_query('myshowcase_comments', "gid={$gid} AND id={$id}");
 
-        $query = $db->delete_query('myshowcase_comments', "gid={$gid} AND id={$id}");
+        return true;
     }
 
     /**
      * clear cookie inline moderation
      */
-    public function clearinline($id, $type)
+    public function clearinline(int $id, string $type): bool
     {
         my_unsetcookie('inlinemod_' . $type . $id);
+
+        return true;
     }
 
     /**
      * add to cookie inline moderation
      */
-    public function extendinline($id, $type)
+    public function extendinline(int $id, string $type): bool
     {
         global $mybb;
 
         my_setcookie("inlinemod_$type.$id", '', TIME_NOW + 3600);
+        
+        return true;
     }
 
 }

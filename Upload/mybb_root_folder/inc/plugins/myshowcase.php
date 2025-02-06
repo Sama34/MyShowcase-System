@@ -63,77 +63,39 @@ if(\MyShowcase\MyAlerts\MyAlertsIsIntegrable())
 	\MyShowcase\MyAlerts\initLocations();
 }*/
 
-// Plugin API
-function myshowcase_info()
+function myshowcase_info(): array
 {
     return _info();
 }
 
 // Activate the plugin.
-function myshowcase_activate()
+function myshowcase_activate(): bool
 {
-    _activate();
+    return _activate();
 }
 
 // Deactivate the plugin.
-function myshowcase_deactivate()
+function myshowcase_deactivate(): bool
 {
-    _deactivate();
+    return _deactivate();
 }
 
 // Install the plugin.
-function myshowcase_install()
+function myshowcase_install(): bool
 {
-    _install();
+    return _install();
 }
 
 // Check if installed.
-function myshowcase_is_installed()
+function myshowcase_is_installed(): bool
 {
     return _is_installed();
 }
 
 // Unnstall the plugin.
-function myshowcase_uninstall()
+function myshowcase_uninstall(): bool
 {
-    _uninstall();
-}
-
-// control_object by Zinga Burga from MyBBHacks ( mybbhacks.zingaburga.com ), 1.62
-if (!function_exists('control_object')) {
-    function control_object(&$obj, $code)
-    {
-        static $cnt = 0;
-        $newname = '_objcont_' . (++$cnt);
-        $objserial = serialize($obj);
-        $classname = get_class($obj);
-        $checkstr = 'O:' . strlen($classname) . ':"' . $classname . '":';
-        $checkstr_len = strlen($checkstr);
-        if (substr($objserial, 0, $checkstr_len) == $checkstr) {
-            $vars = [];
-            // grab resources/object etc, stripping scope info from keys
-            foreach ((array)$obj as $k => $v) {
-                if ($p = strrpos($k, "\0")) {
-                    $k = substr($k, $p + 1);
-                }
-                $vars[$k] = $v;
-            }
-            if (!empty($vars)) {
-                $code .= '
-					function ___setvars(&$a) {
-						foreach($a as $k => &$v)
-							$this->$k = $v;
-					}
-				';
-            }
-            eval('class ' . $newname . ' extends ' . $classname . ' {' . $code . '}');
-            $obj = unserialize('O:' . strlen($newname) . ':"' . $newname . '":' . substr($objserial, $checkstr_len));
-            if (!empty($vars)) {
-                $obj->___setvars($vars);
-            }
-        }
-        // else not a valid object or PHP serialize has changed
-    }
+    return _uninstall();
 }
 
 /**
@@ -142,7 +104,7 @@ if (!function_exists('control_object')) {
  * @param string The cache item.
  * @param bool Clear the cache item.
  */
-function myshowcase_update_cache($area, $empty = false)
+function myshowcase_update_cache($area, $empty = false): bool
 {
     global $cache;
     if ($empty == true && $area != '') {
@@ -225,10 +187,12 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
         }
     }
+
+    return true;
 }
 
 //function to pull a random entry from a random showcase (if enabled)
-function myshowcase_get_random()
+function myshowcase_get_random(): string
 {
     global $db, $lang, $mybb, $cache, $templates, $portal_rand_showcase, $adserver_med_rect;
 
@@ -248,7 +212,7 @@ function myshowcase_get_random()
 
     //if no showcases set to show on portal return
     if (count($showcase_list) == 0) {
-        return 0;
+        return '';
     } else {
         //get a random showcase id of those enabled
         $rand_id = array_rand($showcase_list, 1);
@@ -330,7 +294,7 @@ function myshowcase_get_random()
                     $rand_entry = 0;
                 }
             } else {
-                return 0;
+                return '';
             }
         }
 

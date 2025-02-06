@@ -18,7 +18,7 @@ if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
 
-function myshowcase_meta()
+function myshowcase_meta(): bool
 {
     global $page, $lang, $plugins;
 
@@ -61,7 +61,7 @@ function myshowcase_meta()
     return true;
 }
 
-function myshowcase_action_handler($action)
+function myshowcase_action_handler(string $action): string
 {
     global $page, $lang, $plugins;
 
@@ -87,7 +87,7 @@ function myshowcase_action_handler($action)
     }
 }
 
-function myshowcase_admin_permissions()
+function myshowcase_admin_permissions(): array
 {
     global $lang, $plugins;
 

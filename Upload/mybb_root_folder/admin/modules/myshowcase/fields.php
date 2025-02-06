@@ -1495,8 +1495,13 @@ $page->output_footer();
  * @param string Actual language.
  * @param bool Specifies if the language file is for ACP
  */
-function modify_lang($name, $items_add = [], $items_drop = [], $language = 'english', $isadmin = false)
-{
+function modify_lang(
+    string $name,
+    array $items_add = [],
+    array $items_drop = [],
+    string $language = 'english',
+    bool $isadmin = false
+): bool {
     global $lang, $mybb;
 
     //init var to free any lingering language file variables

@@ -65,7 +65,7 @@ class MyShowcaseDataHandler extends DataHandler
      *
      * @return bool True when valid, false when invalid.
      */
-    public function validate_showcase()
+    public function validate_showcase(): bool
     {
         global $me, $cache, $db, $plugins, $lang;
 
@@ -89,10 +89,8 @@ class MyShowcaseDataHandler extends DataHandler
         if (!isset($myshowcase_data['uid']) || ($myshowcase_data['uid'] == 0 && ((!$permcache[1]['canadd'] && $this->action = 'new') || (!$permcache[1]['canedit'] && $this->action = 'edit')))) {
             $this->set_error('invalid_user_id');
         } // If we have a user id but no username then fetch the username.
-        else {
-            if (!get_user($myshowcase_data['uid'])) {
-                $this->set_error('invalid_user_id');
-            }
+        elseif (!get_user($myshowcase_data['uid'])) {
+            $this->set_error('invalid_user_id');
         }
 
         //run through all fields checking defined requirements
@@ -180,7 +178,7 @@ class MyShowcaseDataHandler extends DataHandler
      *
      * @return array Array of new showcase details, gid and visibility.
      */
-    public function insert_showcase()
+    public function insert_showcase(): array
     {
         global $me, $db, $mybb, $plugins, $cache, $lang;
 
@@ -221,7 +219,7 @@ class MyShowcaseDataHandler extends DataHandler
      * Updates a showcase that is already in the database.
      *
      */
-    public function update_showcase()
+    public function update_showcase(): array
     {
         global $me, $db, $mybb, $plugins, $cache, $lang;
 

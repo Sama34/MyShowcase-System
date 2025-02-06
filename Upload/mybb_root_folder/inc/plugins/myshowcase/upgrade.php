@@ -43,46 +43,52 @@ if ($pscom_plugins['versions']['myshowcase']) {
 * Upgrade code that occurs prior to table installation
 *
 */
-function myshowcase_upgrade_install_pre_table($need_upgrade)
+function myshowcase_upgrade_install_pre_table(array $need_upgrade): bool
 {
 //	if(is_array($need_upgrade) )
 //	{
     //save resources,don't load globals unless doing an upgrade
 //       global $db, $mybb, $config, $lang, $cache, $lang;
     //    }
+
+    return true;
 }
 
 /*
 * Upgrade code that occurs after table installation
 *
 */
-function myshowcase_upgrade_install_post_table($need_upgrade)
+function myshowcase_upgrade_install_post_table(array $need_upgrade): bool
 {
 //	if(is_array($need_upgrade) )
 //	{
     //save resources,don't load globals unless doing an upgrade
 //        global $db, $mybb, $config;
 //   }
+
+    return true;
 }
 
 /*
 * Upgrade code that occurs after template installation
 *
 */
-function myshowcase_upgrade_install_post_template($need_upgrade)
+function myshowcase_upgrade_install_post_template(array $need_upgrade): bool
 {
 //	if(is_array($need_upgrade) )
 //	{
     //save resources,don't load globals unless doing an upgrade
 //        global $db, $mybb, $config;
 //   }
+
+    return true;
 }
 
 /*
 * Upgrade code that occurs at activation
 *
 */
-function myshowcase_upgrade_activate($need_upgrade)
+function myshowcase_upgrade_activate(array $need_upgrade): bool
 {
     if (is_array($need_upgrade)) {
         //save resources,don't load globals unless doing an upgrade
@@ -662,4 +668,6 @@ function myshowcase_upgrade_activate($need_upgrade)
             $db->insert_query('templates', $insert_array);
         }
     }
+
+    return true;
 }

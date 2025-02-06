@@ -19,6 +19,8 @@ declare(strict_types=1);
 
 use MyShowcase\Core\System;
 
+use function MyShowcase\Core\attachmentRemove;
+use function MyShowcase\Core\attachmentUpload;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
 
@@ -312,7 +314,7 @@ if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
     if (!$mybb->get_input('gid', MyBB::INPUT_INT)) {
-        \MyShowcase\Core\attachmentRemove($me, $mybb->get_input('posthash'));
+        attachmentRemove($me, $mybb->get_input('posthash'));
     }
 
     if ($mybb->get_input('action') == 'do_editshowcase' || $mybb->get_input('action') == 'do_newshowcase') {
@@ -373,7 +375,7 @@ if (!$mybb->get_input(
             if ($mybb->get_input('updateattachment')) {
                 $update_attachment = true;
             }
-            $attachedfile = \MyShowcase\Core\attachmentUpload(
+            $attachedfile = attachmentUpload(
                 $me,
                 $_FILES['attachment'],
                 $mybb->get_input('posthash'),
@@ -403,7 +405,7 @@ if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $mybb->get_input(
     ) && ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
-    \MyShowcase\Core\attachmentRemove(
+    attachmentRemove(
         $me,
         $mybb->get_input('posthash'),
         $mybb->get_input('attachmentaid', MyBB::INPUT_INT)

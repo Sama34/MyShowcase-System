@@ -23,7 +23,7 @@ use function MyShowcase\Core\getTemplate;
  * Add global notices for unapproved and reported showcases
  *
  */
-function global_start()
+function global_start(): bool
 {
     global $templatelist, $mybb;
 
@@ -163,10 +163,12 @@ function global_start()
     if ($reported_notice != '') {
         $myshowcase_reported = eval(getTemplate('reported'));
     }
+
+    return true;
 }
 
 //build info for who's online
-function fetch_wol_activity_end(&$user_activity)
+function fetch_wol_activity_end(array &$user_activity): array
 {
     global $user, $mybb, $cache;
 
@@ -234,7 +236,7 @@ function fetch_wol_activity_end(&$user_activity)
 }
 
 //setup friendly WOL locations 
-function build_friendly_wol_location_end(&$plugin_array)
+function build_friendly_wol_location_end(array &$plugin_array): array
 {
     global $db, $lang, $mybb, $_SERVER, $user;
 
@@ -364,7 +366,7 @@ function build_friendly_wol_location_end(&$plugin_array)
 
 //get the myshowcase counts for users that posted in the thread. keeps
 //from having to do it every post, just every page view
-function showthread_start()
+function showthread_start(): bool
 {
     global $db, $mybb, $thread, $cache, $myshowcase_uids;
 
@@ -410,10 +412,12 @@ function showthread_start()
         unset($query);
         unset($result);
     }
+
+    return true;
 }
 
 //add myshowcase links/counts
-function postbit(&$post)
+function postbit(array &$post): array
 {
     global $mybb, $_SERVER, $lang, $myshowcase_uids;
 
@@ -442,7 +446,7 @@ function postbit(&$post)
 }
 
 //function to pull a random entry from a random showcase (if enabled)
-function portal_start()
+function portal_start(): bool
 {
     global $db, $lang, $mybb, $cache, $templates, $portal_rand_showcase;
 
@@ -461,4 +465,6 @@ function portal_start()
             //other output if a random showcase with attachments is not found
         }
     }
+
+    return true;
 }

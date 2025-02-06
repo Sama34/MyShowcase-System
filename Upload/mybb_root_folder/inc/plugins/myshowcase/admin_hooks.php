@@ -23,12 +23,12 @@ use function MyShowcase\MyAlerts\getInstalledLocations;
 use function MyShowcase\MyAlerts\installLocation;
 use function MyShowcase\MyAlerts\MyAlertsIsIntegrable;
 
-function admin_config_plugins_begin01()
+function admin_config_plugins_begin01(): bool
 {
     global $mybb, $lang, $page, $db;
 
     if ($mybb->get_input('action') != 'myshowcase') {
-        return;
+        return false;
     }
 
     loadLanguage();
@@ -55,9 +55,11 @@ function admin_config_plugins_begin01()
     flash_message($lang->myshowcase_myalerts_success, 'success');
 
     admin_redirect('index.php?module=config-plugins');
+
+    return true;
 }
 
-function admin_config_plugins_deactivate()
+function admin_config_plugins_deactivate(): bool
 {
     global $mybb, $page;
 
@@ -66,7 +68,7 @@ function admin_config_plugins_deactivate()
         $mybb->get_input('plugin') != 'myshowcase' ||
         !$mybb->get_input('uninstall', MyBB::INPUT_INT)
     ) {
-        return;
+        return false;
     }
 
     if ($mybb->request_method != 'post') {
@@ -78,6 +80,8 @@ function admin_config_plugins_deactivate()
     if ($mybb->get_input('no')) {
         admin_redirect('index.php?module=config-plugins');
     }
+
+    return true;
 }
 
 /**
@@ -86,7 +90,7 @@ function admin_config_plugins_deactivate()
  * we need to use the edit group hook which is called
  * after a successful add group
  */
-function admin_user_groups_edit()
+function admin_user_groups_edit(): bool
 {
     global $db, $cache, $config;
 
@@ -108,15 +112,19 @@ function admin_user_groups_edit()
         }
     }
     myshowcase_update_cache('permissions');
+
+    return true;
 }
 
 /**
  * delete default permissions for any new groups.
  */
-function admin_user_groups_delete_commit()
+function admin_user_groups_delete_commit(): bool
 {
     global $db, $cache, $usergroup;
 
     $db->delete_query('myshowcase_permissions', "gid='{$usergroup['gid']}'");
     myshowcase_update_cache('permissions');
+
+    return true;
 }
