@@ -25,6 +25,8 @@ use function MyShowcase\Admin\_info;
 use const ougc\MyShowcase\Core\DEBUG;
 use const ougc\MyShowcase\ROOT;
 
+const SHOWCASE_STATUS_ENABLED = 1;
+
 function loadLanguage(
     string $languageFileName = 'myshowcase',
     bool $forceUserArea = false,
@@ -185,4 +187,11 @@ function getTemplatesList(): array
     }
 
     return $templatesList;
+}
+
+function cacheGet(): array
+{
+    global $cache;
+
+    return $cache->read('myshowcase_config') ?? [];
 }

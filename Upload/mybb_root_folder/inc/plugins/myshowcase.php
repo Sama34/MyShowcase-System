@@ -153,9 +153,14 @@ function myshowcase_update_cache($area, $empty = false)
         switch ($area) {
             case 'config':
                 $myshowcases = [];
-                $query = $db->simple_select('myshowcase_config', '*', '1=1');
+                $query = $db->simple_select(
+                    'myshowcase_config',
+                    'id, mainfile, enabled, prunetime',
+                    '1=1'
+                );
+
                 while ($myshowcase = $db->fetch_array($query)) {
-                    $myshowcases[$myshowcase['id']] = $myshowcase;
+                    $myshowcases[(int)$myshowcase['id']] = $myshowcase;
                 }
                 $cache->update('myshowcase_config', $myshowcases);
                 break;

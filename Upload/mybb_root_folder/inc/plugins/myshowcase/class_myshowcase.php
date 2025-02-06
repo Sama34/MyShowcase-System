@@ -7,17 +7,19 @@
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\class_myshowcase.php
+ * File: \inc\class_showcase.php
  *
  */
 
 declare(strict_types=1);
 
+namespace MyShowcase\Core;
+
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcasePermissions;
 
-class MyShowcaseSystem
+class System
 {
 
     /**
@@ -217,7 +219,7 @@ class MyShowcaseSystem
      *
      * @return Showcase
      */
-    public function __construct($filename = THIS_SCRIPT)
+    public function __construct(string $filename = THIS_SCRIPT)
     {
         global $db, $mybb, $cache;
 
@@ -297,6 +299,8 @@ class MyShowcaseSystem
         require_once(MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php');
         $showcase_group_perms = [];
 
+        $usergroups = $cache->read('usergroups');
+
         //load permsissions already in cache
 //		$query = $db->simple_select("myshowcase_permissions", "*", "id={$this->id}");
 //		while($showperms = $db->fetch_array($query))
@@ -318,8 +322,6 @@ class MyShowcaseSystem
             $showcase_group_perms[$showperms['gid']]['attachlimit'] = $showperms['attachlimit'];
             $showcase_group_perms[$showperms['gid']]['intable'] = 1;
         }
-
-        $usergroups = $cache->read('usergroups');
 
         //load defaults if group not already in cache (e.g. group added since myshowcase created)
         foreach ($usergroups as $group) {
@@ -414,6 +416,8 @@ class MyShowcaseSystem
                 //get moderators specific to this myshowcase
                 $mods = $modcache[$this->id];
 
+                $modperms2 = [];
+
                 //check if user in additional moderator usergroup and use those perms instead (in case admin sets lower than full perms for  mod/super/admin groups)
                 foreach ($mods as $mid => $moddata) {
                     if ($moddata['isgroup'] && in_array($moddata['uid'], $groups)) {
@@ -441,7 +445,7 @@ class MyShowcaseSystem
                 }
 
                 //if user is in assigned moderator group, $modperms2 is an array so use those permissions
-                if (is_array($modperms2)) {
+                if (!empty($modperms2)) {
                     $modperms = $modperms2;
                 }
 
@@ -477,20 +481,17 @@ class MyShowcaseSystem
     /**
      * delete a showcase entry
      */
-    public function delete($gid)
+    public function delete(int $gid): bool
     {
         global $db;
 
-        $gid = intval($gid);
-
-        //delete attachments
         $this->delete_attachments($gid, $this->id);
 
-        //delete comments
         $this->delete_comments($gid, $this->id);
 
-        //delete showcase
         $query = $db->delete_query($this->table_name, 'gid=' . $gid);
+
+        return true;
     }
 
     /**
