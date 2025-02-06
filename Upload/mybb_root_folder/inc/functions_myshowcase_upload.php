@@ -108,7 +108,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
     $posthash = $db->escape_string($mybb->get_input('posthash'));
 
     $ret = [];
-    
+
     if (isset($attachment['error']) && $attachment['error'] != 0) {
         $ret['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail;
         switch ($attachment['error']) {
@@ -236,7 +236,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
     }
 
     // Generate the array for the insert_query
-    $attacharray = array(
+    $attacharray = [
         'id' => intval($me->id),
         'gid' => intval($gid),
         'posthash' => $posthash,
@@ -248,7 +248,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
         'downloads' => 0,
         'visible' => 1,
         'dateuploaded' => TIME_NOW
-    );
+    ];
 
     // If we're uploading an image, check the MIME type compared to the image type and attempt to generate a thumbnail
     if ($ext == 'gif' || $ext == 'png' || $ext == 'jpg' || $ext == 'jpeg' || $ext == 'jpe') {
@@ -272,7 +272,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
                 $img_type = 0;
         }
 
-        $supported_mimes = array();
+        $supported_mimes = [];
         $attachtypes = $cache->read('attachtypes');
         foreach ($attachtypes as $attachtype) {
             if (!empty($attachtype['mimetype'])) {

@@ -73,7 +73,7 @@ switch ($mybb->get_input('action')) {
             error($lang->myshowcase_invalid_id);
         }
 
-        $insert_array = array(
+        $insert_array = [
             'id' => $me->id,
             'gid' => $result['gid'],
             'reporteruid' => $mybb->user['uid'],
@@ -81,7 +81,7 @@ switch ($mybb->get_input('action')) {
             'status' => 0,
             'reason' => $db->escape_string($mybb->get_input('reason')),
             'dateline' => TIME_NOW
-        );
+        ];
 
         $rid = $db->insert_query('myshowcase_reports', $insert_array);
 
@@ -237,7 +237,7 @@ switch ($mybb->get_input('action')) {
         $rids = implode($mybb->get_input('reports', \MyBB::INPUT_ARRAY), "','");
         $rids = "'0','{$rids}'";
 
-        $db->update_query('myshowcase_reports', array('status' => 1), "rid IN ({$rids}) AND id=" . $me->id);
+        $db->update_query('myshowcase_reports', ['status' => 1], "rid IN ({$rids}) AND id=" . $me->id);
 
         $page = intval($mybb->get_input('page', \MyBB::INPUT_INT));
 

@@ -695,7 +695,7 @@ function myshowcase_plugin_install()
 
     //check versions
     if (version_compare($oldver, $myshowcase['version']) == -1) {
-        $need_upgrade = array();
+        $need_upgrade = [];
         $need_upgrade['prev'] = $oldver;
         $need_upgrade['this'] = $myshowcase['version'];
     }
@@ -775,22 +775,22 @@ function myshowcase_plugin_install()
     $db->delete_query('settinggroups', "name = 'myshowcase'");
 
     //start new setting group
-    $settings_group = array(
+    $settings_group = [
         'name' => 'myshowcase',
         'title' => 'MyShowcase Section',
         'description' => 'Options on how to configure the MyShowcase section.',
         'disporder' => '50',
         'isdefault' => '0',
-    );
+    ];
 
     $db->insert_query('settinggroups', $settings_group);
     $gid = $db->insert_id();
 
     //start new settings (THERE IS NO MAIN SWITCH AS EACH SHOWCASE IS ENABLED INDIVIDUALLY IN THE SHOWCASE ADMIN)
-    $pluginsetting = array();
+    $pluginsetting = [];
     $disporder = 1;
 
-    $pluginsetting[] = array(
+    $pluginsetting[] = [
         'name' => 'myshowcase_delete_tables_on_uninstall',
         'title' => 'Drop MyShowcase tables when uninstalling?',
         'description' => 'When uninstalling, do you want to drop the showcase tables and delete the data in them? Reinstalling will not overwrite existing data if you select [no].',
@@ -798,7 +798,7 @@ function myshowcase_plugin_install()
         'value' => '0',
         'disporder' => $disporder,
         'gid' => $gid
-    );
+    ];
 
     reset($pluginsetting);
     foreach ($pluginsetting as $setting) {
@@ -834,7 +834,7 @@ function myshowcase_plugin_activate()
     }
 
     if (version_compare($oldver, $myshowcase['version']) == -1) {
-        $need_upgrade = array();
+        $need_upgrade = [];
         $need_upgrade['prev'] = $oldver;
         $need_upgrade['this'] = $myshowcase['version'];
     }

@@ -37,14 +37,14 @@ if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $
 }
 
 //generate interval list using language vars
-$prune_intervals = array();
+$prune_intervals = [];
 $prune_intervals['days'] = $lang->days;
 $prune_intervals['weeks'] = $lang->weeks;
 $prune_intervals['months'] = $lang->months;
 $prune_intervals['years'] = $lang->years;
 
 //generate watermark location list using language vars
-$watermark_locs = array();
+$watermark_locs = [];
 $watermark_locs['upper-left'] = $lang->myshowcase_upper_left;
 $watermark_locs['upper-right'] = $lang->myshowcase_upper_right;
 $watermark_locs['center'] = $lang->myshowcase_center;
@@ -77,7 +77,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                     foreach ($usergroups as $group) {
                         $groupdata = $permdata[$group['gid']];
 
-                        $update_array = array();
+                        $update_array = [];
 
                         foreach (showcasePermissions() as $field => $value) {
                             $update_array[$field] = (isset($groupdata[$field]) ? $groupdata[$field] : 0);
@@ -113,7 +113,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
                 case 'edit-main':
                     //update main myshowcase settings
-                    $update_array = array(
+                    $update_array = [
                         'name' => $db->escape_string($mybb->get_input('name')),
                         'description' => $db->escape_string($mybb->get_input('description')),
                         'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
@@ -123,12 +123,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         'watermarkloc' => $mybb->get_input('watermarkloc'),
                         'use_attach' => $mybb->get_input('use_attach', \MyBB::INPUT_INT),
                         'f2gpath' => $db->escape_string($mybb->get_input('f2gpath'))
-                    );
+                    ];
 
                     if ($can_edit) {
                         $update_array = array_merge(
                             $update_array,
-                            array('fieldsetid' => $mybb->get_input('fieldset', \MyBB::INPUT_INT))
+                            ['fieldsetid' => $mybb->get_input('fieldset', \MyBB::INPUT_INT)]
                         );
                     }
 
@@ -162,7 +162,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
                 case 'edit-other':
                     //update other myshowcase settings
-                    $update_array = array(
+                    $update_array = [
                         'modnewedit' => $mybb->get_input('modnewedit', \MyBB::INPUT_INT),
                         'othermaxlength' => $db->escape_string($mybb->get_input('othermaxlength')),
                         'allow_attachments' => $mybb->get_input('allow_attachments', \MyBB::INPUT_INT),
@@ -182,7 +182,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         'allowsmilies' => $mybb->get_input('allowsmilies', \MyBB::INPUT_INT),
                         'allowbbcode' => $mybb->get_input('allowbbcode', \MyBB::INPUT_INT),
                         'allowhtml' => $mybb->get_input('allowhtml', \MyBB::INPUT_INT)
-                    );
+                    ];
 
                     $db->update_query(
                         'myshowcase_config',
@@ -218,12 +218,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         $modperms = $mybb->get_input('modperms', \MyBB::INPUT_ARRAY);
 
                         foreach ($modperms as $mid => $perms) {
-                            $update_array = array(
+                            $update_array = [
                                 'canmodapprove' => (isset($perms['canmodapprove']) ? 1 : 0),
                                 'canmodedit' => (isset($perms['canmodedit']) ? 1 : 0),
                                 'canmoddelete' => (isset($perms['canmoddelete']) ? 1 : 0),
                                 'canmoddelcomment' => (isset($perms['canmoddelcomment']) ? 1 : 0)
-                            );
+                            ];
                             $db->update_query(
                                 'myshowcase_moderators',
                                 $update_array,
@@ -251,7 +251,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         $uid = $result['gid'];
                         $isgroup = 1;
 
-                        $insert_array = array(
+                        $insert_array = [
                             'id' => $mybb->get_input('id', \MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
@@ -264,7 +264,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                                     \MyBB::INPUT_INT
                                 )
                             ) ? 1 : 0)
-                        );
+                        ];
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
                     }
@@ -282,7 +282,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         $uid = $result['uid'];
                         $isgroup = 0;
 
-                        $insert_array = array(
+                        $insert_array = [
                             'id' => $mybb->get_input('id', \MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
@@ -295,7 +295,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                                     \MyBB::INPUT_INT
                                 )
                             ) ? 1 : 0)
-                        );
+                        ];
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
                     }
@@ -313,7 +313,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                     break;
             }
 
-            $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
+            $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
             log_admin_action($log);
         }
 
@@ -328,7 +328,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                     "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
                 );
             } else {
-                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
+                $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
                 log_admin_action($log);
 
                 flash_message(
@@ -341,12 +341,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
             }
         }
 
-        $tabs = array(
+        $tabs = [
             'main' => $lang->myshowcase_admin_main_options,
             'other' => $lang->myshowcase_admin_other_options,
             'permissions' => $lang->myshowcase_admin_permissions,
             'moderators' => $lang->myshowcase_admin_moderators
-        );
+        ];
 
         $page->output_tab_control($tabs);
 
@@ -385,12 +385,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $form_container = new FormContainer();
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'name',
                 $showcase_config['name'],
-                array('id' => 'name', 'style' => 'width: 100px'),
-                array('class' => 'align_left')
+                ['id' => 'name', 'style' => 'width: 100px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Showcase Name',
@@ -401,12 +401,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'description',
                 $showcase_config['description'],
-                array('id' => 'description', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'description', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Showcase Description',
@@ -417,12 +417,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'mainfile',
                 $showcase_config['mainfile'],
-                array('id' => 'mainfile', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'mainfile', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Main File',
@@ -433,12 +433,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'imgfolder',
                 $showcase_config['imgfolder'],
-                array('id' => 'imgfolder', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'imgfolder', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Folder to store attachments',
@@ -449,12 +449,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'defaultimage',
                 $showcase_config['defaultimage'],
-                array('id' => 'defaultimage', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'defaultimage', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Default List Image',
@@ -465,12 +465,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'watermarkimage',
                 $showcase_config['watermarkimage'],
-                array('id' => 'watermarkimage', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'watermarkimage', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Watermark Image',
@@ -481,12 +481,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_select_box(
                 'watermarkloc',
                 $watermark_locs,
                 $showcase_config['watermarkloc'],
-                array('id' => 'watermarkloc')
+                ['id' => 'watermarkloc']
             );
 
             $form_container->output_row(
@@ -498,12 +498,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                 'use_attach',
                 1,
                 'Relace Default List Image above with thumbnail of showcase entry',
-                array('checked' => $showcase_config['use_attach'])
+                ['checked' => $showcase_config['use_attach']]
             );
             $form_container->output_row(
                 'List View Link',
@@ -514,12 +514,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_text_box(
                 'f2gpath',
                 $showcase_config['f2gpath'],
-                array('id' => 'f2gpath', 'style' => 'width: 250px'),
-                array('class' => 'align_left')
+                ['id' => 'f2gpath', 'style' => 'width: 250px'],
+                ['class' => 'align_left']
             );
             $form_container->output_row(
                 'Path to forums',
@@ -533,13 +533,13 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
             $fieldset_note = $fieldset_note ?? '';
 
             if ($can_edit) {
-                $general_options = array();
+                $general_options = [];
                 $general_options[] = $form->generate_select_box(
                     'fieldset',
                     $fieldsets,
                     $showcase_config['fieldsetid'],
-                    array('id' => 'fieldset'),
-                    array('class' => 'align_center')
+                    ['id' => 'fieldset'],
+                    ['class' => 'align_center']
                 );
 
                 $form_container->output_row(
@@ -561,7 +561,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $form_container->end();
 
-            $buttons = array();
+            $buttons = [];
             $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_main);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
@@ -586,17 +586,17 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $prunetime = explode('|', $showcase_config['prunetime']);
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $lang->myshowcase_edit_prunetime . "<br />\n" . $form->generate_text_box(
                     'prunetime',
                     $prunetime[0],
-                    array('id' => 'prunetime', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'prunetime', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 ) . ' ' . $form->generate_select_box(
                     'interval',
                     $prune_intervals,
                     $prunetime[1],
-                    array('id' => 'interval')
+                    ['id' => 'interval']
                 );
 
             $form_container->output_row(
@@ -608,12 +608,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                 'modnewedit',
                 1,
                 $lang->myshowcase_edit_modnewedit,
-                array('checked' => $showcase_config['modnewedit'])
+                ['checked' => $showcase_config['modnewedit']]
             );
             $form_container->output_row(
                 'Moderation',
@@ -624,12 +624,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $lang->myshowcase_edit_othermaxlength . "<br />\n" . $form->generate_text_box(
                     'othermaxlength',
                     $showcase_config['othermaxlength'],
-                    array('id' => 'othermaxlength', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'othermaxlength', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 );
             $form_container->output_row(
                 'Text Type Fields',
@@ -640,24 +640,24 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                     'allow_attachments',
                     1,
                     $lang->myshowcase_edit_allow_attachments,
-                    array('checked' => $showcase_config['allow_attachments'])
+                    ['checked' => $showcase_config['allow_attachments']]
                 ) . '<br /><br />';
             $general_options[] = $lang->myshowcase_edit_thumb_width . "<br />\n" . $form->generate_text_box(
                     'thumb_width',
                     $showcase_config['thumb_width'],
-                    array('id' => 'thumb_width', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'thumb_width', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 );
             $general_options[] = $lang->myshowcase_edit_thumb_height . "<br />\n" . $form->generate_text_box(
                     'thumb_height',
                     $showcase_config['thumb_height'],
-                    array('id' => 'thumb_height', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'thumb_height', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 );
             $form_container->output_row(
                 'Attachments',
@@ -668,18 +668,18 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                     'allow_comments',
                     1,
                     $lang->myshowcase_edit_allow_comments,
-                    array('checked' => $showcase_config['allow_comments'])
+                    ['checked' => $showcase_config['allow_comments']]
                 ) . '<br /><br />';
             $general_options[] = $lang->myshowcase_edit_comment_length . "<br />\n" . $form->generate_text_box(
                     'comment_length',
                     $showcase_config['comment_length'],
-                    array('id' => 'comment_length', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'comment_length', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 );
             $form_container->output_row(
                 'Comments',
@@ -690,24 +690,24 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                 'allowsmilies',
                 1,
                 $lang->myshowcase_edit_allow_smilies,
-                array('checked' => $showcase_config['allowsmilies'])
+                ['checked' => $showcase_config['allowsmilies']]
             );
             $general_options[] = $form->generate_check_box(
                 'allowbbcode',
                 1,
                 $lang->myshowcase_edit_allow_bbcode,
-                array('checked' => $showcase_config['allowbbcode'])
+                ['checked' => $showcase_config['allowbbcode']]
             );
             $general_options[] = $form->generate_check_box(
                 'allowhtml',
                 1,
                 $lang->myshowcase_edit_allow_html,
-                array('checked' => $showcase_config['allowhtml'])
+                ['checked' => $showcase_config['allowhtml']]
             );
             $form_container->output_row(
                 'Parser Options (applies to entry and comments)',
@@ -718,36 +718,36 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 ) . '</div>'
             );
 
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $lang->myshowcase_edit_disp_attachcols . "<br />\n" . $form->generate_text_box(
                     'disp_attachcols',
                     $showcase_config['disp_attachcols'],
-                    array('id' => 'disp_attachcols', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'disp_attachcols', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 );
             $general_options[] = $lang->myshowcase_edit_comment_dispinit . "<br />\n" . $form->generate_text_box(
                     'comment_dispinit',
                     $showcase_config['comment_dispinit'],
-                    array('id' => 'comment_dispinit', 'style' => 'width: 100px'),
-                    array('class' => 'align_left')
+                    ['id' => 'comment_dispinit', 'style' => 'width: 100px'],
+                    ['class' => 'align_left']
                 ) . '<br /><br />';
             $general_options[] = $form->generate_check_box(
                 'disp_empty',
                 1,
                 $lang->myshowcase_edit_disp_empty,
-                array('checked' => $showcase_config['disp_empty'])
+                ['checked' => $showcase_config['disp_empty']]
             );
             $general_options[] = $form->generate_check_box(
                 'link_in_postbit',
                 1,
                 $lang->myshowcase_edit_link_in_postbit,
-                array('checked' => $showcase_config['link_in_postbit'])
+                ['checked' => $showcase_config['link_in_postbit']]
             );
             $general_options[] = $form->generate_check_box(
                 'portal_random',
                 1,
                 $lang->myshowcase_edit_portal_random,
-                array('checked' => $showcase_config['portal_random'])
+                ['checked' => $showcase_config['portal_random']]
             );
             $form_container->output_row(
                 'Display Settings',
@@ -760,7 +760,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $form_container->end();
 
-            $buttons = array();
+            $buttons = [];
             $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_other);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
@@ -785,53 +785,53 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $form_container->output_row_header(
                 $lang->myshowcase_group,
-                array('width' => '23%', 'class' => 'align_center')
+                ['width' => '23%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canadd,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canedit,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canattach,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canview,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canviewcomment,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canviewattach,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_cancomment,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_candelowncomment,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_candelauthcomment,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_cansearch,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canwatermark,
-                array('width' => '6%', 'class' => 'align_center')
+                ['width' => '6%', 'class' => 'align_center']
             );
-            $form_container->output_row_header($lang->myshowcase_attachlimit, array('class' => 'align_center'));
+            $form_container->output_row_header($lang->myshowcase_attachlimit, ['class' => 'align_center']);
 
             $defaultShowcasePermissions = showcasePermissions();
 
@@ -839,11 +839,11 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
             reset($defaultShowcasePermissions);
 
             foreach ($usergroups as $group) {
-                $perm_options = array();
+                $perm_options = [];
 
                 $perm_options[] = $form_container->output_cell(
                     '<strong>' . $group['title'] . '</strong>',
-                    array('class' => 'align_left')
+                    ['class' => 'align_left']
                 );
 
                 foreach ($defaultShowcasePermissions as $field => $value) {
@@ -853,9 +853,9 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                             $form->generate_text_box(
                                 "permissions[{$group['gid']}][{$field}]",
                                 $showcase_group_perms[$group['gid']][$field],
-                                array('id' => $field . $group['gid'], 'style' => 'width: 100px')
+                                ['id' => $field . $group['gid'], 'style' => 'width: 100px']
                             ),
-                            array('class' => 'align_center')
+                            ['class' => 'align_center']
                         );
                     } else {
                         $perm_options[] = $form_container->output_cell(
@@ -863,12 +863,12 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                                 "permissions[{$group['gid']}][{$field}]",
                                 1,
                                 '',
-                                array(
+                                [
                                     'checked' => $showcase_group_perms[$group['gid']][$field],
                                     'id' => $field . $group['gid']
-                                )
+                                ]
                             ),
-                            array('class' => 'align_center')
+                            ['class' => 'align_center']
                         );
                     }
                 }
@@ -877,7 +877,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             $form_container->end();
 
-            $buttons = array();
+            $buttons = [];
             $buttons[] = $form->generate_submit_button($lang->myshowcase_edit_save_perms);
             $buttons[] = $form->generate_reset_button($lang->reset);
             $form->output_submit_wrapper($buttons);
@@ -888,7 +888,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 
             echo "<div id=\"tab_moderators\">\n";
 
-            $buttons = array();
+            $buttons = [];
             $form = new Form(
                 'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->get_input(
                     'id',
@@ -907,26 +907,26 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 $lang->sprintf($lang->myshowcase_moderators_assigned, $forum_cache[$fid]['name'] ?? '')
             );
 
-            $form_container->output_row_header($lang->myshowcase_moderators_name, array('width' => '50%'));
+            $form_container->output_row_header($lang->myshowcase_moderators_name, ['width' => '50%']);
             $form_container->output_row_header(
                 $lang->myshowcase_canapprove,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_canedit,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_candelete,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_candelauthcomment,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_moderators_controls,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $query = $db->query(
                 '
@@ -939,7 +939,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 				"
             );
             while ($moderator = $db->fetch_array($query)) {
-                $perm_options = array();
+                $perm_options = [];
                 if ($moderator['isgroup']) {
                     $moderator['img'] = "<img src=\"styles/{$page->style}/images/icons/group.png\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
                     $perm_options[] = $form_container->output_cell(
@@ -960,46 +960,46 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                         "modperms[{$moderator['mid']}][canmodapprove]",
                         1,
                         '',
-                        array('checked' => $moderator['canmodapprove'], 'id' => "modapprove{$moderator['mid']}")
+                        ['checked' => $moderator['canmodapprove'], 'id' => "modapprove{$moderator['mid']}"]
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $perm_options[] = $form_container->output_cell(
                     $form->generate_check_box(
                         "modperms[{$moderator['mid']}][canmodedit]",
                         1,
                         '',
-                        array('checked' => $moderator['canmodedit'], 'id' => "modedit{$moderator['mid']}")
+                        ['checked' => $moderator['canmodedit'], 'id' => "modedit{$moderator['mid']}"]
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $perm_options[] = $form_container->output_cell(
                     $form->generate_check_box(
                         "modperms[{$moderator['mid']}][canmoddelete]",
                         1,
                         '',
-                        array('checked' => $moderator['canmoddelete'], 'id' => "moddelete{$moderator['mid']}")
+                        ['checked' => $moderator['canmoddelete'], 'id' => "moddelete{$moderator['mid']}"]
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $perm_options[] = $form_container->output_cell(
                     $form->generate_check_box(
                         "modperms[{$moderator['mid']}][canmoddelcomment]",
                         1,
                         '',
-                        array('checked' => $moderator['canmoddelcomment'], 'id' => "moddelcomment{$moderator['mid']}")
+                        ['checked' => $moderator['canmoddelcomment'], 'id' => "moddelcomment{$moderator['mid']}"]
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $perm_options[] = $form_container->output_cell(
                     "<a href=\"index.php?module=myshowcase-edit&amp;action=del-mod&amp;id={$mybb->get_input('id', \MyBB::INPUT_INT)}&amp;mid={$moderator['mid']}&amp;my_post_key={$mybb->post_code}#tab_moderators\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myshowcase_moderators_confirm_deletion}')\">{$lang->myshowcase_moderators_delete}</a>",
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->construct_row();
             }
 
             if ($form_container->num_rows() == 0) {
-                $form_container->output_cell($lang->myshowcase_moderators_none, array('colspan' => 6));
+                $form_container->output_cell($lang->myshowcase_moderators_none, ['colspan' => 6]);
                 $form_container->construct_row();
             }
             $form_container->end();
@@ -1008,7 +1008,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
             $form->end();
 
             // Add Usergropups
-            $buttons = array();
+            $buttons = [];
             $form2 = new Form(
                 'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->get_input(
                     'id',
@@ -1025,34 +1025,34 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 $form2->generate_text_box(
                     'usergroup',
                     '',
-                    array('id' => 'usergroup')
+                    ['id' => 'usergroup']
                 ),
                 'usergroup'
             );
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                     'gcanmodapprove',
                     1,
                     $lang->myshowcase_edit_modcanapprove,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                     'gcanmodedit',
                     1,
                     $lang->myshowcase_edit_modcanedit,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                     'gcanmoddelete',
                     1,
                     $lang->myshowcase_edit_modcandelete,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                 'gcanmoddelcomment',
                 1,
                 $lang->myshowcase_edit_modcandelcomment,
-                array('checked' => 1)
+                ['checked' => 1]
             );
             $form_container->output_row(
                 'Moderator Permissions',
@@ -1095,34 +1095,34 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
                 $form2->generate_text_box(
                     'username',
                     '',
-                    array('id' => 'username')
+                    ['id' => 'username']
                 ),
                 'username'
             );
-            $general_options = array();
+            $general_options = [];
             $general_options[] = $form->generate_check_box(
                     'ucanmodapprove',
                     1,
                     $lang->myshowcase_edit_modcanapprove,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                     'ucanmodedit',
                     1,
                     $lang->myshowcase_edit_modcanedit,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                     'ucanmoddelete',
                     1,
                     $lang->myshowcase_edit_modcandelete,
-                    array('checked' => 1)
+                    ['checked' => 1]
                 ) . '<br />';
             $general_options[] = $form->generate_check_box(
                 'ucanmoddelcomment',
                 1,
                 $lang->myshowcase_edit_modcandelcomment,
-                array('checked' => 1)
+                ['checked' => 1]
             );
             $form_container->output_row(
                 'Moderator Permissions',
@@ -1142,7 +1142,7 @@ if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
 				// -->
 				</script>';
 
-            $buttons = array($form->generate_submit_button($lang->myshowcase_add_user_moderator));
+            $buttons = [$form->generate_submit_button($lang->myshowcase_add_user_moderator)];
             $form2->output_submit_wrapper($buttons);
             $form2->end();
             echo "</div>\n";

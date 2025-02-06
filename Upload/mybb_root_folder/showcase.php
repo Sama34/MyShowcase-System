@@ -201,7 +201,7 @@ if ($mybb->get_input('action') == 'attachment') {
 
     $plugins->run_hooks('myshowcase_attachment_start');
 
-    $db->update_query('myshowcase_attachments', array('downloads' => $attachment['downloads'] + 1), "aid='{$aid}'");
+    $db->update_query('myshowcase_attachments', ['downloads' => $attachment['downloads'] + 1], "aid='{$aid}'");
 
     if (stristr($attachment['filetype'], 'image/')) {
         $posterdata = get_user($attachment['uid']);
@@ -446,15 +446,15 @@ if (!is_array($fieldcache[$me->fieldsetid])) {
 }
 
 //init dynamic field info
-$showcase_fields = array();
-$showcase_fields_enabled = array();
-$showcase_fields_showinlist = array();
-$showcase_fields_searchable = array();
-$showcase_fields_parse = array();
-$showcase_fields_max_length = array();
-$showcase_fields_require = array();
+$showcase_fields = [];
+$showcase_fields_enabled = [];
+$showcase_fields_showinlist = [];
+$showcase_fields_searchable = [];
+$showcase_fields_parse = [];
+$showcase_fields_max_length = [];
+$showcase_fields_require = [];
 $showcase_fields_require['uid'] = 1;
-$showcase_fields_format = array();
+$showcase_fields_format = [];
 
 $showcase_fields_min_length = $showcase_fields_min_length ?? [];
 
@@ -543,7 +543,7 @@ switch ($mybb->get_input('action')) {
         }
 
         //init fixed fields for list view and insert the custom fields into the options list array
-        $showcase_order_fields = array();
+        $showcase_order_fields = [];
         $showcase_order_fields['createdate'] = $lang->myshowcase_sort_createdate;
         $showcase_order_fields['dateline'] = $lang->myshowcase_sort_editdate;
         $showcase_order_fields['username'] = $lang->myshowcase_sort_username;
@@ -555,7 +555,7 @@ switch ($mybb->get_input('action')) {
         $showcase_order_fields['comments'] = $lang->myshowcase_sort_comments;
 
         //init fixed fields for list view and insert the custom fields into the options list array
-        $showcase_search_fields = array();
+        $showcase_search_fields = [];
         $showcase_search_fields['username'] = $lang->myshowcase_sort_username;
         foreach ($showcase_fields_searchable as $forder => $fname) {
             $order_text = $lang->{"myshowcase_field_{$fname}"};
@@ -775,7 +775,7 @@ switch ($mybb->get_input('action')) {
             );
 
             // get first attachment for each showcase on this page
-            $showcase_images = array();
+            $showcase_images = [];
             if ($me->use_attach == 1) {
                 $gidlist = '';
                 while ($results = $db->fetch_array($query)) {
@@ -1109,7 +1109,7 @@ switch ($mybb->get_input('action')) {
             }
 
             //set parser options for current field
-            $parser_options = array(
+            $parser_options = [
                 'filter_badwords' => 1,
                 'allow_html' => $me->allowhtml,
                 'allow_mycode' => $me->allowbbcode,
@@ -1117,7 +1117,7 @@ switch ($mybb->get_input('action')) {
                 'allow_smilies' => $me->allowsmilies,
                 'highlight' => $highlight,
                 'nl2br' => 1
-            );
+            ];
 
             switch ($ftype) {
                 case 'textarea':
@@ -1478,14 +1478,14 @@ switch ($mybb->get_input('action')) {
             $mybb->input['comments'] = $db->escape_string($mybb->get_input('comments'));
 
             if ($mybb->get_input('comments') != '') {
-                $comment_insert_data = array(
+                $comment_insert_data = [
                     'id' => $me->id,
                     'gid' => $mybb->get_input('gid', \MyBB::INPUT_INT),
                     'uid' => $mybb->user['uid'],
                     'ipaddress' => get_ip(),
                     'comment' => $mybb->get_input('comments'),
                     'dateline' => TIME_NOW
-                );
+                ];
 
                 $plugins->run_hooks('myshowcase_add_comment_commit');
 
@@ -1493,7 +1493,7 @@ switch ($mybb->get_input('action')) {
 
                 $db->update_query(
                     $me->table_name,
-                    array('comments' => $num_comments + 1),
+                    ['comments' => $num_comments + 1],
                     'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT)
                 );
 
@@ -1505,7 +1505,7 @@ switch ($mybb->get_input('action')) {
 
                     $excerpt = $parser->text_parse_message(
                         $mybb->get_input('comments'),
-                        array('me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1)
+                        ['me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1]
                     );
                     $excerpt = my_substr(
                             $excerpt,
@@ -1535,13 +1535,13 @@ switch ($mybb->get_input('action')) {
                         $mybb->settings['bburl']
                     );
 
-                    $new_email = array(
+                    $new_email = [
                         'mailto' => $db->escape_string($author['email']),
                         'mailfrom' => '',
                         'subject' => $db->escape_string($emailsubject),
                         'message' => $db->escape_string($emailmessage),
                         'headers' => ''
-                    );
+                    ];
 
                     $db->insert_query('mailqueue', $new_email);
                     $cache->update_mailqueue();
@@ -1610,7 +1610,7 @@ switch ($mybb->get_input('action')) {
 
                 $plugins->run_hooks('myshowcase_del_comment_commit');
 
-                $db->update_query($me->table_name, array('comments' => $num_comments), 'gid=' . $gcomments['gid']);
+                $db->update_query($me->table_name, ['comments' => $num_comments], 'gid=' . $gcomments['gid']);
 
                 $item_viewcode = str_replace('{gid}', $gcomments['gid'], SHOWCASE_URL_VIEW);
 

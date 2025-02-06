@@ -33,14 +33,14 @@ if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $
 
 $plugins->run_hooks('admin_myshowcase_help_begin');
 
-$tabs = array(
+$tabs = [
     'main' => 'Main',
     'summary' => 'Summary',
     'fields' => 'Field Settings',
     'edit' => 'Edit Existing',
     'cache' => 'Rebuild Cache',
     'other' => 'Other Items'
-);
+];
 
 $page->output_tab_control($tabs);
 

@@ -34,13 +34,13 @@ require_once 'templates.php';
 
 foreach (getTemplatesList() as $title => $template) {
     $db->delete_query('templates', "title='" . $title . "' and sid=-2");
-    $insert_array = array(
+    $insert_array = [
         'title' => $title,
         'template' => $db->escape_string($template),
         'sid' => -2,
         'version' => 0,
         'dateline' => TIME_NOW
-    );
+    ];
 
     $db->insert_query('templates', $insert_array);
 

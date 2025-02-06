@@ -205,7 +205,7 @@ switch ($mybb->get_input('action')) {
                             'myshowcase_field_data',
                             '*',
                             'setid=' . $me->fieldsetid . " AND name='" . $fname . "' AND valueid != 0",
-                            array('order_by' => 'disporder')
+                            ['order_by' => 'disporder']
                         );
                         if ($db->num_rows($query) == 0) {
                             error($lang->myshowcase_db_no_data);
@@ -246,7 +246,7 @@ switch ($mybb->get_input('action')) {
                             'myshowcase_field_data',
                             '*',
                             'setid=' . $me->fieldsetid . " AND name='" . $fname . "' AND valueid != 0",
-                            array('order_by' => 'disporder')
+                            ['order_by' => 'disporder']
                         );
                         if ($db->num_rows($query) == 0) {
                             error($lang->myshowcase_db_no_data);
@@ -451,25 +451,25 @@ switch ($mybb->get_input('action')) {
             verify_post_check($mybb->get_input('my_post_key'));
 
             // Set the post data that came from the input to the $post array.
-            $default_data = array(
+            $default_data = [
                 'uid' => $showcase_data['uid'],
                 'dateline' => TIME_NOW,
                 'approved' => $approved,
                 'approved_by' => $approved_by,
                 'posthash' => $posthash
-            );
+            ];
 
             //add showcase id if editing so we know what to update
             if ($mybb->get_input('action') == 'do_editshowcase') {
                 $default_data = array_merge(
                     $default_data,
-                    array('gid' => intval($mybb->get_input('gid', \MyBB::INPUT_INT)))
+                    ['gid' => intval($mybb->get_input('gid', \MyBB::INPUT_INT))]
                 );
             }
 
             //add showcase specific fields
             reset($showcase_fields_enabled);
-            $submitted_data = array();
+            $submitted_data = [];
             foreach ($showcase_fields_enabled as $fname => $ftype) {
                 if ($ftype == 'db' || $ftype == 'radio') {
                     $submitted_data[$fname] = intval($mybb->get_input('myshowcase_field_' . $fname));
@@ -494,7 +494,7 @@ switch ($mybb->get_input('action')) {
             // Now let the showcase handler do all the hard work.
             $valid_showcase = $showcasehandler->validate_showcase();
 
-            $showcase_errors = array();
+            $showcase_errors = [];
 
             // Fetch friendly error messages if this is an invalid showcase
             if (!$valid_showcase) {
@@ -593,7 +593,7 @@ switch ($mybb->get_input('action')) {
                             'myshowcase_field_data',
                             '*',
                             'setid=' . $me->fieldsetid . " AND name='" . $fname . "' AND valueid != 0",
-                            array('order_by' => 'disporder')
+                            ['order_by' => 'disporder']
                         );
                         if ($db->num_rows($query) == 0) {
                             error($lang->myshowcase_db_no_data);
@@ -634,7 +634,7 @@ switch ($mybb->get_input('action')) {
                             'myshowcase_field_data',
                             '*',
                             'setid=' . $me->fieldsetid . " AND name='" . $fname . "' AND valueid != 0",
-                            array('order_by' => 'disporder')
+                            ['order_by' => 'disporder']
                         );
                         if ($db->num_rows($query) == 0) {
                             error($lang->myshowcase_db_no_data);

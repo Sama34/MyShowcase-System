@@ -49,10 +49,10 @@ switch ($mybb->get_input('action')) {
 			'
         );
 
-        $modlogdata = array(
+        $modlogdata = [
             'id' => $me->id,
             'gids' => implode(',', $gids)
-        );
+        ];
         log_moderator_action(
             $modlogdata,
             ($mybb->get_input(

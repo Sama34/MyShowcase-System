@@ -64,7 +64,7 @@ if ($mybb->get_input('action') == 'new') {
         } else {
             $plugins->run_hooks('admin_myshowcase_summary_insert_begin');
 
-            $insert_array = array(
+            $insert_array = [
                 'name' => $newname,
                 'description' => $newdesc,
                 'mainfile' => $newfile,
@@ -72,7 +72,7 @@ if ($mybb->get_input('action') == 'new') {
                 'f2gpath' => $f2gpath,
                 'fieldsetid' => $db->escape_string($mybb->get_input('newfieldset')),
                 'enabled' => 0
-            );
+            ];
             $db->insert_query('myshowcase_config', $insert_array);
             $newid = $db->insert_id();
 
@@ -104,7 +104,7 @@ if ($mybb->get_input('action') == 'new') {
             myshowcase_update_cache('permissions');
 
             // Log admin action
-            $log = array('id' => $newid, 'myshowcase' => $mybb->get_input('newname'));
+            $log = ['id' => $newid, 'myshowcase' => $mybb->get_input('newname')];
             log_admin_action($log);
 
             flash_message($lang->myshowcase_summary_add_success, 'success');
@@ -130,13 +130,13 @@ if ($mybb->get_input('action') == 'enable') {
             } else {
                 $plugins->run_hooks('admin_myshowcase_summary_enable_begin');
 
-                $update_array = array(
+                $update_array = [
                     'enabled' => 1
-                );
+                ];
                 $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
 
                 if ($db->affected_rows()) {
-                    $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
+                    $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
                     log_admin_action($log);
 
                     flash_message($lang->myshowcase_summary_enable_success, 'success');
@@ -157,13 +157,13 @@ if ($mybb->get_input('action') == 'disable') {
         } else {
             $plugins->run_hooks('admin_myshowcase_summary_disable_begin');
 
-            $update_array = array(
+            $update_array = [
                 'enabled' => 0
-            );
+            ];
             $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
 
             if ($db->affected_rows()) {
-                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
+                $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_summary_disable_success, 'success');
@@ -261,7 +261,7 @@ if ($mybb->get_input('action') == 'createtable') {
             $db->write_query($create_sql);
 
             if (showcaseDataTableExists($mybb->get_input('id', \MyBB::INPUT_INT))) {
-                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
+                $log = ['id' => $mybb->get_input('id', \MyBB::INPUT_INT)];
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_summary_create_success, 'success');
@@ -334,9 +334,9 @@ if ($mybb->get_input('action') == 'do_deletetable') {
                 $query = $db->query(
                     'DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->get_input('id', \MyBB::INPUT_INT)
                 );
-                $update_array = array(
+                $update_array = [
                     'enabled' => 0
-                );
+                ];
                 $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
             }
 
@@ -408,57 +408,57 @@ if ($mybb->get_input('action') == 'show_seo') {
     $form = new Form('index.php?module=myshowcase-summary', 'post', 'summary');
     $form_container = new FormContainer($lang->myshowcase_summary_existing);
 
-    $form_container->output_row_header($lang->myshowcase_summary_id, array('width' => '2%', 'class' => 'align_center'));
+    $form_container->output_row_header($lang->myshowcase_summary_id, ['width' => '2%', 'class' => 'align_center']);
     $form_container->output_row_header(
         $lang->myshowcase_summary_name,
-        array('width' => '10%', 'class' => 'align_center')
+        ['width' => '10%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_description,
-        array('width' => '17%', 'class' => 'align_center')
+        ['width' => '17%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_entries_count,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_comment_count,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_attachments_count,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_attachments_size,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_main_file,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_image_folder,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_forum_folder,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_field_set,
-        array('width' => '5%', 'class' => 'align_center')
+        ['width' => '5%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_summary_status,
-        array('width' => '2%', 'class' => 'align_center')
+        ['width' => '2%', 'class' => 'align_center']
     );
-    $form_container->output_row_header($lang->controls, array('width' => '5%', 'class' => 'align_center'));
+    $form_container->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
     $query = $db->simple_select('myshowcase_config', '*', '');
     $num_myshowcases = $db->num_rows($query);
     if ($num_myshowcases == 0) {
-        $form_container->output_cell($lang->myshowcase_summary_no_myshowcases, array('colspan' => 9));
+        $form_container->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
     } else {
         while ($result = $db->fetch_array($query)) {
             $num_entries = 0;
@@ -551,28 +551,28 @@ if ($mybb->get_input('action') == 'show_seo') {
 
             $result['imgfolder'] = ($result['imgfolder'] == '' ? $lang->myshowcase_summary_not_specified : $result['imgfolder']);
 
-            $form_container->output_cell($result['id'], array('class' => 'align_center'));
+            $form_container->output_cell($result['id'], ['class' => 'align_center']);
             $form_container->output_cell($result['name']);
             $form_container->output_cell($result['description']);
-            $form_container->output_cell($num_entries, array('class' => 'align_center'));
-            $form_container->output_cell($num_comments, array('class' => 'align_center'));
-            $form_container->output_cell($num_attach, array('class' => 'align_center'));
+            $form_container->output_cell($num_entries, ['class' => 'align_center']);
+            $form_container->output_cell($num_comments, ['class' => 'align_center']);
+            $form_container->output_cell($num_attach, ['class' => 'align_center']);
             $form_container->output_cell(
                 number_format($attach_size / 1024 / 1024, 2, '.', ','),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
-            $form_container->output_cell($result['mainfile'], array('class' => 'align_center'));
-            $form_container->output_cell($result['imgfolder'], array('class' => 'align_center'));
-            $form_container->output_cell($result['f2gpath'], array('class' => 'align_center'));
+            $form_container->output_cell($result['mainfile'], ['class' => 'align_center']);
+            $form_container->output_cell($result['imgfolder'], ['class' => 'align_center']);
+            $form_container->output_cell($result['f2gpath'], ['class' => 'align_center']);
             $form_container->output_cell(
                 $result_fieldset['setname'] . '<br />(ID=' . $result['fieldsetid'] . ')',
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
                 '<img src="' . $status_image . '" title="' . $status_alt . '">',
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
-            $form_container->output_cell($popup->fetch(), array('class' => 'align_center'));
+            $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
             $form_container->construct_row();
         }
     }
@@ -594,20 +594,20 @@ if ($mybb->get_input('action') == 'show_seo') {
 
         $form_container->output_row_header(
             $lang->myshowcase_summary_name,
-            array('width' => '25%', 'class' => 'align_center')
+            ['width' => '25%', 'class' => 'align_center']
         );
-        $form_container->output_row_header($lang->myshowcase_summary_description, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_main_file, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_image_folder, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, array('class' => 'align_center'));
+        $form_container->output_row_header($lang->myshowcase_summary_description, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_main_file, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_image_folder, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, ['class' => 'align_center']);
         $form_container->output_row_header(
             $lang->myshowcase_summary_field_set,
-            array('width' => '8%', 'class' => 'align_center')
+            ['width' => '8%', 'class' => 'align_center']
         );
 
         $form_container->output_cell(
             $lang->myshowcase_summary_nofieldsets,
-            array('colspan' => '6', 'class' => 'align_center')
+            ['colspan' => '6', 'class' => 'align_center']
         );
         $form_container->construct_row();
         $form_container->end();
@@ -619,25 +619,25 @@ if ($mybb->get_input('action') == 'show_seo') {
 
         $form_container->output_row_header(
             $lang->myshowcase_summary_name,
-            array('width' => '25%', 'class' => 'align_center')
+            ['width' => '25%', 'class' => 'align_center']
         );
-        $form_container->output_row_header($lang->myshowcase_summary_description, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_main_file, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_image_folder, array('class' => 'align_center'));
-        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, array('class' => 'align_center'));
+        $form_container->output_row_header($lang->myshowcase_summary_description, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_main_file, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_image_folder, ['class' => 'align_center']);
+        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, ['class' => 'align_center']);
         $form_container->output_row_header(
             $lang->myshowcase_summary_field_set,
-            array('width' => '8%', 'class' => 'align_center')
+            ['width' => '8%', 'class' => 'align_center']
         );
 
         $form_container->output_cell($form->generate_text_box('newname', ''));
-        $form_container->output_cell($form->generate_text_box('newdesc', '', array('style' => 'width: 95%')));
-        $form_container->output_cell($form->generate_text_box('newfile', '', array('style' => 'width: 95%')));
-        $form_container->output_cell($form->generate_text_box('newfolder', '', array('style' => 'width: 95%')));
-        $form_container->output_cell($form->generate_text_box('f2gpath', '', array('style' => 'width: 95%')));
+        $form_container->output_cell($form->generate_text_box('newdesc', '', ['style' => 'width: 95%']));
+        $form_container->output_cell($form->generate_text_box('newfile', '', ['style' => 'width: 95%']));
+        $form_container->output_cell($form->generate_text_box('newfolder', '', ['style' => 'width: 95%']));
+        $form_container->output_cell($form->generate_text_box('f2gpath', '', ['style' => 'width: 95%']));
         $form_container->output_cell(
-            $form->generate_select_box('newfieldset', $fieldsets, '', array('id' => 'fieldsets')),
-            array('class' => 'align_center')
+            $form->generate_select_box('newfieldset', $fieldsets, '', ['id' => 'fieldsets']),
+            ['class' => 'align_center']
         );
         $form_container->construct_row();
         $form_container->end();

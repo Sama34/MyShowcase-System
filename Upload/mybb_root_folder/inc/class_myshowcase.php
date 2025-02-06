@@ -295,7 +295,7 @@ class MyShowcaseSystem
         global $db, $cache, $config;
 
         require_once(MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php');
-        $showcase_group_perms = array();
+        $showcase_group_perms = [];
 
         //load permsissions already in cache
 //		$query = $db->simple_select("myshowcase_permissions", "*", "id={$this->id}");
@@ -374,12 +374,12 @@ class MyShowcaseSystem
         $showcase_user_perms['attachlimit'] = $showcase_group_perms[1]['attachlimit'];
 
         //set default mod perms
-        $modperms = array(
+        $modperms = [
             'canmodapprove' => 0,
             'canmodedit' => 0,
             'canmoddelete' => 0,
             'canmoddelcomment' => 0
-        );
+        ];
 
         //if not a guest, keep going....
         if ($user['uid'] > 0) {
@@ -400,12 +400,12 @@ class MyShowcaseSystem
 
             //assign full mod perms as default for supermod, admin groups if user in those groups
             if (is_member(getSetting('moderatorGroups'), $user)) {
-                $modperms = array(
+                $modperms = [
                     'canmodapprove' => 1,
                     'canmodedit' => 1,
                     'canmoddelete' => 1,
                     'canmoddelcomment' => 1
-                );
+                ];
             }
 
             //get showcase moderator cache to handle additional mods/modgroups
@@ -428,12 +428,12 @@ class MyShowcaseSystem
 
                     //check for specific user and use those permissions regardless of group perms
                     if (!$moddata['isgroup'] && $moddata['uid'] == $mybb->user['uid']) {
-                        $modperms3 = array(
+                        $modperms3 = [
                             'canmodapprove' => $moddata['canmodapprove'],
                             'canmodedit' => $moddata['canmodedit'],
                             'canmoddelete' => $moddata['canmoddelete'],
                             'canmoddelcomment' => $moddata['canmoddelcomment']
-                        );
+                        ];
 
                         //since we want user specific perms first, might as well continue here and skip the rest of the checks
                         continue;

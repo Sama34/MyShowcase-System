@@ -64,7 +64,7 @@ function global_start()
     $moderators = $cache->read('myshowcase_moderators');
 
     //loop through showcases
-    $rep_ids = array();
+    $rep_ids = [];
     foreach ($showcases as $id => $showcase) {
         //if showcase is enabled...
         if ($showcase['enabled']) {
@@ -369,7 +369,7 @@ function showthread_start()
     global $db, $mybb, $thread, $cache, $myshowcase_uids;
 
     //get list of enabled myshowcases with postbit links turned on
-    $myshowcase_uids = array();
+    $myshowcase_uids = [];
 
     $myshowcases = $cache->read('myshowcase_config');
     foreach ($myshowcases as $id => $myshowcase) {
@@ -388,7 +388,7 @@ function showthread_start()
         $query = $db->query(
             'SELECT uid FROM ' . TABLE_PREFIX . 'posts WHERE tid=' . (int)$thread['tid'] . ' AND uid > 0 GROUP BY uid'
         );
-        $uids = array();
+        $uids = [];
         while ($result = $db->fetch_array($query)) {
             $uids[$result['uid']] = 0;
         }

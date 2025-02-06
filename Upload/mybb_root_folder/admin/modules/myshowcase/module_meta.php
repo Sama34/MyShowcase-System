@@ -22,32 +22,32 @@ function myshowcase_meta()
 {
     global $page, $lang, $plugins;
 
-    $sub_menu = array();
-    $sub_menu['10'] = array(
+    $sub_menu = [];
+    $sub_menu['10'] = [
         'id' => 'summary',
         'title' => $lang->myshowcase_admin_summary,
         'link' => 'index.php?module=myshowcase-summary'
-    );
-    $sub_menu['20'] = array(
+    ];
+    $sub_menu['20'] = [
         'id' => 'fields',
         'title' => $lang->myshowcase_admin_fields,
         'link' => 'index.php?module=myshowcase-fields'
-    );
-    $sub_menu['30'] = array(
+    ];
+    $sub_menu['30'] = [
         'id' => 'edit',
         'title' => $lang->myshowcase_admin_edit_existing,
         'link' => 'index.php?module=myshowcase-edit'
-    );
-    $sub_menu['40'] = array(
+    ];
+    $sub_menu['40'] = [
         'id' => 'cache',
         'title' => $lang->myshowcase_admin_cache,
         'link' => 'index.php?module=myshowcase-cache'
-    );
-    $sub_menu['50'] = array(
+    ];
+    $sub_menu['50'] = [
         'id' => 'help',
         'title' => $lang->myshowcase_admin_help,
         'link' => 'index.php?module=myshowcase-help'
-    );
+    ];
 
     $plugins->run_hooks('admin_myshowcase_menu', $sub_menu);
 
@@ -67,14 +67,14 @@ function myshowcase_action_handler($action)
 
     $page->active_module = 'myshowcase';
 
-    $actions = array(
-        'summary' => array('active' => 'summary', 'file' => 'summary.php'),
-        'new' => array('active' => 'new', 'file' => 'summary.php'),
-        'fields' => array('active' => 'fields', 'file' => 'fields.php'),
-        'edit' => array('active' => 'edit', 'file' => 'edit.php'),
-        'cache' => array('active' => 'cache', 'file' => 'cache.php'),
-        'help' => array('active' => 'help', 'file' => 'help.php')
-    );
+    $actions = [
+        'summary' => ['active' => 'summary', 'file' => 'summary.php'],
+        'new' => ['active' => 'new', 'file' => 'summary.php'],
+        'fields' => ['active' => 'fields', 'file' => 'fields.php'],
+        'edit' => ['active' => 'edit', 'file' => 'edit.php'],
+        'cache' => ['active' => 'cache', 'file' => 'cache.php'],
+        'help' => ['active' => 'help', 'file' => 'help.php']
+    ];
 
     $plugins->run_hooks('admin_myshowcase_action_handler', $actions);
 
@@ -91,16 +91,16 @@ function myshowcase_admin_permissions()
 {
     global $lang, $plugins;
 
-    $admin_permissions = array(
+    $admin_permissions = [
         'summary' => $lang->myshowcase_admin_perm_summary,
         'new' => $lang->myshowcase_admin_perm_new,
         'edit' => $lang->myshowcase_admin_perm_edit,
         'fields' => $lang->myshowcase_admin_perm_fields,
         'cache' => $lang->myshowcase_admin_perm_cache,
         'help' => $lang->myshowcase_admin_perm_help,
-    );
+    ];
 
     $plugins->run_hooks('admin_myshowcase_permissions', $admin_permissions);
 
-    return array('name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'disporder' => 60);
+    return ['name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'disporder' => 60];
 }

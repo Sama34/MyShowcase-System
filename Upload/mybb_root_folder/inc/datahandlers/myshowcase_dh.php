@@ -50,14 +50,14 @@ class MyShowcaseDataHandler extends DataHandler
      *
      * @var array
      */
-    public $myshowcase_insert_data = array();
+    public $myshowcase_insert_data = [];
 
     /**
      * Array of data used to update a showcase.
      *
      * @var array
      */
-    public $myshowcase_update_data = array();
+    public $myshowcase_update_data = [];
 
 
     /**
@@ -104,9 +104,9 @@ class MyShowcaseDataHandler extends DataHandler
             //verify required
             if ($field['require'] == 1) {
                 if (my_strlen($myshowcase_data[$fname]) == 0 || !isset($myshowcase_data[$fname])) {
-                    $this->set_error('missing_field', array($field_header));
+                    $this->set_error('missing_field', [$field_header]);
                 } elseif ($field['html_type'] == 'db' && $myshowcase_data[$fname] == 0) {
-                    $this->set_error('missing_field', array($field_header));
+                    $this->set_error('missing_field', [$field_header]);
                 }
             }
 
@@ -118,7 +118,7 @@ class MyShowcaseDataHandler extends DataHandler
                     case 'int':
                     case 'timestamp':
                         if (!is_numeric($myshowcase_data[$fname]) && $myshowcase_data[$fname] != '') {
-                            $this->set_error('invalid_type', array($field_header));
+                            $this->set_error('invalid_type', [$field_header]);
                         }
 
                     //numbers and simple text need length checked so no break
@@ -130,11 +130,11 @@ class MyShowcaseDataHandler extends DataHandler
                                 ) < $field['min_length']) {
                                 $this->set_error(
                                     'invalid_length',
-                                    array(
+                                    [
                                         $field_header,
                                         my_strlen(strval($myshowcase_data[$fname])),
                                         $field['min_length'] . '-' . $field['max_length']
-                                    )
+                                    ]
                                 );
                             }
                         }
@@ -145,14 +145,14 @@ class MyShowcaseDataHandler extends DataHandler
                         if (my_strlen($myshowcase_data[$fname]) > $me->othermaxlength && $me->othermaxlength > 0) {
                             $this->set_error(
                                 'message_too_long',
-                                array($field_header, my_strlen($myshowcase_data[$fname]), $me->othermaxlength)
+                                [$field_header, my_strlen($myshowcase_data[$fname]), $me->othermaxlength]
                             );
                         }
 
                         if (my_strlen(strval($myshowcase_data[$fname])) < $field['min_length']) {
                             $this->set_error(
                                 'invalid_length_min',
-                                array($field_header, my_strlen(strval($myshowcase_data[$fname])), $field['min_length'])
+                                [$field_header, my_strlen(strval($myshowcase_data[$fname])), $field['min_length']]
                             );
                         }
                         break;
@@ -204,16 +204,16 @@ class MyShowcaseDataHandler extends DataHandler
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
             $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
-            $attachmentassign = array(
+            $attachmentassign = [
                 'gid' => $this->gid
-            );
+            ];
             $db->update_query('myshowcase_attachments', $attachmentassign, "posthash='{$myshowcase_data['posthash']}'");
         }
 
         // Return the post's pid and whether or not it is visible.
-        return array(
+        return [
             'gid' => $this->gid
-        );
+        ];
     }
 
 
@@ -246,9 +246,9 @@ class MyShowcaseDataHandler extends DataHandler
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
             $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
-            $attachmentassign = array(
+            $attachmentassign = [
                 'gid' => $myshowcase_data['gid']
-            );
+            ];
             $db->update_query(
                 'myshowcase_attachments',
                 $attachmentassign,
@@ -257,9 +257,9 @@ class MyShowcaseDataHandler extends DataHandler
         }
 
         // Return the post's pid and whether or not it is visible.
-        return array(
+        return [
             'gid' => $this->gid
-        );
+        ];
     }
 
 

@@ -67,13 +67,13 @@ if ($mybb->get_input('action') == 'new') {
 
         //update any existing names
         foreach ($mybb->get_input('setname', \MyBB::INPUT_ARRAY) as $setid => $setname) {
-            $update_array = array(
+            $update_array = [
                 'setname' => $db->escape_string($setname),
-            );
+            ];
             $db->update_query('myshowcase_fieldsets', $update_array, "setid='{$setid}'");
 
             if ($db->affected_rows()) {
-                $log = array('setid' => $setid, 'setname' => $setname);
+                $log = ['setid' => $setid, 'setname' => $setname];
                 log_admin_action($log);
             }
         }
@@ -99,9 +99,9 @@ if ($mybb->get_input('action') == 'new') {
                 admin_redirect('index.php?module=myshowcase-fields');
             }
 
-            $insert_array = array(
+            $insert_array = [
                 'setname' => $db->escape_string($mybb->get_input('newname')),
-            );
+            ];
             $db->insert_query('myshowcase_fieldsets', $insert_array);
             $id = $db->insert_id();
 
@@ -109,7 +109,7 @@ if ($mybb->get_input('action') == 'new') {
             $file = 'myshowcase_fs' . $id . '.lang.php';
 
             // Log admin action
-            $log = array('id' => $id, 'myshowcase' => $mybb->get_input('newname'));
+            $log = ['id' => $id, 'myshowcase' => $mybb->get_input('newname')];
             log_admin_action($log);
 
             // Reset new myshowcase info
@@ -193,7 +193,7 @@ if ($mybb->get_input('action') == 'editset') {
                         $origname = $newname;
                     }
 
-                    $update_array = array(
+                    $update_array = [
                         'name' => strtolower($newname),
                         'field_order' => $db->escape_string(
                             $mybb->get_input('field_order', \MyBB::INPUT_ARRAY)[$result['fid']]
@@ -211,9 +211,9 @@ if ($mybb->get_input('action') == 'editset') {
                             )[$result['fid']]
                         ) ? 1 : 0),
                         'format' => $mybb->get_input('format', \MyBB::INPUT_ARRAY)[$result['fid']]
-                    );
+                    ];
                 } else {
-                    $update_array = array(
+                    $update_array = [
                         'field_order' => $db->escape_string(
                             $mybb->get_input('field_order', \MyBB::INPUT_ARRAY)[$result['fid']]
                         ),
@@ -230,7 +230,7 @@ if ($mybb->get_input('action') == 'editset') {
                             )[$result['fid']]
                         ) ? 1 : 0),
                         'format' => $mybb->get_input('format', \MyBB::INPUT_ARRAY)[$result['fid']]
-                    );
+                    ];
                 }
                 $update_query = $db->update_query(
                     'myshowcase_fields',
@@ -245,9 +245,9 @@ if ($mybb->get_input('action') == 'editset') {
                             'html_type',
                             \MyBB::INPUT_ARRAY
                         )[$result['fid']] == 'radio')) {
-                    $update_array = array(
+                    $update_array = [
                         'name' => $db->escape_string($mybb->get_input('name')[$result['fid']])
-                    );
+                    ];
                     $update_query = $db->update_query(
                         'myshowcase_field_data',
                         $update_array,
@@ -329,7 +329,7 @@ if ($mybb->get_input('action') == 'editset') {
                     $origname = $newname;
                 }
 
-                $insert_array = array(
+                $insert_array = [
                     'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                     'name' => strtolower($newname),
                     'html_type' => $mybb->get_input('newhtml_type'),
@@ -343,20 +343,20 @@ if ($mybb->get_input('action') == 'editset') {
                     'parse' => (isset($mybb->get_input('newparse', \MyBB::INPUT_INT)) ? 1 : 0),
                     'searchable' => (isset($mybb->get_input('newsearchable', \MyBB::INPUT_INT)) ? 1 : 0),
                     'format' => $mybb->get_input('newformat')
-                );
+                ];
 
                 $insert_query = $db->insert_query('myshowcase_fields', $insert_array);
                 $do_new_field = 1;
 
                 if ($do_default_option_insert) {
-                    $insert_array = array(
+                    $insert_array = [
                         'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                         'fid' => $insert_query,
                         'name' => strtolower($newname),
                         'value' => 'Not Specified',
                         'valueid' => 0,
                         'disporder' => 0
-                    );
+                    ];
 
                     $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
                 }
@@ -365,7 +365,7 @@ if ($mybb->get_input('action') == 'editset') {
             //edit language file if can be edited
             if ($can_edit_lang) {
                 //get existing fields from input
-                $items_add = array();
+                $items_add = [];
                 foreach ($mybb->get_input('name') as $key => $value) {
                     $items_add['myshowcase_field_' . $value] = ($mybb->get_input(
                         'label',
@@ -387,7 +387,7 @@ if ($mybb->get_input('action') == 'editset') {
                 $retval = modify_lang(
                     'myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT),
                     $items_add,
-                    array(),
+                    [],
                     'english',
                     false
                 );
@@ -414,73 +414,73 @@ if ($mybb->get_input('action') == 'editset') {
 
         $form_container->output_row_header(
             $lang->myshowcase_field_fid,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_name,
-            array('width' => '10%', 'class' => 'align_center')
+            ['width' => '10%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_label,
-            array('width' => '10%', 'class' => 'align_center')
+            ['width' => '10%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_html_type,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_field_type,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_min_length,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_max_length,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_field_order,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_list_table_order,
-            array('width' => '4%', 'class' => 'align_center')
+            ['width' => '4%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_format,
-            array('width' => '10%', 'class' => 'align_center')
+            ['width' => '10%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_enabled,
-            array('width' => '4%', 'class' => 'align_center')
+            ['width' => '4%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_required,
-            array('width' => '4%', 'class' => 'align_center')
+            ['width' => '4%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_parse,
-            array('width' => '4%', 'class' => 'align_center')
+            ['width' => '4%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_searchable,
-            array('width' => '4%', 'class' => 'align_center')
+            ['width' => '4%', 'class' => 'align_center']
         );
-        $form_container->output_row_header($lang->controls, array('width' => '10%', 'class' => 'align_center'));
+        $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
         $query = $db->simple_select(
             'myshowcase_fields',
             '*',
             'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT),
-            array('order_by' => 'fid')
+            ['order_by' => 'fid']
         );
         $num_fields = $db->num_rows($query);
         if ($num_fields == 0) {
             $form_container->output_cell(
                 $lang->myshowcase_fields_no_fields,
-                array('class' => 'align_center', 'colspan' => 15)
+                ['class' => 'align_center', 'colspan' => 15]
             );
             $form_container->construct_row();
         } else {
@@ -509,20 +509,20 @@ if ($mybb->get_input('action') == 'editset') {
                 }
 
                 $max_order = max($max_order, $result['field_order']);
-                $form_container->output_cell($result['fid'], array('class' => 'align_center'));
+                $form_container->output_cell($result['fid'], ['class' => 'align_center']);
                 if ($can_edit) {
                     $form_container->output_cell(
                         $form->generate_text_box(
                             'name[' . $result['fid'] . ']',
                             $result['name'],
-                            array('id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px')
+                            ['id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px']
                         ),
-                        array('class' => 'align_left')
+                        ['class' => 'align_left']
                     );
                 } else {
                     $form_container->output_cell(
                         $result['name'] . $form->generate_hidden_field('name[' . $result['fid'] . ']', $result['name']),
-                        array('class' => 'align_left')
+                        ['class' => 'align_left']
                     );
                 }
                 if ($can_edit_lang) {
@@ -530,14 +530,14 @@ if ($mybb->get_input('action') == 'editset') {
                         $form->generate_text_box(
                             'label[' . $result['fid'] . ']',
                             $l['myshowcase_field_' . $result['name']] ?? '',
-                            array('id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px')
+                            ['id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px']
                         ),
-                        array('class' => 'align_left')
+                        ['class' => 'align_left']
                     );
                 } else {
                     $form_container->output_cell(
                         $l['myshowcase_field_' . $result['name']],
-                        array('class' => 'align_left')
+                        ['class' => 'align_left']
                     );
                 }
                 $form_container->output_cell(
@@ -545,95 +545,95 @@ if ($mybb->get_input('action') == 'editset') {
                         'html_type[' . $result['fid'] . ']',
                         $result['html_type']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $result['field_type'] . $form->generate_hidden_field(
                         'field_type[' . $result['fid'] . ']',
                         $result['field_type']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $result['min_length'] . $form->generate_hidden_field(
                         'min_length[' . $result['fid'] . ']',
                         $result['min_length']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $result['max_length'] . $form->generate_hidden_field(
                         'max_length[' . $result['fid'] . ']',
                         $result['max_length']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_text_box(
                         'field_order[' . $result['fid'] . ']',
                         $result['field_order'],
-                        array('id' => 'field_order[' . $result['fid'] . ']', 'style' => 'width: 35px')
+                        ['id' => 'field_order[' . $result['fid'] . ']', 'style' => 'width: 35px']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_text_box(
                         'list_table_order[' . $result['fid'] . ']',
                         $result['list_table_order'],
-                        array('id' => 'list_table_order[' . $result['fid'] . ']', 'style' => 'width: 35px')
+                        ['id' => 'list_table_order[' . $result['fid'] . ']', 'style' => 'width: 35px']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_select_box(
                         'format[' . $result['fid'] . ']',
                         $field_format_options,
                         $result['format'],
-                        array('id' => 'format[' . $result['fid'] . ']')
+                        ['id' => 'format[' . $result['fid'] . ']']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_check_box(
                         'enabled[' . $result['fid'] . ']',
                         'true',
                         null,
-                        array('checked' => $result['enabled']),
+                        ['checked' => $result['enabled']],
                         ''
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_check_box(
                         'require[' . $result['fid'] . ']',
                         'true',
                         null,
-                        array('checked' => $result['require']),
+                        ['checked' => $result['require']],
                         ''
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_check_box(
                         'parse[' . $result['fid'] . ']',
                         'true',
                         null,
-                        array('checked' => $result['parse']),
+                        ['checked' => $result['parse']],
                         ''
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 $form_container->output_cell(
                     $form->generate_check_box(
                         'searchable[' . $result['fid'] . ']',
                         'true',
                         null,
-                        array('checked' => $result['searchable']),
+                        ['checked' => $result['searchable']],
                         ''
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
-                $form_container->output_cell($popup->fetch(), array('class' => 'align_center'));
+                $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
                 $form_container->construct_row();
             }
         }
@@ -645,39 +645,39 @@ if ($mybb->get_input('action') == 'editset') {
 
             $form_container->output_row_header(
                 $lang->myshowcase_field_name,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_label,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_html_type,
-                array('width' => '5%', 'class' => 'align_center')
+                ['width' => '5%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_field_type,
-                array('width' => '5%', 'class' => 'align_center')
+                ['width' => '5%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_min_length,
-                array('width' => '5%', 'class' => 'align_center')
+                ['width' => '5%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_max_length,
-                array('width' => '5%', 'class' => 'align_center')
+                ['width' => '5%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_field_order,
-                array('width' => '5%', 'class' => 'align_center')
+                ['width' => '5%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_list_table_order,
-                array('width' => '4%', 'class' => 'align_center')
+                ['width' => '4%', 'class' => 'align_center']
             );
             $form_container->output_row_header(
                 $lang->myshowcase_field_format,
-                array('width' => '10%', 'class' => 'align_center')
+                ['width' => '10%', 'class' => 'align_center']
             );
             /*			$form_container->output_row_header($lang->myshowcase_field_enabled, array("width" => "4%", "class" => "align_center"));
                         $form_container->output_row_header($lang->myshowcase_field_required, array("width" => "4%", "class" => "align_center"));
@@ -685,56 +685,56 @@ if ($mybb->get_input('action') == 'editset') {
                         $form_container->output_row_header($lang->myshowcase_field_searchable, array("width" => "4%", "class" => "align_center"));*/
 
             $form_container->output_cell(
-                $form->generate_text_box('newname', '', array('id' => 'newname', 'style' => 'width: 100px')),
-                array('class' => 'align_center')
+                $form->generate_text_box('newname', '', ['id' => 'newname', 'style' => 'width: 100px']),
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
-                $form->generate_text_box('newlabel', '', array('id' => 'newlabel', 'style' => 'width: 100px')),
-                array('class' => 'align_center')
+                $form->generate_text_box('newlabel', '', ['id' => 'newlabel', 'style' => 'width: 100px']),
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
-                $form->generate_select_box('newhtml_type', $html_type_options, '', array('id' => 'newhtml_type')),
-                array('class' => 'align_center')
+                $form->generate_select_box('newhtml_type', $html_type_options, '', ['id' => 'newhtml_type']),
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
-                $form->generate_select_box('newfield_type', $field_type_options, '', array('id' => 'newfield_type')),
-                array('class' => 'align_center')
+                $form->generate_select_box('newfield_type', $field_type_options, '', ['id' => 'newfield_type']),
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
                 $form->generate_text_box(
                     'newmin_length',
                     '',
-                    array('id' => 'newmin_length', 'style' => 'width: 50px')
+                    ['id' => 'newmin_length', 'style' => 'width: 50px']
                 ),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
                 $form->generate_text_box(
                     'newmax_length',
                     '',
-                    array('id' => 'newmax_length', 'style' => 'width: 50px')
+                    ['id' => 'newmax_length', 'style' => 'width: 50px']
                 ),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
                 $form->generate_text_box(
                     'newfield_order',
                     $max_order + 1,
-                    array('id' => 'newfield_order', 'style' => 'width: 35px')
+                    ['id' => 'newfield_order', 'style' => 'width: 35px']
                 ),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
                 $form->generate_text_box(
                     'newlist_table_order',
                     -1,
-                    array('id' => 'newlist_table_order', 'style' => 'width: 35px')
+                    ['id' => 'newlist_table_order', 'style' => 'width: 35px']
                 ),
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
             $form_container->output_cell(
-                $form->generate_select_box('newformat', $field_format_options, '', array('id' => 'newformat')),
-                array('class' => 'align_center')
+                $form->generate_select_box('newformat', $field_format_options, '', ['id' => 'newformat']),
+                ['class' => 'align_center']
             );
             /*			$form_container->output_cell($form->generate_check_box('newenabled', 0, ""),array('class' => 'align_center'));
                         $form_container->output_cell($form->generate_check_box('newrequire', 0, ""),array('class' => 'align_center'));
@@ -849,7 +849,7 @@ if ($mybb->get_input('action') == 'do_delset') {
             myshowcase_update_cache('fieldsets');
 
             // Log admin action
-            $log = array('setid' => $mybb->get_input('setid', \MyBB::INPUT_INT));
+            $log = ['setid' => $mybb->get_input('setid', \MyBB::INPUT_INT)];
             log_admin_action($log);
 
             flash_message($lang->myshowcase_field_delete_success, 'success');
@@ -921,12 +921,12 @@ if ($mybb->get_input('action') == 'editopt') {
                 )
             );
             while ($result = $db->fetch_array($query)) {
-                $update_array = array(
+                $update_array = [
                     'value' => $db->escape_string($mybb->get_input('value', \MyBB::INPUT_ARRAY)[$result['valueid']]),
                     'disporder' => $db->escape_string(
                         $mybb->get_input('disporder', \MyBB::INPUT_ARRAY)[$result['valueid']]
                     )
-                );
+                ];
 
                 $update_query = $db->update_query(
                     'myshowcase_field_data',
@@ -947,14 +947,14 @@ if ($mybb->get_input('action') == 'editopt') {
                 ) && $mybb->get_input('newdisporder', \MyBB::INPUT_INT) != '' && is_numeric(
                     $mybb->get_input('newdisporder', \MyBB::INPUT_INT)
                 )) {
-                $insert_array = array(
+                $insert_array = [
                     'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                     'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT),
                     'name' => $db->escape_string($mybb->get_input('newfieldname')),
                     'value' => $db->escape_string($mybb->get_input('newtext')),
                     'valueid' => $mybb->get_input('newvalueid', \MyBB::INPUT_INT),
                     'disporder' => $mybb->get_input('newdisporder', \MyBB::INPUT_INT)
-                );
+                ];
 
                 $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
             }
@@ -991,17 +991,17 @@ if ($mybb->get_input('action') == 'editopt') {
 
         $form_container->output_row_header(
             $lang->myshowcase_field_fdid,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_option_text,
-            array('width' => '10%', 'class' => 'align_center')
+            ['width' => '10%', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_disporder,
-            array('width' => '5%', 'class' => 'align_center')
+            ['width' => '5%', 'class' => 'align_center']
         );
-        $form_container->output_row_header($lang->controls, array('width' => '10%', 'class' => 'align_center'));
+        $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
         $query = $db->simple_select(
             'myshowcase_field_data',
@@ -1010,13 +1010,13 @@ if ($mybb->get_input('action') == 'editopt') {
                 'fid',
                 \MyBB::INPUT_INT
             ),
-            array('order_by' => 'valueid')
+            ['order_by' => 'valueid']
         );
         $num_fields = $db->num_rows($query);
         if ($num_fields == 0) {
             $form_container->output_cell(
                 $lang->myshowcase_field_no_options,
-                array('class' => 'align_center', 'colspan' => 5)
+                ['class' => 'align_center', 'colspan' => 5]
             );
             $form_container->construct_row();
         } else {
@@ -1039,30 +1039,30 @@ if ($mybb->get_input('action') == 'editopt') {
                         'fieldname[' . $result['valueid'] . ']',
                         $result['name']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
 
                 $form_container->output_cell(
                     $form->generate_text_box(
                         'value[' . $result['valueid'] . ']',
                         $result['value'],
-                        array('id' => 'value[' . $result['valueid'] . ']', 'style' => 'width: 105px')
+                        ['id' => 'value[' . $result['valueid'] . ']', 'style' => 'width: 105px']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
 
                 $form_container->output_cell(
                     $form->generate_text_box(
                         'disporder[' . $result['valueid'] . ']',
                         $result['disporder'],
-                        array('id' => 'disporder[' . $result['valueid'] . ']', 'style' => 'width: 65px')
+                        ['id' => 'disporder[' . $result['valueid'] . ']', 'style' => 'width: 65px']
                     ),
-                    array('class' => 'align_center')
+                    ['class' => 'align_center']
                 );
                 if ($can_edit) {
-                    $form_container->output_cell($popup->fetch(), array('class' => 'align_center'));
+                    $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
                 } else {
-                    $form_container->output_cell('N/A', array('class' => 'align_center'));
+                    $form_container->output_cell('N/A', ['class' => 'align_center']);
                 }
                 $form_container->construct_row();
             }
@@ -1074,27 +1074,27 @@ if ($mybb->get_input('action') == 'editopt') {
 
         $form_container->output_row_header(
             $lang->myshowcase_field_option_text . ' *',
-            array('width' => '65', 'class' => 'align_center')
+            ['width' => '65', 'class' => 'align_center']
         );
         $form_container->output_row_header(
             $lang->myshowcase_field_disporder,
-            array('width' => '65', 'class' => 'align_center')
+            ['width' => '65', 'class' => 'align_center']
         );
 
         $form_container->output_cell(
-            $form->generate_text_box('newtext', '', array('id' => 'newname', 'style' => 'width: 150px')) .
+            $form->generate_text_box('newtext', '', ['id' => 'newname', 'style' => 'width: 150px']) .
             $form->generate_hidden_field('newfieldname', $fieldname) .
             $form->generate_hidden_field('newvalueid', $max_valueid + 1)
             ,
-            array('class' => 'align_center')
+            ['class' => 'align_center']
         );
         $form_container->output_cell(
             $form->generate_text_box(
                 'newdisporder',
                 $max_order + 1,
-                array('id' => 'newdisporder', 'style' => 'width: 150px')
+                ['id' => 'newdisporder', 'style' => 'width: 150px']
             ),
-            array('class' => 'align_center')
+            ['class' => 'align_center']
         );
 
         $form_container->construct_row();
@@ -1174,11 +1174,11 @@ if ($mybb->get_input('action') == 'delopt') {
                 myshowcase_update_cache('fieldsets');
 
                 // Log admin action
-                $log = array(
+                $log = [
                     'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                     'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT),
                     'valueid' => $mybb->get_input('valueid', \MyBB::INPUT_INT)
-                );
+                ];
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_field_delete_opt_success, 'success');
@@ -1333,8 +1333,8 @@ if ($mybb->get_input('action') == 'do_delfield') {
         //edit language file if can be edited
         $retval = modify_lang(
             'myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT),
-            array(),
-            array('myshowcase_field_' . $fieldname => ''),
+            [],
+            ['myshowcase_field_' . $fieldname => ''],
             'english',
             false
         );
@@ -1347,10 +1347,10 @@ if ($mybb->get_input('action') == 'do_delfield') {
         myshowcase_update_cache('fieldsets');
 
         // Log admin action
-        $log = array(
+        $log = [
             'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
             'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT)
-        );
+        ];
         log_admin_action($log);
 
         flash_message($lang->myshowcase_field_delete_success, 'success');
@@ -1373,32 +1373,32 @@ if ($mybb->get_input('action') == '') {
     //existing field sets
     $form_container = new FormContainer($lang->myshowcase_fields_title);
 
-    $form_container->output_row_header($lang->myshowcase_fields_id, array('width' => '5%', 'class' => 'align_center'));
-    $form_container->output_row_header($lang->myshowcase_fields_name, array('width' => '15%', 'class' => 'align_center')
+    $form_container->output_row_header($lang->myshowcase_fields_id, ['width' => '5%', 'class' => 'align_center']);
+    $form_container->output_row_header($lang->myshowcase_fields_name, ['width' => '15%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_fields_count,
-        array('width' => '25%', 'class' => 'align_center')
+        ['width' => '25%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_fields_assigned_to,
-        array('width' => '10%', 'class' => 'align_center')
+        ['width' => '10%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_fields_used_by,
-        array('width' => '10%', 'class' => 'align_center')
+        ['width' => '10%', 'class' => 'align_center']
     );
     $form_container->output_row_header(
         $lang->myshowcase_fields_lang_exists,
-        array('width' => '10%', 'class' => 'align_center')
+        ['width' => '10%', 'class' => 'align_center']
     );
-    $form_container->output_row_header($lang->controls, array('width' => '10%', 'class' => 'align_center'));
+    $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
     $query = $db->simple_select('myshowcase_fieldsets', 'setid, setname', '1=1');
     $num_fieldsets = $db->num_rows($query);
 
     if ($num_fieldsets == 0) {
-        $form_container->output_cell($lang->myshowcase_fields_no_fieldsets, array('colspan' => 6));
+        $form_container->output_cell($lang->myshowcase_fields_no_fieldsets, ['colspan' => 6]);
     } else {
         while ($result = $db->fetch_array($query)) {
             $query_used_in = $db->query(
@@ -1445,18 +1445,18 @@ if ($mybb->get_input('action') == '') {
                 $status_alt = $lang->myshowcase_fields_lang_exists_no;
             }
 
-            $form_container->output_cell($result['setid'], array('class' => 'align_center'));
+            $form_container->output_cell($result['setid'], ['class' => 'align_center']);
             $form_container->output_cell(
                 $form->generate_text_box('setname[' . $result['setid'] . ']', $result['setname'])
             );
-            $form_container->output_cell($num_fields['total'], array('class' => 'align_center'));
-            $form_container->output_cell($num_used['total'], array('class' => 'align_center'));
-            $form_container->output_cell($tables, array('class' => 'align_center'));
+            $form_container->output_cell($num_fields['total'], ['class' => 'align_center']);
+            $form_container->output_cell($num_used['total'], ['class' => 'align_center']);
+            $form_container->output_cell($tables, ['class' => 'align_center']);
             $form_container->output_cell(
                 '<img src="' . $status_image . '" title="' . $status_alt . '">',
-                array('class' => 'align_center')
+                ['class' => 'align_center']
             );
-            $form_container->output_cell($popup->fetch(), array('class' => 'align_center'));
+            $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
             $form_container->construct_row();
         }
     }
@@ -1467,7 +1467,7 @@ if ($mybb->get_input('action') == '') {
     //new set
     $form_container = new FormContainer($lang->myshowcase_fields_new);
 
-    $form_container->output_row_header($lang->myshowcase_fields_name, array('width' => '25%', 'class' => 'align_left'));
+    $form_container->output_row_header($lang->myshowcase_fields_name, ['width' => '25%', 'class' => 'align_left']);
 
     $form_container->output_cell($form->generate_text_box('newname', ''));
     $form_container->construct_row();
@@ -1495,12 +1495,12 @@ $page->output_footer();
  * @param string Actual language.
  * @param bool Specifies if the language file is for ACP
  */
-function modify_lang($name, $items_add = array(), $items_drop = array(), $language = 'english', $isadmin = false)
+function modify_lang($name, $items_add = [], $items_drop = [], $language = 'english', $isadmin = false)
 {
     global $lang, $mybb;
 
     //init var to free any lingering language file variables
-    $l = array();
+    $l = [];
 
     //make sure items_xxx are populated arrays
     if (count($items_add) == 0 && count($items_drop) == 0) {

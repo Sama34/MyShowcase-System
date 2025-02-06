@@ -43,7 +43,7 @@ myshowcase_update_cache('reports');
 $plugins->run_hooks('admin_myshowcase_cache_end');
 
 // Log admin action
-$log = array('rebuild' => 'all');
+$log = ['rebuild' => 'all'];
 log_admin_action($log);
 
 flash_message($lang->myshowcase_cache_update_success, 'success');

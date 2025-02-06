@@ -110,7 +110,7 @@ if (!function_exists('control_object')) {
         $checkstr = 'O:' . strlen($classname) . ':"' . $classname . '":';
         $checkstr_len = strlen($checkstr);
         if (substr($objserial, 0, $checkstr_len) == $checkstr) {
-            $vars = array();
+            $vars = [];
             // grab resources/object etc, stripping scope info from keys
             foreach ((array)$obj as $k => $v) {
                 if ($p = strrpos($k, "\0")) {
@@ -152,7 +152,7 @@ function myshowcase_update_cache($area, $empty = false)
 
         switch ($area) {
             case 'config':
-                $myshowcases = array();
+                $myshowcases = [];
                 $query = $db->simple_select('myshowcase_config', '*', '1=1');
                 while ($myshowcase = $db->fetch_array($query)) {
                     $myshowcases[$myshowcase['id']] = $myshowcase;
@@ -161,7 +161,7 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'permissions':
-                $perms = array();
+                $perms = [];
                 $query = $db->simple_select('myshowcase_permissions', '*', '1=1');
                 while ($perm = $db->fetch_array($query)) {
                     $perms[$perm['id']][$perm['gid']] = $perm;
@@ -170,7 +170,7 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'fieldsets':
-                $fieldsets = array();
+                $fieldsets = [];
                 $query = $db->simple_select('myshowcase_fieldsets', '*', '1=1');
                 while ($fieldset = $db->fetch_array($query)) {
                     $fieldsets[$fieldset['setid']] = $fieldset;
@@ -179,8 +179,8 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'fields':
-                $fields = array();
-                $query = $db->simple_select('myshowcase_fields', '*', '1=1', array('order_by' => 'setid, field_order'));
+                $fields = [];
+                $query = $db->simple_select('myshowcase_fields', '*', '1=1', ['order_by' => 'setid, field_order']);
                 while ($field = $db->fetch_array($query)) {
                     $fields[$field['setid']][$field['fid']] = $field;
                 }
@@ -188,12 +188,12 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'field_data';
-                $set_data = array();
+                $set_data = [];
                 $query = $db->simple_select(
                     'myshowcase_field_data',
                     '*',
                     '1=1',
-                    array('order_by' => 'setid, fid, disporder')
+                    ['order_by' => 'setid, fid, disporder']
                 );
                 while ($field_data = $db->fetch_array($query)) {
                     $set_data[$field_data['setid']][$field_data['fid']][$field_data['valueid']] = $field_data;
@@ -202,7 +202,7 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'moderators';
-                $set_data = array();
+                $set_data = [];
                 $query = $db->simple_select('myshowcase_moderators', '*', '1=1');
                 while ($moderators = $db->fetch_array($query)) {
                     $set_data[$moderators['id']][$moderators['mid']] = $moderators;
@@ -211,7 +211,7 @@ function myshowcase_update_cache($area, $empty = false)
                 break;
 
             case 'reports';
-                $set_data = array();
+                $set_data = [];
                 $query = $db->simple_select('myshowcase_reports', '*', 'status=0');
                 while ($reports = $db->fetch_array($query)) {
                     $set_data[$reports['id']][$reports['gid']][$reports['rid']] = $reports;
@@ -228,7 +228,7 @@ function myshowcase_get_random()
     global $db, $lang, $mybb, $cache, $templates, $portal_rand_showcase, $adserver_med_rect;
 
     //get list of enabled myshowcases with random in portal turned on
-    $showcase_list = array();
+    $showcase_list = [];
 
     $myshowcases = $cache->read('myshowcase_config');
     foreach ($myshowcases as $id => $myshowcase) {
@@ -257,21 +257,21 @@ function myshowcase_get_random()
         }
 
         //init fixed fields
-        $fields_fixed = array();
+        $fields_fixed = [];
         $fields_fixed[0]['name'] = 'g.uid';
         $fields_fixed[0]['type'] = 'default';
         $fields_fixed[1]['name'] = 'dateline';
         $fields_fixed[1]['type'] = 'default';
 
         //get dynamic field info for the random showcase
-        $field_list = array();
+        $field_list = [];
         $fields = $cache->read('myshowcase_fields');
 
         //get subset specific to the showcase given assigned field set
         $fields = $fields[$rand_showcase['fieldsetid']];
 
         //get fields that are enabled and set for list display with pad to help sorting fixed fields)
-        $description_list = array();
+        $description_list = [];
         foreach ($fields as $id => $field) {
             if ($field['list_table_order'] != -1 && $field['enabled'] == 1) {
                 $field_list[$field['list_table_order'] + 10]['name'] = $field['name'];
