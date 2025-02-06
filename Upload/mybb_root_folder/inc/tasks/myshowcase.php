@@ -14,35 +14,38 @@
 
 declare(strict_types=1);
 
-function task_myshowcase($task)
+use MyShowcase\Core\System;
+
+use function MyShowcase\Core\cacheGet;
+
+use const MyShowcase\Core\SHOWCASE_STATUS_ENABLED;
+use const MyShowcase\ROOT;
+
+function task_myshowcase(array $taskData): array
 {
-    global $mybb, $db, $cache;
+    global $db;
 
-    require_once(MYBB_ROOT . '/inc/class_myshowcase.php');
+    require_once ROOT . '/class_showcase.php';
 
-    //get showcases
-    $showcases = $cache->read('myshowcase_config');
-    foreach ($showcases as $id => $showcase) {
-        //see if pruning is enabled
-        $prunetime = explode('|', $showcase['prunetime']);
-        if ($prunetime[0] > 0 && $showcase['enabled'] == 1) {
-            //generate time using negative english dates
-            $prunedateline = strtotime('-' . $prunetime[0] . ' ' . $prunetime[1], TIME_NOW);
+    foreach (cacheGet() as $showcaseID => $showcaseData) {
+        $showcasePruneTime = explode('|', $showcaseData['prunetime']);
 
-            //create showcase object
-            $me = new MyShowcaseSystem($showcase['mainfile']);
+        if ($showcasePruneTime[0] > 0 && $showcaseData['enabled'] === SHOWCASE_STATUS_ENABLED) {
+            $pruneTime = (int)strtotime('-' . $showcasePruneTime[0] . ' ' . $showcasePruneTime[1], TIME_NOW);
 
-            //get showcases that are at least prune time old
-            $query = $db->simple_select($me->table_name, 'gid', "dateline<='{$prunedateline}'");
-            while ($result = $db->fetch_array($query)) {
-                //and delete them
-                $me->delete($result['gid']);
+            $showcase = new System($showcaseData['mainfile']);
+
+            $query = $db->simple_select($showcase->table_name, 'gid', "dateline<='{$pruneTime}'");
+
+            while ($entryID = $db->fetch_field($query, 'gid')) {
+                $showcase->delete((int)$entryID);
             }
-            //clean up for next one
-            unset($me);
+
+            unset($showcase);
         }
     }
 
-    //log task
-    add_task_log($task, 'Showcase Pruning Run');
+    add_task_log($taskData, 'Showcase Pruning Run');
+
+    return $taskData;
 }
