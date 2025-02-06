@@ -14,6 +14,7 @@
 
 $l = [
     'MyShowcaseSystem' => 'MyShowcase System',
+    'MyShowcaseSystemDescription' => 'Create and manage showcase sections for user to enter information about their property or collections.',
 
     'MyShowcaseSystemPluginLibrary' => 'This plugin requires <a href="{1}">PluginLibrary</a> version {2} or later to be uploaded to your forum.',
 ];

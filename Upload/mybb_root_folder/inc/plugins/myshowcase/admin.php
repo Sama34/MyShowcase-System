@@ -25,26 +25,18 @@ use function MyShowcase\Core\showcaseDataTableExists;
 
 use const MyShowcase\ROOT;
 
-function pluginInformation()
+function pluginInformation(): array
 {
     global $lang;
 
     loadLanguage();
 
-    $myalerts_desc = '';
-
-    /*if(_is_installed() && \MyShowcase\MyAlerts\MyAlertsIsIntegrable())
-    {
-        $myalerts_desc .= $lang->myshowcase_myalerts_desc;
-    }*/
     $donate_button =
         '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NZ574GV99KXTU&item_name=Donation%20for%20MyShowcase" style="float:right;margin-top:-8px;padding:4px;" target="_blank"><img src="https://www.paypalobjects.com/WEBSCR-640-20110306-1/en_US/i/btn/btn_donate_SM.gif" /></a>';
 
-    $lang->setting_group_myshowcase_desc = 'Create and manage showcase sections for user to enter information about their property or collections.';
-
     return [
         'name' => 'MyShowcase System',
-        'description' => $donate_button . $lang->setting_group_myshowcase_desc . $myalerts_desc,
+        'description' => $donate_button . $lang->MyShowcaseSystemDescription,
         'website' => '',
         'author' => 'CommunityPlugins.com',
         'authorsite' => '',
@@ -65,8 +57,10 @@ function pluginInformation()
 
 function pluginActivation(): bool
 {
-    global $PL, $lang, $cache, $db;
+    global $PL, $cache;
+
     pluginUninstallation();
+
     loadPluginLibrary();
 
     $PL->settings('myshowcase', 'MyShowcase System', 'Options on how to configure the MyShowcase section.', [
@@ -97,11 +91,11 @@ function pluginActivation(): bool
         $plugins['myshowcase'] = $pluginInformation['versioncode'];
     }
 
-    _db_verify_tables();
+    dbVerifyTables();
 
-    _db_verify_columns();
+    dbVerifyColumns();
 
-    _install_task();
+    taskInstallation();
 
     require_once MYBB_ROOT . 'inc/adminfunctions_templates.php';
 
@@ -141,9 +135,9 @@ function pluginDeactivation(): bool
 
 function pluginInstallation(): bool
 {
-    _db_verify_tables();
+    dbVerifyTables();
 
-    _db_verify_columns();
+    dbVerifyColumns();
 
     return true;
 }
@@ -157,7 +151,7 @@ function pluginIsInstalled(): bool
     if ($isInstalledEach === null) {
         $isInstalledEach = true;
 
-        foreach (_db_tables() as $tableName => $tableData) {
+        foreach (dbTables() as $tableName => $tableData) {
             $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
         }
     }
@@ -172,37 +166,36 @@ function pluginUninstallation(): bool
     loadPluginLibrary();
 
     //drop tables but only if setting specific to allow uninstall is enabled
-    if ($mybb->settings['myshowcase_delete_tables_on_uninstall']) {
+    if (!empty($mybb->settings['myshowcase_delete_tables_on_uninstall'])) {
         //get list of possible tables from config and delete
         $query = $db->simple_select('myshowcase_config', 'id');
 
-        while ($result = $db->fetch_array($query)) {
-            if (showcaseDataTableExists($result['id'])) {
-                $db->drop_table('myshowcase_data' . $result['id']);
+        while ($showcaseData = $db->fetch_array($query)) {
+            if (showcaseDataTableExists($showcaseData['id'])) {
+                $db->drop_table('myshowcase_data' . $showcaseData['id']);
             }
         }
 
-        // Drop DB entries
-        foreach (_db_tables() as $name => $table) {
-            $db->drop_table($name);
+        foreach (dbTables() as $tableName => $tableData) {
+            $db->drop_table($tableName);
         }
 
-        foreach (_db_columns() as $table => $columns) {
-            foreach ($columns as $name => $definition) {
-                !$db->field_exists($name, $table) || $db->drop_column($table, $name);
+        foreach (dbColumns() as $tableName => $tableData) {
+            foreach ($tableData as $fieldName => $fieldDefinition) {
+                !$db->field_exists($fieldName, $tableName) || $db->drop_column($tableName, $fieldName);
             }
         }
     }
 
-    $PL->settings_delete('myshowcase_');
+    $PL->settings_delete('myshowcase');
 
-    $PL->templates_delete('myshowcase_');
+    $PL->templates_delete('myshowcase');
 
     // Delete version from cache
     $plugins = (array)$mybb->cache->read('ougc_plugins');
 
-    if (isset($plugins['myshowcase_'])) {
-        unset($plugins['myshowcase_']);
+    if (isset($plugins['myshowcase'])) {
+        unset($plugins['myshowcase']);
     }
 
     if (!empty($plugins)) {
@@ -226,18 +219,13 @@ function pluginUninstallation(): bool
         $mybb->cache->delete($cache_name);
     }
 
-    _uninstall_task();
+    taskUninstallation();
 
     return true;
 }
 
-// List of tables
-function _db_tables()
+function dbTables(): array
 {
-    global $db;
-
-    $collation = $db->build_create_table_collation();
-
     return [
         'myshowcase_attachments' => [
             'id' => "int(3) NOT NULL default '1'",
@@ -369,24 +357,23 @@ function _db_tables()
             'valueid' => "smallint(3) NOT NULL default '0'",
             'value' => 'varchar(15) NOT NULL',
             'disporder' => 'smallint(6) NOT NULL',
-            'unique_key' => ['setid' => 'setid', 'name' => 'name']
+            'primary_key' => 'setid',
+            'unique_key' => ['name' => 'name']
         ],
     ];
 }
 
-// List of columns
-function _db_columns()
+function dbColumns(): array
 {
     return [
     ];
 }
 
-// Verify DB indexes
-function _db_verify_indexes()
+function dbVerifyIndex(): bool
 {
     global $db;
 
-    foreach (_db_tables() as $table => $fields) {
+    foreach (dbTables() as $table => $fields) {
         if (!$db->table_exists($table)) {
             continue;
         }
@@ -401,16 +388,17 @@ function _db_verify_indexes()
             }
         }
     }
+
+    return true;
 }
 
-// Verify DB tables
-function _db_verify_tables()
+function dbVerifyTables(): bool
 {
     global $db;
 
     $collation = $db->build_create_table_collation();
 
-    foreach (_db_tables() as $table => $fields) {
+    foreach (dbTables() as $table => $fields) {
         if ($db->table_exists($table)) {
             foreach ($fields as $field => $definition) {
                 if ($field == 'primary_key' || $field == 'unique_key') {
@@ -444,29 +432,31 @@ function _db_verify_tables()
         }
     }
 
-    _db_verify_indexes();
+    dbVerifyIndex();
+
+    return true;
 }
 
-// Verify DB columns
-function _db_verify_columns()
+function dbVerifyColumns(): bool
 {
     global $db;
 
-    foreach (_db_columns() as $table => $columns) {
-        foreach ($columns as $field => $definition) {
-            if ($db->field_exists($field, $table)) {
-                $db->modify_column($table, "`{$field}`", $definition);
+    foreach (dbColumns() as $tableName => $tableData) {
+        foreach ($tableData as $fieldName => $fieldDefinition) {
+            if ($db->field_exists($fieldName, $tableName)) {
+                $db->modify_column($tableName, "`{$fieldName}`", $fieldDefinition);
             } else {
-                $db->add_column($table, $field, $definition);
+                $db->add_column($tableName, $fieldName, $fieldDefinition);
             }
         }
     }
+
+    return true;
 }
 
-// Install task file
-function _install_task($action = 1)
+function taskInstallation(int $action = 1): bool
 {
-    global $db, $lang, $cache, $plugins, $new_task;
+    global $db, $lang, $cache, $new_task;
 
     loadLanguage();
 
@@ -496,34 +486,32 @@ function _install_task($action = 1)
 
         $new_task['nextrun'] = fetch_next_run($new_task);
 
-        $plugins->run_hooks('admin_tools_tasks_add_commit');
-
-        $plugins->run_hooks('admin_tools_tasks_edit_commit');
-
         $cache->update_tasks();
 
         $db->insert_query('tasks', $new_task);
     }
+
+    return true;
 }
 
-function _uninstall_task()
+function taskUninstallation(): bool
 {
-    global $db, $cache, $plugins, $tid;
+    global $db, $cache, $tid;
 
     $tid = $db->delete_query('tasks', "file='myshowcase'");
 
-    $plugins->run_hooks('admin_tools_tasks_delete_commit');
-
     $cache->update_tasks();
+
+    return true;
 }
 
-function _deactivate_task()
+function _deactivate_task(): bool
 {
-    global $db, $cache, $plugins;
+    global $cache;
 
-    _install_task(0);
-
-    $plugins->run_hooks('admin_tools_tasks_edit_commit');
+    taskInstallation(0);
 
     $cache->update_tasks();
+
+    return true;
 }
