@@ -53,11 +53,15 @@ $watermark_locs['lower-right'] = $lang->myshowcase_lower_right;
 
 $plugins->run_hooks('admin_myshowcase_edit_begin');
 
-if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input['action'] != '') {
-    if ($mybb->input['action'] == 'edit-main' || $mybb->input['action'] == 'edit-other' || $mybb->input['action'] == 'edit-perms' || $mybb->input['action'] == 'edit-mod' || $mybb->input['action'] == 'del-mod') {
+if (isset($mybb->get_input('id', \MyBB::INPUT_INT)) && is_numeric(
+        $mybb->get_input('id', \MyBB::INPUT_INT)
+    ) && $mybb->get_input('action') != '') {
+    if ($mybb->get_input('action') == 'edit-main' || $mybb->get_input('action') == 'edit-other' || $mybb->get_input(
+            'action'
+        ) == 'edit-perms' || $mybb->get_input('action') == 'edit-mod' || $mybb->get_input('action') == 'del-mod') {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
-        if (showcaseDataTableExists($mybb->input['id'])) {
+        if (showcaseDataTableExists($mybb->get_input('id', \MyBB::INPUT_INT))) {
             $can_edit = false;
         }
 
@@ -65,10 +69,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 
         //user pushed a subimt button
         if ($mybb->request_method == 'post') {
-            switch ($mybb->input['action']) {
+            switch ($mybb->get_input('action')) {
                 case 'edit-perms':
                     //update myshowcase permissions
-                    $permdata = $mybb->input['permissions'];
+                    $permdata = $mybb->get_input('permissions', \MyBB::INPUT_ARRAY);
 
                     foreach ($usergroups as $group) {
                         $groupdata = $permdata[$group['gid']];
@@ -81,7 +85,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                         $db->update_query(
                             'myshowcase_permissions',
                             $update_array,
-                            "id='{$mybb->input['id']}' AND gid='{$group['gid']}'"
+                            "id='{$mybb->get_input('id', \MyBB::INPUT_INT)}' AND gid='{$group['gid']}'"
                         );
                     }
 
@@ -92,13 +96,17 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                             $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_permissions,
                             'success'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-perms&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-perms&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     } else {
                         flash_message(
                             $lang->myshowcase_edit_failed . ': ' . $lang->myshowcase_admin_permissions,
                             'error'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-perms&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-perms&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     }
 
                     break;
@@ -106,22 +114,29 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 case 'edit-main':
                     //update main myshowcase settings
                     $update_array = array(
-                        'name' => $db->escape_string($mybb->input['name']),
-                        'description' => $db->escape_string($mybb->input['description']),
-                        'mainfile' => $db->escape_string($mybb->input['mainfile']),
-                        'imgfolder' => $db->escape_string($mybb->input['imgfolder']),
-                        'defaultimage' => $db->escape_string($mybb->input['defaultimage']),
-                        'watermarkimage' => $db->escape_string($mybb->input['watermarkimage']),
-                        'watermarkloc' => $mybb->input['watermarkloc'],
-                        'use_attach' => $mybb->input['use_attach'],
-                        'f2gpath' => $db->escape_string($mybb->input['f2gpath'])
+                        'name' => $db->escape_string($mybb->get_input('name')),
+                        'description' => $db->escape_string($mybb->get_input('description')),
+                        'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
+                        'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
+                        'defaultimage' => $db->escape_string($mybb->get_input('defaultimage')),
+                        'watermarkimage' => $db->escape_string($mybb->get_input('watermarkimage')),
+                        'watermarkloc' => $mybb->get_input('watermarkloc'),
+                        'use_attach' => $mybb->get_input('use_attach', \MyBB::INPUT_INT),
+                        'f2gpath' => $db->escape_string($mybb->get_input('f2gpath'))
                     );
 
                     if ($can_edit) {
-                        $update_array = array_merge($update_array, array('fieldsetid' => $mybb->input['fieldset']));
+                        $update_array = array_merge(
+                            $update_array,
+                            array('fieldsetid' => $mybb->get_input('fieldset', \MyBB::INPUT_INT))
+                        );
                     }
 
-                    $db->update_query('myshowcase_config', $update_array, "id='{$mybb->input['id']}'");
+                    $db->update_query(
+                        'myshowcase_config',
+                        $update_array,
+                        "id='{$mybb->get_input('id', \MyBB::INPUT_INT)}'"
+                    );
 
                     myshowcase_update_cache('config');
 
@@ -130,13 +145,17 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                             $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_main_options,
                             'success'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-main&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-main&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     } else {
                         flash_message(
                             $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_main_options,
                             'error'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-main&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-main&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     }
 
                     break;
@@ -144,25 +163,32 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 case 'edit-other':
                     //update other myshowcase settings
                     $update_array = array(
-                        'modnewedit' => $mybb->input['modnewedit'],
-                        'othermaxlength' => $db->escape_string($mybb->input['othermaxlength']),
-                        'allow_attachments' => $mybb->input['allow_attachments'],
-                        'allow_comments' => $mybb->input['allow_comments'],
-                        'thumb_width' => $db->escape_string($mybb->input['thumb_width']),
-                        'thumb_height' => $db->escape_string($mybb->input['thumb_height']),
-                        'comment_length' => $db->escape_string($mybb->input['comment_length']),
-                        'comment_dispinit' => $db->escape_string($mybb->input['comment_dispinit']),
-                        'disp_attachcols' => $db->escape_string($mybb->input['disp_attachcols']),
-                        'disp_empty' => $mybb->input['disp_empty'],
-                        'link_in_postbit' => $mybb->input['link_in_postbit'],
-                        'portal_random' => $mybb->input['portal_random'],
-                        'prunetime' => $mybb->input['prunetime'] . '|' . $mybb->input['interval'],
-                        'allowsmilies' => $mybb->input['allowsmilies'],
-                        'allowbbcode' => $mybb->input['allowbbcode'],
-                        'allowhtml' => $mybb->input['allowhtml']
+                        'modnewedit' => $mybb->get_input('modnewedit', \MyBB::INPUT_INT),
+                        'othermaxlength' => $db->escape_string($mybb->get_input('othermaxlength')),
+                        'allow_attachments' => $mybb->get_input('allow_attachments', \MyBB::INPUT_INT),
+                        'allow_comments' => $mybb->get_input('allow_comments', \MyBB::INPUT_INT),
+                        'thumb_width' => $db->escape_string($mybb->get_input('thumb_width')),
+                        'thumb_height' => $db->escape_string($mybb->get_input('thumb_height')),
+                        'comment_length' => $db->escape_string($mybb->get_input('comment_length')),
+                        'comment_dispinit' => $db->escape_string($mybb->get_input('comment_dispinit')),
+                        'disp_attachcols' => $db->escape_string($mybb->get_input('disp_attachcols')),
+                        'disp_empty' => $mybb->get_input('disp_empty', \MyBB::INPUT_INT),
+                        'link_in_postbit' => $mybb->get_input('link_in_postbit', \MyBB::INPUT_INT),
+                        'portal_random' => $mybb->get_input('portal_random', \MyBB::INPUT_INT),
+                        'prunetime' => $mybb->get_input('prunetime', \MyBB::INPUT_INT) . '|' . $mybb->get_input(
+                                'interval',
+                                \MyBB::INPUT_INT
+                            ),
+                        'allowsmilies' => $mybb->get_input('allowsmilies', \MyBB::INPUT_INT),
+                        'allowbbcode' => $mybb->get_input('allowbbcode', \MyBB::INPUT_INT),
+                        'allowhtml' => $mybb->get_input('allowhtml', \MyBB::INPUT_INT)
                     );
 
-                    $db->update_query('myshowcase_config', $update_array, "id='{$mybb->input['id']}'");
+                    $db->update_query(
+                        'myshowcase_config',
+                        $update_array,
+                        "id='{$mybb->get_input('id', \MyBB::INPUT_INT)}'"
+                    );
 
                     myshowcase_update_cache('config');
 
@@ -171,21 +197,25 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                             $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_other_options,
                             'success'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-other&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-other&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     } else {
                         flash_message(
                             $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_other_options,
                             'error'
                         );
-                        admin_redirect("index.php?module=myshowcase-edit&action=edit-other&id={$mybb->input['id']}");
+                        admin_redirect(
+                            "index.php?module=myshowcase-edit&action=edit-other&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                        );
                     }
 
                     break;
 
                 case 'edit-mod':
                     //update existing moderator settings
-                    if ($mybb->input['edit'] == 'modperms') {
-                        $modperms = $mybb->input['modperms'];
+                    if ($mybb->get_input('edit') == 'modperms') {
+                        $modperms = $mybb->get_input('modperms', \MyBB::INPUT_ARRAY);
 
                         foreach ($modperms as $mid => $perms) {
                             $update_array = array(
@@ -197,60 +227,74 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                             $db->update_query(
                                 'myshowcase_moderators',
                                 $update_array,
-                                "id='{$mybb->input['id']}' AND mid='{$mid}'"
+                                "id='{$mybb->get_input('id', \MyBB::INPUT_INT)}' AND mid='{$mid}'"
                             );
                         }
                     }
 
                     //insert new user or group as mod
-                    if ($mybb->input['add'] == 'modgroup') {
+                    if ($mybb->get_input('add') == 'modgroup') {
                         //since MyBB 1.6.3 autocomplete adds "(Usergroup X)" and we need to remove that
-                        $mybb->input['usergroup'] = trim(
-                            preg_replace('/\(' . $lang->usergroup . '(.+)\)/i', '', $mybb->input['usergroup'])
+                        $mybb->get_input('usergroup') = trim(
+                            preg_replace('/\(' . $lang->usergroup . '(.+)\)/i', '', $mybb->get_input('usergroup'))
                         );
 
-                        $query = $db->simple_select('usergroups', '*', "title='{$mybb->input['usergroup']}'");
+                        $query = $db->simple_select('usergroups', '*', "title='{$mybb->get_input('usergroup')}'");
                         $result = $db->fetch_array($query);
                         if (!is_array($result)) {
                             flash_message($lang->myshowcase_mod_invalid, 'error');
-                            admin_redirect("index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->input['id']}");
+                            admin_redirect(
+                                "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                            );
                         }
 
                         $uid = $result['gid'];
                         $isgroup = 1;
 
                         $insert_array = array(
-                            'id' => $mybb->input['id'],
+                            'id' => $mybb->get_input('id', \MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
-                            'canmodapprove' => (isset($mybb->input['gcanmodapprove']) ? 1 : 0),
-                            'canmodedit' => (isset($mybb->input['gcanmodedit']) ? 1 : 0),
-                            'canmoddelete' => (isset($mybb->input['gcanmoddelete']) ? 1 : 0),
-                            'canmoddelcomment' => (isset($mybb->input['gcanmoddelcomment']) ? 1 : 0)
+                            'canmodapprove' => (isset($mybb->get_input('gcanmodapprove', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmodedit' => (isset($mybb->get_input('gcanmodedit', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmoddelete' => (isset($mybb->get_input('gcanmoddelete', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmoddelcomment' => (isset(
+                                $mybb->get_input(
+                                    'gcanmoddelcomment',
+                                    \MyBB::INPUT_INT
+                                )
+                            ) ? 1 : 0)
                         );
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
                     }
 
-                    if ($mybb->input['add'] == 'mod') {
-                        $query = $db->simple_select('users', '*', "username='{$mybb->input['username']}'");
+                    if ($mybb->get_input('add') == 'mod') {
+                        $query = $db->simple_select('users', '*', "username='{$mybb->get_input('username')}'");
                         $result = $db->fetch_array($query);
                         if (!is_array($result)) {
                             flash_message($lang->myshowcase_mod_invalid, 'error');
-                            admin_redirect("index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->input['id']}");
+                            admin_redirect(
+                                "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                            );
                         }
 
                         $uid = $result['uid'];
                         $isgroup = 0;
 
                         $insert_array = array(
-                            'id' => $mybb->input['id'],
+                            'id' => $mybb->get_input('id', \MyBB::INPUT_INT),
                             'uid' => $uid,
                             'isgroup' => $isgroup,
-                            'canmodapprove' => (isset($mybb->input['ucanmodapprove']) ? 1 : 0),
-                            'canmodedit' => (isset($mybb->input['ucanmodedit']) ? 1 : 0),
-                            'canmoddelete' => (isset($mybb->input['ucanmoddelete']) ? 1 : 0),
-                            'canmoddelcomment' => (isset($mybb->input['ucanmoddelcomment']) ? 1 : 0)
+                            'canmodapprove' => (isset($mybb->get_input('ucanmodapprove', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmodedit' => (isset($mybb->get_input('ucanmodedit', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmoddelete' => (isset($mybb->get_input('ucanmoddelete', \MyBB::INPUT_INT)) ? 1 : 0),
+                            'canmoddelcomment' => (isset(
+                                $mybb->get_input(
+                                    'ucanmoddelcomment',
+                                    \MyBB::INPUT_INT
+                                )
+                            ) ? 1 : 0)
                         );
 
                         $db->insert_query('myshowcase_moderators', $insert_array);
@@ -262,32 +306,38 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                         $lang->myshowcase_edit_success . ': ' . $lang->myshowcase_admin_moderators,
                         'success'
                     );
-                    admin_redirect("index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->input['id']}");
+                    admin_redirect(
+                        "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                    );
 
                     break;
             }
 
-            $log = array('id' => $mybb->input['id']);
+            $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
             log_admin_action($log);
         }
 
-        if ($mybb->input['action'] == 'del-mod') {
-            $db->delete_query('myshowcase_moderators', "mid={$mybb->input['mid']}");
+        if ($mybb->get_input('action') == 'del-mod') {
+            $db->delete_query('myshowcase_moderators', "mid={$mybb->get_input('mid', \MyBB::INPUT_INT)}");
 
             myshowcase_update_cache('moderators');
 
             if ($db->affected_rows() == 0) {
                 flash_message($lang->myshowcase_mod_delete_error . ': ' . $lang->myshowcase_admin_moderators, 'error');
-                admin_redirect("index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->input['id']}");
+                admin_redirect(
+                    "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                );
             } else {
-                $log = array('id' => $mybb->input['id']);
+                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
                 log_admin_action($log);
 
                 flash_message(
                     $lang->myshowcase_mod_delete_success . ': ' . $lang->myshowcase_admin_moderators,
                     'success'
                 );
-                admin_redirect("index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->input['id']}");
+                admin_redirect(
+                    "index.php?module=myshowcase-edit&action=edit-mod&id={$mybb->get_input('id', \MyBB::INPUT_INT)}"
+                );
             }
         }
 
@@ -300,14 +350,16 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 
         $page->output_tab_control($tabs);
 
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');
             admin_redirect('index.php?module=myshowcase-summary');
         } else {
-            $permcache = $cache->read('myshowcase_permissions');//myshowcase_get_group_permissions($mybb->input['id']);
-            $showcase_group_perms = $permcache[$mybb->input['id']];
+            $permcache = $cache->read(
+                'myshowcase_permissions'
+            );//myshowcase_get_group_permissions($mybb->get_input('id', \MyBB::INPUT_INT));
+            $showcase_group_perms = $permcache[$mybb->get_input('id', \MyBB::INPUT_INT)];
 
             $plugins->run_hooks('admin_myshowcase_edit_start');
 
@@ -323,7 +375,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             echo "<div id=\"tab_main\">\n";
 
             $form = new Form(
-                'index.php?module=myshowcase-edit&action=edit-main&id=' . $mybb->input['id'] . '#tab_main',
+                'index.php?module=myshowcase-edit&action=edit-main&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_main',
                 'post',
                 'edit'
             );
@@ -519,7 +574,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             echo "<div id=\"tab_other\">\n";
 
             $form = new Form(
-                'index.php?module=myshowcase-edit&action=edit-other&id=' . $mybb->input['id'] . '#tab_other',
+                'index.php?module=myshowcase-edit&action=edit-other&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_other',
                 'post',
                 'edit'
             );
@@ -569,7 +627,8 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $general_options = array();
             $general_options[] = $lang->myshowcase_edit_othermaxlength . "<br />\n" . $form->generate_text_box(
                     'othermaxlength',
-                    $showcase_config['othermaxlength'], array('id' => 'othermaxlength', 'style' => 'width: 100px'),
+                    $showcase_config['othermaxlength'],
+                    array('id' => 'othermaxlength', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 );
             $form_container->output_row(
@@ -590,12 +649,14 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 ) . '<br /><br />';
             $general_options[] = $lang->myshowcase_edit_thumb_width . "<br />\n" . $form->generate_text_box(
                     'thumb_width',
-                    $showcase_config['thumb_width'], array('id' => 'thumb_width', 'style' => 'width: 100px'),
+                    $showcase_config['thumb_width'],
+                    array('id' => 'thumb_width', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 );
             $general_options[] = $lang->myshowcase_edit_thumb_height . "<br />\n" . $form->generate_text_box(
                     'thumb_height',
-                    $showcase_config['thumb_height'], array('id' => 'thumb_height', 'style' => 'width: 100px'),
+                    $showcase_config['thumb_height'],
+                    array('id' => 'thumb_height', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 );
             $form_container->output_row(
@@ -616,7 +677,8 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                 ) . '<br /><br />';
             $general_options[] = $lang->myshowcase_edit_comment_length . "<br />\n" . $form->generate_text_box(
                     'comment_length',
-                    $showcase_config['comment_length'], array('id' => 'comment_length', 'style' => 'width: 100px'),
+                    $showcase_config['comment_length'],
+                    array('id' => 'comment_length', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 );
             $form_container->output_row(
@@ -659,12 +721,14 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $general_options = array();
             $general_options[] = $lang->myshowcase_edit_disp_attachcols . "<br />\n" . $form->generate_text_box(
                     'disp_attachcols',
-                    $showcase_config['disp_attachcols'], array('id' => 'disp_attachcols', 'style' => 'width: 100px'),
+                    $showcase_config['disp_attachcols'],
+                    array('id' => 'disp_attachcols', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 );
             $general_options[] = $lang->myshowcase_edit_comment_dispinit . "<br />\n" . $form->generate_text_box(
                     'comment_dispinit',
-                    $showcase_config['comment_dispinit'], array('id' => 'comment_dispinit', 'style' => 'width: 100px'),
+                    $showcase_config['comment_dispinit'],
+                    array('id' => 'comment_dispinit', 'style' => 'width: 100px'),
                     array('class' => 'align_left')
                 ) . '<br /><br />';
             $general_options[] = $form->generate_check_box(
@@ -709,7 +773,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             echo "<div id=\"tab_permissions\">\n";
 
             $form = new Form(
-                'index.php?module=myshowcase-edit&action=edit-perms&id=' . $mybb->input['id'] . '#tab_permissions',
+                'index.php?module=myshowcase-edit&action=edit-perms&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_permissions',
                 'post',
                 'edit'
             );
@@ -823,7 +890,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 
             $buttons = array();
             $form = new Form(
-                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->input['id'] . '#tab_moderators',
+                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_moderators',
                 'post',
                 'management'
             );
@@ -864,7 +934,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 					FROM ' . TABLE_PREFIX . 'myshowcase_moderators m
 					LEFT JOIN ' . TABLE_PREFIX . "users u ON (m.isgroup='0' AND m.uid=u.uid)
 					LEFT JOIN " . TABLE_PREFIX . "usergroups g ON (m.isgroup='1' AND m.uid=g.gid)
-					WHERE id='{$mybb->input['id']}'
+					WHERE id='{$mybb->get_input('id', \MyBB::INPUT_INT)}'
 					ORDER BY m.isgroup DESC, u.username, g.title
 				"
             );
@@ -922,7 +992,7 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
                     array('class' => 'align_center')
                 );
                 $perm_options[] = $form_container->output_cell(
-                    "<a href=\"index.php?module=myshowcase-edit&amp;action=del-mod&amp;id={$mybb->input['id']}&amp;mid={$moderator['mid']}&amp;my_post_key={$mybb->post_code}#tab_moderators\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myshowcase_moderators_confirm_deletion}')\">{$lang->myshowcase_moderators_delete}</a>",
+                    "<a href=\"index.php?module=myshowcase-edit&amp;action=del-mod&amp;id={$mybb->get_input('id', \MyBB::INPUT_INT)}&amp;mid={$moderator['mid']}&amp;my_post_key={$mybb->post_code}#tab_moderators\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myshowcase_moderators_confirm_deletion}')\">{$lang->myshowcase_moderators_delete}</a>",
                     array('class' => 'align_center')
                 );
                 $form_container->construct_row();
@@ -940,7 +1010,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             // Add Usergropups
             $buttons = array();
             $form2 = new Form(
-                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->input['id'] . '#tab_moderators',
+                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_moderators',
                 'post',
                 'management'
             );
@@ -1007,7 +1080,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
 
             //add Users
             $form2 = new Form(
-                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->input['id'] . '#tab_moderators',
+                'index.php?module=myshowcase-edit&action=edit-mod&id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . '#tab_moderators',
                 'post',
                 'management'
             );
@@ -1079,12 +1155,12 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
         $page->output_footer();
     }
 
-    if ($mybb->input['action'] == 'delete') {
+    if ($mybb->get_input('action') == 'delete') {
         $page->output_header($lang->myshowcase_admin_edit_existing);
 
         $plugins->run_hooks('admin_myshowcase_delete_start');
 
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');
@@ -1093,7 +1169,10 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
             $result = $db->fetch_array($query);
             echo $lang->sprintf($lang->myshowcase_edit_confirm_delete_long, $result['name']);
             $form = new Form(
-                'index.php?module=myshowcase-edit&amp;action=do_delete&amp;id=' . $mybb->input['id'], 'post',
+                'index.php?module=myshowcase-edit&amp;action=do_delete&amp;id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ), 'post',
                 'do_delete'
             );
 
@@ -1110,34 +1189,50 @@ if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->input[
         $page->output_footer();
     }
 
-    if ($mybb->input['action'] == 'do_delete') {
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+    if ($mybb->get_input('action') == 'do_delete') {
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');
             admin_redirect('index.php?module=myshowcase-summary');
         } else {
-            $query = $db->query('DELETE FROM ' . TABLE_PREFIX . 'myshowcase_config WHERE id=' . $mybb->input['id']);
+            $query = $db->query(
+                'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_config WHERE id=' . $mybb->get_input('id', \MyBB::INPUT_INT)
+            );
             $num_myshowcases = $db->affected_rows($query);
             if ($num_myshowcases == 0) {
                 flash_message($lang->myshowcase_edit_delete_failed, 'error');
                 admin_redirect('index.php?module=myshowcase-summary');
             } else {
                 $query = $db->query(
-                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_comments WHERE id=' . $mybb->input['id']
+                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_comments WHERE id=' . $mybb->get_input(
+                        'id',
+                        \MyBB::INPUT_INT
+                    )
                 );
                 $query = $db->query(
-                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_attachments WHERE id=' . $mybb->input['id']
+                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_attachments WHERE id=' . $mybb->get_input(
+                        'id',
+                        \MyBB::INPUT_INT
+                    )
                 );
                 $query = $db->query(
-                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_permissions WHERE id=' . $mybb->input['id']
+                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_permissions WHERE id=' . $mybb->get_input(
+                        'id',
+                        \MyBB::INPUT_INT
+                    )
                 );
                 $query = $db->query(
-                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_moderators WHERE id=' . $mybb->input['id']
+                    'DELETE FROM ' . TABLE_PREFIX . 'myshowcase_moderators WHERE id=' . $mybb->get_input(
+                        'id',
+                        \MyBB::INPUT_INT
+                    )
                 );
 
-                if (showcaseDataTableExists($mybb->input['id'])) {
-                    $query = $db->query('DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->input['id']);
+                if (showcaseDataTableExists($mybb->get_input('id', \MyBB::INPUT_INT))) {
+                    $query = $db->query(
+                        'DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->get_input('id', \MyBB::INPUT_INT)
+                    );
                 }
 
                 myshowcase_update_cache('config');

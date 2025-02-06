@@ -106,10 +106,10 @@ if (!$me->enabled) {
 }
 
 // Check if the active user is a moderator and get the inline moderation tools.
-$mybb->input['unapproved'] = intval($mybb->input['unapproved']);
+$mybb->input['unapproved'] = $mybb->get_input('unapproved', \MyBB::INPUT_INT);
 if ($me->userperms['canmodapprove']) {
     $list_where_clause = '(g.approved=0 or g.approved=1)';
-    if ($mybb->input['unapproved'] == 1) {
+    if ($mybb->get_input('unapproved', \MyBB::INPUT_INT) == 1) {
         $list_where_clause = 'g.approved=0';
     }
     $inlinecount = 0;
@@ -121,8 +121,8 @@ if ($me->userperms['canmodapprove']) {
 }
 
 //handle image output here for performance reasons since we dont need fields and stuff
-if ($mybb->input['action'] == 'item') {
-    $aid = intval($mybb->input['aid']);
+if ($mybb->get_input('action') == 'item') {
+    $aid = intval($mybb->get_input('aid', \MyBB::INPUT_INT));
 
     // Select attachment data from database
     if ($aid) {
@@ -180,8 +180,8 @@ if ($mybb->input['action'] == 'item') {
 
 //here for performance since we dont need the fields and other stuff
 //this block is only used if user disables JS or if admin removes FancyBox code
-if ($mybb->input['action'] == 'attachment') {
-    $aid = intval($mybb->input['aid']);
+if ($mybb->get_input('action') == 'attachment') {
+    $aid = intval($mybb->get_input('aid', \MyBB::INPUT_INT));
 
     // Select attachment data from database
     if ($aid) {
@@ -305,25 +305,25 @@ add_breadcrumb($lang->nav_myshowcase, SHOWCASE_URL);
 
 //process cancel button
 if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
-    verify_post_check($mybb->input['my_post_key']);
+    verify_post_check($mybb->get_input('my_post_key'));
 
-    if (!$mybb->input['gid']) {
+    if (!$mybb->get_input('gid', \MyBB::INPUT_INT)) {
         require_once MYBB_ROOT . 'inc/functions_myshowcase_upload.php';
-        myshowcase_remove_attachments(0, $mybb->input['posthash']);
+        myshowcase_remove_attachments(0, $mybb->get_input('posthash'));
     }
 
-    if ($mybb->input['action'] == 'do_editshowcase' || $mybb->input['action'] == 'do_newshowcase') {
+    if ($mybb->get_input('action') == 'do_editshowcase' || $mybb->get_input('action') == 'do_newshowcase') {
         $mybb->input['action'] = 'view';
     }
 }
 
 //get count of existing attachments if editing (posthash sent)
 $current_attach_count = 0;
-if ($mybb->input['posthash'] != '' && $mybb->request_method == 'post') {
-    verify_post_check($mybb->input['my_post_key']);
+if ($mybb->get_input('posthash') != '' && $mybb->request_method == 'post') {
+    verify_post_check($mybb->get_input('my_post_key'));
 
-    $mybb->input['posthash'] = $db->escape_string($mybb->input['posthash']);
-    $query = $db->simple_select('myshowcase_attachments', '*', "posthash = '" . $mybb->input['posthash'] . "'");
+    $mybb->input['posthash'] = $db->escape_string($mybb->get_input('posthash'));
+    $query = $db->simple_select('myshowcase_attachments', '*', "posthash = '" . $mybb->get_input('posthash') . "'");
     $current_attach_count = $db->num_rows($query);
     unset($query);
 }
@@ -331,17 +331,29 @@ if ($mybb->input['posthash'] != '' && $mybb->request_method == 'post') {
 $plugins->run_hooks('myshowcase_start');
 
 //process new/updated attachments
-if (!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->input['updateattachment'] || (($mybb->input['action'] == 'do_newshowcase' || $mybb->input['action'] == 'do_editshowcase') && $mybb->input['submit'] && $_FILES['attachment'])) && $mybb->request_method == 'post') {
-    verify_post_check($mybb->input['my_post_key']);
+if (!$mybb->get_input(
+        'attachmentaid',
+        \MyBB::INPUT_INT
+    ) && ($mybb->get_input('newattachment') || $mybb->get_input('updateattachment') || (($mybb->get_input(
+                    'action'
+                ) == 'do_newshowcase' || $mybb->get_input(
+                    'action'
+                ) == 'do_editshowcase') && $mybb->get_input(
+                'submit'
+            ) && $_FILES['attachment'])) && $mybb->request_method == 'post') {
+    verify_post_check($mybb->get_input('my_post_key'));
 
     $can_add_attachments = $me->userperms['canattach'];
     $attach_limit = $me->userperms['attachlimit'];
     $showcase_uid = $mybb->user['uid'];
 
     //if a mod is editing someone elses showcase, get orig authors perms
-    if ($mybb->input['action'] == 'do_editshowcase' && $mybb->user['uid'] != $mybb->input['authid']) {
+    if ($mybb->get_input('action') == 'do_editshowcase' && $mybb->user['uid'] != $mybb->get_input(
+            'authid',
+            \MyBB::INPUT_INT
+        )) {
         //get showcase author info
-        $showcase_uid = (int)$mybb->input['authid'];
+        $showcase_uid = (int)$mybb->get_input('authid', \MyBB::INPUT_INT);
         $showcase_user = get_user($showcase_uid);
 
         //get permissions for author
@@ -359,13 +371,13 @@ if (!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->i
             }
 
             $update_attachment = false;
-            if ($mybb->input['updateattachment']) {
+            if ($mybb->get_input('updateattachment')) {
                 $update_attachment = true;
             }
             $attachedfile = myshowcase_upload_attachment(
                 $_FILES['attachment'],
                 $update_attachment,
-                (int)$mybb->input['watermark']
+                (int)$mybb->get_input('watermark', \MyBB::INPUT_INT)
             );
         }
         if ($attachedfile['error']) {
@@ -374,8 +386,8 @@ if (!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->i
         }
     }
 
-    if (!$mybb->input['submit']) {
-        if (isset($mybb->input['gid']) && $mybb->input['gid'] != '') {
+    if (!$mybb->get_input('submit')) {
+        if ($mybb->get_input('gid', \MyBB::INPUT_INT) && $mybb->get_input('gid', \MyBB::INPUT_INT) != '') {
             $mybb->input['action'] = 'do_editshowcase';
         } else {
             $mybb->input['action'] = 'do_newshowcase';
@@ -384,13 +396,15 @@ if (!$mybb->input['attachmentaid'] && ($mybb->input['newattachment'] || $mybb->i
 }
 
 // Remove an attachment.
-if ($mybb->input['attachmentaid'] && $mybb->input['posthash'] && ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
-    verify_post_check($mybb->input['my_post_key']);
+if ($mybb->get_input('attachmentaid', \MyBB::INPUT_INT) && $mybb->get_input(
+        'posthash'
+    ) && ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
+    verify_post_check($mybb->get_input('my_post_key'));
 
     require_once MYBB_ROOT . 'inc/functions_myshowcase_upload.php';
-    myshowcase_remove_attachment(0, $mybb->input['posthash'], $mybb->input['attachmentaid']);
-    if (!$mybb->input['submit']) {
-        if (isset($mybb->input['gid']) && $mybb->input['gid'] != '') {
+    myshowcase_remove_attachment(0, $mybb->get_input('posthash'), $mybb->get_input('attachmentaid', \MyBB::INPUT_INT));
+    if (!$mybb->get_input('submit')) {
+        if ($mybb->get_input('gid', \MyBB::INPUT_INT) && $mybb->get_input('gid', \MyBB::INPUT_INT) != '') {
             $mybb->input['action'] = 'do_editshowcase';
         } else {
             $mybb->input['action'] = 'do_newshowcase';
@@ -399,23 +413,27 @@ if ($mybb->input['attachmentaid'] && $mybb->input['posthash'] && ($me->userperms
 }
 
 //setup add comment
-if (!$mybb->input['commentcid'] && $mybb->input['addcomment'] && $mybb->input['posthash']) {
+if (!$mybb->get_input('commentcid', \MyBB::INPUT_INT) && $mybb->get_input('addcomment') && $mybb->get_input(
+        'posthash'
+    )) {
     $mybb->input['action'] = 'addcomment';
 }
 
 //setup remove comment
-if ($mybb->input['commentcid'] && $mybb->input['remcomment'] && $mybb->input['posthash']) {
+if ($mybb->get_input('commentcid', \MyBB::INPUT_INT) && $mybb->get_input('remcomment') && $mybb->get_input(
+        'posthash'
+    )) {
     $mybb->input['action'] = 'delcomment';
-    $mybb->input['cid'] = intval($mybb->input['commentcid']);
+    $mybb->input['cid'] = $mybb->get_input('commentcid', \MyBB::INPUT_INT);
 }
 
 //deal with admin buttons from view page
-if ($mybb->input['showcasegid'] && $mybb->input['posthash']) {
-    if ($mybb->input['showcaseact'] == 'remove') {
+if ($mybb->get_input('showcasegid') && $mybb->get_input('posthash')) {
+    if ($mybb->get_input('showcaseact') == 'remove') {
         $mybb->input['action'] = 'delete';
     }
 
-    if ($mybb->input['showcaseact'] == 'edit') {
+    if ($mybb->get_input('showcaseact') == 'edit') {
         $mybb->input['action'] = 'edit';
     }
 }
@@ -485,33 +503,35 @@ ksort($showcase_fields_showinlist);
 ksort($showcase_fields_searchable);
 
 //clean up/default expected inputs
-if (empty($mybb->input['action'])) {
+if (empty($mybb->get_input('action'))) {
     $mybb->input['action'] = 'list';
 }
-$mybb->input['action'] = $db->escape_string($mybb->input['action']);
+$mybb->input['action'] = $db->escape_string($mybb->get_input('action'));
 
 
-if (!isset($mybb->input['showall']) || $mybb->input['showall'] != 1) {
+if (!$mybb->get_input('showall', \MyBB::INPUT_INT) || $mybb->get_input('showall', \MyBB::INPUT_INT) != 1) {
     $mybb->input['showall'] = 0;
 }
 
 // Setup our posthash for managing attachments.
-if (!$mybb->input['posthash']) {
+if (!$mybb->get_input('posthash')) {
     mt_srand((int)(microtime() * 1000000));
-    $mybb->input['posthash'] = md5(intval($mybb->input['gid']) . $mybb->user['uid'] . mt_rand());
+    $mybb->input['posthash'] = md5(
+        intval($mybb->get_input('gid', \MyBB::INPUT_INT)) . $mybb->user['uid'] . mt_rand()
+    );
 }
 
 //init form action
 $form_page = $me->mainfile;
 
 //get FancyBox JS for header if viewing
-if ($mybb->input['action'] == 'view') {
+if ($mybb->get_input('action') == 'view') {
     $myshowcase_js_header = eval(getTemplate('js_header'));
 }
 $showcase_top = eval(getTemplate('top'));
 
 //main showcase code
-switch ($mybb->input['action']) {
+switch ($mybb->get_input('action')) {
     case 'list':
     {
         $showcase_url_new = SHOWCASE_URL_NEW;
@@ -543,12 +563,12 @@ switch ($mybb->input['action']) {
         }
 
         //clean up inputs
-        $mybb->input['searchterm'] = $db->escape_string($mybb->input['searchterm']);
+        $mybb->input['searchterm'] = $db->escape_string($mybb->get_input('searchterm'));
 
         if (!isset($mybb->input['sortby'])) {
             $mybb->input['sortby'] = 'dateline';
         }
-        $mybb->input['sortby'] = $db->escape_string($mybb->input['sortby']);
+        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
 
         // orderrow
         if (strpos(SHOWCASE_URL, '?')) {
@@ -557,10 +577,10 @@ switch ($mybb->input['action']) {
             $sorturl = SHOWCASE_URL . '?';
         }
 
-        $mybb->input['page'] = intval($mybb->input['page']);
+        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
 
-        if ($mybb->input['page'] && !strpos(SHOWCASE_URL, 'page=')) {
-            $sorturl .= 'page=' . $mybb->input['page'] . $amp;
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) && !strpos(SHOWCASE_URL, 'page=')) {
+            $sorturl .= 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT) . $amp;
         }
 
         // Pick out some sorting options.
@@ -569,9 +589,9 @@ switch ($mybb->input['action']) {
             $mybb->input['order'] = 'DESC';
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->input['order']);
+        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
 
-        switch (strtolower($mybb->input['order'])) {
+        switch (strtolower($mybb->get_input('order'))) {
             case 'asc':
                 $sortordernow = 'ASC';
                 $orderascsel = "selected=\"selected\"";
@@ -587,34 +607,38 @@ switch ($mybb->input['action']) {
         }
 
         //make sure specified sortby is valid
-        if (!array_key_exists($mybb->input['sortby'], $showcase_order_fields)) {
+        if (!array_key_exists($mybb->get_input('sortby'), $showcase_order_fields)) {
             $mybb->input['sortby'] = 'createdate';
         }
 
         //set sort field (required since test data does not have correct create date)
-        if ($mybb->input['sortby'] == 'createdate') {
+        if ($mybb->get_input('sortby') == 'createdate') {
             $sortfield = '`gid` ' . $sortordernow;
         } else {
-            $sortfield = '`' . $mybb->input['sortby'] . '` ' . $sortordernow . ', gid ASC';
+            $sortfield = '`' . $mybb->get_input('sortby') . '` ' . $sortordernow . ', gid ASC';
         }
 
         //build sortby option list
         $showcase_orderby = '';
         reset($showcase_order_fields);
         foreach ($showcase_order_fields as $ordername => $ordertext) {
-            $showcase_orderby .= '<option value="' . $ordername . '" ' . ($mybb->input['sortby'] == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
+            $showcase_orderby .= '<option value="' . $ordername . '" ' . ($mybb->get_input(
+                    'sortby'
+                ) == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
         }
 
         //build searchfield option list
         $showcase_search = '';
         reset($showcase_search_fields);
         foreach ($showcase_search_fields as $ordername => $ordertext) {
-            $showcase_search .= '<option value="' . $ordername . '" ' . ($mybb->input['search'] == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
+            $showcase_search .= '<option value="' . $ordername . '" ' . ($mybb->get_input(
+                    'search'
+                ) == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
         }
 
         //set alternate sort code
-        $matchchecked = ($mybb->input['exactmatch'] == 'on' ? 'checked' : '');
-        $orderarrow[$mybb->input['sortby']] = eval(getTemplate('orderarrow'));
+        $matchchecked = ($mybb->get_input('exactmatch') == 'on' ? 'checked' : '');
+        $orderarrow[$mybb->get_input('sortby')] = eval(getTemplate('orderarrow'));
 
         if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
             $amp = '?';
@@ -637,40 +661,42 @@ switch ($mybb->input['action']) {
         $searchdone = 0;
         reset($showcase_fields_for_search);
 
-        $mybb->input['searchterm'] = $db->escape_string($mybb->input['searchterm']);
-        $mybb->input['search'] = $db->escape_string($mybb->input['search']);
-        $mybb->input['exactmatch'] = $db->escape_string($mybb->input['exactmatch']);
+        $mybb->input['searchterm'] = $db->escape_string($mybb->get_input('searchterm'));
+        $mybb->input['search'] = $db->escape_string($mybb->get_input('search'));
+        $mybb->input['exactmatch'] = $db->escape_string($mybb->get_input('exactmatch'));
 
         foreach ($showcase_fields_for_search as $fname => $ftype) {
             if ($ftype == 'db' || $ftype == 'radio') {
                 $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $fname . ' ON (tbl_' . $fname . '.valueid = g.' . $fname . ' AND tbl_' . $fname . ".name = '" . $fname . "') ";
                 $addon_fields .= ', tbl_' . $fname . '.value AS `' . $fname . '`';
-                if ($mybb->input['searchterm'] != '' && $mybb->input['search'] == $fname) {
-                    if ($mybb->input['exactmatch']) {
-                        $list_where_clause .= ' AND tbl_' . $fname . ".value ='" . $mybb->input['searchterm'] . "'";
+                if ($mybb->get_input('searchterm') != '' && $mybb->get_input('search') == $fname) {
+                    if ($mybb->get_input('exactmatch')) {
+                        $list_where_clause .= ' AND tbl_' . $fname . ".value ='" . $mybb->get_input('searchterm') . "'";
                     } else {
-                        $list_where_clause .= ' AND tbl_' . $fname . ".value LIKE '%" . $mybb->input['searchterm'] . "%'";
+                        $list_where_clause .= ' AND tbl_' . $fname . ".value LIKE '%" . $mybb->get_input(
+                                'searchterm'
+                            ) . "%'";
                     }
                     $list_where_clause .= ' AND tbl_' . $fname . '.setid = ' . $me->fieldsetid;
                 }
-            } elseif ($mybb->input['search'] == 'username' && !$searchdone) {
+            } elseif ($mybb->get_input('search') == 'username' && !$searchdone) {
                 $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'users us ON (g.uid = us.uid) ';
                 $addon_fields .= ', `' . $fname . '`';
-                if ($mybb->input['searchterm'] != '') {
-                    if ($mybb->input['exactmatch']) {
-                        $list_where_clause .= " AND us.username='" . $mybb->input['searchterm'] . "'";
+                if ($mybb->get_input('searchterm') != '') {
+                    if ($mybb->get_input('exactmatch')) {
+                        $list_where_clause .= " AND us.username='" . $mybb->get_input('searchterm') . "'";
                     } else {
-                        $list_where_clause .= " AND us.username LIKE '%" . $mybb->input['searchterm'] . "%'";
+                        $list_where_clause .= " AND us.username LIKE '%" . $mybb->get_input('searchterm') . "%'";
                     }
                 }
                 $searchdone = 1;
             } else {
                 $addon_fields .= ', `' . $fname . '`';
-                if ($mybb->input['searchterm'] != '' && $mybb->input['search'] == $fname) {
-                    if ($mybb->input['exactmatch']) {
-                        $list_where_clause .= ' AND g.' . $fname . "='" . $mybb->input['searchterm'] . "'";
+                if ($mybb->get_input('searchterm') != '' && $mybb->get_input('search') == $fname) {
+                    if ($mybb->get_input('exactmatch')) {
+                        $list_where_clause .= ' AND g.' . $fname . "='" . $mybb->get_input('searchterm') . "'";
                     } else {
-                        $list_where_clause .= ' AND g.' . $fname . " LIKE '%" . $mybb->input['searchterm'] . "%'";
+                        $list_where_clause .= ' AND g.' . $fname . " LIKE '%" . $mybb->get_input('searchterm') . "%'";
                     }
                 }
             }
@@ -693,8 +719,8 @@ switch ($mybb->input['action']) {
             // How many pages are there?
             $perpage = $mybb->settings['threadsperpage'];
 
-            if ($mybb->input['page'] > 0) {
-                $page = $mybb->input['page'];
+            if ($mybb->get_input('page', \MyBB::INPUT_INT) > 0) {
+                $page = $mybb->get_input('page', \MyBB::INPUT_INT);
                 $start = ($page - 1) * $perpage;
                 $pages = $showcasecount / $perpage;
                 $pages = ceil($pages);
@@ -717,7 +743,19 @@ switch ($mybb->input['action']) {
                 $showcasecount,
                 $perpage,
                 $page,
-                SHOWCASE_URL_PAGED . $amp . 'sortby=' . $mybb->input['sortby'] . '&amp;order=' . $sortordernow . ($mybb->input['unapproved'] ? '&amp;unapproved=' . $mybb->input['unapproved'] : '') . ($mybb->input['search'] <> '' ? '&amp;search=' . $mybb->input['search'] : '') . ($mybb->input['search'] <> '' ? '&amp;searchterm=' . $mybb->input['searchterm'] : '')
+                SHOWCASE_URL_PAGED . $amp . 'sortby=' . $mybb->get_input(
+                    'sortby'
+                ) . '&amp;order=' . $sortordernow . ($mybb->get_input(
+                    'unapproved',
+                    \MyBB::INPUT_INT
+                ) ? '&amp;unapproved=' . $mybb->get_input(
+                        'unapproved',
+                        \MyBB::INPUT_INT
+                    ) : '') . ($mybb->get_input('search') <> '' ? '&amp;search=' . $mybb->get_input(
+                        'search'
+                    ) : '') . ($mybb->get_input('search') <> '' ? '&amp;searchterm=' . $mybb->get_input(
+                        'searchterm'
+                    ) : '')
             );
 
             $trow_style = 'trow2';
@@ -775,7 +813,7 @@ switch ($mybb->input['action']) {
                 $item_numview = $showcase['views'];
                 $item_numcomment = $showcase['comments'];
 
-                $usersearch = $mybb->input['searchterm'];
+                $usersearch = $mybb->get_input('searchterm');
 
                 $lasteditdate = my_date($mybb->settings['dateformat'], $showcase['dateline']);
                 $lastedittime = my_date($mybb->settings['timeformat'], $showcase['dateline']);
@@ -793,9 +831,9 @@ switch ($mybb->input['action']) {
                 $item_viewcode = str_replace('{gid}', $item_view, SHOWCASE_URL_VIEW);
 
                 //add bits for search highlighting
-                if ($mybb->input['searchterm'] != '') {
-                    $item_viewcode .= '?search=' . $mybb->input['search'] . '&highlight=' . urlencode(
-                            $mybb->input['searchterm']
+                if ($mybb->get_input('searchterm') != '') {
+                    $item_viewcode .= '?search=' . $mybb->get_input('search') . '&highlight=' . urlencode(
+                            $mybb->get_input('searchterm')
                         );
                 }
 
@@ -937,7 +975,7 @@ switch ($mybb->input['action']) {
                 $colcount = 6;
             }
             $showcase_num_headers = $colcount + count($showcase_fields_showinlist);
-            if ($mybb->input['searchterm'] == '') {
+            if ($mybb->get_input('searchterm') == '') {
                 $message = $lang->myshowcase_empty;
                 $showcase_list_items .= eval(getTemplate('list_message'));
             } else {
@@ -954,11 +992,11 @@ switch ($mybb->input['action']) {
     }
     case 'view':
     {
-        $mybb->input['gid'] = intval($mybb->input['gid']);
+        $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
         $plugins->run_hooks('myshowcase_view_start');
 
-        if ($mybb->input['gid'] == '' || $mybb->input['gid'] == 0) {
+        if ($mybb->get_input('gid', \MyBB::INPUT_INT) == '' || $mybb->get_input('gid', \MyBB::INPUT_INT) == 0) {
             error($lang->myshowcase_invalid_id);
         }
 
@@ -981,7 +1019,7 @@ switch ($mybb->input['action']) {
 			FROM ' . TABLE_PREFIX . $me->table_name . ' g
 			LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.uid)
 			' . $addon_join . '
-			WHERE g.gid=' . $mybb->input['gid'] . $view_where_clause
+			WHERE g.gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT) . $view_where_clause
         );
 
         if ($db->num_rows($query) == 0) {
@@ -1003,18 +1041,27 @@ switch ($mybb->input['action']) {
 
         $item_viewcode = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
         if ($me->allow_attachments && $me->userperms['canviewattach']) {
-            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->input['showall'] == 1 ? '&showall=1' : '') . '#images">' . $lang->myshowcase_attachments . '</a>';
+            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->get_input(
+                    'showall',
+                    \MyBB::INPUT_INT
+                ) == 1 ? '&showall=1' : '') . '#images">' . $lang->myshowcase_attachments . '</a>';
         }
 
         if ($me->allow_comments && $me->userperms['canviewcomment']) {
-            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->input['showall'] == 1 ? '&showall=1' : '') . '#comments">' . $lang->myshowcase_comments . '</a>';
+            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->get_input(
+                    'showall',
+                    \MyBB::INPUT_INT
+                ) == 1 ? '&showall=1' : '') . '#comments">' . $lang->myshowcase_comments . '</a>';
         }
 
-        $jumptop = '(<a href="' . $item_viewcode . ($mybb->input['showall'] == 1 ? '&showall=1' : '') . '#top">' . $lang->myshowcase_top . '</a>)';
+        $jumptop = '(<a href="' . $item_viewcode . ($mybb->get_input(
+                'showall',
+                \MyBB::INPUT_INT
+            ) == 1 ? '&showall=1' : '') . '#top">' . $lang->myshowcase_top . '</a>)';
 
         $posthash = $showcase['posthash'];
 
-        $showcase_gid = $mybb->input['gid'];
+        $showcase_gid = $mybb->get_input('gid', \MyBB::INPUT_INT);
         $showcase_views = $showcase['views'];
         $showcase_numcomments = $showcase['comments'];
 
@@ -1041,8 +1088,8 @@ switch ($mybb->input['action']) {
         //doing this now should not impact anyhting. no issues with gomobile beta4
         define('IN_ARCHIVE', 1);
 
-        $mybb->input['highlight'] = $db->escape_string($mybb->input['highlight']);
-        $mybb->input['search'] = $db->escape_string($mybb->input['search']);
+        $mybb->input['highlight'] = $db->escape_string($mybb->get_input('highlight'));
+        $mybb->input['search'] = $db->escape_string($mybb->get_input('search'));
 
         require_once(MYBB_ROOT . 'inc/class_parser.php');
         $parser = new postParser();
@@ -1057,8 +1104,8 @@ switch ($mybb->input['action']) {
 
             //if we have search handle search term highlighting
             $highlight = 0;
-            if ($mybb->input['highlight'] != '' && $mybb->input['search'] == $fname) {
-                $highlight = $mybb->input['highlight'];
+            if ($mybb->get_input('highlight') != '' && $mybb->get_input('search') == $fname) {
+                $highlight = $mybb->get_input('highlight');
             }
 
             //set parser options for current field
@@ -1195,8 +1242,11 @@ switch ($mybb->input['action']) {
         }
 
         //output bottom row for report button and future add-ons
-//		$entry_final_row = '<a href="'.SHOWCASE_URL.'?action=report&gid='.$mybb->input['gid'].'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
-        $entry_final_row = '<a href="javascript:Showcase.reportShowcase(' . $mybb->input['gid'] . ');"><img src="' . $theme['imglangdir'] . '/postbit_report.gif"></a>';
+//		$entry_final_row = '<a href="'.SHOWCASE_URL.'?action=report&gid='.$mybb->get_input('gid', \MyBB::INPUT_INT).'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
+        $entry_final_row = '<a href="javascript:Showcase.reportShowcase(' . $mybb->get_input(
+                'gid',
+                \MyBB::INPUT_INT
+            ) . ');"><img src="' . $theme['imglangdir'] . '/postbit_report.gif"></a>';
         $showcase_data .= eval(getTemplate('view_data_3'));
 
         if ($me->allow_comments && $me->userperms['canviewcomment']) {
@@ -1206,9 +1256,9 @@ switch ($mybb->input['action']) {
 				SELECT gc.*, u.username
 				FROM ' . TABLE_PREFIX . 'myshowcase_comments gc
 				LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = gc.uid)
-				WHERE gc.gid=' . $mybb->input['gid'] . ' AND gc.id=' . $me->id . '
+				WHERE gc.gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT) . ' AND gc.id=' . $me->id . '
 				ORDER BY dateline DESC' .
-                ($mybb->input['showall'] == 1 ? '' : ' LIMIT ' . $me->comment_dispinit)
+                ($mybb->get_input('showall', \MyBB::INPUT_INT) == 1 ? '' : ' LIMIT ' . $me->comment_dispinit)
             );
 
             $trow_style = 'trow2';
@@ -1243,7 +1293,7 @@ switch ($mybb->input['action']) {
             }
 
             $showcase_show_all = '';
-            if ($mybb->input['showall'] != 1 && $showcase_numcomments > $me->comment_dispinit) {
+            if ($mybb->get_input('showall', \MyBB::INPUT_INT) != 1 && $showcase_numcomments > $me->comment_dispinit) {
                 $showcase_show_all = '(<a href="' . $item_viewcode . $amp . 'showall=1#comments">' . str_replace(
                         '{count}',
                         $showcase['comments'],
@@ -1251,7 +1301,7 @@ switch ($mybb->input['action']) {
                     ) . '</a>)' . '<br>';
             }
 
-            $showcase_comment_form_url = SHOWCASE_URL;//.'?action=view&gid='.$mybb->input['gid'];
+            $showcase_comment_form_url = SHOWCASE_URL;//.'?action=view&gid='.$mybb->get_input('gid', \MyBB::INPUT_INT);
             $showcase_header_label = '<a name="comments"><form action="' . $showcase_comment_form_url . '" method="post" name="comment">' . $lang->myshowcase_comments . '</a>';
             $showcase_header_jumpto = $jumptop;
             $showcase_header_special = $showcase_show_all;
@@ -1282,7 +1332,7 @@ switch ($mybb->input['action']) {
                 '
 				SELECT ga.*
 				FROM ' . TABLE_PREFIX . 'myshowcase_attachments ga
-				WHERE ga.gid=' . $mybb->input['gid'] . ' AND ga.id=' . $me->id
+				WHERE ga.gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT) . ' AND ga.id=' . $me->id
             );
 
             $attach_count = 0;
@@ -1356,7 +1406,10 @@ switch ($mybb->input['action']) {
 
         // Update view count
         $db->shutdown_query(
-            'UPDATE ' . TABLE_PREFIX . $me->table_name . ' SET views=views+1 WHERE gid=' . $mybb->input['gid']
+            'UPDATE ' . TABLE_PREFIX . $me->table_name . ' SET views=views+1 WHERE gid=' . $mybb->get_input(
+                'gid',
+                \MyBB::INPUT_INT
+            )
         );
 
         $plugins->run_hooks('myshowcase_view_end');
@@ -1383,21 +1436,25 @@ switch ($mybb->input['action']) {
         }
 
         if ($me->userperms['cancomment'] && $mybb->request_method == 'post') {
-            verify_post_check($mybb->input['my_post_key']);
+            verify_post_check($mybb->get_input('my_post_key'));
 
             $plugins->run_hooks('myshowcase_add_comment_start');
 
-            $mybb->input['gid'] = intval($mybb->input['gid']);
+            $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
-            if ($mybb->input['gid'] == '' || $mybb->input['gid'] == 0) {
+            if ($mybb->get_input('gid', \MyBB::INPUT_INT) == '' || $mybb->get_input('gid', \MyBB::INPUT_INT) == 0) {
                 error($lang->myshowcase_invalid_id);
             }
 
-            if ($mybb->input['comments'] == '') {
+            if ($mybb->get_input('comments') == '') {
                 error($lang->myshowcase_comment_empty);
             }
 
-            $query = $db->simple_select($me->table_name, 'gid, uid', 'gid=' . $mybb->input['gid']);
+            $query = $db->simple_select(
+                $me->table_name,
+                'gid, uid',
+                'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT)
+            );
             if ($db->num_rows($query) == 0) {
                 error($lang->myshowcase_invalid_id);
             }
@@ -1409,7 +1466,7 @@ switch ($mybb->input['action']) {
                 '
 				SELECT COUNT(*) AS num_comments
 				FROM ' . TABLE_PREFIX . 'myshowcase_comments
-				WHERE gid = ' . $mybb->input['gid'] . ' AND id=' . $me->id . '
+				WHERE gid = ' . $mybb->get_input('gid', \MyBB::INPUT_INT) . ' AND id=' . $me->id . '
 				GROUP BY gid
 				LIMIT 1
 			'
@@ -1418,15 +1475,15 @@ switch ($mybb->input['action']) {
             $showcase = $db->fetch_array($query);
             $num_comments = $showcase['num_comments'];
 
-            $mybb->input['comments'] = $db->escape_string($mybb->input['comments']);
+            $mybb->input['comments'] = $db->escape_string($mybb->get_input('comments'));
 
-            if ($mybb->input['comments'] != '') {
+            if ($mybb->get_input('comments') != '') {
                 $comment_insert_data = array(
                     'id' => $me->id,
-                    'gid' => $mybb->input['gid'],
+                    'gid' => $mybb->get_input('gid', \MyBB::INPUT_INT),
                     'uid' => $mybb->user['uid'],
                     'ipaddress' => get_ip(),
-                    'comment' => $mybb->input['comments'],
+                    'comment' => $mybb->get_input('comments'),
                     'dateline' => TIME_NOW
                 );
 
@@ -1437,7 +1494,7 @@ switch ($mybb->input['action']) {
                 $db->update_query(
                     $me->table_name,
                     array('comments' => $num_comments + 1),
-                    'gid=' . $mybb->input['gid']
+                    'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT)
                 );
 
                 //notify showcase owner of new comment by others
@@ -1447,7 +1504,7 @@ switch ($mybb->input['action']) {
                     $parser = new Postparser();
 
                     $excerpt = $parser->text_parse_message(
-                        $mybb->input['comments'],
+                        $mybb->get_input('comments'),
                         array('me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1)
                     );
                     $excerpt = my_substr(
@@ -1490,7 +1547,7 @@ switch ($mybb->input['action']) {
                     $cache->update_mailqueue();
                 }
 
-                $item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+                $item_viewcode = str_replace('{gid}', $mybb->get_input('gid', \MyBB::INPUT_INT), SHOWCASE_URL_VIEW);
 
                 redirect($item_viewcode . '#comments', $lang->myshowcase_comment_added);
             }
@@ -1505,9 +1562,9 @@ switch ($mybb->input['action']) {
     {
         $plugins->run_hooks('myshowcase_del_comment_start');
 
-        $mybb->input['cid'] = intval($mybb->input['cid']);
+        $mybb->input['cid'] = intval($mybb->get_input('cid', \MyBB::INPUT_INT));
 
-        if ($mybb->input['cid'] == '' || $mybb->input['cid'] == 0) {
+        if ($mybb->get_input('cid', \MyBB::INPUT_INT) == '' || $mybb->get_input('cid', \MyBB::INPUT_INT) == 0) {
             error($lang->myshowcase_invalid_cid);
         }
 
@@ -1515,7 +1572,7 @@ switch ($mybb->input['action']) {
             'SELECT c.cid, g.uid AS owner, c.uid AS author, c.gid FROM ' . TABLE_PREFIX . 'myshowcase_comments c
 				LEFT JOIN ' . TABLE_PREFIX . $me->table_name . ' g
 				ON g.gid = c.gid
-				WHERE c.cid = ' . $mybb->input['cid']
+				WHERE c.cid = ' . $mybb->get_input('cid', \MyBB::INPUT_INT)
         );
 
         if ($db->num_rows($query) == 0) {
@@ -1529,9 +1586,12 @@ switch ($mybb->input['action']) {
                 ($mybb->user['uid'] == $gcomments['owner'] && $me->userperms['candelauthcomment']) ||
                 ($me->userperms['canmoddelcomment']) && $mybb->request_method == 'post')
         ) {
-            verify_post_check($mybb->input['my_post_key']);
+            verify_post_check($mybb->get_input('my_post_key'));
 
-            $query = $db->delete_query('myshowcase_comments', 'id=' . $me->id . ' AND cid=' . $mybb->input['cid']);
+            $query = $db->delete_query(
+                'myshowcase_comments',
+                'id=' . $me->id . ' AND cid=' . $mybb->get_input('cid', \MyBB::INPUT_INT)
+            );
             if ($db->affected_rows($query) != 1) {
                 error($lang->myshowcase_comment_error);
             } else {
@@ -1565,7 +1625,7 @@ switch ($mybb->input['action']) {
     case 'delete';
     {
         if ($mybb->request_method == 'post') {
-            verify_post_check($mybb->input['my_post_key']);
+            verify_post_check($mybb->get_input('my_post_key'));
 
             if (!$mybb->user['uid'] || !$me->userperms['canedit']) {
                 error($lang->myshowcase_not_authorized);
@@ -1573,13 +1633,13 @@ switch ($mybb->input['action']) {
 
             $plugins->run_hooks('myshowcase_delete_start');
 
-            $mybb->input['gid'] = intval($mybb->input['gid']);
+            $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
-            if ($mybb->input['gid'] == '' || $mybb->input['gid'] == 0) {
+            if ($mybb->get_input('gid', \MyBB::INPUT_INT) == '' || $mybb->get_input('gid', \MyBB::INPUT_INT) == 0) {
                 error($lang->myshowcase_invalid_id);
             }
 
-            $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->input['gid']);
+            $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT));
             if ($db->num_rows($query) == 0) {
                 error($lang->myshowcase_invalid_id);
             }

@@ -58,7 +58,7 @@ $langpath = str_replace('admin', '', $lang->path . '/' . $lang->language);
 $plugins->run_hooks('admin_myshowcase_fields_begin');
 
 //new field set
-if ($mybb->input['action'] == 'new') {
+if ($mybb->get_input('action') == 'new') {
     $page->add_breadcrumb_item($lang->myshowcase_admin_create_new, 'index.php?module=myshowcase-fields');
     $page->output_header($lang->myshowcase_admin_fields);
 
@@ -66,7 +66,7 @@ if ($mybb->input['action'] == 'new') {
         $plugins->run_hooks('admin_myshowcase_fields_insert_begin');
 
         //update any existing names
-        foreach ($mybb->input['setname'] as $setid => $setname) {
+        foreach ($mybb->get_input('setname', \MyBB::INPUT_ARRAY) as $setid => $setname) {
             $update_array = array(
                 'setname' => $db->escape_string($setname),
             );
@@ -79,7 +79,7 @@ if ($mybb->input['action'] == 'new') {
         }
 
         //add new set
-        if (!empty($mybb->input['newname'])) {
+        if (!empty($mybb->get_input('newname'))) {
             //check if language folder is writable so we can create a new language file for this fieldset
             if (!is_writable($langpath)) {
                 flash_message(
@@ -92,7 +92,7 @@ if ($mybb->input['action'] == 'new') {
                 admin_redirect('index.php?module=myshowcase-fields');
             }
 
-            $newname = $db->escape_string($mybb->input['newname']);
+            $newname = $db->escape_string($mybb->get_input('newname'));
             $query = $db->simple_select('myshowcase_fieldsets', '*', "setname='{$newname}'");
             if ($db->num_rows($query) != 0) {
                 flash_message($lang->myshowcase_fields_already_exists, 'error');
@@ -100,7 +100,7 @@ if ($mybb->input['action'] == 'new') {
             }
 
             $insert_array = array(
-                'setname' => $db->escape_string($mybb->input['newname']),
+                'setname' => $db->escape_string($mybb->get_input('newname')),
             );
             $db->insert_query('myshowcase_fieldsets', $insert_array);
             $id = $db->insert_id();
@@ -109,11 +109,11 @@ if ($mybb->input['action'] == 'new') {
             $file = 'myshowcase_fs' . $id . '.lang.php';
 
             // Log admin action
-            $log = array('id' => $id, 'myshowcase' => $mybb->input['newname']);
+            $log = array('id' => $id, 'myshowcase' => $mybb->get_input('newname'));
             log_admin_action($log);
 
             // Reset new myshowcase info
-            unset($mybb->input['newname']);
+            unset($mybb->get_input('newname'));
         }
 
         myshowcase_update_cache('config');
@@ -129,11 +129,15 @@ if ($mybb->input['action'] == 'new') {
 }
 
 //edit fields in a field set
-if ($mybb->input['action'] == 'editset') {
-    if (isset($mybb->input['setid']) && is_numeric($mybb->input['setid'])) {
+if ($mybb->get_input('action') == 'editset') {
+    if (isset($mybb->get_input('setid', \MyBB::INPUT_INT)) && is_numeric($mybb->get_input('setid', \MyBB::INPUT_INT))) {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
-        $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
+        $query = $db->simple_select(
+            'myshowcase_config',
+            '*',
+            'fieldsetid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
         if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
             $can_edit = false;
@@ -142,13 +146,19 @@ if ($mybb->input['action'] == 'editset') {
         //get lang file status
         $can_edit_lang = true;
         if (!is_writable($langpath) || (!is_writable(
-                    $langpath . '/myshowcase_fs' . $mybb->input['setid'] . '.lang.php'
-                ) && file_exists($langpath . '/myshowcase_fs' . $mybb->input['setid'] . '.lang.php'))) {
+                    $langpath . '/myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT) . '.lang.php'
+                ) && file_exists(
+                    $langpath . '/myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT) . '.lang.php'
+                ))) {
             $can_edit_lang = false;
         }
 
         //check if set exists
-        $query = $db->simple_select('myshowcase_fieldsets', '*', 'setid=' . $mybb->input['setid']);
+        $query = $db->simple_select(
+            'myshowcase_fieldsets',
+            '*',
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
 
         if ($db->num_rows($query) == 0) {
@@ -167,11 +177,15 @@ if ($mybb->input['action'] == 'editset') {
         //user clicked Save button
         if ($mybb->request_method == 'post') {
             //apply changes to existing fields first
-            $query = $db->simple_select('myshowcase_fields', '*', 'setid=' . $mybb->input['setid']);
+            $query = $db->simple_select(
+                'myshowcase_fields',
+                '*',
+                'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+            );
             while ($result = $db->fetch_array($query)) {
                 if ($can_edit) {
                     //make field name valid and remove any starting/ending underscores after replacement
-                    $newname = $db->escape_string($mybb->input['name'][$result['fid']]);
+                    $newname = $db->escape_string($mybb->get_input('name')[$result['fid']]);
                     $newname = preg_replace('#[^\w]#', '_', $newname);
                     $origname = '';
                     while ($origname != $newname) {
@@ -181,92 +195,133 @@ if ($mybb->input['action'] == 'editset') {
 
                     $update_array = array(
                         'name' => strtolower($newname),
-                        'field_order' => $db->escape_string($mybb->input['field_order'][$result['fid']]),
-                        'list_table_order' => $db->escape_string($mybb->input['list_table_order'][$result['fid']]),
-                        'enabled' => (isset($mybb->input['enabled'][$result['fid']]) ? 1 : 0),
-                        'require' => (isset($mybb->input['require'][$result['fid']]) ? 1 : 0),
-                        'parse' => (isset($mybb->input['parse'][$result['fid']]) ? 1 : 0),
-                        'searchable' => (isset($mybb->input['searchable'][$result['fid']]) ? 1 : 0),
-                        'format' => $mybb->input['format'][$result['fid']]
+                        'field_order' => $db->escape_string(
+                            $mybb->get_input('field_order', \MyBB::INPUT_ARRAY)[$result['fid']]
+                        ),
+                        'list_table_order' => $db->escape_string(
+                            $mybb->get_input('list_table_order', \MyBB::INPUT_ARRAY)[$result['fid']]
+                        ),
+                        'enabled' => (isset($mybb->get_input('enabled', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'require' => (isset($mybb->get_input('require', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'parse' => (isset($mybb->get_input('parse', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'searchable' => (isset(
+                            $mybb->get_input(
+                                'searchable',
+                                \MyBB::INPUT_ARRAY
+                            )[$result['fid']]
+                        ) ? 1 : 0),
+                        'format' => $mybb->get_input('format', \MyBB::INPUT_ARRAY)[$result['fid']]
                     );
                 } else {
                     $update_array = array(
-                        'field_order' => $db->escape_string($mybb->input['field_order'][$result['fid']]),
-                        'list_table_order' => $db->escape_string($mybb->input['list_table_order'][$result['fid']]),
-                        'enabled' => (isset($mybb->input['enabled'][$result['fid']]) ? 1 : 0),
-                        'require' => (isset($mybb->input['require'][$result['fid']]) ? 1 : 0),
-                        'parse' => (isset($mybb->input['parse'][$result['fid']]) ? 1 : 0),
-                        'searchable' => (isset($mybb->input['searchable'][$result['fid']]) ? 1 : 0),
-                        'format' => $mybb->input['format'][$result['fid']]
+                        'field_order' => $db->escape_string(
+                            $mybb->get_input('field_order', \MyBB::INPUT_ARRAY)[$result['fid']]
+                        ),
+                        'list_table_order' => $db->escape_string(
+                            $mybb->get_input('list_table_order', \MyBB::INPUT_ARRAY)[$result['fid']]
+                        ),
+                        'enabled' => (isset($mybb->get_input('enabled', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'require' => (isset($mybb->get_input('require', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'parse' => (isset($mybb->get_input('parse', \MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'searchable' => (isset(
+                            $mybb->get_input(
+                                'searchable',
+                                \MyBB::INPUT_ARRAY
+                            )[$result['fid']]
+                        ) ? 1 : 0),
+                        'format' => $mybb->get_input('format', \MyBB::INPUT_ARRAY)[$result['fid']]
                     );
                 }
                 $update_query = $db->update_query(
                     'myshowcase_fields',
                     $update_array,
-                    'setid=' . $mybb->input['setid'] . ' AND fid=' . $result['fid']
+                    'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $result['fid']
                 );
 
-                if ($can_edit && ($mybb->input['html_type'][$result['fid']] == 'db' || $mybb->input['html_type'][$result['fid']] == 'radio')) {
+                if ($can_edit && ($mybb->get_input(
+                            'html_type',
+                            \MyBB::INPUT_ARRAY
+                        )[$result['fid']] == 'db' || $mybb->get_input(
+                            'html_type',
+                            \MyBB::INPUT_ARRAY
+                        )[$result['fid']] == 'radio')) {
                     $update_array = array(
-                        'name' => $db->escape_string($mybb->input['name'][$result['fid']])
+                        'name' => $db->escape_string($mybb->get_input('name')[$result['fid']])
                     );
                     $update_query = $db->update_query(
                         'myshowcase_field_data',
                         $update_array,
-                        'setid=' . $mybb->input['setid'] . ' AND fid=' . $result['fid']
+                        'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $result['fid']
                     );
                 }
             }
 
             //apply new field
             $do_new_field = 0;
-            if ($mybb->input['newname'] != '' && $mybb->input['newmax_length'] != '' && is_numeric(
-                    $mybb->input['newmax_length']
-                ) && $mybb->input['newfield_order'] != '' && is_numeric(
-                    $mybb->input['newfield_order']
-                ) && $mybb->input['newlist_table_order'] != '' && is_numeric($mybb->input['newlist_table_order'])) {
+            if ($mybb->get_input('newname') != '' && $mybb->get_input(
+                    'newmax_length',
+                    \MyBB::INPUT_INT
+                ) != '' && is_numeric(
+                    $mybb->get_input('newmax_length', \MyBB::INPUT_INT)
+                ) && $mybb->get_input('newfield_order', \MyBB::INPUT_INT) != '' && is_numeric(
+                    $mybb->get_input('newfield_order', \MyBB::INPUT_INT)
+                ) && $mybb->get_input('newlist_table_order', \MyBB::INPUT_INT) != '' && is_numeric(
+                    $mybb->get_input('newlist_table_order', \MyBB::INPUT_INT)
+                )) {
                 //set default field type/size for certain html types overwritting user entries
                 $do_default_option_insert = 0;
-                switch ($mybb->input['newhtml_type']) {
+                switch ($mybb->get_input('newhtml_type')) {
                     case 'db':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 3;
+                        $mybb->get_input('newfield_type') = 'int';
+                        $mybb->get_input('newmax_length', \MyBB::INPUT_INT) = 3;
                         $do_default_option_insert = 1;
                         break;
 
                     case 'radio':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 1;
+                        $mybb->get_input('newfield_type') = 'int';
+                        $mybb->get_input('newmax_length', \MyBB::INPUT_INT) = 1;
                         $do_default_option_insert = 1;
                         break;
 
                     case 'checkbox':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 1;
+                        $mybb->get_input('newfield_type') = 'int';
+                        $mybb->get_input('newmax_length', \MyBB::INPUT_INT) = 1;
                         break;
 
                     case 'date':
-                        $mybb->input['newfield_type'] = 'varchar';
-                        $mybb->input['newmin_length'] = max(intval($mybb->input['newmin_length']), 1901);
-                        $mybb->input['newmax_length'] = min(intval($mybb->input['newmax_length']), 2038);
+                        $mybb->get_input('newfield_type') = 'varchar';
+                        $mybb->get_input('newmin_length', \MyBB::INPUT_INT) = max(
+                            intval($mybb->get_input('newmin_length', \MyBB::INPUT_INT)),
+                            1901
+                        );
+                        $mybb->get_input('newmax_length', \MyBB::INPUT_INT) = min(
+                            intval($mybb->get_input('newmax_length', \MyBB::INPUT_INT)),
+                            2038
+                        );
 
-                        if ($mybb->input['newmin_length'] > $mybb->input['newmax_length']) {
+                        if ($mybb->get_input('newmin_length', \MyBB::INPUT_INT) > $mybb->get_input(
+                                'newmax_length',
+                                \MyBB::INPUT_INT
+                            )) {
                             flash_message($lang->myshowcase_field_year_order, 'error');
                             admin_redirect(
-                                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']
+                                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                                    'setid',
+                                    \MyBB::INPUT_INT
+                                )
                             );
                         }
 
                         break;
 
                     case 'url':
-                        $mybb->input['newfield_type'] = 'varchar';
-                        $mybb->input['newmax_length'] = 255;
+                        $mybb->get_input('newfield_type') = 'varchar';
+                        $mybb->get_input('newmax_length', \MyBB::INPUT_INT) = 255;
                         break;
                 }
 
                 //make field name valid and remove any starting/ending underscores after replacement
-                $newname = $db->escape_string($mybb->input['newname']);
+                $newname = $db->escape_string($mybb->get_input('newname'));
                 $newname = preg_replace('#[^\w]#', '_', $newname);
                 $origname = '';
                 while ($origname != $newname) {
@@ -275,19 +330,19 @@ if ($mybb->input['action'] == 'editset') {
                 }
 
                 $insert_array = array(
-                    'setid' => $mybb->input['setid'],
+                    'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                     'name' => strtolower($newname),
-                    'html_type' => $mybb->input['newhtml_type'],
-                    'field_type' => $mybb->input['newfield_type'],
-                    'min_length' => intval($mybb->input['newmin_length']),
-                    'max_length' => intval($mybb->input['newmax_length']),
-                    'field_order' => intval($mybb->input['newfield_order']),
-                    'list_table_order' => intval($mybb->input['newlist_table_order']),
-                    'enabled' => (isset($mybb->input['newenabled']) ? 1 : 0),
-                    'require' => (isset($mybb->input['newrequire']) ? 1 : 0),
-                    'parse' => (isset($mybb->input['newparse']) ? 1 : 0),
-                    'searchable' => (isset($mybb->input['newsearchable']) ? 1 : 0),
-                    'format' => $mybb->input['newformat']
+                    'html_type' => $mybb->get_input('newhtml_type'),
+                    'field_type' => $mybb->get_input('newfield_type'),
+                    'min_length' => intval($mybb->get_input('newmin_length', \MyBB::INPUT_INT)),
+                    'max_length' => intval($mybb->get_input('newmax_length', \MyBB::INPUT_INT)),
+                    'field_order' => intval($mybb->get_input('newfield_order', \MyBB::INPUT_INT)),
+                    'list_table_order' => intval($mybb->get_input('newlist_table_order', \MyBB::INPUT_INT)),
+                    'enabled' => (isset($mybb->get_input('newenabled', \MyBB::INPUT_INT)) ? 1 : 0),
+                    'require' => (isset($mybb->get_input('newrequire', \MyBB::INPUT_INT)) ? 1 : 0),
+                    'parse' => (isset($mybb->get_input('newparse', \MyBB::INPUT_INT)) ? 1 : 0),
+                    'searchable' => (isset($mybb->get_input('newsearchable', \MyBB::INPUT_INT)) ? 1 : 0),
+                    'format' => $mybb->get_input('newformat')
                 );
 
                 $insert_query = $db->insert_query('myshowcase_fields', $insert_array);
@@ -295,7 +350,7 @@ if ($mybb->input['action'] == 'editset') {
 
                 if ($do_default_option_insert) {
                     $insert_array = array(
-                        'setid' => $mybb->input['setid'],
+                        'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
                         'fid' => $insert_query,
                         'name' => strtolower($newname),
                         'value' => 'Not Specified',
@@ -311,30 +366,47 @@ if ($mybb->input['action'] == 'editset') {
             if ($can_edit_lang) {
                 //get existing fields from input
                 $items_add = array();
-                foreach ($mybb->input['name'] as $key => $value) {
-                    $items_add['myshowcase_field_' . $value] = ($mybb->input['label'][$key] == '' ? $db->escape_string(
-                        $mybb->input['name'][$key]
-                    ) : $db->escape_string($mybb->input['label'][$key]));
+                foreach ($mybb->get_input('name') as $key => $value) {
+                    $items_add['myshowcase_field_' . $value] = ($mybb->get_input(
+                        'label',
+                        \MyBB::INPUT_ARRAY
+                    )[$key] == '' ? $db->escape_string(
+                        $mybb->get_input('name')[$key]
+                    ) : $db->escape_string($mybb->get_input('label', \MyBB::INPUT_ARRAY)[$key]));
                 }
 
                 //write new field from input
                 if ($do_new_field) {
                     $items_add['myshowcase_field_' . $db->escape_string(
-                        $mybb->input['newname']
-                    )] = ($mybb->input['newlabel'] == '' ? $db->escape_string(
-                        $mybb->input['newname']
-                    ) : $db->escape_string($mybb->input['newlabel']));
+                        $mybb->get_input('newname')
+                    )] = ($mybb->get_input('newlabel') == '' ? $db->escape_string(
+                        $mybb->get_input('newname')
+                    ) : $db->escape_string($mybb->get_input('newlabel')));
                 }
 
-                $retval = modify_lang('myshowcase_fs' . $mybb->input['setid'], $items_add, array(), 'english', false);
+                $retval = modify_lang(
+                    'myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT),
+                    $items_add,
+                    array(),
+                    'english',
+                    false
+                );
             }
 
             flash_message($lang->myshowcase_field_update_success, 'success');
-            admin_redirect('index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']);
+            admin_redirect(
+                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                    'setid',
+                    \MyBB::INPUT_INT
+                )
+            );
         }
 
         $form = new Form(
-            'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid'],
+            'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                'setid',
+                \MyBB::INPUT_INT
+            ),
             'post',
             'editset'
         );
@@ -401,7 +473,7 @@ if ($mybb->input['action'] == 'editset') {
         $query = $db->simple_select(
             'myshowcase_fields',
             '*',
-            'setid=' . $mybb->input['setid'],
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT),
             array('order_by' => 'fid')
         );
         $num_fields = $db->num_rows($query);
@@ -412,21 +484,27 @@ if ($mybb->input['action'] == 'editset') {
             );
             $form_container->construct_row();
         } else {
-            @include($langpath . '/myshowcase_fs' . $mybb->input['setid'] . '.lang.php');
+            @include($langpath . '/myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT) . '.lang.php');
             $max_order = 1;
             while ($result = $db->fetch_array($query)) {
                 // Build popup menu
                 $popup = new PopupMenu("field_{$result['fid']}", $lang->options);
                 $popup->add_item(
                     $lang->myshowcase_field_delete,
-                    "index.php?module=myshowcase-fields&amp;action=delfield&amp;fid={$result['fid']}&amp;setid=" . $mybb->input['setid']
+                    "index.php?module=myshowcase-fields&amp;action=delfield&amp;fid={$result['fid']}&amp;setid=" . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    )
                 );
 
                 //add option to edit list items if db type
                 if ($result['html_type'] == 'db' || $result['html_type'] == 'radio') {
                     $popup->add_item(
                         $lang->myshowcase_field_edit_options,
-                        "index.php?module=myshowcase-fields&amp;action=editopt&amp;fid={$result['fid']}&amp;setid=" . $mybb->input['setid']
+                        "index.php?module=myshowcase-fields&amp;action=editopt&amp;fid={$result['fid']}&amp;setid=" . $mybb->get_input(
+                            'setid',
+                            \MyBB::INPUT_INT
+                        )
                     );
                 }
 
@@ -683,9 +761,13 @@ if ($mybb->input['action'] == 'editset') {
 }
 
 //delete field set
-if ($mybb->input['action'] == 'delset') {
-    if (isset($mybb->input['setid']) && is_numeric($mybb->input['setid'])) {
-        $query = $db->simple_select('myshowcase_fieldsets', '*', 'setid=' . $mybb->input['setid']);
+if ($mybb->get_input('action') == 'delset') {
+    if (isset($mybb->get_input('setid', \MyBB::INPUT_INT)) && is_numeric($mybb->get_input('setid', \MyBB::INPUT_INT))) {
+        $query = $db->simple_select(
+            'myshowcase_fieldsets',
+            '*',
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
         $setname = $result['setname'];
         if ($db->num_rows($query) == 0) {
@@ -700,7 +782,11 @@ if ($mybb->input['action'] == 'delset') {
 
             $plugins->run_hooks('admin_myshowcase_fields_deleteset_begin');
 
-            $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
+            $query = $db->simple_select(
+                'myshowcase_config',
+                '*',
+                'fieldsetid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+            );
             if ($db->num_rows($query) != 0) {
                 flash_message($lang->myshowcase_fields_in_use, 'error');
                 admin_redirect('index.php?module=myshowcase-fields');
@@ -708,7 +794,10 @@ if ($mybb->input['action'] == 'delset') {
                 $result = $db->fetch_array($query);
                 echo $lang->sprintf($lang->myshowcase_fields_confirm_delete_long, $setname);
                 $form = new Form(
-                    'index.php?module=myshowcase-fields&amp;action=do_delset&amp;setid=' . $mybb->input['setid'],
+                    'index.php?module=myshowcase-fields&amp;action=do_delset&amp;setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ),
                     'post',
                     'do_delset'
                 );
@@ -724,26 +813,31 @@ if ($mybb->input['action'] == 'delset') {
 }
 
 //delete field set
-if ($mybb->input['action'] == 'do_delset') {
-    if (isset($mybb->input['setid']) && is_numeric($mybb->input['setid']) && $mybb->request_method == 'post') {
+if ($mybb->get_input('action') == 'do_delset') {
+    if (isset($mybb->get_input('setid', \MyBB::INPUT_INT)) && is_numeric(
+            $mybb->get_input('setid', \MyBB::INPUT_INT)
+        ) && $mybb->request_method == 'post') {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
 
-        $query = $db->delete_query('myshowcase_fieldsets', 'setid=' . $mybb->input['setid']);
+        $query = $db->delete_query('myshowcase_fieldsets', 'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT));
         if ($db->affected_rows($query) != 1) {
             flash_message($lang->myshowcase_fields_delete_failed, 'error');
             admin_redirect('index.php?module=myshowcase-fields');
         } else {
             $plugins->run_hooks('admin_myshowcase_fields_dodeleteset_begin');
 
-            $query = $db->delete_query('myshowcase_fields', 'setid=' . $mybb->input['setid']);
-            $query = $db->delete_query('myshowcase_field_data', 'setid=' . $mybb->input['setid']);
+            $query = $db->delete_query('myshowcase_fields', 'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT));
+            $query = $db->delete_query('myshowcase_field_data', 'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT));
 
             //also delete langauge files for this fieldset
             $langs = $lang->get_languages(false);
             foreach ($langs as $langfolder => $langname) {
-                $langfile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $mybb->input['setid'] . '.lang.php';
+                $langfile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ) . '.lang.php';
                 unlink($langfile);
             }
 
@@ -755,7 +849,7 @@ if ($mybb->input['action'] == 'do_delset') {
             myshowcase_update_cache('fieldsets');
 
             // Log admin action
-            $log = array('setid' => $mybb->input['setid']);
+            $log = array('setid' => $mybb->get_input('setid', \MyBB::INPUT_INT));
             log_admin_action($log);
 
             flash_message($lang->myshowcase_field_delete_success, 'success');
@@ -765,11 +859,15 @@ if ($mybb->input['action'] == 'do_delset') {
 }
 
 //edit specific field in a field set (DB or select types)
-if ($mybb->input['action'] == 'editopt') {
-    if (isset($mybb->input['fid']) && is_numeric($mybb->input['fid'])) {
+if ($mybb->get_input('action') == 'editopt') {
+    if (isset($mybb->get_input('fid', \MyBB::INPUT_INT)) && is_numeric($mybb->get_input('fid', \MyBB::INPUT_INT))) {
         //check if set is in use, if so, limit edit ability
         $can_edit = true;
-        $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
+        $query = $db->simple_select(
+            'myshowcase_config',
+            '*',
+            'fieldsetid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
 
         if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
@@ -779,7 +877,11 @@ if ($mybb->input['action'] == 'editopt') {
         }
 
         //get set name
-        $query = $db->simple_select('myshowcase_fieldsets', 'setname', 'setid=' . $mybb->input['setid']);
+        $query = $db->simple_select(
+            'myshowcase_fieldsets',
+            'setname',
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
         $setname = $result['setname'];
 
@@ -787,7 +889,10 @@ if ($mybb->input['action'] == 'editopt') {
         $query = $db->simple_select(
             'myshowcase_fields',
             '*',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid'] . " AND html_type In ('db', 'radio')"
+            'setid=' . $mybb->get_input(
+                'setid',
+                \MyBB::INPUT_INT
+            ) . ' AND fid=' . $mybb->get_input('fid', \MyBB::INPUT_INT) . " AND html_type In ('db', 'radio')"
         );
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_field_invalid_id, 'error');
@@ -810,32 +915,45 @@ if ($mybb->input['action'] == 'editopt') {
             $query = $db->simple_select(
                 'myshowcase_field_data',
                 '*',
-                'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid']
+                'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                    'fid',
+                    \MyBB::INPUT_INT
+                )
             );
             while ($result = $db->fetch_array($query)) {
                 $update_array = array(
-                    'value' => $db->escape_string($mybb->input['value'][$result['valueid']]),
-                    'disporder' => $db->escape_string($mybb->input['disporder'][$result['valueid']])
+                    'value' => $db->escape_string($mybb->get_input('value', \MyBB::INPUT_ARRAY)[$result['valueid']]),
+                    'disporder' => $db->escape_string(
+                        $mybb->get_input('disporder', \MyBB::INPUT_ARRAY)[$result['valueid']]
+                    )
                 );
 
                 $update_query = $db->update_query(
                     'myshowcase_field_data',
                     $update_array,
-                    'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid'] . ' AND valueid=' . $result['valueid']
+                    'setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ) . ' AND fid=' . $mybb->get_input('fid', \MyBB::INPUT_INT) . ' AND valueid=' . $result['valueid']
                 );
             }
 
             //apply new field
-            if ($mybb->input['newtext'] != '' && $mybb->input['newvalueid'] != '' && is_numeric(
-                    $mybb->input['newvalueid']
-                ) && $mybb->input['newdisporder'] != '' && is_numeric($mybb->input['newdisporder'])) {
+            if ($mybb->get_input('newtext') != '' && $mybb->get_input(
+                    'newvalueid',
+                    \MyBB::INPUT_INT
+                ) != '' && is_numeric(
+                    $mybb->get_input('newvalueid', \MyBB::INPUT_INT)
+                ) && $mybb->get_input('newdisporder', \MyBB::INPUT_INT) != '' && is_numeric(
+                    $mybb->get_input('newdisporder', \MyBB::INPUT_INT)
+                )) {
                 $insert_array = array(
-                    'setid' => $mybb->input['setid'],
-                    'fid' => $mybb->input['fid'],
-                    'name' => $db->escape_string($mybb->input['newfieldname']),
-                    'value' => $db->escape_string($mybb->input['newtext']),
-                    'valueid' => $mybb->input['newvalueid'],
-                    'disporder' => $mybb->input['newdisporder']
+                    'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
+                    'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT),
+                    'name' => $db->escape_string($mybb->get_input('newfieldname')),
+                    'value' => $db->escape_string($mybb->get_input('newtext')),
+                    'valueid' => $mybb->get_input('newvalueid', \MyBB::INPUT_INT),
+                    'disporder' => $mybb->get_input('newdisporder', \MyBB::INPUT_INT)
                 );
 
                 $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
@@ -848,12 +966,24 @@ if ($mybb->input['action'] == 'editopt') {
 
             flash_message($lang->myshowcase_field_update_opt_success, 'success');
             admin_redirect(
-                'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->input['fid'] . '&amp;setid=' . $mybb->input['setid']
+                'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
+                    'fid',
+                    \MyBB::INPUT_INT
+                ) . '&amp;setid=' . $mybb->get_input(
+                    'setid',
+                    \MyBB::INPUT_INT
+                )
             );
         }
 
         $form = new Form(
-            'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->input['fid'] . '&amp;setid=' . $mybb->input['setid'],
+            'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            ) . '&amp;setid=' . $mybb->get_input(
+                'setid',
+                \MyBB::INPUT_INT
+            ),
             'post',
             'editopt'
         );
@@ -876,7 +1006,10 @@ if ($mybb->input['action'] == 'editopt') {
         $query = $db->simple_select(
             'myshowcase_field_data',
             '*',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid'],
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            ),
             array('order_by' => 'valueid')
         );
         $num_fields = $db->num_rows($query);
@@ -895,7 +1028,7 @@ if ($mybb->input['action'] == 'editopt') {
                 if ($can_edit) {
                     $popup->add_item(
                         $lang->myshowcase_field_delete,
-                        "index.php?module=myshowcase-fields&amp;action=delopt&amp;setid={$mybb->input['setid']}&amp;fid={$mybb->input['fid']}&amp;valueid={$result['valueid']}"
+                        "index.php?module=myshowcase-fields&amp;action=delopt&amp;setid={$mybb->get_input('setid', \MyBB::INPUT_INT)}&amp;fid={$mybb->get_input('fid', \MyBB::INPUT_INT)}&amp;valueid={$result['valueid']}"
                     );
                 }
 
@@ -980,15 +1113,23 @@ if ($mybb->input['action'] == 'editopt') {
 }
 
 //delete field option
-if ($mybb->input['action'] == 'delopt') {
-    if (isset($mybb->input['valueid']) && is_numeric($mybb->input['valueid'])) {
+if ($mybb->get_input('action') == 'delopt') {
+    if (isset($mybb->get_input('valueid', \MyBB::INPUT_INT)) && is_numeric(
+            $mybb->get_input('valueid', \MyBB::INPUT_INT)
+        )) {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
         $query = $db->simple_select(
             'myshowcase_field_data',
             '*',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid'] . ' AND valueid=' . $mybb->input['valueid']
+            'setid=' . $mybb->get_input(
+                'setid',
+                \MyBB::INPUT_INT
+            ) . ' AND fid=' . $mybb->get_input('fid', \MyBB::INPUT_INT) . ' AND valueid=' . $mybb->get_input(
+                'valueid',
+                \MyBB::INPUT_INT
+            )
         );
         $result = $db->fetch_array($query);
         $fieldname = $result['name'];
@@ -997,16 +1138,32 @@ if ($mybb->input['action'] == 'delopt') {
         } else {
             $plugins->run_hooks('admin_myshowcase_fields_delopt_begin');
 
-            $query = $db->simple_select('myshowcase_config', '*', 'fieldsetid=' . $mybb->input['setid']);
+            $query = $db->simple_select(
+                'myshowcase_config',
+                '*',
+                'fieldsetid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+            );
             if ($db->num_rows($query) != 0) {
                 flash_message($lang->myshowcase_fields_in_use, 'error');
                 admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->input['fid'] . '&amp;setid=' . $mybb->input['setid']
+                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
+                        'fid',
+                        \MyBB::INPUT_INT
+                    ) . '&amp;setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    )
                 );
             } else {
                 $query = $db->delete_query(
                     'myshowcase_field_data',
-                    'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid'] . ' AND valueid=' . $mybb->input['valueid']
+                    'setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ) . ' AND fid=' . $mybb->get_input(
+                        'fid',
+                        \MyBB::INPUT_INT
+                    ) . ' AND valueid=' . $mybb->get_input('valueid', \MyBB::INPUT_INT)
                 );
 
                 $plugins->run_hooks('admin_myshowcase_fields_delopt_end');
@@ -1018,15 +1175,18 @@ if ($mybb->input['action'] == 'delopt') {
 
                 // Log admin action
                 $log = array(
-                    'setid' => $mybb->input['setid'],
-                    'fid' => $mybb->input['fid'],
-                    'valueid' => $mybb->input['valueid']
+                    'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
+                    'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT),
+                    'valueid' => $mybb->get_input('valueid', \MyBB::INPUT_INT)
                 );
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_field_delete_opt_success, 'success');
                 admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;setid=' . $mybb->input['setid'] . '&amp;fid=' . $mybb->input['fid']
+                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ) . '&amp;fid=' . $mybb->get_input('fid', \MyBB::INPUT_INT)
                 );
             }
         }
@@ -1034,10 +1194,14 @@ if ($mybb->input['action'] == 'delopt') {
 }
 
 //delete specific field
-if ($mybb->input['action'] == 'delfield') {
-    if (isset($mybb->input['fid']) && is_numeric($mybb->input['fid'])) {
+if ($mybb->get_input('action') == 'delfield') {
+    if (isset($mybb->get_input('fid', \MyBB::INPUT_INT)) && is_numeric($mybb->get_input('fid', \MyBB::INPUT_INT))) {
         //check if set exists
-        $query = $db->simple_select('myshowcase_fieldsets', 'setname', 'setid=' . $mybb->input['setid']);
+        $query = $db->simple_select(
+            'myshowcase_fieldsets',
+            'setname',
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+        );
         $result = $db->fetch_array($query);
 
         if ($db->num_rows($query) == 0) {
@@ -1054,18 +1218,30 @@ if ($mybb->input['action'] == 'delfield') {
         $query = $db->simple_select(
             'myshowcase_fields',
             'name',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid']
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            )
         );
         $result = $db->fetch_array($query);
         $fieldname = $result['name'];
         if ($fieldname == '') {
             flash_message($lang->myshowcase_field_invalid_id, 'error');
-            admin_redirect('index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']);
+            admin_redirect(
+                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                    'setid',
+                    \MyBB::INPUT_INT
+                )
+            );
         } else {
             $plugins->run_hooks('admin_myshowcase_fields_delete_begin');
 
             //check if tables created from this fiedlset already
-            $query = $db->simple_select('myshowcase_config', 'id', 'fieldsetid=' . $mybb->input['setid']);
+            $query = $db->simple_select(
+                'myshowcase_config',
+                'id',
+                'fieldsetid=' . $mybb->get_input('setid', \MyBB::INPUT_INT)
+            );
             $field_in_use = false;
             while ($result = $db->fetch_array($query)) {
                 if (showcaseDataTableExists($result['id'])) {
@@ -1076,12 +1252,21 @@ if ($mybb->input['action'] == 'delfield') {
             if ($field_in_use) {
                 flash_message($lang->myshowcase_field_in_use, 'error');
                 admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']
+                    'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    )
                 );
             } else {
                 echo $lang->sprintf($lang->myshowcase_field_confirm_delete_long, $fieldname);
                 $form = new Form(
-                    'index.php?module=myshowcase-fields&amp;action=do_delfield&amp;fid=' . $mybb->input['fid'] . '&amp;setid=' . $mybb->input['setid'],
+                    'index.php?module=myshowcase-fields&amp;action=do_delfield&amp;fid=' . $mybb->get_input(
+                        'fid',
+                        \MyBB::INPUT_INT
+                    ) . '&amp;setid=' . $mybb->get_input(
+                        'setid',
+                        \MyBB::INPUT_INT
+                    ),
                     'post',
                     'do_delete'
                 );
@@ -1097,8 +1282,10 @@ if ($mybb->input['action'] == 'delfield') {
 }
 
 //delete field set
-if ($mybb->input['action'] == 'do_delfield') {
-    if (isset($mybb->input['fid']) && is_numeric($mybb->input['fid']) && $mybb->request_method == 'post') {
+if ($mybb->get_input('action') == 'do_delfield') {
+    if (isset($mybb->get_input('fid', \MyBB::INPUT_INT)) && is_numeric(
+            $mybb->get_input('fid', \MyBB::INPUT_INT)
+        ) && $mybb->request_method == 'post') {
         $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
         $page->output_header($lang->myshowcase_admin_fields);
 
@@ -1106,7 +1293,10 @@ if ($mybb->input['action'] == 'do_delfield') {
         $query = $db->simple_select(
             'myshowcase_fields',
             'name',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid']
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            )
         );
         $result = $db->fetch_array($query);
         $fieldname = $result['name'];
@@ -1116,22 +1306,33 @@ if ($mybb->input['action'] == 'do_delfield') {
         //delete actual field
         $query = $db->delete_query(
             'myshowcase_fields',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid']
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            )
         );
         if ($db->affected_rows($query) != 1) {
             flash_message($lang->myshowcase_field_delete_failed, 'error');
-            admin_redirect('index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']);
+            admin_redirect(
+                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                    'setid',
+                    \MyBB::INPUT_INT
+                )
+            );
         }
 
         //delete field data if select type
         $query = $db->delete_query(
             'myshowcase_field_data',
-            'setid=' . $mybb->input['setid'] . ' AND fid=' . $mybb->input['fid']
+            'setid=' . $mybb->get_input('setid', \MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
+                'fid',
+                \MyBB::INPUT_INT
+            )
         );
 
         //edit language file if can be edited
         $retval = modify_lang(
-            'myshowcase_fs' . $mybb->input['setid'],
+            'myshowcase_fs' . $mybb->get_input('setid', \MyBB::INPUT_INT),
             array(),
             array('myshowcase_field_' . $fieldname => ''),
             'english',
@@ -1146,15 +1347,23 @@ if ($mybb->input['action'] == 'do_delfield') {
         myshowcase_update_cache('fieldsets');
 
         // Log admin action
-        $log = array('setid' => $mybb->input['setid'], 'fid' => $mybb->input['fid']);
+        $log = array(
+            'setid' => $mybb->get_input('setid', \MyBB::INPUT_INT),
+            'fid' => $mybb->get_input('fid', \MyBB::INPUT_INT)
+        );
         log_admin_action($log);
 
         flash_message($lang->myshowcase_field_delete_success, 'success');
-        admin_redirect('index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->input['setid']);
+        admin_redirect(
+            'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
+                'setid',
+                \MyBB::INPUT_INT
+            )
+        );
     }
 }
 //default output
-if ($mybb->input['action'] == '') {
+if ($mybb->get_input('action') == '') {
     $page->output_header($lang->myshowcase_admin_fields);
 
     $plugins->run_hooks('admin_myshowcase_fields_sets_start');

@@ -18,19 +18,19 @@ use function MyShowcase\Core\getTemplate;
 global $mybb, $lang, $db, $templates, $plugins;
 global $me;
 
-switch ($mybb->input['action']) {
+switch ($mybb->get_input('action')) {
     case 'multiapprove';
     {
     } //no break since the code is the same except for the value being assigned
     case 'multiunapprove';
     {
         //verify if moderator and coming in from a click
-        if (!$me->userperms['canmodapprove'] && $mybb->input['modtype'] != 'inlineshowcase') {
+        if (!$me->userperms['canmodapprove'] && $mybb->get_input('modtype') != 'inlineshowcase') {
             error($lang->myshowcase_not_authorized);
         }
 
         // Verify incoming POST request
-        verify_post_check($mybb->input['my_post_key']);
+        verify_post_check($mybb->get_input('my_post_key'));
 
         $gids = $me->getids('all', 'showcase');
         array_map('intval', $gids);
@@ -42,7 +42,9 @@ switch ($mybb->input['action']) {
         $query = $db->query(
             '
 			UPDATE ' . TABLE_PREFIX . $me->table_name . '
-			SET approved = ' . ($mybb->input['action'] == 'multiapprove' ? 1 : 0) . ', approved_by = ' . $mybb->user['uid'] . '
+			SET approved = ' . ($mybb->get_input(
+                'action'
+            ) == 'multiapprove' ? 1 : 0) . ', approved_by = ' . $mybb->user['uid'] . '
 			WHERE gid IN (' . implode(',', $gids) . ')
 			'
         );
@@ -53,30 +55,34 @@ switch ($mybb->input['action']) {
         );
         log_moderator_action(
             $modlogdata,
-            ($mybb->input['action'] == 'multiapprove' ? $lang->myshowcase_mod_approve : $lang->myshowcase_mod_unapprove)
+            ($mybb->get_input(
+                'action'
+            ) == 'multiapprove' ? $lang->myshowcase_mod_approve : $lang->myshowcase_mod_unapprove)
         );
 
         $me->clearinline('all', 'showcase');
 
         //build URL to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->input['sortby']);
-        if ($mybb->input['sortby'] != '') {
-            $url_params[] = 'sortby=' . $mybb->input['sortby'];
+        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
+        if ($mybb->get_input('sortby') != '') {
+            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->input['order']);
-        if ($mybb->input['order'] != '') {
-            $url_params[] = 'order=' . $mybb->input['order'];
+        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
+        if ($mybb->get_input('order') != '') {
+            $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->input['page']);
-        if ($mybb->input['page'] != '') {
-            $url_params[] = 'page=' . $mybb->input['page'];
+        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
 
-        $redirtext = ($mybb->input['action'] == 'multiapprove' ? $lang->redirect_myshowcase_approve : $lang->redirect_myshowcase_unapprove);
+        $redirtext = ($mybb->get_input(
+            'action'
+        ) == 'multiapprove' ? $lang->redirect_myshowcase_approve : $lang->redirect_myshowcase_unapprove);
         redirect($url, $redirtext);
         exit;
         break;
@@ -86,12 +92,12 @@ switch ($mybb->input['action']) {
     {
         add_breadcrumb($lang->myshowcase_nav_multidelete);
 
-        if (!$me->userperms['canmoddelete'] && $mybb->input['modtype'] != 'inlineshowcase') {
+        if (!$me->userperms['canmoddelete'] && $mybb->get_input('modtype') != 'inlineshowcase') {
             error($lang->myshowcase_not_authorized);
         }
 
         // Verify incoming POST request
-        verify_post_check($mybb->input['my_post_key']);
+        verify_post_check($mybb->get_input('my_post_key'));
 
         $gids = $me->getids('all', 'showcase');
 
@@ -104,23 +110,23 @@ switch ($mybb->input['action']) {
         $me->clearinline('all', 'showcase');
 
         //build URl to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->input['sortby']);
-        if ($mybb->input['sortby'] != '') {
-            $url_params[] = 'sortby=' . $mybb->input['sortby'];
+        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
+        if ($mybb->get_input('sortby') != '') {
+            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->input['order']);
-        if ($mybb->input['order'] != '') {
-            $url_params[] = 'order=' . $mybb->input['order'];
+        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
+        if ($mybb->get_input('order') != '') {
+            $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->input['page']);
-        if ($mybb->input['page'] != '') {
-            $url_params[] = 'page=' . $mybb->input['page'];
+        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
         }
 
         $return_url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
-        //$return_url = htmlspecialchars_uni($mybb->input['url']);
+        //$return_url = htmlspecialchars_uni($mybb->get_input('url'));
         $multidelete = eval(getTemplate('inline_deleteshowcases'));
         output_page($multidelete);
         break;
@@ -132,9 +138,9 @@ switch ($mybb->input['action']) {
         }
 
         // Verify incoming POST request
-        verify_post_check($mybb->input['my_post_key']);
+        verify_post_check($mybb->get_input('my_post_key'));
 
-        $gids = explode('|', $mybb->input['showcases']);
+        $gids = explode('|', $mybb->get_input('showcases'));
 
         foreach ($gids as $gid) {
             $gid = intval($gid);
@@ -147,19 +153,19 @@ switch ($mybb->input['action']) {
         $me->clearinline('all', 'showcase');
 
         //build URl to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->input['sortby']);
-        if ($mybb->input['sortby'] != '') {
-            $url_params[] = 'sortby=' . $mybb->input['sortby'];
+        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
+        if ($mybb->get_input('sortby') != '') {
+            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->input['order']);
-        if ($mybb->input['order'] != '') {
-            $url_params[] = 'order=' . $mybb->input['order'];
+        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
+        if ($mybb->get_input('order') != '') {
+            $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->input['page']);
-        if ($mybb->input['page'] != '') {
-            $url_params[] = 'page=' . $mybb->input['page'];
+        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');

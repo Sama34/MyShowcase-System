@@ -20,20 +20,20 @@ global $me, $showcase_fields_max_length, $showcase_fields_format, $showcase_fiel
 
 $showcase_page = '';
 
-switch ($mybb->input['action']) {
+switch ($mybb->get_input('action')) {
     case 'edit':
     {
         if (!$mybb->user['uid'] || !$me->userperms['canedit']) {
             error($lang->myshowcase_not_authorized);
         }
 
-        $mybb->input['gid'] = intval($mybb->input['gid']);
+        $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
-        if (!$mybb->input['gid'] || $mybb->input['gid'] == '') {
+        if (!$mybb->get_input('gid', \MyBB::INPUT_INT) || $mybb->get_input('gid', \MyBB::INPUT_INT) == '') {
             error($lang->myshowcase_invalid_id);
         }
 
-        $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->input['gid']);
+        $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT));
         if ($db->num_rows($query) == 0) {
             error($lang->myshowcase_invalid_id);
         }
@@ -56,7 +56,7 @@ switch ($mybb->input['action']) {
         $showcase_authorperms = $me->get_user_permissions($showcase_user);
 
         $mybb->input['posthash'] = $showcase_data['posthash'];
-        $posthash = $mybb->input['posthash'];
+        $posthash = $mybb->get_input('posthash');
         //no break since edit will share NEW code
     }
     case 'new':
@@ -64,10 +64,10 @@ switch ($mybb->input['action']) {
         $can_add_attachments = $me->userperms['canattach'];
         $attach_limit = $me->userperms['attachlimit'];
 
-        if ($mybb->input['action'] == 'new') {
+        if ($mybb->get_input('action') == 'new') {
             add_breadcrumb($lang->myshowcase_new, SHOWCASE_URL);
             $showcase_action = 'do_newshowcase';
-        } elseif ($mybb->input['action'] == 'edit') {
+        } elseif ($mybb->get_input('action') == 'edit') {
             $showcase_editing_user = str_replace(
                 '{username}',
                 $showcase_user['username'],
@@ -83,15 +83,17 @@ switch ($mybb->input['action']) {
             }
         }
 
-        if (($mybb->input['action'] == 'new' && $me->userperms['canadd']) || ($mybb->input['action'] == 'edit' && ($me->userperms['canedit'] || $me->userperms['canmodedit']))) {
+        if (($mybb->get_input('action') == 'new' && $me->userperms['canadd']) || ($mybb->get_input(
+                    'action'
+                ) == 'edit' && ($me->userperms['canedit'] || $me->userperms['canmodedit']))) {
             $plugins->run_hooks('myshowcase_editnew_start');
 
             // Setup our posthash for managing attachments.
-            if (!$mybb->input['posthash']) {
+            if (!$mybb->get_input('posthash')) {
                 mt_srand((int)(microtime() * 1000000));
                 $mybb->input['posthash'] = md5($mybb->user['uid'] . mt_rand());
             }
-            $posthash = $mybb->input['posthash'];
+            $posthash = $mybb->get_input('posthash');
 
             // Get a listing of the current attachments.
             if ($can_add_attachments) {
@@ -148,7 +150,7 @@ switch ($mybb->input['action']) {
 
                 $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
 
-                if ($mybb->input['action'] == 'edit') {
+                if ($mybb->get_input('action') == 'edit') {
                     $mybb->input['myshowcase_field_' . $fname] = htmlspecialchars_uni(
                         stripslashes($showcase_data[$fname])
                     );
@@ -159,7 +161,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
@@ -174,7 +176,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 150;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
@@ -185,7 +187,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 100;
                         $showcase_field_rows = $showcase_fields_max_length[$fname];
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = '';
@@ -212,7 +214,9 @@ switch ($mybb->input['action']) {
                         $showcase_field_input = '';
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_value = $results['valueid'];
-                            $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == $results['valueid'] ? ' checked' : '');
+                            $showcase_field_checked = ($mybb->get_input(
+                                'myshowcase_field_' . $fname
+                            ) == $results['valueid'] ? ' checked' : '');
                             $showcase_field_text = $results['value'];
                             $showcase_field_input .= eval(getTemplate('field_radio'));
                         }
@@ -224,7 +228,9 @@ switch ($mybb->input['action']) {
                         $showcase_field_name = 'myshowcase_field_' . $fname;
                         $showcase_field_value = '1';
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
-                        $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == 1 ? ' checked="checked"' : '');
+                        $showcase_field_checked = ($mybb->get_input(
+                            'myshowcase_field_' . $fname
+                        ) == 1 ? ' checked="checked"' : '');
                         $showcase_field_options = '';
                         $showcase_field_input = eval(getTemplate('field_checkbox'));
                         break;
@@ -233,7 +239,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $query = $db->simple_select(
@@ -246,7 +252,9 @@ switch ($mybb->input['action']) {
                             error($lang->myshowcase_db_no_data);
                         }
 
-                        $showcase_field_options = ($mybb->input['action'] == 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
+                        $showcase_field_options = ($mybb->get_input(
+                            'action'
+                        ) == 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($showcase_field_value == $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                         }
@@ -257,7 +265,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
 
@@ -266,9 +274,15 @@ switch ($mybb->input['action']) {
                         $mybb->input['myshowcase_field_' . $fname . '_d'] = $date_bits[1];
                         $mybb->input['myshowcase_field_' . $fname . '_y'] = $date_bits[2];
 
-                        $showcase_field_value_m = ($mybb->input['myshowcase_field_' . $fname . '_m'] == '00' ? '00' : $mybb->input['myshowcase_field_' . $fname . '_m']);
-                        $showcase_field_value_d = ($mybb->input['myshowcase_field_' . $fname . '_d'] == '00' ? '00' : $mybb->input['myshowcase_field_' . $fname . '_d']);
-                        $showcase_field_value_y = ($mybb->input['myshowcase_field_' . $fname . '_y'] == '0000' ? '0000' : $mybb->input['myshowcase_field_' . $fname . '_y']);
+                        $showcase_field_value_m = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_m'
+                        ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_m'));
+                        $showcase_field_value_d = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_d'
+                        ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_d'));
+                        $showcase_field_value_y = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_y'
+                        ) == '0000' ? '0000' : $mybb->get_input('myshowcase_field_' . $fname . '_y'));
 
                         $showcase_field_options_m = '<option value=00' . ($showcase_field_value_m == '00' ? ' selected' : '') . '>&nbsp;</option>';
                         $showcase_field_options_d = '<option value=00' . ($showcase_field_value_d == '00' ? ' selected' : '') . '>&nbsp;</option>';
@@ -312,7 +326,7 @@ switch ($mybb->input['action']) {
     }
     case 'do_editshowcase':
     {
-        $query = $db->simple_select($me->table_name, '*', 'gid=' . intval($mybb->input['gid']));
+        $query = $db->simple_select($me->table_name, '*', 'gid=' . intval($mybb->get_input('gid', \MyBB::INPUT_INT)));
         if ($db->num_rows($query) == 0) {
             error($lang->myshowcase_invalid_id);
         }
@@ -343,7 +357,7 @@ switch ($mybb->input['action']) {
     //no break since sharing code
     case 'do_newshowcase':
     {
-        if ($mybb->input['action'] == 'do_newshowcase') {
+        if ($mybb->get_input('action') == 'do_newshowcase') {
             add_breadcrumb($lang->myshowcase_new, SHOWCASE_URL);
             $showcase_action = 'do_newshowcase';
 
@@ -364,11 +378,11 @@ switch ($mybb->input['action']) {
         }
 
         // Setup our posthash for managing attachments.
-        if (!$mybb->input['posthash']) {
+        if (!$mybb->get_input('posthash')) {
             mt_srand((int)(microtime() * 1000000));
             $mybb->input['posthash'] = md5($mybb->user['uid'] . mt_rand());
         }
-        $posthash = $db->escape_string($mybb->input['posthash']);
+        $posthash = $db->escape_string($mybb->get_input('posthash'));
 
         // Get a listing of the current attachments.
         if ($can_add_attachments == 1) {
@@ -409,7 +423,7 @@ switch ($mybb->input['action']) {
             $showcase_attachments = eval(getTemplate('new_attachments'));
         }
 
-        if ($mybb->request_method == 'post' && $mybb->input['submit']) {
+        if ($mybb->request_method == 'post' && $mybb->get_input('submit')) {
             // Decide on the visibility of this post.
             if ($me->modnewedit && !$me->userperms['canmodapprove']) {
                 $approved = 0;
@@ -423,7 +437,7 @@ switch ($mybb->input['action']) {
 
             // Set up showcase handler.
             require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
-            if ($mybb->input['action'] == 'do_editshowcase') {
+            if ($mybb->get_input('action') == 'do_editshowcase') {
                 $showcasehandler = new MyShowcaseDataHandler('update');
                 $showcasehandler->action = 'edit';
             } else {
@@ -434,7 +448,7 @@ switch ($mybb->input['action']) {
             //This is where the work is done
 
             // Verify incoming POST request
-            verify_post_check($mybb->input['my_post_key']);
+            verify_post_check($mybb->get_input('my_post_key'));
 
             // Set the post data that came from the input to the $post array.
             $default_data = array(
@@ -446,8 +460,11 @@ switch ($mybb->input['action']) {
             );
 
             //add showcase id if editing so we know what to update
-            if ($mybb->input['action'] == 'do_editshowcase') {
-                $default_data = array_merge($default_data, array('gid' => intval($mybb->input['gid'])));
+            if ($mybb->get_input('action') == 'do_editshowcase') {
+                $default_data = array_merge(
+                    $default_data,
+                    array('gid' => intval($mybb->get_input('gid', \MyBB::INPUT_INT)))
+                );
             }
 
             //add showcase specific fields
@@ -455,16 +472,16 @@ switch ($mybb->input['action']) {
             $submitted_data = array();
             foreach ($showcase_fields_enabled as $fname => $ftype) {
                 if ($ftype == 'db' || $ftype == 'radio') {
-                    $submitted_data[$fname] = intval($mybb->input['myshowcase_field_' . $fname]);
+                    $submitted_data[$fname] = intval($mybb->get_input('myshowcase_field_' . $fname));
                 } elseif ($ftype == 'checkbox') {
                     $submitted_data[$fname] = (isset($mybb->input['myshowcase_field_' . $fname]) ? 1 : 0);
                 } elseif ($ftype == 'date') {
-                    $m = $db->escape_string($mybb->input['myshowcase_field_' . $fname . '_m']);
-                    $d = $db->escape_string($mybb->input['myshowcase_field_' . $fname . '_d']);
-                    $y = $db->escape_string($mybb->input['myshowcase_field_' . $fname . '_y']);
+                    $m = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_m'));
+                    $d = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_d'));
+                    $y = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_y'));
                     $submitted_data[$fname] = $m . '|' . $d . '|' . $y;
                 } else {
-                    $submitted_data[$fname] = $db->escape_string($mybb->input['myshowcase_field_' . $fname]);
+                    $submitted_data[$fname] = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname));
                 }
             }
 
@@ -488,9 +505,9 @@ switch ($mybb->input['action']) {
                 $showcase_page = eval($templates->render('error'));
             } else {
                 //update showcase
-                if ($mybb->input['action'] == 'do_editshowcase') {
+                if ($mybb->get_input('action') == 'do_editshowcase') {
                     $insert_showcase = $showcasehandler->update_showcase();
-                    $showcaseid = intval($mybb->input['gid']);
+                    $showcaseid = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
                 } //insert showcase
                 else {
                     $insert_showcase = $showcasehandler->insert_showcase();
@@ -521,7 +538,7 @@ switch ($mybb->input['action']) {
 
                 $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
 
-                if ($mybb->input['action'] == 'edit') {
+                if ($mybb->get_input('action') == 'edit') {
                     $mybb->input['myshowcase_field_' . $fname] = htmlspecialchars_uni(
                         stripslashes($showcase_data[$fname])
                     );
@@ -532,7 +549,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
@@ -547,7 +564,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 150;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = 'maxlength="' . $showcase_fields_max_length[$fname] . '"';
@@ -558,7 +575,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 100;
                         $showcase_field_rows = $showcase_fields_max_length[$fname];
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $showcase_field_options = '';
@@ -585,7 +602,9 @@ switch ($mybb->input['action']) {
                         $showcase_field_input = '';
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_value = $results['valueid'];
-                            $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == $results['valueid'] ? ' checked' : '');
+                            $showcase_field_checked = ($mybb->get_input(
+                                'myshowcase_field_' . $fname
+                            ) == $results['valueid'] ? ' checked' : '');
                             $showcase_field_text = $results['value'];
                             $showcase_field_input .= eval(getTemplate('field_radio'));
                         }
@@ -597,7 +616,9 @@ switch ($mybb->input['action']) {
                         $showcase_field_name = 'myshowcase_field_' . $fname;
                         $showcase_field_value = '1';
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
-                        $showcase_field_checked = ($mybb->input['myshowcase_field_' . $fname] == 1 ? ' checked="checked"' : '');
+                        $showcase_field_checked = ($mybb->get_input(
+                            'myshowcase_field_' . $fname
+                        ) == 1 ? ' checked="checked"' : '');
                         $showcase_field_options = '';
                         $showcase_field_input = eval(getTemplate('field_checkbox'));
                         break;
@@ -606,7 +627,7 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
                         $query = $db->simple_select(
@@ -619,7 +640,9 @@ switch ($mybb->input['action']) {
                             error($lang->myshowcase_db_no_data);
                         }
 
-                        $showcase_field_options = ($mybb->input['action'] == 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
+                        $showcase_field_options = ($mybb->get_input(
+                            'action'
+                        ) == 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
                         while ($results = $db->fetch_array($query)) {
                             $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($showcase_field_value == $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                         }
@@ -630,13 +653,19 @@ switch ($mybb->input['action']) {
                         $showcase_field_width = 50;
                         $showcase_field_rows = '';
                         $showcase_field_name = 'myshowcase_field_' . $fname;
-                        $showcase_field_value = $mybb->input['myshowcase_field_' . $fname];
+                        $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
                         $showcase_field_enabled = '';//($showcase_fields_enabled[$fname] != 1 ? 'disabled' : '');
                         $showcase_field_checked = '';
 
-                        $showcase_field_value_m = ($mybb->input['myshowcase_field_' . $fname . '_m'] == '00' ? '00' : $mybb->input['myshowcase_field_' . $fname . '_m']);
-                        $showcase_field_value_d = ($mybb->input['myshowcase_field_' . $fname . '_d'] == '00' ? '00' : $mybb->input['myshowcase_field_' . $fname . '_d']);
-                        $showcase_field_value_y = ($mybb->input['myshowcase_field_' . $fname . '_y'] == '0000' ? '0000' : $mybb->input['myshowcase_field_' . $fname . '_y']);
+                        $showcase_field_value_m = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_m'
+                        ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_m'));
+                        $showcase_field_value_d = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_d'
+                        ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_d'));
+                        $showcase_field_value_y = ($mybb->get_input(
+                            'myshowcase_field_' . $fname . '_y'
+                        ) == '0000' ? '0000' : $mybb->get_input('myshowcase_field_' . $fname . '_y'));
 
                         $showcase_field_options_m = '<option value=0' . ($showcase_field_value_m == '00' ? ' selected' : '') . '>&nbsp;</option>';
                         $showcase_field_options_d = '<option value=0' . ($showcase_field_value_d == '00' ? ' selected' : '') . '>&nbsp;</option>';

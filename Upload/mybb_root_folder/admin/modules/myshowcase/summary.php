@@ -38,13 +38,13 @@ if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $
 
 $plugins->run_hooks('admin_myshowcase_summary_begin');
 
-if ($mybb->input['action'] == 'new') {
-    if (!empty($mybb->input['newname']) && $mybb->request_method == 'post') {
-        $newname = $db->escape_string($mybb->input['newname']);
-        $newfile = $db->escape_string($mybb->input['newfile']);
-        $newdesc = $db->escape_string($mybb->input['newdesc']);
-        $newfolder = $db->escape_string($mybb->input['newfolder']);
-        $f2gpath = $db->escape_string($mybb->input['f2gpath']);
+if ($mybb->get_input('action') == 'new') {
+    if (!empty($mybb->get_input('newname')) && $mybb->request_method == 'post') {
+        $newname = $db->escape_string($mybb->get_input('newname'));
+        $newfile = $db->escape_string($mybb->get_input('newfile'));
+        $newdesc = $db->escape_string($mybb->get_input('newdesc'));
+        $newfolder = $db->escape_string($mybb->get_input('newfolder'));
+        $f2gpath = $db->escape_string($mybb->get_input('f2gpath'));
 
         if ($newfile == '' || $newname == '' || $newfolder == '') {
             flash_message($lang->myshowcase_summary_missing_required, 'error');
@@ -70,7 +70,7 @@ if ($mybb->input['action'] == 'new') {
                 'mainfile' => $newfile,
                 'imgfolder' => $newfolder,
                 'f2gpath' => $f2gpath,
-                'fieldsetid' => $db->escape_string($mybb->input['newfieldset']),
+                'fieldsetid' => $db->escape_string($mybb->get_input('newfieldset')),
                 'enabled' => 0
             );
             $db->insert_query('myshowcase_config', $insert_array);
@@ -104,7 +104,7 @@ if ($mybb->input['action'] == 'new') {
             myshowcase_update_cache('permissions');
 
             // Log admin action
-            $log = array('id' => $newid, 'myshowcase' => $mybb->input['newname']);
+            $log = array('id' => $newid, 'myshowcase' => $mybb->get_input('newname'));
             log_admin_action($log);
 
             flash_message($lang->myshowcase_summary_add_success, 'success');
@@ -115,9 +115,9 @@ if ($mybb->input['action'] == 'new') {
     }
 }
 
-if ($mybb->input['action'] == 'enable') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id'])) {
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+if ($mybb->get_input('action') == 'enable') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', \MyBB::INPUT_INT))) {
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $result = $db->fetch_array($query);
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
@@ -133,10 +133,10 @@ if ($mybb->input['action'] == 'enable') {
                 $update_array = array(
                     'enabled' => 1
                 );
-                $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->input['id']);
+                $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
 
                 if ($db->affected_rows()) {
-                    $log = array('id' => $mybb->input['id']);
+                    $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
                     log_admin_action($log);
 
                     flash_message($lang->myshowcase_summary_enable_success, 'success');
@@ -149,9 +149,9 @@ if ($mybb->input['action'] == 'enable') {
     }
 }
 
-if ($mybb->input['action'] == 'disable') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id'])) {
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+if ($mybb->get_input('action') == 'disable') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', \MyBB::INPUT_INT))) {
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
         } else {
@@ -160,10 +160,10 @@ if ($mybb->input['action'] == 'disable') {
             $update_array = array(
                 'enabled' => 0
             );
-            $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->input['id']);
+            $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
 
             if ($db->affected_rows()) {
-                $log = array('id' => $mybb->input['id']);
+                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_summary_disable_success, 'success');
@@ -175,9 +175,13 @@ if ($mybb->input['action'] == 'disable') {
     }
 }
 
-if ($mybb->input['action'] == 'createtable') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id'])) {
-        $query = $db->simple_select('myshowcase_config', 'fieldsetid', 'id=' . $mybb->input['id']);
+if ($mybb->get_input('action') == 'createtable') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', \MyBB::INPUT_INT))) {
+        $query = $db->simple_select(
+            'myshowcase_config',
+            'fieldsetid',
+            'id=' . $mybb->get_input('id', \MyBB::INPUT_INT)
+        );
         $showcase = $db->fetch_array($query);
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
@@ -192,7 +196,10 @@ if ($mybb->input['action'] == 'createtable') {
             $plugins->run_hooks('admin_myshowcase_summary_create_begin');
 
             //required/fixed fields
-            $create_sql = 'CREATE TABLE `' . TABLE_PREFIX . 'myshowcase_data' . $mybb->input['id'] . "` (
+            $create_sql = 'CREATE TABLE `' . TABLE_PREFIX . 'myshowcase_data' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ) . "` (
 			`gid` smallint(10) NOT NULL auto_increment,
 			`uid` int(10) NOT NULL,
 			`views` int(11) NOT NULL default '0',
@@ -253,8 +260,8 @@ if ($mybb->input['action'] == 'createtable') {
             //create the table
             $db->write_query($create_sql);
 
-            if (showcaseDataTableExists($mybb->input['id'])) {
-                $log = array('id' => $mybb->input['id']);
+            if (showcaseDataTableExists($mybb->get_input('id', \MyBB::INPUT_INT))) {
+                $log = array('id' => $mybb->get_input('id', \MyBB::INPUT_INT));
                 log_admin_action($log);
 
                 flash_message($lang->myshowcase_summary_create_success, 'success');
@@ -266,13 +273,13 @@ if ($mybb->input['action'] == 'createtable') {
     }
 }
 
-if ($mybb->input['action'] == 'deletetable') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id'])) {
+if ($mybb->get_input('action') == 'deletetable') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', \MyBB::INPUT_INT))) {
         $page->output_header($lang->myshowcase_admin_edit_existing);
 
         $plugins->run_hooks('admin_myshowcase_deletetable_start');
 
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
@@ -282,7 +289,7 @@ if ($mybb->input['action'] == 'deletetable') {
             $showcase_name = $result['name'];
 
             //make sure table does not already contain data
-            $query = $db->simple_select('myshowcase_data' . $mybb->input['id'], 'gid', '1=1');
+            $query = $db->simple_select('myshowcase_data' . $mybb->get_input('id', \MyBB::INPUT_INT), 'gid', '1=1');
             $num_myshowcases = $db->num_rows($query);
             if ($num_myshowcases > 0) {
                 flash_message($lang->myshowcase_summary_deletetable_not_allowed, 'error');
@@ -292,7 +299,10 @@ if ($mybb->input['action'] == 'deletetable') {
             //confirm delete
             echo $lang->sprintf($lang->myshowcase_summary_confirm_deletetable_long, $showcase_name);
             $form = new Form(
-                'index.php?module=myshowcase-summary&amp;action=do_deletetable&amp;id=' . $mybb->input['id'],
+                'index.php?module=myshowcase-summary&amp;action=do_deletetable&amp;id=' . $mybb->get_input(
+                    'id',
+                    \MyBB::INPUT_INT
+                ),
                 'post',
                 'do_deletetable'
             );
@@ -307,9 +317,11 @@ if ($mybb->input['action'] == 'deletetable') {
     }
 }
 
-if ($mybb->input['action'] == 'do_deletetable') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id']) && $mybb->request_method == 'post') {
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+if ($mybb->get_input('action') == 'do_deletetable') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric(
+            $mybb->get_input('id', \MyBB::INPUT_INT)
+        ) && $mybb->request_method == 'post') {
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
 
         myshowcase_update_cache('config');
@@ -318,12 +330,14 @@ if ($mybb->input['action'] == 'do_deletetable') {
             flash_message($lang->myshowcase_edit_invalid_id, 'error');
             admin_redirect('index.php?module=myshowcase-summary');
         } else {
-            if (showcaseDataTableExists($mybb->input['id'])) {
-                $query = $db->query('DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->input['id']);
+            if (showcaseDataTableExists($mybb->get_input('id', \MyBB::INPUT_INT))) {
+                $query = $db->query(
+                    'DROP TABLE ' . TABLE_PREFIX . 'myshowcase_data' . $mybb->get_input('id', \MyBB::INPUT_INT)
+                );
                 $update_array = array(
                     'enabled' => 0
                 );
-                $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->input['id']);
+                $db->update_query('myshowcase_config', $update_array, 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
             }
 
             $plugins->run_hooks('admin_myshowcase_deletetable_commit');
@@ -334,11 +348,11 @@ if ($mybb->input['action'] == 'do_deletetable') {
     }
 }
 
-if ($mybb->input['action'] == 'show_seo') {
-    if (isset($mybb->input['id']) && is_numeric($mybb->input['id'])) {
+if ($mybb->get_input('action') == 'show_seo') {
+    if ($mybb->get_input('id', \MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', \MyBB::INPUT_INT))) {
         $page->output_header($lang->myshowcase_admin_show_seo);
 
-        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->input['id']);
+        $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', \MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
         if ($num_myshowcases == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');

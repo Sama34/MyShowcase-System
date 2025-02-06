@@ -19,7 +19,7 @@ use function MyShowcase\Core\getTemplate;
 global $mybb, $lang, $db, $templates, $plugins;
 global $me, $forumdir;
 
-switch ($mybb->input['action']) {
+switch ($mybb->get_input('action')) {
     case 'report':
     {
         //load report lang and update with our items
@@ -33,9 +33,9 @@ switch ($mybb->input['action']) {
 
         add_breadcrumb($lang->myshowcase_report, SHOWCASE_URL);
 
-        $mybb->input['gid'] = intval($mybb->input['gid']);
+        $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
-        if ($mybb->input['gid'] == '' || $mybb->input['gid'] == 0) {
+        if ($mybb->get_input('gid', \MyBB::INPUT_INT) == '' || $mybb->get_input('gid', \MyBB::INPUT_INT) == 0) {
             error($lang->myshowcase_invalid_id);
         }
 
@@ -56,18 +56,18 @@ switch ($mybb->input['action']) {
         $lang->report_error = $lang->myshowcase_report_error;
         $lang->post_reported = $lang->myshowcase_report_success;
 
-        verify_post_check($mybb->input['my_post_key']);
+        verify_post_check($mybb->get_input('my_post_key'));
 
-        if (!trim($mybb->input['reason'])) {
+        if (!trim($mybb->get_input('reason'))) {
             $report = eval($templates->render('report_noreason'));
             output_page($report);
             exit;
         }
         //add_breadcrumb($lang->myshowcase_report, SHOWCASE_URL);
 
-        $mybb->input['gid'] = intval($mybb->input['gid']);
+        $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
 
-        $query = $db->simple_select($me->table_name, 'gid,uid', "gid={$mybb->input['gid']}");
+        $query = $db->simple_select($me->table_name, 'gid,uid', "gid={$mybb->get_input('gid', \MyBB::INPUT_INT)}");
         $result = $db->fetch_array($query);
         if (!$result['gid']) {
             error($lang->myshowcase_invalid_id);
@@ -79,7 +79,7 @@ switch ($mybb->input['action']) {
             'reporteruid' => $mybb->user['uid'],
             'authoruid' => $result['uid'],
             'status' => 0,
-            'reason' => $db->escape_string($mybb->input['reason']),
+            'reason' => $db->escape_string($mybb->get_input('reason')),
             'dateline' => TIME_NOW
         );
 
@@ -96,7 +96,7 @@ switch ($mybb->input['action']) {
             $report = eval($templates->render('report_thanks'));
             output_page($report);
             exit;
-//			$item_viewcode = str_replace('{gid}', $mybb->input['gid'], SHOWCASE_URL_VIEW);
+//			$item_viewcode = str_replace('{gid}', $mybb->get_input('gid', \MyBB::INPUT_INT), SHOWCASE_URL_VIEW);
 //			$redirect_newshowcase = $lang->myshowcase_report_success.''.$lang->redirect_myshowcase_back.''.$lang->sprintf($lang->redirect_myshowcase_return, $showcase_url);
 //			redirect($item_viewcode, $redirect_newshowcase);
 //			exit;
@@ -120,20 +120,20 @@ switch ($mybb->input['action']) {
 
         // Figure out if we need to display multiple pages.
         $perpage = $mybb->settings['threadsperpage'];
-        if ($mybb->input['page'] != 'last') {
-            $page = intval($mybb->input['page']);
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) != 'last') {
+            $page = intval($mybb->get_input('page', \MyBB::INPUT_INT));
         }
 
         $query = $db->simple_select('myshowcase_reports', 'COUNT(rid) AS count', "status ='0' AND id=" . $me->id);
         $report_count = $db->fetch_field($query, 'count');
 
-        $mybb->input['rid'] = intval($mybb->input['rid']);
+        $mybb->input['rid'] = intval($mybb->get_input('rid', \MyBB::INPUT_INT));
 
-        if ($mybb->input['rid']) {
+        if ($mybb->get_input('rid', \MyBB::INPUT_INT)) {
             $query = $db->simple_select(
                 'myshowcase_reports',
                 'COUNT(rid) AS count',
-                "rid <= '" . $mybb->input['rid'] . "' AND id=" . $me->id
+                "rid <= '" . $mybb->get_input('rid', \MyBB::INPUT_INT) . "' AND id=" . $me->id
             );
             $result = $db->fetch_field($query, 'count');
             if (($result % $perpage) == 0) {
@@ -146,7 +146,7 @@ switch ($mybb->input['action']) {
         $pages = $postcount / $perpage;
         $pages = ceil($pages);
 
-        if ($mybb->input['page'] == 'last') {
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) == 'last') {
             $page = $pages;
         }
 
@@ -224,19 +224,22 @@ switch ($mybb->input['action']) {
         loadLanguage('modcp');
 
         // Verify incoming POST request
-        verify_post_check($mybb->input['my_post_key']);
+        verify_post_check($mybb->get_input('my_post_key'));
 
-        if (!is_array($mybb->input['reports'])) {
+        if (!is_array($mybb->get_input('reports', \MyBB::INPUT_ARRAY))) {
             error($lang->error_noselected_reports);
         }
 
-        $mybb->input['reports'] = array_map('intval', $mybb->input['reports']);
-        $rids = implode($mybb->input['reports'], "','");
+        $mybb->input['reports'] = array_map(
+            'intval',
+            $mybb->get_input('reports', \MyBB::INPUT_ARRAY)
+        );
+        $rids = implode($mybb->get_input('reports', \MyBB::INPUT_ARRAY), "','");
         $rids = "'0','{$rids}'";
 
         $db->update_query('myshowcase_reports', array('status' => 1), "rid IN ({$rids}) AND id=" . $me->id);
 
-        $page = intval($mybb->input['page']);
+        $page = intval($mybb->get_input('page', \MyBB::INPUT_INT));
 
         redirect(SHOWCASE_URL . "?action=reports&page={$page}", $lang->redirect_reportsmarked);
 
@@ -259,20 +262,20 @@ switch ($mybb->input['action']) {
 
         // Figure out if we need to display multiple pages.
         $perpage = $mybb->settings['threadsperpage'];
-        if ($mybb->input['page'] != 'last') {
-            $page = intval($mybb->input['page']);
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) != 'last') {
+            $page = intval($mybb->get_input('page', \MyBB::INPUT_INT));
         }
 
         $query = $db->simple_select('myshowcase_reports', 'COUNT(rid) AS count', 'id=' . $me->id);
         $report_count = $db->fetch_field($query, 'count');
 
-        $mybb->input['rid'] = intval($mybb->input['rid']);
+        $mybb->input['rid'] = intval($mybb->get_input('rid', \MyBB::INPUT_INT));
 
-        if ($mybb->input['rid']) {
+        if ($mybb->get_input('rid', \MyBB::INPUT_INT)) {
             $query = $db->simple_select(
                 'myshowcase_reports',
                 'COUNT(rid) AS count',
-                "rid <= '" . $mybb->input['rid'] . "' AND id=" . $me->id
+                "rid <= '" . $mybb->get_input('rid', \MyBB::INPUT_INT) . "' AND id=" . $me->id
             );
             $result = $db->fetch_field($query, 'count');
             if (($result % $perpage) == 0) {
@@ -285,7 +288,7 @@ switch ($mybb->input['action']) {
         $pages = $postcount / $perpage;
         $pages = ceil($pages);
 
-        if ($mybb->input['page'] == 'last') {
+        if ($mybb->get_input('page', \MyBB::INPUT_INT) == 'last') {
             $page = $pages;
         }
 

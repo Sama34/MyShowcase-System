@@ -105,8 +105,10 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
 {
     global $db, $posthash, $mybb, $lang, $plugins, $cache, $me, $showcase_uid;
 
-    $posthash = $db->escape_string($mybb->input['posthash']);
+    $posthash = $db->escape_string($mybb->get_input('posthash'));
 
+    $ret = [];
+    
     if (isset($attachment['error']) && $attachment['error'] != 0) {
         $ret['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail;
         switch ($attachment['error']) {
