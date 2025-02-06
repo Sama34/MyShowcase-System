@@ -312,8 +312,7 @@ if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
     if (!$mybb->get_input('gid', MyBB::INPUT_INT)) {
-        require_once MYBB_ROOT . 'inc/functions_myshowcase_upload.php';
-        myshowcase_remove_attachments(0, $mybb->get_input('posthash'));
+        \MyShowcase\Core\attachmentRemove($me, $mybb->get_input('posthash'));
     }
 
     if ($mybb->get_input('action') == 'do_editshowcase' || $mybb->get_input('action') == 'do_newshowcase') {
@@ -370,18 +369,17 @@ if (!$mybb->get_input(
     // If there's an attachment, check it and upload it.
     if (($attach_limit == -1 || ($attach_limit != -1 && $current_attach_count < $attach_limit)) && $can_add_attachments) {
         if ($_FILES['attachment']['size'] > 0) {
-            if (!function_exists('myshowcase_upload_attachment')) {
-                require_once MYBB_ROOT . 'inc/functions_myshowcase_upload.php';
-            }
-
             $update_attachment = false;
             if ($mybb->get_input('updateattachment')) {
                 $update_attachment = true;
             }
-            $attachedfile = myshowcase_upload_attachment(
+            $attachedfile = \MyShowcase\Core\attachmentUpload(
+                $me,
                 $_FILES['attachment'],
+                $mybb->get_input('posthash'),
                 $update_attachment,
-                (int)$mybb->get_input('watermark', MyBB::INPUT_INT)
+                (bool)$mybb->get_input('watermark', MyBB::INPUT_INT),
+                $mybb->get_input('gid', MyBB::INPUT_INT)
             );
         }
         if ($attachedfile['error']) {
@@ -405,8 +403,12 @@ if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $mybb->get_input(
     ) && ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
-    require_once MYBB_ROOT . 'inc/functions_myshowcase_upload.php';
-    myshowcase_remove_attachment(0, $mybb->get_input('posthash'), $mybb->get_input('attachmentaid', MyBB::INPUT_INT));
+    \MyShowcase\Core\attachmentRemove(
+        $me,
+        $mybb->get_input('posthash'),
+        $mybb->get_input('attachmentaid', MyBB::INPUT_INT)
+    );
+
     if (!$mybb->get_input('submit')) {
         if ($mybb->get_input('gid', MyBB::INPUT_INT) && $mybb->get_input('gid', MyBB::INPUT_INT) != '') {
             $mybb->input['action'] = 'do_editshowcase';

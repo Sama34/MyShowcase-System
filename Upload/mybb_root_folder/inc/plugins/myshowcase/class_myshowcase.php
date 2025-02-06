@@ -497,21 +497,19 @@ class System
     /**
      * delete attachments from a showcase
      */
-    public function delete_attachments($gid, $id)
+    public function delete_attachments(int $entryID, int $id): bool
     {
         global $db;
 
-        $gid = intval($gid);
-        $id = intval($id);
+        $query = $db->simple_select('myshowcase_attachments', 'aid', "gid={$entryID} AND id={$id}");
 
-        $query = $db->simple_select('myshowcase_attachments', '*', "gid={$gid} AND id={$id}");
-        if ($db->num_rows($query) != 0) {
-            if (!function_exists(myshowcase_remove_attachments)) {
-                require_once 'functions_myshowcase_upload.php';
+        if ($db->num_rows($query)) {
+            while ($attachmentID = $db->fetch_field($query, 'aid')) {
+                \MyShowcase\Core\attachmentRemove($this, '', (int)$attachmentID);
             }
-            myshowcase_remove_attachments($gid, $id);
-            //delete records
         }
+
+        return true;
     }
 
     /**
