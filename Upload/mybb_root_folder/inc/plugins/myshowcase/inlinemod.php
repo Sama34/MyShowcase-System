@@ -73,9 +73,9 @@ switch ($mybb->get_input('action')) {
             $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
-        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
+        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
@@ -120,9 +120,9 @@ switch ($mybb->get_input('action')) {
             $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
-        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
+        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
         }
 
         $return_url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
@@ -163,9 +163,9 @@ switch ($mybb->get_input('action')) {
             $url_params[] = 'order=' . $mybb->get_input('order');
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', \MyBB::INPUT_INT));
-        if ($mybb->get_input('page', \MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', \MyBB::INPUT_INT);
+        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
+            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');

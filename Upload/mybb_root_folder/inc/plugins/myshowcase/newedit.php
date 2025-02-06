@@ -27,13 +27,13 @@ switch ($mybb->get_input('action')) {
             error($lang->myshowcase_not_authorized);
         }
 
-        $mybb->input['gid'] = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
+        $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
 
-        if (!$mybb->get_input('gid', \MyBB::INPUT_INT) || $mybb->get_input('gid', \MyBB::INPUT_INT) == '') {
+        if (!$mybb->get_input('gid', MyBB::INPUT_INT) || $mybb->get_input('gid', MyBB::INPUT_INT) == '') {
             error($lang->myshowcase_invalid_id);
         }
 
-        $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->get_input('gid', \MyBB::INPUT_INT));
+        $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->get_input('gid', MyBB::INPUT_INT));
         if ($db->num_rows($query) == 0) {
             error($lang->myshowcase_invalid_id);
         }
@@ -326,7 +326,7 @@ switch ($mybb->get_input('action')) {
     }
     case 'do_editshowcase':
     {
-        $query = $db->simple_select($me->table_name, '*', 'gid=' . intval($mybb->get_input('gid', \MyBB::INPUT_INT)));
+        $query = $db->simple_select($me->table_name, '*', 'gid=' . intval($mybb->get_input('gid', MyBB::INPUT_INT)));
         if ($db->num_rows($query) == 0) {
             error($lang->myshowcase_invalid_id);
         }
@@ -463,7 +463,7 @@ switch ($mybb->get_input('action')) {
             if ($mybb->get_input('action') == 'do_editshowcase') {
                 $default_data = array_merge(
                     $default_data,
-                    ['gid' => intval($mybb->get_input('gid', \MyBB::INPUT_INT))]
+                    ['gid' => intval($mybb->get_input('gid', MyBB::INPUT_INT))]
                 );
             }
 
@@ -507,7 +507,7 @@ switch ($mybb->get_input('action')) {
                 //update showcase
                 if ($mybb->get_input('action') == 'do_editshowcase') {
                     $insert_showcase = $showcasehandler->update_showcase();
-                    $showcaseid = intval($mybb->get_input('gid', \MyBB::INPUT_INT));
+                    $showcaseid = intval($mybb->get_input('gid', MyBB::INPUT_INT));
                 } //insert showcase
                 else {
                     $insert_showcase = $showcasehandler->insert_showcase();
