@@ -125,7 +125,7 @@ switch ($mybb->get_input('action')) {
                         ($attach_limit == -1 ? $lang->myshowcase_unlimited : $attach_limit)
                     ) . '<br>';
                 if ($attach_limit == -1 || ($attach_limit != -1 && $attachcount < $attach_limit)) {
-                    if ($me->userperms['canwatermark'] && $me->watermarkimage != '' && @file_exists(
+                    if ($me->userperms['canwatermark'] && $me->watermarkimage != '' && file_exists(
                             $me->watermarkimage
                         )) {
                         $showcase_watermark = eval(getTemplate('watermark'));

@@ -46,14 +46,14 @@ function myshowcase_remove_attachment($gid, $posthash, $aid)
 
     $db->delete_query('myshowcase_attachments', "aid='{$attachment['aid']}'");
 
-    @unlink($me->imgfolder . '/' . $attachment['attachname']);
+    unlink($me->imgfolder . '/' . $attachment['attachname']);
     if ($attachment['thumbnail']) {
-        @unlink($me->imgfolder . '/' . $attachment['thumbnail']);
+        unlink($me->imgfolder . '/' . $attachment['thumbnail']);
     }
 
     $date_directory = explode('/', $attachment['attachname']);
-    if (@is_dir($me->imgfolder . '/' . $date_directory[0])) {
-        @rmdir($me->imgfolder . '/' . $date_directory[0]);
+    if (is_dir($me->imgfolder . '/' . $date_directory[0])) {
+        rmdir($me->imgfolder . '/' . $date_directory[0]);
     }
 }
 
@@ -82,14 +82,14 @@ function myshowcase_remove_attachments($gid, $posthash = '')
 
         $db->delete_query('myshowcase_attachments', "aid='" . $attachment['aid'] . "'");
 
-        @unlink($me->imgfolder . '/' . $attachment['attachname']);
+        unlink($me->imgfolder . '/' . $attachment['attachname']);
         if ($attachment['thumbnail']) {
-            @unlink($me->imgfolder . '/' . $attachment['thumbnail']);
+            unlink($me->imgfolder . '/' . $attachment['thumbnail']);
         }
 
         $date_directory = explode('/', $attachment['attachname']);
-        if (@is_dir($me->imgfolder . '/' . $date_directory[0])) {
-            @rmdir($me->imgfolder . '/' . $date_directory[0]);
+        if (is_dir($me->imgfolder . '/' . $date_directory[0])) {
+            rmdir($me->imgfolder . '/' . $date_directory[0]);
         }
     }
 }
@@ -189,10 +189,10 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
 
     // Check if the attachment directory (YYYYMM) exists, if not, create it
     $month_dir = gmdate('Ym');
-    if (!@is_dir($me->imgfolder . '/' . $month_dir)) {
-        @mkdir($me->imgfolder . '/' . $month_dir);
+    if (!is_dir($me->imgfolder . '/' . $month_dir)) {
+        mkdir($me->imgfolder . '/' . $month_dir);
         // Still doesn't exist - oh well, throw it in the main directory
-        if (!@is_dir($me->imgfolder . '/' . $month_dir)) {
+        if (!is_dir($me->imgfolder . '/' . $month_dir)) {
             $month_dir = '';
         }
     }
@@ -281,7 +281,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
         }
 
         // Check if the uploaded file type matches the correct image type (returned by getimagesize)
-        $img_dimensions = @getimagesize($me->imgfolder . '/' . $filename);
+        $img_dimensions = getimagesize($me->imgfolder . '/' . $filename);
 
         $mime = '';
         $file_path = $me->imgfolder . '/' . $filename;
@@ -294,7 +294,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
         }
 
         if (!is_array($img_dimensions) || ($img_dimensions[2] != $img_type && !in_array($mime, $supported_mimes))) {
-            @unlink($me->imgfolder . '/' . $filename);
+            unlink($me->imgfolder . '/' . $filename);
             $ret['error'] = $lang->error_uploadfailed;
             return $ret;
         }
@@ -305,15 +305,15 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
             $format = strtolower(get_extension($me->watermarkimage));
             switch ($format) {
                 case 'gif':
-                    $watermark = @imagecreatefromgif($me->watermarkimage);
+                    $watermark = imagecreatefromgif($me->watermarkimage);
                     break;
                 case 'jpg':
                 case 'jpeg':
                 case 'jpe':
-                    $watermark = @imagecreatefromjpeg($me->watermarkimage);
+                    $watermark = imagecreatefromjpeg($me->watermarkimage);
                     break;
                 case 'png':
-                    $watermark = @imagecreatefrompng($me->watermarkimage);
+                    $watermark = imagecreatefrompng($me->watermarkimage);
                     break;
             }
 
@@ -354,13 +354,13 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
                 //get base image object
                 switch ($img_type) {
                     case 1:
-                        $image = @imagecreatefromgif($me->imgfolder . '/' . $filename);
+                        $image = imagecreatefromgif($me->imgfolder . '/' . $filename);
                         break;
                     case 2:
-                        $image = @imagecreatefromjpeg($me->imgfolder . '/' . $filename);
+                        $image = imagecreatefromjpeg($me->imgfolder . '/' . $filename);
                         break;
                     case 3:
-                        $image = @imagecreatefrompng($me->imgfolder . '/' . $filename);
+                        $image = imagecreatefrompng($me->imgfolder . '/' . $filename);
                         break;
                 }
 
@@ -384,7 +384,7 @@ function myshowcase_upload_attachment($attachment, $update_attachment = false, $
 
                     //write modified file
 
-                    $f = @fopen($me->imgfolder . '/' . $filename, 'w');
+                    $f = fopen($me->imgfolder . '/' . $filename, 'w');
                     if ($f) {
                         ob_start();
                         switch ($img_type) {
@@ -465,13 +465,13 @@ function myshowcase_upload_file($file, $path, $filename = '')
 
     $upload['original_filename'] = preg_replace('#/$#', '', $file['name']); // Make the filename safe
     $filename = preg_replace('#/$#', '', $filename); // Make the filename safe
-    $moved = @move_uploaded_file($file['tmp_name'], $path . '/' . $filename);
+    $moved = move_uploaded_file($file['tmp_name'], $path . '/' . $filename);
 
     if (!$moved) {
         $upload['error'] = 2;
         return $upload;
     }
-    @my_chmod($path . '/' . $filename, '0644');
+    my_chmod($path . '/' . $filename, '0644');
     $upload['filename'] = $filename;
     $upload['path'] = $path;
     $upload['type'] = $file['type'];

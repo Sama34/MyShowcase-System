@@ -121,7 +121,7 @@ if ($mybb->get_input('action') == 'enable') {
         $result = $db->fetch_array($query);
         if ($db->num_rows($query) == 0) {
             flash_message($lang->myshowcase_summary_invalid_id, 'error');
-        } elseif (!@is_dir(MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']) || !@is_writable(
+        } elseif (!is_dir(MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']) || !is_writable(
                 MYBB_ROOT . $result['f2gpath'] . $result['imgfolder']
             )) {//check if image folder exists and do not enable if folder does not exist
             flash_message($lang->myshowcase_summary_no_folder, 'error');

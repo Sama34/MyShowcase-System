@@ -43,8 +43,8 @@ $current_dir = getcwd();
 $forumdirslash = ($forumdir == '' ? '' : $forumdir . '/');
 $change_dir = './';
 
-if (!@chdir($forumdir) && !empty($forumdir)) {
-    if (@is_dir($forumdir)) {
+if (!chdir($forumdir) && !empty($forumdir)) {
+    if (is_dir($forumdir)) {
         $change_dir = $forumdir;
     } else {
         die("\$forumdir is invalid!");
@@ -65,7 +65,7 @@ $templatelist .= 'myshowcase_new_attachments_input, myshowcase_new_attachments, 
 require_once $change_dir . '/global.php';
 
 //change directory back to current where script is
-@chdir($current_dir);
+chdir($current_dir);
 
 //make sure this file is current
 if (function_exists('myshowcase_info')) {
@@ -845,7 +845,7 @@ switch ($mybb->get_input('action')) {
                 $item_viewimage = $lang->myshowcase_view;
 
                 //use default image is specified
-                if ($me->defaultimage != '' && (@file_exists($theme['imgdir'] . '/' . $me->defaultimage) || stristr(
+                if ($me->defaultimage != '' && (file_exists($theme['imgdir'] . '/' . $me->defaultimage) || stristr(
                             $theme['imgdir'],
                             'http://'
                         ))) {
@@ -855,7 +855,7 @@ switch ($mybb->get_input('action')) {
                 //use showcase attachment if one exists, scaled of course
                 if ($me->use_attach) {
                     if (stristr($showcase_images[$showcase['gid']]['filetype'], 'image/')) {
-                        if ($showcase_images[$showcase['gid']]['aid'] && @file_exists(
+                        if ($showcase_images[$showcase['gid']]['aid'] && file_exists(
                                 $me->imgfolder . '/' . $showcase_images[$showcase['gid']]['attachname']
                             )) {
                             if ($showcase_images[$showcase['gid']]['thumbnail'] == 'SMALL') {

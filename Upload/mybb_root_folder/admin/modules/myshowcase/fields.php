@@ -484,7 +484,7 @@ if ($mybb->get_input('action') == 'editset') {
             );
             $form_container->construct_row();
         } else {
-            @include($langpath . '/myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT) . '.lang.php');
+            include($langpath . '/myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT) . '.lang.php');
             $max_order = 1;
             while ($result = $db->fetch_array($query)) {
                 // Build popup menu
