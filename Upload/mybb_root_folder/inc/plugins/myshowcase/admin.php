@@ -20,9 +20,10 @@ use DirectoryIterator;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\Core\loadPluginLibrary;
 use function MyShowcase\Core\showcaseDataTableExists;
 
+use const MyShowcase\Core\VERSION;
+use const MyShowcase\Core\VERSION_CODE;
 use const MyShowcase\ROOT;
 
 function pluginInformation(): array
@@ -40,8 +41,8 @@ function pluginInformation(): array
         'website' => '',
         'author' => 'CommunityPlugins.com',
         'authorsite' => '',
-        'version' => '3.0.0',
-        'versioncode' => 3000,
+        'version' => VERSION,
+        'versioncode' => VERSION_CODE,
         'compatibility' => '18*',
         'codename' => 'ougc_myshowcase',
         'pl' => [
@@ -220,6 +221,36 @@ function pluginUninstallation(): bool
     }
 
     taskUninstallation();
+
+    return true;
+}
+
+function loadPluginLibrary(bool $check = true): bool
+{
+    global $PL, $lang;
+
+    loadLanguage();
+
+    if ($file_exists = file_exists(PLUGINLIBRARY)) {
+        global $PL;
+
+        $PL || require_once PLUGINLIBRARY;
+    }
+
+    if (!$check) {
+        return false;
+    }
+
+    $_info = pluginInformation();
+
+    if (!$file_exists || $PL->version < $_info['pl']['version']) {
+        flash_message(
+            $lang->sprintf($lang->MyShowcaseSystemPluginLibrary, $_info['pl']['url'], $_info['pl']['version']),
+            'error'
+        );
+
+        admin_redirect('index.php?module=config-plugins');
+    }
 
     return true;
 }

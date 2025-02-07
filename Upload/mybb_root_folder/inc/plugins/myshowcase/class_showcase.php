@@ -26,79 +26,79 @@ class System
      * The ID of the current showcase.
      * @var int
      */
-    public $id;
+    public int $id;
 
     /**
      * The name of the current showcase
      * @var string
      */
-    public $name;
+    public string $name;
 
     /**
      * The description of the current showcase
      * @var string
      */
-    public $description;
+    public string $description;
 
     /**
      * The main PHP file of the current showcase
      * @var string
      */
-    public $mainfile;
+    public string $mainfile;
 
     /**
      * The ID of the fieldset used in the current showcase
      * @var int
      */
-    public $fieldsetid;
+    public int $fieldsetid;
 
     /**
      * The image folder of the current showcase
      * @var string
      */
-    public $imgfolder;
+    public string $imgfolder;
 
     /**
      * The default image for each record in the list view of the current showcase
      * @var string
      */
-    public $defaultimage;
+    public string $defaultimage;
 
     /**
      * The watermark image to use as a watermark
      * @var string
      */
-    public $watermarkimage;
+    public string $watermarkimage;
 
     /**
      * The watermark location
      * @var string
      */
-    public $watermarkloc;
+    public string $watermarkloc;
 
     /**
      * The option to use an attachment in list view or not
      * @var string
      */
-    public $use_attach;
+    public bool $use_attach;
 
     /**
      * The relative path from the forum to the current showcase
      * @var string
      */
-    public $f2gpath;
+    public string $f2gpath;
 
     /**
      * The status of the current showcase
      * @var int
      */
-    public $enabled;
+    public bool $enabled;
 
     /**
      * The number of seconds from last edit to remove entry of the current showcase
      * @var int
      */
-    public $prunetime;
+    public int $prunetime;
 
     /**
      * The moderation status of the current showcase
@@ -110,109 +110,109 @@ class System
      * Allow smilies in the current showcase
      * @var int
      */
-    public $allowsmilies;
+    public bool $allowsmilies;
 
     /**
      * Allow BBCode the current showcase
      * @var int
      */
-    public $allowbbcode;
+    public bool $allowbbcode;
 
     /**
      * Allow HTML the current showcase
      * @var int
      */
-    public $allowhtml;
+    public bool $allowhtml;
 
     /**
      * The maxlength of the 'other' field of the current showcase
      * @var int
      */
-    public $othermaxlength;
+    public int $othermaxlength;
 
     /**
      * Allow attachments in the current showcase
      * @var int
      */
-    public $allow_attachments;
+    public bool $allow_attachments;
 
     /**
      * Allow comments in the current showcase
      * @var int
      */
-    public $allow_comments;
+    public bool $allow_comments;
 
     /**
      * The thumbnail width of the current showcase
      * @var int
      */
-    public $thumb_width;
+    public int $thumb_width;
 
     /**
      * The thumbnail height of the current showcase
      * @var int
      */
-    public $thumb_height;
+    public int $thumb_height;
 
     /**
      * The max comment length of the current showcase
      * @var int
      */
-    public $comment_length;
+    public int $comment_length;
 
     /**
      * The number of comments to display initially of the current showcase
      * @var int
      */
-    public $comment_dispinit;
+    public int $comment_dispinit;
 
     /**
      * The number of columns of attachments to disaply in the current showcase
      * @var int
      */
-    public $disp_attachcols;
+    public int $disp_attachcols;
 
     /**
      * Dispaly empty fields in the current showcase
      * @var int
      */
-    public $disp_empty;
+    public bool $disp_empty;
 
     /**
      * Try to display and entry with attachment in this showcase on the portal
      * @var int
      */
-    public $portal_random;
+    public bool $portal_random;
 
     /**
      * Table name of the showcase data
      * @var string
      */
-    public $table_name;
+    public string $table_name;
 
     /**
      * Basename of the calling file
      * @var string
      */
-    public $prefix;
+    public string $prefix;
 
     /**
      * Clean name for URL/SEO
      * @var string
      */
-    public $clean_name;
+    public string $clean_name;
 
     /**
      * User permissions array for this showcase
      * @var Array
      */
-    public $userperms;
+    public array $userperms;
 
     /**
      * Mod permissions array for this showcase
      * @var Array
      */
-    public $modperms;
+    public array $modperms;
 
     /**
      * Constructor of class.
@@ -231,10 +231,7 @@ class System
 
         //get this showcase's config info
         $showcases = cacheGet(CACHE_TYPE_CONFIG);
-        if (!is_array($showcases)) {
-            cacheUpdate(CACHE_TYPE_CONFIG);
-            $showcases = cacheGet(CACHE_TYPE_CONFIG);
-        }
+
         //check if the requesting file is in the cache
         foreach ($showcases as $showcase) {
             if ($showcase['mainfile'] == $filename)//THIS_SCRIPT)
@@ -412,7 +409,7 @@ class System
 
             //get showcase moderator cache to handle additional mods/modgroups
             $modcache = cacheGet(CACHE_TYPE_MODERATORS);
-            if (is_array($modcache[$this->id])) {
+            if (!empty($modcache[$this->id])) {
                 //get moderators specific to this myshowcase
                 $mods = $modcache[$this->id];
 

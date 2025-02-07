@@ -44,11 +44,11 @@ if (defined('IN_ADMINCP')) {
 
     require_once ROOT . '/admin_hooks.php';
 
-    addHooks('MyShowcase\AdminHooks');
+    addHooks('MyShowcase\Hooks\Admin');
 } else {
     require_once ROOT . '/forum_hooks.php';
 
-    addHooks('MyShowcase\ForumHooks');
+    addHooks('MyShowcase\Hooks\Forum');
 }
 
 function myshowcase_info(): array

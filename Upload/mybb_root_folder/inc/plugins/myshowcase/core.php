@@ -21,6 +21,9 @@ use function MyShowcase\Admin\pluginInformation;
 
 use const MyShowcase\ROOT;
 
+const VERSION = '3.0.0';
+const VERSION_CODE = 3000;
+
 const SHOWCASE_STATUS_ENABLED = 1;
 
 const SHOWCASE_UPLOAD_STATUS_INVALID = 1;
@@ -31,7 +34,7 @@ const CACHE_TYPE_CONFIG = 'config';
 
 const CACHE_TYPE_PERMISSIONS = 'permissions';
 
-const CACHE_TYPE_FIELD_SETS = 'fields';
+const CACHE_TYPE_FIELD_SETS = 'fieldsets';
 
 const CACHE_TYPE_FIELDS = 'fields';
 
@@ -40,6 +43,8 @@ const CACHE_TYPE_FIELD_DATA = 'field_data';
 const CACHE_TYPE_MODERATORS = 'moderators';
 
 const CACHE_TYPE_REPORTS = 'reports';
+
+const URL = 'index.php?module=myshowcase-summary';
 
 function loadLanguage(
     string $languageFileName = 'myshowcase',
@@ -53,36 +58,6 @@ function loadLanguage(
         $forceUserArea,
         $suppressError
     );
-
-    return true;
-}
-
-function loadPluginLibrary(bool $check = true): bool
-{
-    global $PL, $lang;
-
-    loadLanguage();
-
-    if ($file_exists = file_exists(PLUGINLIBRARY)) {
-        global $PL;
-
-        $PL || require_once PLUGINLIBRARY;
-    }
-
-    if (!$check) {
-        return false;
-    }
-
-    $_info = pluginInformation();
-
-    if (!$file_exists || $PL->version < $_info['pl']['version']) {
-        flash_message(
-            $lang->sprintf($lang->MyShowcaseSystemPluginLibrary, $_info['pl']['url'], $_info['pl']['version']),
-            'error'
-        );
-
-        admin_redirect('index.php?module=config-plugins');
-    }
 
     return true;
 }
@@ -120,6 +95,47 @@ function hooksRun(string $hookName, array &$hookArguments = []): array
     global $plugins;
 
     return $plugins->run_hooks('myshowcase_' . $hookName, $hookArguments);
+}
+
+function urlHandler(string $newUrl = ''): string
+{
+    static $setUrl = URL;
+
+    if (($newUrl = trim($newUrl))) {
+        $setUrl = $newUrl;
+    }
+
+    return $setUrl;
+}
+
+function urlHandlerSet(string $newUrl): bool
+{
+    urlHandler($newUrl);
+
+    return true;
+}
+
+function urlHandlerGet(): string
+{
+    return urlHandler();
+}
+
+function urlHandlerBuild(array $urlAppend = [], bool $fetchImportUrl = false, bool $encode = true): string
+{
+    global $PL;
+
+    if (!is_object($PL)) {
+        $PL or require_once PLUGINLIBRARY;
+    }
+
+    if ($fetchImportUrl === false) {
+        if ($urlAppend && !is_array($urlAppend)) {
+            $urlAppend = explode('=', $urlAppend);
+            $urlAppend = [$urlAppend[0] => $urlAppend[1]];
+        }
+    }
+
+    return $PL->url_append(urlHandlerGet(), $urlAppend, '&amp;', $encode);
 }
 
 function getSetting(string $settingKey = '')
@@ -222,7 +238,7 @@ function getTemplatesList(): array
  * @param string The cache item.
  * @param bool Clear the cache item.
  */
-function cacheUpdate(string $cacheKey): bool
+function cacheUpdate(string $cacheKey): array
 {
     global $db, $cache;
 
@@ -237,9 +253,34 @@ function cacheUpdate(string $cacheKey): bool
 
             while ($showcaseData = $db->fetch_array($query)) {
                 $cacheData[(int)$showcaseData['id']] = [
+                    'id' => (int)$showcaseData['id'],
+                    'name' => (string)$showcaseData['name'],
+                    'description' => (string)$showcaseData['description'],
                     'mainfile' => (string)$showcaseData['mainfile'],
+                    'fieldsetid' => (int)$showcaseData['fieldsetid'],
+                    'imgfolder' => (string)$showcaseData['imgfolder'],
+                    'defaultimage' => (string)$showcaseData['defaultimage'],
+                    'watermarkimage' => (string)$showcaseData['watermarkimage'],
+                    'watermarkloc' => (string)$showcaseData['watermarkloc'],
+                    'use_attach' => (bool)$showcaseData['use_attach'],
+                    'f2gpath' => (string)$showcaseData['f2gpath'],
                     'enabled' => (bool)$showcaseData['enabled'],
-                    'prunetime' => (int)$showcaseData['prunetime']
+                    'allowsmilies' => (bool)$showcaseData['allowsmilies'],
+                    'allowbbcode' => (bool)$showcaseData['allowbbcode'],
+                    'allowhtml' => (bool)$showcaseData['allowhtml'],
+                    'prunetime' => (int)$showcaseData['prunetime'],
+                    'modnewedit' => (bool)$showcaseData['modnewedit'],
+                    'othermaxlength' => (int)$showcaseData['othermaxlength'],
+                    'allow_attachments' => (bool)$showcaseData['allow_attachments'],
+                    'allow_comments' => (bool)$showcaseData['allow_comments'],
+                    'thumb_width' => (int)$showcaseData['thumb_width'],
+                    'thumb_height' => (int)$showcaseData['thumb_height'],
+                    'comment_length' => (int)$showcaseData['comment_length'],
+                    'comment_dispinit' => (int)$showcaseData['comment_dispinit'],
+                    'disp_attachcols' => (int)$showcaseData['disp_attachcols'],
+                    'disp_empty' => (bool)$showcaseData['disp_empty'],
+                    'link_in_postbit' => (bool)$showcaseData['link_in_postbit'],
+                    'portal_random' => (bool)$showcaseData['portal_random'],
                 ];
             }
 
@@ -257,11 +298,15 @@ function cacheUpdate(string $cacheKey): bool
             break;
         case CACHE_TYPE_FIELD_SETS:
             $query = $db->simple_select(
-                'myshowcase_fieldsets'
+                'myshowcase_fieldsets',
+                'setid, setname'
             );
 
             while ($fieldsetData = $db->fetch_array($query)) {
-                $cacheData[(int)$fieldsetData['setid']] = $fieldsetData;
+                $cacheData[(int)$fieldsetData['setid']] = [
+                    'setid' => (int)$fieldsetData['setid'],
+                    'setname' => (string)$fieldsetData['setname'],
+                ];
             }
 
             break;
@@ -319,14 +364,38 @@ function cacheUpdate(string $cacheKey): bool
         $cache->update("myshowcase_{$cacheKey}", $cacheData);
     }
 
-    return true;
+    return $cacheData;
 }
 
-function cacheGet(string $cacheKey): array
+function cacheGet(string $cacheKey, bool $forceReload = false): array
 {
     global $cache;
 
-    return $cache->read("myshowcase_{$cacheKey}") ?? [];
+    $cacheData = $cache->read("myshowcase_{$cacheKey}");
+
+    if (!is_array($cacheData) && $forceReload || DEBUG) {
+        $cacheData = cacheUpdate($cacheKey);
+    }
+
+    return $cacheData ?? [];
+}
+
+function showcaseInsert(array $showcaseData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_config', $showcaseData);
+
+    return (int)$db->insert_id();
+}
+
+function permissionsInsert(array $permissionData): bool
+{
+    global $db;
+
+    $db->insert_query('myshowcase_permissions', $permissionData);
+
+    return true;
 }
 
 function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): array

@@ -13,13 +13,16 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\AdminHooks;
+namespace MyShowcase\Hooks\Forum;
 
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 
 /**
  * Add global notices for unapproved and reported showcases
@@ -51,15 +54,18 @@ function global_start(): bool
         }
     }
 
-    /*if(\MyShowcase\MyAlerts\myalertsIsIntegrable())
-    {
-        if($mybb->user['uid'])
-        {
-            \MyShowcase\MyAlerts\registerMyalertsFormatters();
-        }
-    }*/
+    return true;
+}
 
+/**
+ * Add global notices for unapproved and reported showcases
+ *
+ */
+function global_intermediate(): bool
+{
     global $mybb, $db, $cache, $myshowcase_unapproved, $myshowcase_reported, $theme, $templates, $lang;
+
+    $myshowcase_unapproved = $myshowcase_reported = '';
 
     //get showcases and mods
     $showcases = cacheGet(CACHE_TYPE_CONFIG);
@@ -77,7 +83,8 @@ function global_start(): bool
             //...loop through mods
             $canapprove = 0;
             $caneditdel = 0;
-            if (is_array($moderators[$id])) {
+
+            if (!empty($moderators[$id])) {
                 foreach ($moderators[$id] as $mid => $mod) {
                     //check if user is specifically a mod
                     if ($mybb->user['uid'] == $mod[$mod['id']]['uid'] && $mod[$mod['id']]['isgroup'] == 0) {
@@ -158,11 +165,11 @@ function global_start(): bool
     }
 
     //get templates
-    if ($unapproved_notice != '') {
+    if (!empty($unapproved_notice)) {
         $myshowcase_unapproved = eval(getTemplate('unapproved'));
     }
 
-    if ($reported_notice != '') {
+    if (!empty($reported_notice)) {
         $myshowcase_reported = eval(getTemplate('reported'));
     }
 

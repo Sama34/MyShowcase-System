@@ -18,12 +18,12 @@ $l['myshowcase_summary_id'] = 'ID';
 $l['myshowcase_summary_name'] = 'Name';
 $l['myshowcase_summary_description'] = 'Description';
 $l['myshowcase_summary_entries_count'] = 'Record Count';
-$l['myshowcase_summary_attachments_count'] = 'Attachment Count';
-$l['myshowcase_summary_attachments_size'] = 'Attachment Total Size (MB)';
-$l['myshowcase_summary_comment_count'] = 'Comment Count';
+$l['myshowcase_summary_attachments_count'] = 'Attachments';
+$l['myshowcase_summary_attachments_size'] = 'Files Size';
+$l['myshowcase_summary_comment_count'] = 'Comments';
 $l['myshowcase_summary_image_folder'] = 'Image Folder';
 $l['myshowcase_summary_main_file'] = 'Main File';
-$l['myshowcase_summary_forum_folder'] = 'Relative Path from Forum';
+$l['myshowcase_summary_forum_folder'] = 'Relative Path';
 $l['myshowcase_summary_field_set'] = 'Field Set';
 
 //status
@@ -79,3 +79,34 @@ $l['myshowcase_summary_disable'] = 'Disable';
 $l['myshowcase_summary_createtable'] = 'Create Table';
 $l['myshowcase_summary_deletetable'] = 'Delete Table';
 $l['myshowcase_summary_seo'] = 'Show SEO';
+
+$l = array_merge([
+    'myShowcaseAdminSummary' => 'Summary',
+    'myShowcaseAdminSummaryDescription' => 'View and manage showcases',
+
+    'myShowcaseAdminSummaryNew' => 'Add New Showcase',
+    'myShowcaseAdminSummaryNewDescription' => 'Add a new showcase',
+    'myShowcaseAdminSummaryNewFormName' => 'Name',
+    'myShowcaseAdminSummaryNewFormNameDescription' => 'Name of the showcase',
+    'myShowcaseAdminSummaryNewFormDescription' => 'Description',
+    'myShowcaseAdminSummaryNewFormDescriptionDescription' => 'Description of the showcase',
+    'myShowcaseAdminSummaryNewFormMainFile' => 'Main File',
+    'myShowcaseAdminSummaryNewFormMainFileDescription' => 'Main file for the showcase',
+    'myShowcaseAdminSummaryNewFormImageFolder' => 'Image Folder',
+    'myShowcaseAdminSummaryNewFormImageFolderDescription' => 'Folder for images',
+    'myShowcaseAdminSummaryNewFormRelativePath' => 'Relative Path',
+    'myShowcaseAdminSummaryNewFormRelativePathDescription' => 'Relative path from the forum folder',
+    'myShowcaseAdminSummaryNewFormFieldSet' => 'Field Set',
+    'myShowcaseAdminSummaryNewFormFieldSetDescription' => 'Field set for the showcase',
+
+    'myShowcaseAdminButtonSubmit' => 'Submit',
+    'myShowcaseAdminButtonReset' => 'Reset',
+
+    'myShowcaseAdminErrorInvalidPostKey' => 'Invalid post key',
+    'myShowcaseAdminErrorNoFieldSets' => 'Can not create a new showcase as there are no field sets defined.',
+    'myShowcaseAdminErrorMissingRequiredFields' => 'Some required fields are missing.',
+    'myShowcaseAdminErrorDuplicatedName' => 'The selected name is already in use.',
+    'myShowcaseAdminErrorDuplicatedMainFile' => 'The selected main file is already in use.',
+
+    'myShowcaseAdminSuccessNewShowcase' => 'The showcase was successfully added.',
+], $l);

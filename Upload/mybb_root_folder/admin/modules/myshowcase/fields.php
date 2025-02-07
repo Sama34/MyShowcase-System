@@ -191,7 +191,7 @@ if ($mybb->get_input('action') == 'editset') {
             while ($result = $db->fetch_array($query)) {
                 if ($can_edit) {
                     //make field name valid and remove any starting/ending underscores after replacement
-                    $newname = $db->escape_string($mybb->get_input('name')[$result['fid']]);
+                    $newname = $db->escape_string($mybb->get_input('name', MyBB::INPUT_ARRAY)[$result['fid']]);
                     $newname = preg_replace('#[^\w]#', '_', $newname);
                     $origname = '';
                     while ($origname != $newname) {
@@ -252,7 +252,7 @@ if ($mybb->get_input('action') == 'editset') {
                             MyBB::INPUT_ARRAY
                         )[$result['fid']] == 'radio')) {
                     $update_array = [
-                        'name' => $db->escape_string($mybb->get_input('name')[$result['fid']])
+                        'name' => $db->escape_string($mybb->get_input('name', MyBB::INPUT_ARRAY)[$result['fid']])
                     ];
                     $update_query = $db->update_query(
                         'myshowcase_field_data',
@@ -377,7 +377,7 @@ if ($mybb->get_input('action') == 'editset') {
                         'label',
                         MyBB::INPUT_ARRAY
                     )[$key] == '' ? $db->escape_string(
-                        $mybb->get_input('name')[$key]
+                        $mybb->get_input('name', MyBB::INPUT_ARRAY)[$key]
                     ) : $db->escape_string($mybb->get_input('label', MyBB::INPUT_ARRAY)[$key]));
                 }
 
@@ -1223,15 +1223,15 @@ if ($mybb->get_input('action') == 'delfield') {
 
         $query = $db->simple_select(
             'myshowcase_fields',
-            'name',
+            'fid, name',
             'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
                 'fid',
                 MyBB::INPUT_INT
             )
         );
         $result = $db->fetch_array($query);
-        $fieldname = $result['name'];
-        if ($fieldname == '') {
+
+        if (empty($result['fid'])) {
             flash_message($lang->myshowcase_field_invalid_id, 'error');
             admin_redirect(
                 'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
@@ -1240,6 +1240,8 @@ if ($mybb->get_input('action') == 'delfield') {
                 )
             );
         } else {
+            $fieldname = $result['name'] ?? $result['id'];
+
             $plugins->run_hooks('admin_myshowcase_fields_delete_begin');
 
             //check if tables created from this fiedlset already

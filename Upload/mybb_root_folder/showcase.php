@@ -27,6 +27,7 @@ use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
 
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
+use const MyShowcase\Core\VERSION_CODE;
 use const MyShowcase\ROOT;
 
 $forumdir = ''; //no trailing slash
@@ -37,7 +38,7 @@ $forumdir = ''; //no trailing slash
 
 define('IN_MYBB', 1);
 define('IN_SHOWCASE', 1);
-define('VERSION_OF_FILE', '3.0.0');
+define('VERSION_OF_FILE', 3000);
 
 $filename = substr($_SERVER['SCRIPT_NAME'], -strpos(strrev($_SERVER['SCRIPT_NAME']), '/'));
 define('THIS_SCRIPT', $filename);
@@ -73,13 +74,10 @@ require_once $change_dir . '/global.php';
 chdir($current_dir);
 
 //make sure this file is current
-if (function_exists('myshowcase_info')) {
-    $system_info = myshowcase_info();
-    if (VERSION_OF_FILE != $system_info['version']) {
-        error(
-            'This file is not the same version as the MyShowcase System. Please be sure to upload and configure ALL files.'
-        );
-    }
+if (VERSION_OF_FILE < VERSION_CODE) {
+    error(
+        'This file is not the same version as the MyShowcase System. Please be sure to upload and configure ALL files.'
+    );
 }
 
 //adjust theme settings in case this file is outside mybb_root

@@ -14,19 +14,22 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\hooksRun;
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcasePermissions;
 
+use function MyShowcase\Core\urlHandlerBuild;
+
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
-
-$full_path = $_SERVER['SCRIPT_FILENAME'];
-$base_name = $_SERVER['SCRIPT_NAME'];
 
 global $lang, $cache, $db, $plugins, $mybb;
 global $page;
@@ -40,86 +43,169 @@ if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $
     admin_redirect('index.php?module=config-plugins');
 }
 
-$plugins->run_hooks('admin_myshowcase_summary_begin');
+loadLanguage();
 
-if ($mybb->get_input('action') == 'new') {
-    if (!empty($mybb->get_input('newname')) && $mybb->request_method == 'post') {
-        $newname = $db->escape_string($mybb->get_input('newname'));
-        $newfile = $db->escape_string($mybb->get_input('newfile'));
-        $newdesc = $db->escape_string($mybb->get_input('newdesc'));
-        $newfolder = $db->escape_string($mybb->get_input('newfolder'));
-        $f2gpath = $db->escape_string($mybb->get_input('f2gpath'));
+hooksRun('admin_summary_start');
 
-        if ($newfile == '' || $newname == '' || $newfolder == '') {
-            flash_message($lang->myshowcase_summary_missing_required, 'error');
-            admin_redirect('index.php?module=myshowcase-summary');
+$page->output_header($lang->myShowcaseAdminSummary);
+
+$sub_tabs = [
+    'myShowcaseAdminSummary' => [
+        'title' => $lang->myShowcaseAdminSummary,
+        'link' => urlHandlerBuild(),
+        'description' => $lang->myShowcaseAdminSummaryDescription
+    ],
+    'myShowcaseAdminSummaryNew' => [
+        'title' => $lang->myShowcaseAdminSummaryNew,
+        'link' => urlHandlerBuild(['action' => 'new']),
+        'description' => $lang->myShowcaseAdminSummaryNewDescription
+    ]
+];
+
+if ($mybb->get_input('action') === 'new') {
+    $fieldsetObjects = (function (): array {
+        return array_map(function ($fieldsetData) {
+            return $fieldsetData['setname'];
+        }, cacheGet(CACHE_TYPE_FIELD_SETS));
+    })();
+
+    hooksRun('admin_summary_new_start');
+
+    if (!$fieldsetObjects) {
+        flash_message($lang->myShowcaseAdminErrorNoFieldSets, 'error');
+
+        admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+    }
+
+    $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummaryNew');
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect($sub_tabs['myShowcaseAdminSummaryNew']['link']);
         }
 
-        $query = $db->simple_select('myshowcase_config', '*', "name='{$newname}'");
-        if ($db->num_rows($query) != 0) {
-            flash_message($lang->myshowcase_summary_already_exists, 'error');
-            admin_redirect('index.php?module=myshowcase-summary');
+        $errorMessages = [];
+
+        if (!$mybb->get_input('name') ||
+            !$mybb->get_input('mainfile') ||
+            !$mybb->get_input('imgfolder')) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
-        $query = $db->simple_select('myshowcase_config', '*', "mainfile='{$newfile}'");
-        if ($db->num_rows($query) != 0) {
-            flash_message($lang->myshowcase_summary_already_exists, 'error');
-            admin_redirect('index.php?module=myshowcase-summary');
+        $existingShowcases = cacheGet(CACHE_TYPE_CONFIG);
+
+        if (in_array($mybb->get_input('name'), array_column($existingShowcases, 'name'))) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
+        }
+
+        if (in_array($mybb->get_input('mainfile'), array_column($existingShowcases, 'mainfile'))) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedMainFile;
+        }
+
+        $showcaseData = [
+            'name' => $db->escape_string($mybb->get_input('name')),
+            'description' => $db->escape_string($mybb->get_input('description')),
+            'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
+            'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
+            'f2gpath' => $db->escape_string($mybb->get_input('f2gpath')),
+            'fieldsetid' => $mybb->get_input('newfieldset', MyBB::INPUT_INT),
+        ];
+
+        if ($errorMessages) {
+            $page->output_inline_error($errorMessages);
         } else {
-            $plugins->run_hooks('admin_myshowcase_summary_insert_begin');
+            $showcaseData = hooksRun('admin_summary_new_post', $showcaseData);
 
-            $insert_array = [
-                'name' => $newname,
-                'description' => $newdesc,
-                'mainfile' => $newfile,
-                'imgfolder' => $newfolder,
-                'f2gpath' => $f2gpath,
-                'fieldsetid' => $db->escape_string($mybb->get_input('newfieldset')),
-                'enabled' => 0
-            ];
-            $db->insert_query('myshowcase_config', $insert_array);
-            $newid = $db->insert_id();
-
-            // Reset new myshowcase info
-            unset($mybb->input['newname']);
-            unset($mybb->input['newdesc']);
-            unset($mybb->input['newfile']);
-            unset($mybb->input['newfolder']);
-            unset($mybb->input['f2gpath']);
-            unset($mybb->input['newfieldset']);
-
-            $plugins->run_hooks('admin_myshowcase_summary_insert_end');
-
-            //insert default permissions
-            require_once(MYBB_ROOT . $mybb->config['admin_dir'] . '/modules/myshowcase/module_meta.php');
+            $showcaseID = \MyShowcase\Core\showcaseInsert($showcaseData);
 
             $defaultShowcasePermissions = showcasePermissions();
 
-            $curgroups = $cache->read('usergroups');
-            ksort($curgroups);
-            foreach ($curgroups as $group) {
-                $defaultShowcasePermissions['id'] = $newid;
-                $defaultShowcasePermissions['gid'] = $group['gid'];
+            foreach ((array)$cache->read('usergroups') as $groupData) {
+                $defaultShowcasePermissions['id'] = $showcaseID;
 
-                $db->insert_query('myshowcase_permissions', $defaultShowcasePermissions);
+                $defaultShowcasePermissions['gid'] = $groupData['gid'];
+
+                \MyShowcase\Core\permissionsInsert($defaultShowcasePermissions);
             }
 
-            cacheUpdate(CACHE_TYPE_CONFIG);
+            \MyShowcase\Core\cacheUpdate(\MyShowcase\Core\CACHE_TYPE_CONFIG);
+
             cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
-            // Log admin action
-            $log = ['id' => $newid, 'myshowcase' => $mybb->get_input('newname')];
-            log_admin_action($log);
+            log_admin_action(['showcaseID' => $showcaseID]);
 
-            flash_message($lang->myshowcase_summary_add_success, 'success');
-            admin_redirect("index.php?module=myshowcase-edit&action=edit-main&id={$newid}");
+            flash_message($lang->myShowcaseAdminSuccessNewShowcase, 'success');
+
+            admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
         }
-    } else {
-        flash_message($lang->myshowcase_summary_invalid_name, 'error');
     }
-}
 
-if ($mybb->get_input('action') == 'enable') {
+    $form = new Form($sub_tabs['myShowcaseAdminSummaryNew']['link'], 'post', 'myShowcaseAdminSummaryNew');
+
+    echo $form->generate_hidden_field('my_post_key', $mybb->post_code);
+
+    $form_container = new FormContainer($sub_tabs['myShowcaseAdminSummaryNew']['title']);
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormName . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormNameDescription,
+        $form->generate_text_box('name', $mybb->get_input('name'), ['id' => 'name']),
+        'name'
+    );
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormDescription,
+        $lang->myShowcaseAdminSummaryNewFormDescriptionDescription,
+        $form->generate_text_box('description', $mybb->get_input('description'), ['id' => 'description']),
+        'description'
+    );
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormMainFile . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormMainFileDescription,
+        $form->generate_text_box('mainfile', $mybb->get_input('mainfile'), ['id' => 'mainfile']),
+        'mainfile'
+    );
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormImageFolder . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormImageFolderDescription,
+        $form->generate_text_box('imgfolder', $mybb->get_input('imgfolder'), ['id' => 'imgfolder']),
+        'imgfolder'
+    );
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormRelativePath . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormRelativePathDescription,
+        $form->generate_text_box('f2gpath', $mybb->get_input('f2gpath'), ['id' => 'f2gpath']),
+        'f2gpath'
+    );
+
+    $form_container->output_row(
+        $lang->myShowcaseAdminSummaryNewFormFieldSet . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormFieldSetDescription,
+        $form->generate_select_box(
+            'newfieldset',
+            $fieldsetObjects,
+            $mybb->get_input('newfieldset', MyBB::INPUT_INT),
+            ['id' => 'newfieldset']
+        ),
+        'newfieldset'
+    );
+
+    hooksRun('admin_summary_new_end');
+
+    $form_container->end();
+
+    $form->output_submit_wrapper([
+        $form->generate_submit_button($lang->myShowcaseAdminButtonSubmit),
+        $form->generate_reset_button($lang->myShowcaseAdminButtonReset)
+    ]);
+
+    $form->end();
+} elseif ($mybb->get_input('action') == 'enable') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', MyBB::INPUT_INT))) {
         $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', MyBB::INPUT_INT));
         $result = $db->fetch_array($query);
@@ -148,9 +234,7 @@ if ($mybb->get_input('action') == 'enable') {
         }
         cacheUpdate(CACHE_TYPE_CONFIG);
     }
-}
-
-if ($mybb->get_input('action') == 'disable') {
+} elseif ($mybb->get_input('action') == 'disable') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', MyBB::INPUT_INT))) {
         $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', MyBB::INPUT_INT));
         if ($db->num_rows($query) == 0) {
@@ -174,9 +258,7 @@ if ($mybb->get_input('action') == 'disable') {
         }
         cacheUpdate(CACHE_TYPE_CONFIG);
     }
-}
-
-if ($mybb->get_input('action') == 'createtable') {
+} elseif ($mybb->get_input('action') == 'createtable') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', MyBB::INPUT_INT))) {
         $query = $db->simple_select(
             'myshowcase_config',
@@ -272,11 +354,14 @@ if ($mybb->get_input('action') == 'createtable') {
         }
         cacheUpdate(CACHE_TYPE_CONFIG);
     }
-}
-
-if ($mybb->get_input('action') == 'deletetable') {
+} elseif ($mybb->get_input('action') == 'deletetable') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', MyBB::INPUT_INT))) {
-        $page->output_header($lang->myshowcase_admin_edit_existing);
+        $page->add_breadcrumb_item(
+            $lang->myshowcase_admin_edit_existing,
+            urlHandlerBuild(
+                ['action' => 'deletetable', 'id' => $mybb->get_input('id', MyBB::INPUT_INT)]
+            )
+        );
 
         $plugins->run_hooks('admin_myshowcase_deletetable_start');
 
@@ -313,12 +398,8 @@ if ($mybb->get_input('action') == 'deletetable') {
 
             $form->end();
         }
-
-        $page->output_footer();
     }
-}
-
-if ($mybb->get_input('action') == 'do_deletetable') {
+} elseif ($mybb->get_input('action') == 'do_deletetable') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric(
             $mybb->get_input('id', MyBB::INPUT_INT)
         ) && $mybb->request_method == 'post') {
@@ -347,11 +428,14 @@ if ($mybb->get_input('action') == 'do_deletetable') {
             admin_redirect('index.php?module=myshowcase-summary');
         }
     }
-}
-
-if ($mybb->get_input('action') == 'show_seo') {
+} elseif ($mybb->get_input('action') == 'show_seo') {
     if ($mybb->get_input('id', MyBB::INPUT_INT) && is_numeric($mybb->get_input('id', MyBB::INPUT_INT))) {
-        $page->output_header($lang->myshowcase_admin_show_seo);
+        $page->add_breadcrumb_item(
+            $lang->myshowcase_admin_show_seo,
+            urlHandlerBuild(
+                ['action' => 'show_seo', 'id' => $mybb->get_input('id', MyBB::INPUT_INT)]
+            )
+        );
 
         $query = $db->simple_select('myshowcase_config', '*', 'id=' . $mybb->get_input('id', MyBB::INPUT_INT));
         $num_myshowcases = $db->num_rows($query);
@@ -395,69 +479,81 @@ if ($mybb->get_input('action') == 'show_seo') {
 
             $showcase_info = myshowcase_info();
             echo '<p /><small>' . $showcase_info['name'] . ' version ' . $showcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $showcase_info['website'] . '">' . $showcase_info['author'] . '</a>.</small>';
-            $page->output_footer();
         }
     }
-}
+} else {
+    $page->add_breadcrumb_item(
+        $lang->myshowcase_admin_summary,
+        urlHandlerBuild()
+    );
 
-//basic summary page, output regardless of action
-{
-    $plugins->run_hooks('admin_myshowcase_summary_start');
+    $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummary');
 
-    $page->output_header($lang->myshowcase_admin_summary);
-
-    $form = new Form('index.php?module=myshowcase-summary', 'post', 'summary');
     $form_container = new FormContainer($lang->myshowcase_summary_existing);
 
     $form_container->output_row_header($lang->myshowcase_summary_id, ['width' => '2%', 'class' => 'align_center']);
+    
     $form_container->output_row_header(
         $lang->myshowcase_summary_name,
         ['width' => '10%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_description,
         ['width' => '17%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_entries_count,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_comment_count,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_attachments_count,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_attachments_size,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_main_file,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_image_folder,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_forum_folder,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_field_set,
         ['width' => '5%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header(
         $lang->myshowcase_summary_status,
         ['width' => '2%', 'class' => 'align_center']
     );
+
     $form_container->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
     $query = $db->simple_select('myshowcase_config', '*', '');
+
     $num_myshowcases = $db->num_rows($query);
+
     if ($num_myshowcases == 0) {
         $form_container->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
     } else {
@@ -470,7 +566,7 @@ if ($mybb->get_input('action') == 'show_seo') {
             $query_fieldset = $db->simple_select('myshowcase_fieldsets', 'setname', 'setid=' . $result['fieldsetid']);
             $result_fieldset = $db->fetch_array($query_fieldset);
 
-            $table_ready = showcaseDataTableExists($result['id']);
+            $table_ready = showcaseDataTableExists((int)$result['id']);
 
             if ($table_ready) {
                 $query_myshowcase = $db->query(
@@ -497,6 +593,7 @@ if ($mybb->get_input('action') == 'show_seo') {
                 $attach_size = 0;
                 $num_comments = 0;
             }
+
             // Build popup menu
             $popup = new PopupMenu("myshowcase_{$result['id']}", $lang->options);
             $popup->add_item(
@@ -559,14 +656,14 @@ if ($mybb->get_input('action') == 'show_seo') {
             $form_container->output_cell($num_comments, ['class' => 'align_center']);
             $form_container->output_cell($num_attach, ['class' => 'align_center']);
             $form_container->output_cell(
-                number_format($attach_size / 1024 / 1024, 2, '.', ','),
+                get_friendly_size($attach_size),
                 ['class' => 'align_center']
             );
             $form_container->output_cell($result['mainfile'], ['class' => 'align_center']);
             $form_container->output_cell($result['imgfolder'], ['class' => 'align_center']);
             $form_container->output_cell($result['f2gpath'], ['class' => 'align_center']);
             $form_container->output_cell(
-                $result_fieldset['setname'] . '<br />(ID=' . $result['fieldsetid'] . ')',
+                $result_fieldset['setname'] . ' (ID=' . $result['fieldsetid'] . ')',
                 ['class' => 'align_center']
             );
             $form_container->output_cell(
@@ -577,80 +674,10 @@ if ($mybb->get_input('action') == 'show_seo') {
             $form_container->construct_row();
         }
     }
+
     $form_container->end();
-    $form->end();
-
-    unset($fieldsets);
-
-    $fieldsets = [];
-
-    $query = $db->simple_select('myshowcase_fieldsets', '*', '');
-    while ($result = $db->fetch_array($query)) {
-        $fieldsets[$result['setid']] = $result['setname'];
-    }
-
-    if (count($fieldsets) == 0) {
-        $form = new Form('index.php?module=myshowcase-summary&amp;action=new', 'post', 'new');
-        $form_container = new FormContainer($lang->myshowcase_summary_new);
-
-        $form_container->output_row_header(
-            $lang->myshowcase_summary_name,
-            ['width' => '25%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header($lang->myshowcase_summary_description, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_main_file, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_image_folder, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, ['class' => 'align_center']);
-        $form_container->output_row_header(
-            $lang->myshowcase_summary_field_set,
-            ['width' => '8%', 'class' => 'align_center']
-        );
-
-        $form_container->output_cell(
-            $lang->myshowcase_summary_nofieldsets,
-            ['colspan' => '6', 'class' => 'align_center']
-        );
-        $form_container->construct_row();
-        $form_container->end();
-
-        $form->end();
-    } else {
-        $form = new Form('index.php?module=myshowcase-summary&amp;action=new', 'post', 'new');
-        $form_container = new FormContainer($lang->myshowcase_summary_new);
-
-        $form_container->output_row_header(
-            $lang->myshowcase_summary_name,
-            ['width' => '25%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header($lang->myshowcase_summary_description, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_main_file, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_image_folder, ['class' => 'align_center']);
-        $form_container->output_row_header($lang->myshowcase_summary_forum_folder, ['class' => 'align_center']);
-        $form_container->output_row_header(
-            $lang->myshowcase_summary_field_set,
-            ['width' => '8%', 'class' => 'align_center']
-        );
-
-        $form_container->output_cell($form->generate_text_box('newname', ''));
-        $form_container->output_cell($form->generate_text_box('newdesc', '', ['style' => 'width: 95%']));
-        $form_container->output_cell($form->generate_text_box('newfile', '', ['style' => 'width: 95%']));
-        $form_container->output_cell($form->generate_text_box('newfolder', '', ['style' => 'width: 95%']));
-        $form_container->output_cell($form->generate_text_box('f2gpath', '', ['style' => 'width: 95%']));
-        $form_container->output_cell(
-            $form->generate_select_box('newfieldset', $fieldsets, '', ['id' => 'fieldsets']),
-            ['class' => 'align_center']
-        );
-        $form_container->construct_row();
-        $form_container->end();
-
-        $buttons[] = $form->generate_submit_button($lang->myshowcase_summary_add);
-        $form->output_submit_wrapper($buttons);
-
-        $form->end();
-    }
-
-    $myshowcase_info = myshowcase_info();
-    echo '<p /><small>' . $myshowcase_info['name'] . ' version ' . $myshowcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $myshowcase_info['website'] . '">' . $myshowcase_info['author'] . '</a>.</small>';
-
-    $page->output_footer();
 }
+
+hooksRun('admin_summary_end');
+
+$page->output_footer();

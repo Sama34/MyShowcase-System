@@ -17,6 +17,7 @@ declare(strict_types=1);
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 

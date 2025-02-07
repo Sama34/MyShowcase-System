@@ -95,6 +95,8 @@ switch ($mybb->get_input('action')) {
             }
             $posthash = $mybb->get_input('posthash');
 
+            $attacherror = $showcase_attachments = '';
+
             // Get a listing of the current attachments.
             if ($can_add_attachments) {
                 $attachcount = 0;
@@ -133,7 +135,7 @@ switch ($mybb->get_input('action')) {
                     $showcase_new_attachments_input = eval(getTemplate('new_attachments_input'));
                 }
 
-                if ($showcase_new_attachments_input != '' || $attachments != '') {
+                if (!empty($showcase_new_attachments_input) || $attachments != '') {
                     $showcase_attachments = eval(getTemplate('new_attachments'));
                 }
             }
@@ -318,6 +320,8 @@ switch ($mybb->get_input('action')) {
 
             $plugins->run_hooks('myshowcase_editnew_end');
 
+            $showcase_authid = '';
+            
             $showcase_page .= eval(getTemplate('new_bottom'));
         } else {
             error($lang->myshowcase_not_authorized);
