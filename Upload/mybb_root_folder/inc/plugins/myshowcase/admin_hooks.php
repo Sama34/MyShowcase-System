@@ -25,6 +25,7 @@ use function MyShowcase\MyAlerts\getInstalledLocations;
 use function MyShowcase\MyAlerts\installLocation;
 use function MyShowcase\MyAlerts\MyAlertsIsIntegrable;
 
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
 function admin_config_plugins_begin01(): bool
@@ -107,7 +108,7 @@ function admin_user_groups_edit(): bool
     //see if added group is in each enabled myshowcase's permission set
     foreach ($myshowcases as $myshowcase) {
         foreach ($curgroups as $group) {
-            if (!array_key_exists($group['gid'], $showgroups[$myshowcase['id']])) {
+            if (!array_key_exists($group['gid'], $showgroups[$myshowcase['id']] ?? [])) {
                 $myshowcase_defaultperms['id'] = $myshowcase['id'];
                 $myshowcase_defaultperms['gid'] = $group['gid'];
 

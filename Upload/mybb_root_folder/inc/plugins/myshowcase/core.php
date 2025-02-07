@@ -24,11 +24,13 @@ use const MyShowcase\ROOT;
 const VERSION = '3.0.0';
 const VERSION_CODE = 3000;
 
+const SHOWCASE_STATUS_DISABLED = 0;
+
 const SHOWCASE_STATUS_ENABLED = 1;
 
-const SHOWCASE_UPLOAD_STATUS_INVALID = 1;
+const UPLOAD_STATUS_INVALID = 1;
 
-const SHOWCASE_UPLOAD_STATUS_FAILED = 2;
+const UPLOAD_STATUS_FAILED = 2;
 
 const CACHE_TYPE_CONFIG = 'config';
 
@@ -43,6 +45,10 @@ const CACHE_TYPE_FIELD_DATA = 'field_data';
 const CACHE_TYPE_MODERATORS = 'moderators';
 
 const CACHE_TYPE_REPORTS = 'reports';
+
+const MODERATOR_TYPE_USER = 0;
+
+const MODERATOR_TYPE_GROUP = 1;
 
 const URL = 'index.php?module=myshowcase-summary';
 
@@ -120,7 +126,7 @@ function urlHandlerGet(): string
     return urlHandler();
 }
 
-function urlHandlerBuild(array $urlAppend = [], bool $fetchImportUrl = false, bool $encode = true): string
+function urlHandlerBuild(array $urlAppend = [], string $separator = '&amp;', bool $encode = true): string
 {
     global $PL;
 
@@ -128,14 +134,12 @@ function urlHandlerBuild(array $urlAppend = [], bool $fetchImportUrl = false, bo
         $PL or require_once PLUGINLIBRARY;
     }
 
-    if ($fetchImportUrl === false) {
-        if ($urlAppend && !is_array($urlAppend)) {
-            $urlAppend = explode('=', $urlAppend);
-            $urlAppend = [$urlAppend[0] => $urlAppend[1]];
-        }
+    if ($urlAppend && !is_array($urlAppend)) {
+        $urlAppend = explode('=', $urlAppend);
+        $urlAppend = [$urlAppend[0] => $urlAppend[1]];
     }
 
-    return $PL->url_append(urlHandlerGet(), $urlAppend, '&amp;', $encode);
+    return $PL->url_append(urlHandlerGet(), $urlAppend, $separator, $encode);
 }
 
 function getSetting(string $settingKey = '')
@@ -177,7 +181,7 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true)
 
 //set default permissions for all groups in all myshowcases
 //if you edit or reorder these, you need to also edit
-//the edit.php file (starting line 225) so the fields match this order
+//the summary.php file (starting line 156) so the fields match this order
 function showcasePermissions(): array
 {
     static $defaultPermissions;
@@ -207,6 +211,15 @@ function showcaseDataTableExists(int $showcaseID): bool
     global $db;
 
     return $db->table_exists('myshowcase_data' . $showcaseID);
+}
+
+function showcaseDataTableDrop(int $showcaseID): bool
+{
+    global $db;
+
+    $db->drop_table('myshowcase_data' . $showcaseID);
+
+    return true;
 }
 
 function getTemplatesList(): array
@@ -389,6 +402,80 @@ function showcaseInsert(array $showcaseData): int
     return (int)$db->insert_id();
 }
 
+function showcaseUpdate(int $showcaseID, array $showcaseData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_config',
+        $showcaseData,
+        "id='{$showcaseID}'"
+    );
+
+    return true;
+}
+
+function showcaseDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_config', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function showcaseGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = ['limit' => 1]): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_config',
+        implode(',', array_merge(['id'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $showcaseObjects = [];
+
+    while ($showcaseData = $db->fetch_array($query)) {
+        $showcaseObjects[(int)$showcaseData['id']] = $showcaseData;
+    }
+
+    return $showcaseObjects;
+}
+
+function showcaseGetFieldsData(int $showcaseID, array $queryFields = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_data' . $showcaseID,
+        implode(',', array_merge(['gid'], $queryFields)),
+    );
+
+    $fieldData = [];
+
+    while ($fieldValueData = $db->fetch_array($query)) {
+        $fieldData[(int)$fieldValueData['gid']] = [
+            'uid' => (int)$fieldValueData['uid'],
+            'views' => (int)$fieldValueData['views'],
+            'comments' => (int)$fieldValueData['comments'],
+            'submit_date' => (int)$fieldValueData['submit_date'],
+            'dateline' => (int)$fieldValueData['dateline'],
+            'createdate' => (int)$fieldValueData['createdate'],
+            'approved' => (bool)$fieldValueData['approved'],
+            'approved_by' => (int)$fieldValueData['approved_by'],
+            'posthash' => (string)$fieldValueData['posthash']
+        ];
+    }
+
+    return $fieldData;
+}
+
 function permissionsInsert(array $permissionData): bool
 {
     global $db;
@@ -396,6 +483,102 @@ function permissionsInsert(array $permissionData): bool
     $db->insert_query('myshowcase_permissions', $permissionData);
 
     return true;
+}
+
+function permissionsUpdate(array $whereClauses = [], array $permissionData = []): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_permissions',
+        $permissionData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function permissionsDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_permissions', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function moderatorsInsert(array $moderatorData): bool
+{
+    global $db;
+
+    $db->insert_query('myshowcase_moderators', $moderatorData);
+
+    return true;
+}
+
+function moderatorsUpdate(array $whereClauses = [], array $moderatorData = []): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_moderators',
+        $moderatorData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function moderatorsDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_moderators', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_fieldsets',
+        implode(',', array_merge(['setid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $fieldsetData = [];
+
+    while ($fieldset = $db->fetch_array($query)) {
+        $fieldsetData[(int)$fieldset['setid']] = $fieldset;
+    }
+
+    return $fieldsetData;
+}
+
+function fieldsGet(array $whereClauses = [], array $queryFields = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_fields',
+        implode(',', array_merge(['fid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+    );
+
+    $fieldData = [];
+
+    while ($field = $db->fetch_array($query)) {
+        $fieldData[(int)$field['fid']] = $field;
+    }
+
+    return $fieldData;
 }
 
 function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): array
@@ -415,11 +598,20 @@ function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): 
     return [];
 }
 
-function attachmentDelete(int $attachmentID): bool
+function attachmentDelete(array $whereClauses = []): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_attachments', "aid='{$attachmentID}'");
+    $db->delete_query('myshowcase_attachments', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function commentDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_comments', implode(' AND ', $whereClauses));
 
     return true;
 }
@@ -451,7 +643,7 @@ function attachmentRemove(
 
     $attachmentData = hooksRun('remove_attachment_do_delete', $attachmentData);
 
-    attachmentDelete((int)$attachmentData['aid']);
+    attachmentDelete(["aid='{$attachmentID}'"]);
 
     unlink($showcase->imgfolder . '/' . $attachmentData['attachname']);
 
@@ -609,10 +801,10 @@ function attachmentUpload(
         $returnData['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail;
 
         switch ($fileData['error']) {
-            case SHOWCASE_UPLOAD_STATUS_INVALID:
+            case UPLOAD_STATUS_INVALID:
                 $returnData['error'] .= $lang->error_uploadfailed_nothingtomove;
                 break;
-            case SHOWCASE_UPLOAD_STATUS_FAILED:
+            case UPLOAD_STATUS_FAILED:
                 $returnData['error'] .= $lang->error_uploadfailed_movefailed;
                 break;
         }
@@ -868,7 +1060,7 @@ function fileUpload(array $fileData, string $uploadsPath, string $fileName = '')
     $returnData = [];
 
     if (empty($fileData['name']) || $fileData['name'] === 'none' || $fileData['size'] < 1) {
-        $returnData['error'] = SHOWCASE_UPLOAD_STATUS_INVALID;
+        $returnData['error'] = UPLOAD_STATUS_INVALID;
 
         return $returnData;
     }
@@ -882,7 +1074,7 @@ function fileUpload(array $fileData, string $uploadsPath, string $fileName = '')
     $fileName = preg_replace('#/$#', '', $fileName);
 
     if (!move_uploaded_file($fileData['tmp_name'], $uploadsPath . '/' . $fileName)) {
-        $returnData['error'] = SHOWCASE_UPLOAD_STATUS_FAILED;
+        $returnData['error'] = UPLOAD_STATUS_FAILED;
 
         return $returnData;
     }

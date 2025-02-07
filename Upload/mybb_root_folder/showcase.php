@@ -476,12 +476,12 @@ foreach ($fieldcache[$me->fieldsetid] as $field) {
     $showcase_fields_min_length[$field['name']] = $field['min_length'];
 
     //limit array only to those fields that are required
-    if ($field['enabled'] == 1 || $field['require'] == 1) {
+    if ($field['enabled'] == 1 || $field['requiredField'] == 1) {
         $showcase_fields_enabled[$field['name']] = $field['html_type'];
     }
 
     //limit array only to those fields that are required
-    if ($field['require'] == 1) {
+    if ($field['requiredField'] == 1) {
         $showcase_fields_require[$field['name']] = 1;
     } else {
         $showcase_fields_require[$field['name']] = 0;

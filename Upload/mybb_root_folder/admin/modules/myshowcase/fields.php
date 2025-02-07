@@ -145,7 +145,7 @@ if ($mybb->get_input('action') == 'editset') {
             'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
         );
         $result = $db->fetch_array($query);
-        if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
+        if ($db->num_rows($query) != 0 && showcaseDataTableExists((int)$result['id'])) {
             $can_edit = false;
         }
 
@@ -208,7 +208,12 @@ if ($mybb->get_input('action') == 'editset') {
                             $mybb->get_input('list_table_order', MyBB::INPUT_ARRAY)[$result['fid']]
                         ),
                         'enabled' => (isset($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'require' => (isset($mybb->get_input('require', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'requiredField' => (isset(
+                            $mybb->get_input(
+                                'requiredField',
+                                MyBB::INPUT_ARRAY
+                            )[$result['fid']]
+                        ) ? 1 : 0),
                         'parse' => (isset($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
                         'searchable' => (isset(
                             $mybb->get_input(
@@ -227,7 +232,12 @@ if ($mybb->get_input('action') == 'editset') {
                             $mybb->get_input('list_table_order', MyBB::INPUT_ARRAY)[$result['fid']]
                         ),
                         'enabled' => (isset($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'require' => (isset($mybb->get_input('require', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
+                        'requiredField' => (isset(
+                            $mybb->get_input(
+                                'requiredField',
+                                MyBB::INPUT_ARRAY
+                            )[$result['fid']]
+                        ) ? 1 : 0),
                         'parse' => (isset($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
                         'searchable' => (isset(
                             $mybb->get_input(
@@ -345,7 +355,7 @@ if ($mybb->get_input('action') == 'editset') {
                     'field_order' => intval($mybb->get_input('newfield_order', MyBB::INPUT_INT)),
                     'list_table_order' => intval($mybb->get_input('newlist_table_order', MyBB::INPUT_INT)),
                     'enabled' => intval($mybb->get_input('newenabled', MyBB::INPUT_INT)),
-                    'require' => intval($mybb->get_input('newrequire', MyBB::INPUT_INT)),
+                    'requiredField' => intval($mybb->get_input('newrequire', MyBB::INPUT_INT)),
                     'parse' => intval($mybb->get_input('newparse', MyBB::INPUT_INT)),
                     'searchable' => intval($mybb->get_input('newsearchable', MyBB::INPUT_INT)),
                     'format' => intval($mybb->get_input('newformat', MyBB::INPUT_INT)),
@@ -613,10 +623,10 @@ if ($mybb->get_input('action') == 'editset') {
                 );
                 $form_container->output_cell(
                     $form->generate_check_box(
-                        'require[' . $result['fid'] . ']',
+                        'requiredField[' . $result['fid'] . ']',
                         'true',
                         null,
-                        ['checked' => $result['require']],
+                        ['checked' => $result['requiredField']],
                         ''
                     ),
                     ['class' => 'align_center']
@@ -876,7 +886,7 @@ if ($mybb->get_input('action') == 'editopt') {
         );
         $result = $db->fetch_array($query);
 
-        if ($db->num_rows($query) != 0 && showcaseDataTableExists($result['id'])) {
+        if ($db->num_rows($query) != 0 && showcaseDataTableExists((int)$result['id'])) {
             //flash_message($lang->myshowcase_fields_in_use, 'error');
             //admin_redirect("index.php?module=myshowcase-fields");
             $can_edit = false;
@@ -1252,7 +1262,7 @@ if ($mybb->get_input('action') == 'delfield') {
             );
             $field_in_use = false;
             while ($result = $db->fetch_array($query)) {
-                if (showcaseDataTableExists($result['id'])) {
+                if (showcaseDataTableExists((int)$result['id'])) {
                     $field_in_use = true;
                 }
             }
@@ -1276,7 +1286,6 @@ if ($mybb->get_input('action') == 'delfield') {
                         MyBB::INPUT_INT
                     ),
                     'post',
-                    'do_delete'
                 );
                 $buttons[] = $form->generate_submit_button($lang->myshowcase_field_confirm_delete);
                 $form->output_submit_wrapper($buttons);
@@ -1420,7 +1429,7 @@ if ($mybb->get_input('action') == '') {
             $query_tables = $db->simple_select('myshowcase_config', 'id', 'fieldsetid=' . $result['setid']);
             $tables = 0;
             while ($usetable = $db->fetch_array($query_tables)) {
-                if (showcaseDataTableExists($usetable['id'])) {
+                if (showcaseDataTableExists((int)$usetable['id'])) {
                     $tables++;
                 }
             }

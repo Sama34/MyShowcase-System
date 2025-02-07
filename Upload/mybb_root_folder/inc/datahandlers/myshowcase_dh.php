@@ -107,7 +107,7 @@ class MyShowcaseDataHandler extends DataHandler
             $field_header = $lang->$temp;
 
             //verify required
-            if ($field['require'] == 1) {
+            if ($field['requiredField'] == 1) {
                 if (my_strlen($myshowcase_data[$fname]) == 0 || !isset($myshowcase_data[$fname])) {
                     $this->set_error('missing_field', [$field_header]);
                 } elseif ($field['html_type'] == 'db' && $myshowcase_data[$fname] == 0) {
@@ -115,7 +115,7 @@ class MyShowcaseDataHandler extends DataHandler
                 }
             }
 
-            if ($field['enabled'] == 1 || $field['require'] == 1) //added require check in case admin sets require but not enable
+            if ($field['enabled'] == 1 || $field['requiredField'] == 1) //added require check in case admin sets require but not enable
             {
                 //verify type and lengths
                 switch ($field['field_type']) {

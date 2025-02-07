@@ -40,7 +40,7 @@ $custom_fieldsets[] = ['Trucks'];
 // field_type - type of field to create in the table for this field. acceptable types are int, timestamp, varchar, text
 // min_length - int, min allowed length of the data
 // max_length - int, max allowed length of the data, also length/size of field (except for text fields)
-// require - int, 1 to require input, 0 to ignore. 
+// requiredField - int, 1 to require input, 0 to ignore.
 // parse - int, 1 to run the field through the parser, 0 otherwise
 // field_order - int, order in which fields are displayed during view
 // list_table_order - int, order in which fields are listed in the list view (default view). '-1' excludes field from list view

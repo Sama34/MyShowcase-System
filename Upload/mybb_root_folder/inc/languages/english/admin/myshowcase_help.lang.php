@@ -68,7 +68,7 @@ From the Summary sub-menu, enter a Name, Description, Main File, Image Folder, R
 </ul>
 As each showcase created can have any table schema given the field set assigned, once you have created the showcase in the MyShowcase Admin and assigned a complete field set, you need to create the data table. In the Summary sub-menu, for the showcase you want to create, click the drop down menu in the Controls field and select Create Table. Once you create the table, which will be named <mybb_prefix>_myshowcase_dataXX where XX is the ID of the given myshowcase, you can then enable the showcase for use via the same Controls menu. This will not create the link to the showcase, only enable it for use. You need to insert a link to the showcase yourself via the MyBB template editor. This same menu will allow you to disable a specific showcase, such as for maintenance.
 <h4>Controls for an Existing MyShowcase</h4><br />
-For each available showcase, a drop-down controls menu is available for several operations. A showcase can be enabled and disabled without impacting any data, sent to the Edit Existing sub-menu via the edit option, deleted from the system including all entries, comments and attachments for that showcase, and finally create or delete the database table for the showcase. The ability to delete the database table is available only when there are no entries in it. These two options are great for testing a new showcase and the fields and options for it.<br />
+For each available showcase, a drop-down controls menu is available for several operations. A showcase can be enabled and disabled without impacting any data, sent to the Edit Showcase sub-menu via the edit option, deleted from the system including all entries, comments and attachments for that showcase, and finally create or delete the database table for the showcase. The ability to delete the database table is available only when there are no entries in it. These two options are great for testing a new showcase and the fields and options for it.<br />
 
 EOT;
 
@@ -130,7 +130,7 @@ $l['myshowcase_help_edit'] = <<<EOT
 <h3>Editing an Existing MyShowcase</h3><br />
 The MyShowcase System allows any showcase to be edited, the level to which it can be modifed is dependent on the current status of the showcase. If the showcase has had it database table created, the field set can not be changed.<br />
 <br />
-To edit a showcase, select Edit from the controls drop-down on the Summary sub-menu. Direct access to the Edit Existing sub-menu is not supported. From this point there are several tabs, each containing its own form. <strong>So edits to one tab need to be saved before attempting to save settings on another tab.</strong>. The tabs include:
+To edit a showcase, select Edit from the controls drop-down on the Summary sub-menu. Direct access to the Edit Showcase sub-menu is not supported. From this point there are several tabs, each containing its own form. <strong>So edits to one tab need to be saved before attempting to save settings on another tab.</strong>. The tabs include:
 <ul>
 <li><strong>Main Settings:</strong> Primary settings, most of these are the same as when the showcase was created.
 <li><strong>Other:</strong> Additional settings covering moderation, comments, attachments and display options.
@@ -188,7 +188,7 @@ The MyShowcase System supports group based permissions and honors the built-in M
 <li><strong>Can Delete Author Comments:</strong> Can the group members delete comments of others in the user's own showcase entries.
 <li><strong>Can Search MyShowcases:</strong> Can the group members search the showcase.
 <li><strong>Can Watermark Images:</strong> Can the group members add a watermark to image uploads. This only applies when the Watermark Image is set on the Main Settings tab and a valid file.
-<li><strong>Max Attachments per MyShowcase:</strong> The maximum number of attachments group members can add to their own showcase entries. This is per showcase entry, not a total. Use -1 for unlimited attachements.
+<li><strong>Max Attachments per MyShowcase:</strong> The maximum number of attachments group members can add to their own showcase entries. This is per showcase entry, not a total.
 </ul>
 Also, similar to how MyBB works, permissions are inclusive, that means 'yes' will always win over a 'no' setting when combining usergroups and additional groups settings. The maximum attachments will use the largest of the groups settings for a given user (with the exception being a -1 value meaning unlimited). Each set of permissions are specific to the showcase being modified. Thus, it is possible to have differing permissions for each showcase setup.<br />
 <br />

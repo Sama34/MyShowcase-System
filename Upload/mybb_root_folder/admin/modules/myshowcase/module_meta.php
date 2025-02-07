@@ -14,42 +14,61 @@
 declare(strict_types=1);
 
 // Disallow direct access to this file for security reasons
+use function MyShowcase\Core\hooksRun;
+use function MyShowcase\Core\showcaseGet;
+use function MyShowcase\Core\urlHandlerBuild;
+
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
 
 function myshowcase_meta(): bool
 {
-    global $page, $lang, $plugins;
+    global $page, $lang;
+
+    $displayOrder = 0;
 
     $sub_menu = [];
-    $sub_menu['10'] = [
+
+    $sub_menu[$displayOrder += 10] = [
         'id' => 'summary',
         'title' => $lang->myshowcase_admin_summary,
         'link' => 'index.php?module=myshowcase-summary'
     ];
-    $sub_menu['20'] = [
+    $sub_menu[$displayOrder += 10] = [
         'id' => 'fields',
         'title' => $lang->myshowcase_admin_fields,
         'link' => 'index.php?module=myshowcase-fields'
     ];
-    $sub_menu['30'] = [
+    $sub_menu[$displayOrder += 10] = [
         'id' => 'edit',
         'title' => $lang->myshowcase_admin_edit_existing,
         'link' => 'index.php?module=myshowcase-edit'
     ];
-    $sub_menu['40'] = [
+    $sub_menu[$displayOrder += 10] = [
         'id' => 'cache',
         'title' => $lang->myshowcase_admin_cache,
         'link' => 'index.php?module=myshowcase-cache'
     ];
-    $sub_menu['50'] = [
+    $sub_menu[$displayOrder += 10] = [
         'id' => 'help',
         'title' => $lang->myshowcase_admin_help,
         'link' => 'index.php?module=myshowcase-help'
     ];
 
-    $plugins->run_hooks('admin_myshowcase_menu', $sub_menu);
+    if (function_exists('MyShowcase\Core\hooksRun')) {
+        $sub_menu = hooksRun('admin_module_meta_start', $sub_menu);
+
+        foreach (showcaseGet([], ['name'], []) as $showcaseID => $showcaseData) {
+            $sub_menu[$displayOrder += 10] = [
+                'id' => "showcase{$showcaseID}",
+                'title' => $showcaseData['name'],
+                'link' => urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID], '&')
+            ];
+        }
+
+        $sub_menu = hooksRun('admin_module_meta_end', $sub_menu);
+    }
 
     $page->add_menu_item(
         $lang->myshowcase_admin_myshowcase,
@@ -58,12 +77,13 @@ function myshowcase_meta(): bool
         60,
         $sub_menu
     );
+
     return true;
 }
 
 function myshowcase_action_handler(string $action): string
 {
-    global $page, $lang, $plugins;
+    global $page;
 
     $page->active_module = 'myshowcase';
 
@@ -71,12 +91,11 @@ function myshowcase_action_handler(string $action): string
         'summary' => ['active' => 'summary', 'file' => 'summary.php'],
         'new' => ['active' => 'new', 'file' => 'summary.php'],
         'fields' => ['active' => 'fields', 'file' => 'fields.php'],
-        'edit' => ['active' => 'edit', 'file' => 'edit.php'],
         'cache' => ['active' => 'cache', 'file' => 'cache.php'],
         'help' => ['active' => 'help', 'file' => 'help.php']
     ];
 
-    $plugins->run_hooks('admin_myshowcase_action_handler', $actions);
+    $actions = hooksRun('admin_action_handler', $actions);
 
     if (isset($actions[$action])) {
         $page->active_action = $actions[$action]['active'];
@@ -89,7 +108,7 @@ function myshowcase_action_handler(string $action): string
 
 function myshowcase_admin_permissions(): array
 {
-    global $lang, $plugins;
+    global $lang;
 
     $admin_permissions = [
         'summary' => $lang->myshowcase_admin_perm_summary,
@@ -100,7 +119,7 @@ function myshowcase_admin_permissions(): array
         'help' => $lang->myshowcase_admin_perm_help,
     ];
 
-    $plugins->run_hooks('admin_myshowcase_permissions', $admin_permissions);
+    $admin_permissions = hooksRun('admin_permissions', $admin_permissions);
 
     return ['name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'disporder' => 60];
 }

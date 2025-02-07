@@ -37,7 +37,7 @@ $tabs = [
     'main' => 'Main',
     'summary' => 'Summary',
     'fields' => 'Field Settings',
-    'edit' => 'Edit Existing',
+    'edit' => 'Edit Showcase',
     'cache' => 'Rebuild Cache',
     'other' => 'Other Items'
 ];

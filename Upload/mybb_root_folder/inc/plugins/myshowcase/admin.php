@@ -26,6 +26,611 @@ use const MyShowcase\Core\VERSION;
 use const MyShowcase\Core\VERSION_CODE;
 use const MyShowcase\ROOT;
 
+const TABLES_DATA = [
+    'myshowcase_attachments' => [
+        'aid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'posthash' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'filename' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'filetype' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'filesize' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'attachname' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'downloads' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'dateuploaded' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'thumbnail' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'visible' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_comments' => [
+        'cid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'ipaddress' => [
+            'type' => 'VARCHAR',
+            'size' => 30,
+            'default' => ''
+        ],
+        'comment' => [
+            'type' => 'TEXT',
+            'null' => true
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_key' => ['cid_gid' => 'cid,gid']
+    ],
+    'myshowcase_config' => [
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+            'unique_key' => true
+        ],
+        'description' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'mainfile' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => ''
+        ],
+        'fieldsetid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'imgfolder' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'defaultimage' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+        ],
+        'watermarkimage' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+        ],
+        'watermarkloc' => [
+            'type' => 'VARCHAR',
+            'size' => 12,
+            'default' => 'lower-right'
+        ],
+        'use_attach' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'f2gpath' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'enabled' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowsmilies' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowbbcode' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowhtml' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'prunetime' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 0
+        ],
+        'modnewedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'othermaxlength' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 500
+        ],
+        'allow_attachments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'allow_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'thumb_width' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'thumb_height' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'comment_length' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'comment_dispinit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 5
+        ],
+        'disp_attachcols' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'disp_empty' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'link_in_postbit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'portal_random' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_fieldsets' => [
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'setname' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => ''
+        ],
+    ],
+    'myshowcase_permissions' => [
+        'pid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canview' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canadd' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'cancomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canattach' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canviewcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canviewattach' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'candelowncomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'candelauthcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'cansearch' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canwatermark' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'attachlimit' => [
+            'type' => 'INT',
+            'default' => 0
+        ],
+    ],
+    'myshowcase_moderators' => [
+        'mid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'isgroup' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmodapprove' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmodedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmoddelete' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmoddelcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_key' => ['id_uid_isgroup' => 'id,uid,isgroup']
+    ],
+    'myshowcase_reports' => [
+        'rid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'reporteruid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'authoruid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'status' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'reason' => [
+            'type' => 'VARCHAR',
+            'size' => 250,
+            'default' => ''
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_fields' => [
+        'fid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 30,
+            'default' => ''
+        ],
+        'html_type' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => ''
+        ],
+        'enabled' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'field_type' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 'varchar'
+        ],
+        'min_length' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'max_length' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'requiredField' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ], // todo, rename from require to requiredField
+        'parse' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'field_order' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'list_table_order' => [
+            'type' => 'SMALLINT',
+            'default' => -1
+        ],
+        'searchable' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'format' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 'no'
+        ],
+        'unique_key' => ['setid_fid' => 'setid,fid']
+    ],
+    'myshowcase_field_data' => [
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'primary_key' => true
+        ],
+        'fid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 15,
+            'default' => '',
+            'unique_key' => true
+        ],
+        'valueid' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'value' => [
+            'type' => 'VARCHAR',
+            'size' => 15,
+            'default' => ''
+        ],
+        'disporder' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+];
+
+const FIELDS_DATA = [
+];
+
+const DATA_TABLE_STRUCTURE = [
+    'myshowcase_data' => [
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'views' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'comments' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'submit_date' => [
+            'type' => 'VARCHAR',
+            'size' => 20,
+            'default' => ''
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'createdate' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'approved' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'approved_by' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'posthash' => [
+            'type' => 'VARCHAR',
+            'size' => 32,
+            'default' => ''
+        ],
+    ],
+];
+
+const FIELD_TYPE_VARCHAR = 'varchar';
+
+const FIELD_TYPE_TEXT = 'text';
+
+const FIELD_TYPE_INT = 'int';
+
+const FIELD_TYPE_BIGINT = 'bigint';
+
+const FIELD_TYPE_TIMESTAMP = 'timestamp';
+
 function pluginInformation(): array
 {
     global $lang;
@@ -37,7 +642,7 @@ function pluginInformation(): array
 
     return [
         'name' => 'MyShowcase System',
-        'description' => $donate_button . $lang->MyShowcaseSystemDescription,
+        'description' => $donate_button . $lang->myShowcaseSystemDescription,
         'website' => '',
         'author' => 'CommunityPlugins.com',
         'authorsite' => '',
@@ -145,19 +750,7 @@ function pluginInstallation(): bool
 
 function pluginIsInstalled(): bool
 {
-    global $db;
-
-    static $isInstalledEach = null;
-
-    if ($isInstalledEach === null) {
-        $isInstalledEach = true;
-
-        foreach (dbTables() as $tableName => $tableData) {
-            $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
-        }
-    }
-
-    return $isInstalledEach;
+    return dbVerifyTablesExists() && dbVerifyColumnsExists();
 }
 
 function pluginUninstallation(): bool
@@ -255,236 +848,6 @@ function loadPluginLibrary(bool $check = true): bool
     return true;
 }
 
-function dbTables(): array
-{
-    return [
-        'myshowcase_attachments' => [
-            'id' => "int(3) NOT NULL default '1'",
-            'aid' => 'int(10) unsigned NOT NULL auto_increment',
-            'gid' => "int(10) NOT NULL default '0'",
-            'posthash' => "varchar(50) NOT NULL default ''",
-            'uid' => "int(10) unsigned NOT NULL default '0'",
-            'filename' => "varchar(120) NOT NULL default ''",
-            'filetype' => "varchar(120) NOT NULL default ''",
-            'filesize' => "int(10) NOT NULL default '0'",
-            'attachname' => "varchar(120) NOT NULL default ''",
-            'downloads' => "int(10) unsigned NOT NULL default '0'",
-            'dateuploaded' => "bigint(30) NOT NULL default '0'",
-            'thumbnail' => "varchar(120) NOT NULL default ''",
-            'visible' => "smallint(1) NOT NULL default '0'",
-            'primary_key' => 'aid',
-            'unique_key' => ['posthash' => 'posthash', 'gid' => 'gid', 'uid' => 'uid']
-        ],
-        'myshowcase_comments' => [
-            'id' => "int(3) NOT NULL default '1'",
-            'cid' => 'int(10) NOT NULL auto_increment',
-            'gid' => 'int(10) NOT NULL',
-            'uid' => 'int(10) NOT NULL',
-            'ipaddress' => "varchar(30) NOT NULL default '0.0.0.0'",
-            'comment' => 'text',
-            'dateline' => 'bigint(30) NOT NULL',
-            'primary_key' => 'cid`,`gid',
-        ],
-        'myshowcase_config' => [
-            'id' => 'int(3) NOT NULL auto_increment',
-            'name' => 'varchar(50) NOT NULL',
-            'description' => 'varchar(255) NOT NULL',
-            'mainfile' => 'varchar(50) NOT NULL',
-            'fieldsetid' => "int(3) NOT NULL default '1'",
-            'imgfolder' => 'varchar(255) default NULL',
-            'defaultimage' => 'varchar(50) default NULL',
-            'watermarkimage' => 'varchar(50) default NULL',
-            'watermarkloc' => "varchar(12) default 'lower-right'",
-            'use_attach' => "INT( 1 ) NOT NULL DEFAULT '0'",
-            'f2gpath' => 'varchar(255) NOT NULL',
-            'enabled' => "int(1) NOT NULL default '0'",
-            'allowsmilies' => "smallint(1) NOT NULL default '0'",
-            'allowbbcode' => "smallint(1) NOT NULL default '0'",
-            'allowhtml' => "smallint(1) NOT NULL default '0'",
-            'prunetime' => "varchar(10) NOT NULL default '0'",
-            'modnewedit' => "smallint(1) NOT NULL default '1'",
-            'othermaxlength' => "smallint(5) NOT NULL default '500'",
-            'allow_attachments' => "smallint(1) NOT NULL default '1'",
-            'allow_comments' => "smallint(1) NOT NULL default '1'",
-            'thumb_width' => "smallint(4) NOT NULL default '200'",
-            'thumb_height' => "smallint(4) NOT NULL default '200'",
-            'comment_length' => "smallint(5) NOT NULL default '200'",
-            'comment_dispinit' => "smallint(2) NOT NULL default '5'",
-            'disp_attachcols' => "smallint(2) NOT NULL default '0'",
-            'disp_empty' => "smallint(1) NOT NULL default '1'",
-            'link_in_postbit' => "smallint(1) NOT NULL default '0'",
-            'portal_random' => "smallint(1) NOT NULL default '0'",
-            'primary_key' => 'id',
-            'unique_key' => ['name' => 'name']
-        ],
-        'myshowcase_fieldsets' => [
-            'setid' => 'int(3) NOT NULL auto_increment',
-            'setname' => 'varchar(50) NOT NULL',
-            'primary_key' => 'setid',
-        ],
-        'myshowcase_permissions' => [
-            'pid' => 'INT( 10 ) NOT NULL AUTO_INCREMENT',
-            'id' => "INT( 10 ) NOT NULL DEFAULT  '0'",
-            'gid' => "INT( 10 ) NOT NULL DEFAULT  '0'",
-            'canview' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canadd' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canedit' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'cancomment' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canattach' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canviewcomment' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canviewattach' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'candelowncomment' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'candelauthcomment' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'cansearch' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'canwatermark' => "INT( 1 ) NOT NULL DEFAULT  '0'",
-            'attachlimit' => "INT( 4 ) NOT NULL DEFAULT  '0'",
-            'primary_key' => 'pid',
-        ],
-        'myshowcase_moderators' => [
-            'mid' => 'int(5) NOT NULL auto_increment',
-            'id' => 'int(5) NOT NULL',
-            'uid' => 'mediumint(10) NOT NULL',
-            'isgroup' => 'smallint(1) NOT NULL default 0',
-            'canmodapprove' => "int(1) NOT NULL default '0'",
-            'canmodedit' => "int(1) NOT NULL default '0'",
-            'canmoddelete' => "int(1) NOT NULL default '0'",
-            'canmoddelcomment' => "int(1) NOT NULL default '0'",
-            'primary_key' => 'mid',
-            'unique_key' => ['id' => 'id,uid']
-        ],
-        'myshowcase_reports' => [
-            'rid' => 'INT( 10 ) UNSIGNED NOT NULL AUTO_INCREMENT',
-            'id' => 'INT( 3 ) UNSIGNED NOT NULL',
-            'gid' => 'INT( 10 ) UNSIGNED NOT NULL',
-            'reporteruid' => 'INT( 10 ) UNSIGNED NOT NULL',
-            'authoruid' => 'INT( 10 ) UNSIGNED NOT NULL',
-            'status' => "INT( 1 ) UNSIGNED NOT NULL DEFAULT '0'",
-            'reason' => 'VARCHAR( 250 ) NOT NULL',
-            'dateline' => 'BIGINT( 30 ) NOT NULL',
-            'primary_key' => 'rid',
-        ],
-        'myshowcase_fields' => [
-            'setid' => 'int(3) NOT NULL',
-            'fid' => 'mediumint(9) NOT NULL auto_increment',
-            'name' => 'varchar(30) NOT NULL',
-            'html_type' => 'varchar(10) NOT NULL',
-            'enabled' => 'smallint(6) NOT NULL',
-            'field_type' => "varchar(10) NOT NULL default 'varchar'",
-            'min_length' => "smallint(6) NOT NULL default '0'",
-            'max_length' => "smallint(6) NOT NULL default '0'",
-            'require' => "tinyint(4) NOT NULL default '0'",
-            'parse' => "tinyint(4) NOT NULL default '0'",
-            'field_order' => 'tinyint(4) NOT NULL',
-            'list_table_order' => "smallint(6) NOT NULL default '-1'",
-            'searchable' => "smallint(1) NOT NULL default '0'",
-            'format' => "varchar(10) NOT NULL default 'no'",
-            'primary_key' => 'fid',
-            'unique_key' => ['id' => 'setid,fid']
-        ],
-        'myshowcase_field_data' => [
-            'setid' => 'smallint(3) NOT NULL',
-            'fid' => 'mediumint(5) NOT NULL',
-            'name' => 'varchar(15) NOT NULL',
-            'valueid' => "smallint(3) NOT NULL default '0'",
-            'value' => 'varchar(15) NOT NULL',
-            'disporder' => 'smallint(6) NOT NULL',
-            'primary_key' => 'setid',
-            'unique_key' => ['name' => 'name']
-        ],
-    ];
-}
-
-function dbColumns(): array
-{
-    return [
-    ];
-}
-
-function dbVerifyIndex(): bool
-{
-    global $db;
-
-    foreach (dbTables() as $table => $fields) {
-        if (!$db->table_exists($table)) {
-            continue;
-        }
-
-        if (isset($fields['unique_key'])) {
-            foreach ($fields['unique_key'] as $k => $v) {
-                if ($db->index_exists($table, $k)) {
-                    continue;
-                }
-
-                $db->write_query("ALTER TABLE {$db->table_prefix}{$table} ADD UNIQUE KEY {$k} ({$v})");
-            }
-        }
-    }
-
-    return true;
-}
-
-function dbVerifyTables(): bool
-{
-    global $db;
-
-    $collation = $db->build_create_table_collation();
-
-    foreach (dbTables() as $table => $fields) {
-        if ($db->table_exists($table)) {
-            foreach ($fields as $field => $definition) {
-                if ($field == 'primary_key' || $field == 'unique_key') {
-                    continue;
-                }
-
-                if ($db->field_exists($field, $table)) {
-                    $db->modify_column($table, "`{$field}`", $definition);
-                } else {
-                    $db->add_column($table, $field, $definition);
-                }
-            }
-        } else {
-            $query = "CREATE TABLE IF NOT EXISTS `{$db->table_prefix}{$table}` (";
-
-            $comma = '';
-
-            foreach ($fields as $field => $definition) {
-                if ($field == 'primary_key') {
-                    $query .= "{$comma}PRIMARY KEY (`{$definition}`)";
-                } elseif ($field != 'unique_key') {
-                    $query .= "{$comma}`{$field}` {$definition}";
-                }
-
-                $comma = ',';
-            }
-
-            $query .= ") ENGINE=MyISAM{$collation};";
-
-            $db->write_query($query);
-        }
-    }
-
-    dbVerifyIndex();
-
-    return true;
-}
-
-function dbVerifyColumns(): bool
-{
-    global $db;
-
-    foreach (dbColumns() as $tableName => $tableData) {
-        foreach ($tableData as $fieldName => $fieldDefinition) {
-            if ($db->field_exists($fieldName, $tableName)) {
-                $db->modify_column($tableName, "`{$fieldName}`", $fieldDefinition);
-            } else {
-                $db->add_column($tableName, $fieldName, $fieldDefinition);
-            }
-        }
-    }
-
-    return true;
-}
-
 function taskInstallation(int $action = 1): bool
 {
     global $db, $lang, $cache, $new_task;
@@ -545,4 +908,196 @@ function _deactivate_task(): bool
     $cache->update_tasks();
 
     return true;
+}
+
+function dbTables(array $tableObjects = TABLES_DATA): array
+{
+    $tablesData = [];
+
+    foreach ($tableObjects as $tableName => $tableColumns) {
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (!isset($fieldData['type'])) {
+                continue;
+            }
+
+            $tablesData[$tableName][$fieldName] = buildDbFieldDefinition($fieldData);
+        }
+
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (isset($fieldData['primary_key'])) {
+                $tablesData[$tableName]['primary_key'] = $fieldName;
+            }
+            if ($fieldName === 'unique_key') {
+                $tablesData[$tableName]['unique_key'] = $fieldData;
+            }
+        }
+    }
+
+    return $tablesData;
+}
+
+function dbVerifyTables(array $tableObjects = TABLES_DATA): bool
+{
+    global $db;
+
+    $collation = $db->build_create_table_collation();
+
+    $tablePrefix = $db->table_prefix;
+
+    foreach (dbTables($tableObjects) as $tableName => $tableData) {
+        if ($db->table_exists($tableName)) {
+            foreach ($tableData as $fieldName => $fieldData) {
+                if ($fieldName == 'primary_key' || $fieldName == 'unique_key') {
+                    continue;
+                }
+
+                if ($db->field_exists($fieldName, $tableName)) {
+                    $db->modify_column($tableName, "`{$fieldName}`", $fieldData);
+                } else {
+                    $db->add_column($tableName, $fieldName, $fieldData);
+                }
+            }
+        } else {
+            $query = "CREATE TABLE IF NOT EXISTS `{$tablePrefix}{$tableName}` (";
+
+            $fields = [];
+
+            foreach ($tableData as $fieldName => $fieldData) {
+                if ($fieldName === 'primary_key') {
+                    $fields[] = "PRIMARY KEY (`{$fieldData}`)";
+                } elseif ($fieldName !== 'unique_key') {
+                    $fields[] = "`{$fieldName}` {$fieldData}";
+                }
+            }
+
+            $query .= implode(',', $fields);
+
+            $query .= ") ENGINE=MyISAM{$collation};";
+
+            $db->write_query($query);
+        }
+    }
+
+    dbVerifyIndexes();
+
+    return true;
+}
+
+function dbVerifyIndexes(array $tableObjects = TABLES_DATA): bool
+{
+    global $db;
+
+    $tablePrefix = $db->table_prefix;
+
+    foreach (dbTables($tableObjects) as $tableName => $tableData) {
+        if (!$db->table_exists($tableName)) {
+            continue;
+        }
+
+        if (isset($tableData['unique_key'])) {
+            foreach ($tableData['unique_key'] as $keyName => $keyValue) {
+                if ($db->index_exists($tableName, $keyName)) {
+                    continue;
+                }
+
+                $db->write_query("ALTER TABLE {$tablePrefix}{$tableName} ADD UNIQUE KEY {$keyName} ({$keyValue})");
+            }
+        }
+    }
+
+    return true;
+}
+
+function dbVerifyColumns(array $fieldObjects = FIELDS_DATA): bool
+{
+    global $db;
+
+    foreach ($fieldObjects as $tableName => $tableColumns) {
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (!isset($fieldData['type'])) {
+                continue;
+            }
+
+            if ($db->field_exists($fieldName, $tableName)) {
+                $db->modify_column($tableName, "`{$fieldName}`", buildDbFieldDefinition($fieldData));
+            } else {
+                $db->add_column($tableName, $fieldName, buildDbFieldDefinition($fieldData));
+            }
+        }
+    }
+
+    return true;
+}
+
+function dbVerifyTablesExists(array $tableObjects = TABLES_DATA): bool
+{
+    global $db;
+
+    $isInstalledEach = true;
+
+    foreach (dbTables($tableObjects) as $tableName => $tableData) {
+        $isInstalledEach = $db->table_exists($tableName) && $isInstalledEach;
+    }
+
+    return $isInstalledEach;
+}
+
+function dbVerifyColumnsExists(array $fieldObjects = FIELDS_DATA): bool
+{
+    global $db;
+
+    $isInstalledEach = true;
+
+    foreach ($fieldObjects as $tableName => $tableColumns) {
+        if (!$db->table_exists($tableName)) {
+            $isInstalledEach = false;
+
+            continue;
+        }
+
+        foreach ($tableColumns as $fieldName => $fieldData) {
+            if (!isset($fieldData['type'])) {
+                continue;
+            }
+
+            $isInstalledEach = $db->field_exists($fieldName, $tableName) && $isInstalledEach;
+        }
+    }
+
+    return $isInstalledEach;
+}
+
+function buildDbFieldDefinition(array $fieldData): string
+{
+    $fieldDefinition = '';
+
+    $fieldDefinition .= $fieldData['type'];
+
+    if (isset($fieldData['size'])) {
+        $fieldDefinition .= "({$fieldData['size']})";
+    }
+
+    if (isset($fieldData['unsigned'])) {
+        if ($fieldData['unsigned'] === true) {
+            $fieldDefinition .= ' UNSIGNED';
+        } else {
+            $fieldDefinition .= ' SIGNED';
+        }
+    }
+
+    if (!isset($fieldData['null'])) {
+        $fieldDefinition .= ' NOT';
+    }
+
+    $fieldDefinition .= ' NULL';
+
+    if (isset($fieldData['auto_increment'])) {
+        $fieldDefinition .= ' AUTO_INCREMENT';
+    }
+
+    if (isset($fieldData['default'])) {
+        $fieldDefinition .= " DEFAULT '{$fieldData['default']}'";
+    }
+
+    return $fieldDefinition;
 }
