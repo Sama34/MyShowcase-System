@@ -15,10 +15,6 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
-use function MyShowcase\Core\getSetting;
-use function MyShowcase\Core\showcaseDataTableExists;
-use function MyShowcase\Core\showcasePermissions;
-
 class System
 {
 
@@ -462,7 +458,7 @@ class System
     /**
      * get ids from cookie inline moderation
      */
-    public function getids(int $id, string $type): array
+    public function getids(int|string $id, string $type): array
     {
         global $mybb;
         $cookie = 'inlinemod_' . $type . $id;
@@ -524,7 +520,7 @@ class System
     /**
      * clear cookie inline moderation
      */
-    public function clearinline(int $id, string $type): bool
+    public function clearinline(int|string $id, string $type): bool
     {
         my_unsetcookie('inlinemod_' . $type . $id);
 

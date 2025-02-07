@@ -15,7 +15,8 @@ declare(strict_types=1);
 
 use function MyShowcase\Core\getTemplatesList;
 
-define('IN_MYBB', 1);
+const IN_MYBB = 1;
+
 require_once '../../../global.php';
 
 global $mybb, $db;

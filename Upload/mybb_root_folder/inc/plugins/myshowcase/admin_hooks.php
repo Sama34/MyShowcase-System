@@ -19,50 +19,9 @@ use MyBB;
 
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
-use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\MyAlerts\getAvailableLocations;
-use function MyShowcase\MyAlerts\getInstalledLocations;
-use function MyShowcase\MyAlerts\installLocation;
-use function MyShowcase\MyAlerts\MyAlertsIsIntegrable;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-
-function admin_config_plugins_begin01(): bool
-{
-    global $mybb, $lang, $page, $db;
-
-    if ($mybb->get_input('action') != 'myshowcase') {
-        return false;
-    }
-
-    loadLanguage();
-
-    if ($mybb->request_method != 'post') {
-        $page->output_confirm_action(
-            'index.php?module=config-plugins&amp;action=myshowcase',
-            $lang->myshowcase_myalerts_confirm
-        );
-    }
-
-    if ($mybb->get_input('no') || !MyAlertsIsIntegrable()) {
-        admin_redirect('index.php?module=config-plugins');
-    }
-
-    $availableLocations = getAvailableLocations();
-
-    $installedLocations = getInstalledLocations();
-
-    foreach ($availableLocations as $availableLocation) {
-        installLocation($availableLocation);
-    }
-
-    flash_message($lang->myshowcase_myalerts_success, 'success');
-
-    admin_redirect('index.php?module=config-plugins');
-
-    return true;
-}
 
 function admin_config_plugins_deactivate(): bool
 {

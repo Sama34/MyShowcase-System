@@ -104,6 +104,10 @@ if($lang->myshowcase == '')
 
 global $lang, $mybb, $cache, $db, $plugins;
 
+$mybb->settings['myshowcase_file'] = THIS_SCRIPT;
+
+$mybb->input['gid'] = $mybb->get_input('gid', MyBB::INPUT_INT);
+
 $lang->nav_myshowcase = $lang->myshowcase = $showcase_proper = ucwords(strtolower($me->name));
 $showcase_lower = strtolower($me->name);
 
@@ -448,11 +452,7 @@ if ($mybb->get_input('showcasegid') && $mybb->get_input('posthash')) {
 }
 
 //get this showcase's field info
-$fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
-if (!is_array($fieldcache[$me->fieldsetid])) {
-    cacheUpdate(CACHE_TYPE_FIELDS);
-    $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
-}
+$fieldcache = cacheGet(CACHE_TYPE_FIELDS);
 
 //init dynamic field info
 $showcase_fields = [];
@@ -534,6 +534,8 @@ if (!$mybb->get_input('posthash')) {
 $form_page = $me->mainfile;
 
 //get FancyBox JS for header if viewing
+$myshowcase_js_header = '';
+
 if ($mybb->get_input('action') == 'view') {
     $myshowcase_js_header = eval(getTemplate('js_header'));
 }

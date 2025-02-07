@@ -17,8 +17,6 @@ namespace MyShowcase\Core;
 
 use DirectoryIterator;
 
-use function MyShowcase\Admin\pluginInformation;
-
 use const MyShowcase\ROOT;
 
 const VERSION = '3.0.0';
@@ -34,17 +32,17 @@ const UPLOAD_STATUS_FAILED = 2;
 
 const CACHE_TYPE_CONFIG = 'config';
 
-const CACHE_TYPE_PERMISSIONS = 'permissions';
+const CACHE_TYPE_FIELDS = 'fields';
 
 const CACHE_TYPE_FIELD_SETS = 'fieldsets';
 
-const CACHE_TYPE_FIELDS = 'fields';
-
-const CACHE_TYPE_FIELD_DATA = 'field_data';
-
 const CACHE_TYPE_MODERATORS = 'moderators';
 
+const CACHE_TYPE_PERMISSIONS = 'permissions';
+
 const CACHE_TYPE_REPORTS = 'reports';
+
+const CACHE_TYPE_FIELD_DATA = 'field_data'; // todo, add cache update method
 
 const MODERATOR_TYPE_USER = 0;
 

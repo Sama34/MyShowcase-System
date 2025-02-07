@@ -16,9 +16,7 @@ declare(strict_types=1);
 $l['myshowcase_admin_myshowcase'] = 'MyShowcase Admin';
 $l['myshowcase_admin_summary'] = 'Summary';
 $l['myshowcase_admin_create_new'] = 'Create New';
-$l['myshowcase_admin_edit_existing'] = 'Edit Showcase';
 $l['myshowcase_admin_fields'] = 'Field Settings';
-$l['myshowcase_admin_cache'] = 'Rebuild Cache';
 $l['myshowcase_admin_help'] = 'Help Page';
 $l['myshowcase_admin_show_seo'] = 'Show SEO';
 
@@ -46,9 +44,3 @@ $l['myshowcase_admin_moderators'] = 'Moderators';
 $l['myshowcase_cache_update_success'] = 'The cache was successfully updated.';
 
 $l['group_myshowcase'] = 'MyShowcase';
-
-/*$l[''] = "";
-$l[''] = "";
-$l[''] = "";
-$l[''] = "";
-*/

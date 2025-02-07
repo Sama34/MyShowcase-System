@@ -13,7 +13,6 @@
 
 declare(strict_types=1);
 
-// Disallow direct access to this file for security reasons
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 
@@ -36,7 +35,7 @@ class MyShowcaseDataHandler extends DataHandler
      *
      * @var string
      */
-    public $language_file = 'datahandler_myshowcase';
+    public string $language_file = 'datahandler_myshowcase';
 
     /**
      * The prefix for the language variables used in the data handler.
@@ -50,21 +49,21 @@ class MyShowcaseDataHandler extends DataHandler
      * new = New showcase entry
      * edit = Editing an entry
      */
-    public $action;
+    public string $action;
 
     /**
      * Array of data inserted in to a showcase.
      *
      * @var array
      */
-    public $myshowcase_insert_data = [];
+    public array $myshowcase_insert_data = [];
 
     /**
      * Array of data used to update a showcase.
      *
      * @var array
      */
-    public $myshowcase_update_data = [];
+    public array $myshowcase_update_data = [];
 
 
     /**

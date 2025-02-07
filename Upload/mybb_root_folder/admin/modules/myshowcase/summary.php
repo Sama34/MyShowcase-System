@@ -249,9 +249,12 @@ if ($mybb->get_input('action') === 'new') {
         admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
     }
 
-    $page->add_breadcrumb_item($lang->myshowcase_admin_edit_existing, 'index.php?module=myshowcase-edit');
+    $page->add_breadcrumb_item(
+        $lang->myShowcaseAdminSummaryEdit,
+        urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID])
+    );
 
-    $page->output_header($lang->myshowcase_admin_edit_existing);
+    $page->output_header($lang->myShowcaseAdminSummaryEdit);
 
     $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummaryEdit');
 

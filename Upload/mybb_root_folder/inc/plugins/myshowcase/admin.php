@@ -15,8 +15,6 @@ declare(strict_types=1);
 
 namespace MyShowcase\Admin;
 
-use DirectoryIterator;
-
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
@@ -24,7 +22,6 @@ use function MyShowcase\Core\showcaseDataTableExists;
 
 use const MyShowcase\Core\VERSION;
 use const MyShowcase\Core\VERSION_CODE;
-use const MyShowcase\ROOT;
 
 const TABLES_DATA = [
     'myshowcase_attachments' => [
@@ -655,7 +652,7 @@ function pluginInformation(): array
             'url' => 'https://community.mybb.com/mods.php?action=view&pid=573'
         ],
         'myalerts' => [
-            'version' => '2.0.4',
+            'version' => '2.1.0',
             'url' => 'https://community.mybb.com/thread-171301.html'
         ]
     ];

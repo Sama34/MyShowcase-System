@@ -13,7 +13,6 @@
 
 declare(strict_types=1);
 
-// Disallow direct access to this file for security reasons
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\urlHandlerBuild;
@@ -35,21 +34,13 @@ function myshowcase_meta(): bool
         'title' => $lang->myshowcase_admin_summary,
         'link' => 'index.php?module=myshowcase-summary'
     ];
+
     $sub_menu[$displayOrder += 10] = [
         'id' => 'fields',
         'title' => $lang->myshowcase_admin_fields,
         'link' => 'index.php?module=myshowcase-fields'
     ];
-    $sub_menu[$displayOrder += 10] = [
-        'id' => 'edit',
-        'title' => $lang->myshowcase_admin_edit_existing,
-        'link' => 'index.php?module=myshowcase-edit'
-    ];
-    $sub_menu[$displayOrder += 10] = [
-        'id' => 'cache',
-        'title' => $lang->myshowcase_admin_cache,
-        'link' => 'index.php?module=myshowcase-cache'
-    ];
+
     $sub_menu[$displayOrder += 10] = [
         'id' => 'help',
         'title' => $lang->myshowcase_admin_help,
@@ -91,7 +82,6 @@ function myshowcase_action_handler(string $action): string
         'summary' => ['active' => 'summary', 'file' => 'summary.php'],
         'new' => ['active' => 'new', 'file' => 'summary.php'],
         'fields' => ['active' => 'fields', 'file' => 'fields.php'],
-        'cache' => ['active' => 'cache', 'file' => 'cache.php'],
         'help' => ['active' => 'help', 'file' => 'help.php']
     ];
 

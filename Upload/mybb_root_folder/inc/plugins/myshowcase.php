@@ -20,7 +20,14 @@ use function MyShowcase\Admin\pluginInstallation;
 use function MyShowcase\Admin\pluginIsInstalled;
 use function MyShowcase\Admin\pluginUninstallation;
 use function MyShowcase\Core\addHooks;
+use function MyShowcase\Core\cacheUpdate;
 
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 use const MyShowcase\ROOT;
 
 defined('IN_MYBB') || die('This file cannot be accessed directly.');
@@ -31,7 +38,7 @@ define('MyShowcase\Core\SETTINGS', [
     'moderatorGroups' => '3,4',
 ]);
 
-define('MyShowcase\Core\DEBUG', false);
+define('MyShowcase\Core\DEBUG', true);
 
 define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
 
@@ -79,4 +86,46 @@ function myshowcase_is_installed(): bool
 function myshowcase_uninstall(): bool
 {
     return pluginUninstallation();
+}
+
+function update_myshowcase_config(): bool
+{
+    cacheUpdate(CACHE_TYPE_CONFIG);
+
+    return true;
+}
+
+function update_myshowcase_fields(): bool
+{
+    cacheUpdate(CACHE_TYPE_FIELDS);
+
+    return true;
+}
+
+function update_myshowcase_fieldsets(): bool
+{
+    cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+    return true;
+}
+
+function update_myshowcase_moderators(): bool
+{
+    cacheUpdate(CACHE_TYPE_MODERATORS);
+
+    return true;
+}
+
+function update_myshowcase_permissions(): bool
+{
+    cacheUpdate(CACHE_TYPE_PERMISSIONS);
+
+    return true;
+}
+
+function update_myshowcase_reports(): bool
+{
+    cacheUpdate(CACHE_TYPE_REPORTS);
+
+    return true;
 }

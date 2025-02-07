@@ -13,7 +13,6 @@
 
 declare(strict_types=1);
 
-// Disallow direct access to this file for security reasons
 use function MyShowcase\Core\getTemplatesList;
 
 if (!defined('IN_MYBB')) {
