@@ -30,7 +30,6 @@ $l['myshowcase_fields_assigned_to'] = 'Assigned To';
 
 //editing
 $l['myshowcase_fields_save_changes'] = 'Save Changes';
-$l['myshowcase_fields_in_use'] = 'Can not perform that action, specified field set is being used by a showcase.';
 
 //messages
 $l['myshowcase_fields_invalid_name'] = 'The selected field set name is already in use.';
@@ -50,10 +49,9 @@ $l['myshowcase_fields_delete_failed'] = 'The field set was not deleted.';
 $l['myshowcase_fields_confirm'] = 'Confirm';
 $l['myshowcase_fields_confirm_delete'] = 'Confirm Delete';
 
-$l['myshowcase_fields_confirm_delete_long'] = "You are about to delete a fieldset titled '{1}'";
 $l['myshowcase_fields_no_fields'] = 'The specified field set has no fields.';
 
-$l['myshowcase_fields_lang_not_writable'] = 'The language folder, {1},  is not writable. Please corect and try again.';
+$l['myshowcase_fields_lang_not_writable'] = 'The language folder, "{1}",  is not writable. Please corect and try again.';
 $l['myshowcase_fields_lang_exists_no'] = 'The default language file for this fieldset does not exist.';
 $l['myshowcase_fields_lang_exists_yes'] = 'The default language file for this fieldset exists.';
 $l['myshowcase_fields_lang_exists_write'] = 'The default language file for this fieldset exists but is not writable.';
@@ -76,14 +74,14 @@ $l['myshowcase_field_name'] = 'Field Name';
 $l['myshowcase_field_label'] = 'Field Label';
 $l['myshowcase_field_html_type'] = 'HTML Type';
 $l['myshowcase_field_field_type'] = 'Field Type';
-$l['myshowcase_field_enabled'] = 'Is Enabled?';
-$l['myshowcase_field_min_length'] = 'Min Field Data Length';
-$l['myshowcase_field_max_length'] = 'Max Field Data Length';
-$l['myshowcase_field_required'] = 'Is Required?';
-$l['myshowcase_field_field_order'] = 'Field Order<br>(View)';
-$l['myshowcase_field_list_table_order'] = 'Field Order<br>(List)';
-$l['myshowcase_field_searchable'] = 'Is Searchable?';
-$l['myshowcase_field_parse'] = 'Run Through Parser?';
+$l['myshowcase_field_enabled'] = 'Enabled';
+$l['myshowcase_field_min_length'] = 'Minimum Length';
+$l['myshowcase_field_max_length'] = 'Maximum Length';
+$l['myshowcase_field_required'] = 'Required';
+$l['myshowcase_field_field_order'] = 'View Order';
+$l['myshowcase_field_list_table_order'] = 'List Order';
+$l['myshowcase_field_searchable'] = 'Searchable';
+$l['myshowcase_field_parse'] = 'Parse';
 $l['myshowcase_field_format'] = 'Format?';
 
 $l['myshowcase_field_delete'] = 'Delete';
@@ -97,7 +95,6 @@ $l['myshowcase_field_required_not_filled'] = 'The required fields are not popula
 
 $l['myshowcase_field_add_success'] = 'The field was successfully added.';
 $l['myshowcase_field_edit_success'] = 'The field was successfully edited.';
-$l['myshowcase_field_delete_success'] = 'The field was successfully deleted.';
 $l['myshowcase_field_update_success'] = 'The field was successfully updated or added.';
 
 $l['myshowcase_field_add_opt_success'] = 'The field option was successfully added.';
@@ -109,11 +106,69 @@ $l['myshowcase_field_update_opt_success'] = 'The field option was successfully u
 $l['myshowcase_field_confirm'] = 'Confirm';
 $l['myshowcase_field_confirm_delete'] = 'Confirm Delete';
 
-$l['myshowcase_field_confirm_delete_long'] = "You are about to delete a field titled '{1}'";
+$l['myshowcase_field_confirm_delete_long'] = 'You are about to delete a field titled "{1}"';
 $l['myshowcase_field_no_options'] = 'The specified field has no options.';
 $l['myshowcase_field_new_option'] = 'New Field Option';
 
-$l['myshowcase_field_option_text'] = 'Option text';
+$l['myshowcase_field_option_text'] = 'Option Value';
 $l['myshowcase_field_invalid_opt'] = 'The selected field option is invalid.';
 
 $l['myshowcase_field_year_order'] = 'For the DATE field the MIN and MAX values need to be in the proper order.';
+
+$l = array_merge([
+    'myShowcaseAdminFieldSets' => 'Field Sets',
+    'myShowcaseAdminFieldSetsDescription' => 'View and manage fields sets for showcases.',
+
+    'myShowcaseAdminFieldSetsNew' => 'New Field Set',
+    'myShowcaseAdminFieldSetsNewDescription' => 'Create a new field set for showcases.',
+    'myShowcaseAdminFieldSetsNewFormName' => 'Name',
+    'myShowcaseAdminFieldSetsNewFormNameDescription' => 'The name of the field set.',
+
+    'myShowcaseAdminFieldSetsEdit' => 'Edit Field Set',
+    'myShowcaseAdminFieldSetsEditDescription' => 'Edit a field set for showcases.',
+
+    'myShowcaseAdminFields' => 'Fields',
+    'myShowcaseAdminFieldsDescription' => 'View and manage fields for showcases.',
+
+    'myShowcaseAdminFieldsNew' => 'New Field',
+    'myShowcaseAdminFieldsNewDescription' => 'Create a new field for this fieldset.',
+    'myShowcaseAdminFieldsNewFormName' => 'Name',
+    'myShowcaseAdminFieldsNewFormNameDescription' => 'The name of the field.',
+    'myShowcaseAdminFieldsNewFormLabel' => 'Label',
+    'myShowcaseAdminFieldsNewFormLabelDescription' => 'The label of the field.',
+    'myShowcaseAdminFieldsNewFormHtmlType' => 'HTML Type',
+    'myShowcaseAdminFieldsNewFormHtmlTypeDescription' => 'The HTML type of the field.',
+    'myShowcaseAdminFieldsNewFormFieldType' => 'Field Type',
+    'myShowcaseAdminFieldsNewFormFieldTypeDescription' => 'The type of the field.',
+    'myShowcaseAdminFieldsNewFormMinimumLength' => 'Minimum Length',
+    'myShowcaseAdminFieldsNewFormMinimumLengthDescription' => 'The minimum length of the field.',
+    'myShowcaseAdminFieldsNewFormMaximumLength' => 'Maximum Length',
+    'myShowcaseAdminFieldsNewFormMaximumLengthDescription' => 'The maximum length of the field.',
+    'myShowcaseAdminFieldsNewFormOrderList' => 'List Order',
+    'myShowcaseAdminFieldsNewFormOrderListDescription' => 'The order of the field in the list.',
+    'myShowcaseAdminFieldsNewFormFormat' => 'Format',
+    'myShowcaseAdminFieldsNewFormFormatDescription' => 'The format of the field.',
+
+    'myShowcaseAdminFieldsEdit' => 'Edit Field',
+    'myShowcaseAdminFieldsEditDescription' => 'Edit a field for this fieldset.',
+
+    'myShowcaseAdminFieldsOptions' => 'Field Options',
+    'myShowcaseAdminFieldsOptionsDescription' => 'View and manage field options for this field.',
+
+    'myShowcaseAdminErrorInvalidFieldset' => 'Invalid fieldset',
+    'myShowcaseAdminErrorDuplicatedName' => 'The selected name is already in use.',
+    'myShowcaseAdminErrorFieldsetDeleteFailed' => 'Can not perform that action, specified field set is being used by a showcase.',
+    'myShowcaseAdminErrorFieldsetDelete' => 'The fieldset was not deleted.',
+    'myShowcaseAdminErrorInvalidField' => 'Invalid field',
+    'myShowcaseAdminErrorFieldDelete' => 'The field deletion failed.',
+
+    'myShowcaseAdminSuccessNewFieldset' => 'The fieldset was successfully added.',
+    'myShowcaseAdminSuccessEditFieldset' => 'The fieldset was successfully updated.',
+    'myShowcaseAdminSuccessFieldsetDeleted' => 'The fieldset was successfully deleted.',
+    'myShowcaseAdminSuccessNewField' => 'The field was successfully added.',
+    'myShowcaseAdminSuccessEditField' => 'The field was successfully updated.',
+    'myShowcaseAdminSuccessFieldDeleted' => 'The field was successfully deleted.',
+
+    'myShowcaseAdminConfirmFieldsetDelete' => 'Are you sure you want to delete the "{1}" fieldset? ',
+    'myShowcaseAdminConfirmFieldDelete' => 'Are you sure you want to delete the "{1}" field?',
+], $l);

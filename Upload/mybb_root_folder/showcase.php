@@ -116,6 +116,18 @@ if (!$me->enabled) {
     error($lang->myshowcase_disabled);
 }
 
+$mybb->input['sortby'] = $mybb->get_input('sortby');
+
+$mybb->input['order'] = $mybb->get_input('order');
+
+$mybb->input['page'] = $mybb->get_input('page', MyBB::INPUT_INT);
+
+$mybb->input['search'] = $mybb->get_input('search');
+
+$mybb->input['searchterm'] = $mybb->get_input('searchterm');
+
+$mybb->input['exactmatch'] = $mybb->get_input('exactmatch');
+
 // Check if the active user is a moderator and get the inline moderation tools.
 $mybb->input['unapproved'] = $mybb->get_input('unapproved', MyBB::INPUT_INT);
 if ($me->userperms['canmodapprove']) {
@@ -125,6 +137,9 @@ if ($me->userperms['canmodapprove']) {
     }
     $inlinecount = 0;
     $showcase_inlinemod_col = eval(getTemplate('inlinemod_col'));
+
+    $customthreadtools = '';
+
     $showcase_inlinemod = eval(getTemplate('inlinemod'));
 } else {
     $ismod = false;
@@ -288,7 +303,7 @@ if ($forumdir != '' && $forumdir != '.') {
     $URLStart = $mybb->settings['homeurl'] . '/';
 }
 
-if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
+if ($me->seo_support) {
     $showcase_name = strtolower($me->name);
     define('SHOWCASE_URL', $URLStart . $me->clean_name . '.html');
     define('SHOWCASE_URL_PAGED', $URLStart . $me->clean_name . '-page-{page}.html');
@@ -350,7 +365,7 @@ if (!$mybb->get_input(
                     'action'
                 ) == 'do_editshowcase') && $mybb->get_input(
                 'submit'
-            ) && $_FILES['attachment'])) && $mybb->request_method == 'post') {
+            ) && isset($_FILES['attachment']))) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
     $can_add_attachments = $me->userperms['canattach'];
@@ -651,7 +666,7 @@ switch ($mybb->get_input('action')) {
         $matchchecked = ($mybb->get_input('exactmatch') == 'on' ? 'checked' : '');
         $orderarrow[$mybb->get_input('sortby')] = eval(getTemplate('orderarrow'));
 
-        if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
+        if ($me->seo_support) {
             $amp = '?';
         } else {
             $amp = '&amp;';
@@ -1050,7 +1065,7 @@ switch ($mybb->get_input('action')) {
         //set up jump to links
         $jumpto = $lang->myshowcase_jumpto;
 
-        $item_viewcode = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
+        $item_viewcode = str_replace('{gid}', (string)$mybb->get_input('gid'), SHOWCASE_URL_VIEW);
         if ($me->allow_attachments && $me->userperms['canviewattach']) {
             $jumpto .= ' <a href="' . $item_viewcode . ($mybb->get_input(
                     'showall',

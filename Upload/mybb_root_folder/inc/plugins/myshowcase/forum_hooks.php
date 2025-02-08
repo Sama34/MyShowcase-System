@@ -404,8 +404,7 @@ function showthread_start(): bool
             $uids[$result['uid']] = 0;
         }
         $uidlist = implode(',', array_keys($uids));
-        unset($query);
-        unset($result);
+        unset($query, $result);
 
         //get myshowcase counts for users in thread
         if (count($uids)) {
@@ -418,8 +417,7 @@ function showthread_start(): bool
                 }
             }
         }
-        unset($query);
-        unset($result);
+        unset($query, $result);
     }
 
     return true;

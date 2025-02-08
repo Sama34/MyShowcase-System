@@ -13,9 +13,31 @@
 
 declare(strict_types=1);
 
+use function MyShowcase\Admin\languageModify;
+use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\fieldDataDelete;
+use function MyShowcase\Core\fieldDataExists;
+use function MyShowcase\Core\fieldDataGet;
+use function MyShowcase\Core\fieldDataInsert;
+use function MyShowcase\Core\fieldDataUpdate;
+use function MyShowcase\Core\fieldsDelete;
+use function MyShowcase\Core\fieldsetDelete;
+use function MyShowcase\Core\fieldsetGet;
+use function MyShowcase\Core\fieldsetInsert;
+use function MyShowcase\Core\fieldsetUpdate;
+use function MyShowcase\Core\fieldsGet;
+use function MyShowcase\Core\fieldsInsert;
+use function MyShowcase\Core\fieldsUpdate;
+use function MyShowcase\Core\hooksRun;
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\showcaseDataTableFieldExists;
+use function MyShowcase\Core\showcaseGet;
+use function MyShowcase\Core\urlHandlerBuild;
+use function MyShowcase\Core\urlHandlerSet;
 
+use const MyShowcase\Admin\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -28,1574 +50,1432 @@ if (!defined('IN_MYBB')) {
 global $lang, $cache, $db, $plugins, $mybb;
 global $page;
 
-$page->add_breadcrumb_item($lang->myshowcase_admin_fields, 'index.php?module=myshowcase-fields');
+loadLanguage();
 
-//make sure plugin is installed and active
-$plugin_cache = $cache->read('plugins');
-if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $plugin_cache['active'])) {
-    flash_message($lang->myshowcase_plugin_not_installed, 'error');
-    admin_redirect('index.php?module=config-plugins');
-}
+urlHandlerSet('index.php?module=myshowcase-fields');
 
-$html_type_options['textbox'] = 'textbox';
-$html_type_options['textarea'] = 'textarea';
-$html_type_options['db'] = 'db';
-$html_type_options['radio'] = 'radio';
-$html_type_options['checkbox'] = 'checkbox';
-$html_type_options['url'] = 'url';
-$html_type_options['date'] = 'date';
+$page->add_breadcrumb_item($lang->myShowcaseSystem, urlHandlerBuild());
 
-$field_type_options['varchar'] = 'varchar';
-$field_type_options['int'] = 'int';
-$field_type_options['bigint'] = 'bigint';
-$field_type_options['text'] = 'text';
-$field_type_options['timestamp'] = 'timestamp';
-
-$field_format_options['no'] = 'None';
-$field_format_options['decimal0'] = '#,###';
-$field_format_options['decimal1'] = '#,###.#';
-$field_format_options['decimal2'] = '#,###.##';
-
+$page->add_breadcrumb_item($lang->myShowcaseAdminFieldSets, urlHandlerBuild());
 
 //get path to non-admin language folder currently in use
-$langpath = str_replace('admin', '', $lang->path . '/' . $lang->language);
+$languagePath = str_replace('admin', '', $lang->path . '/' . $lang->language);
 
-$plugins->run_hooks('admin_myshowcase_fields_begin');
+$fieldID = $mybb->get_input('fid', MyBB::INPUT_INT);
 
-//new field set
-if ($mybb->get_input('action') == 'new') {
-    $page->add_breadcrumb_item($lang->myshowcase_admin_create_new, 'index.php?module=myshowcase-fields');
-    $page->output_header($lang->myshowcase_admin_fields);
+$fieldsetID = $mybb->get_input('setid', MyBB::INPUT_INT);
 
-    if ($mybb->request_method == 'post') {
-        $plugins->run_hooks('admin_myshowcase_fields_insert_begin');
+$fieldOptionValue = $mybb->get_input('valueid', MyBB::INPUT_INT);
 
-        //update any existing names
-        foreach ($mybb->get_input('setname', MyBB::INPUT_ARRAY) as $setid => $setname) {
-            $update_array = [
-                'setname' => $db->escape_string($setname),
+$pageAction = $mybb->get_input('action');
+
+$pageTabs = [
+    'myShowcaseAdminFieldSets' => [
+        'title' => $lang->myShowcaseAdminFieldSets,
+        'link' => urlHandlerBuild(),
+        'description' => $lang->myShowcaseAdminFieldSetsDescription
+    ],
+];
+
+if (in_array($pageAction, ['viewFields', 'newField', 'editField', 'editOption'])) {
+    $pageTabs['myShowcaseAdminFields'] = [
+        'title' => $lang->myShowcaseAdminFields,
+        'link' => urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+        'description' => $lang->myShowcaseAdminFieldsDescription
+    ];
+
+    if (in_array($pageAction, ['editOption'])) {
+        $pageTabs['myShowcaseAdminFieldsOptions'] = [
+            'title' => $lang->myShowcaseAdminFieldsOptions,
+            'link' => urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            'description' => $lang->myShowcaseAdminFieldsOptionsDescription
+        ];
+    } else {
+        $pageTabs['myShowcaseAdminFieldsNew'] = [
+            'title' => $lang->myShowcaseAdminFieldsNew,
+            'link' => urlHandlerBuild(['action' => 'newField', 'setid' => $fieldsetID]),
+            'description' => $lang->myShowcaseAdminFieldsNewDescription
+        ];
+
+        if ($pageAction == 'editField') {
+            $pageTabs['myShowcaseAdminFieldsEdit'] = [
+                'title' => $lang->myShowcaseAdminFieldsEdit,
+                'link' => urlHandlerBuild(['action' => 'editField', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+                'description' => $lang->myShowcaseAdminFieldsEditDescription
             ];
-            $db->update_query('myshowcase_fieldsets', $update_array, "setid='{$setid}'");
-
-            if ($db->affected_rows()) {
-                $log = ['setid' => $setid, 'setname' => $setname];
-                log_admin_action($log);
-            }
         }
-
-        //add new set
-        if (!empty($mybb->get_input('newname'))) {
-            //check if language folder is writable so we can create a new language file for this fieldset
-            if (!is_writable($langpath)) {
-                flash_message(
-                    $lang->sprintf(
-                        $lang->myshowcase_fields_lang_not_writable,
-                        $lang->path . '/' . $lang->language . '/'
-                    ),
-                    'error'
-                );
-                admin_redirect('index.php?module=myshowcase-fields');
-            }
-
-            $newname = $db->escape_string($mybb->get_input('newname'));
-            $query = $db->simple_select('myshowcase_fieldsets', '*', "setname='{$newname}'");
-            if ($db->num_rows($query) != 0) {
-                flash_message($lang->myshowcase_fields_already_exists, 'error');
-                admin_redirect('index.php?module=myshowcase-fields');
-            }
-
-            $insert_array = [
-                'setname' => $db->escape_string($mybb->get_input('newname')),
-            ];
-            $db->insert_query('myshowcase_fieldsets', $insert_array);
-            $id = $db->insert_id();
-
-            //generate filename for this new fieldset
-            $file = 'myshowcase_fs' . $id . '.lang.php';
-
-            // Log admin action
-            $log = ['id' => $id, 'myshowcase' => $mybb->get_input('newname')];
-            log_admin_action($log);
-
-            // Reset new myshowcase info
-            unset($mybb->input['newname']);
-        }
-
-        cacheUpdate(CACHE_TYPE_CONFIG);
-        cacheUpdate(CACHE_TYPE_FIELDS);
-        cacheUpdate(CACHE_TYPE_FIELD_DATA);
-        cacheUpdate(CACHE_TYPE_FIELD_SETS);
     }
+} else {
+    $pageTabs['myShowcaseAdminFieldSetsNew'] = [
+        'title' => $lang->myShowcaseAdminFieldSetsNew,
+        'link' => urlHandlerBuild(['action' => 'new']),
+        'description' => $lang->myShowcaseAdminFieldSetsNewDescription
+    ];
 
-    $plugins->run_hooks('admin_myshowcase_fields_insert_end');
-
-    flash_message($lang->myshowcase_fields_update_success, 'success');
-    admin_redirect('index.php?module=myshowcase-fields');
+    if ($pageAction == 'edit') {
+        $pageTabs['myShowcaseAdminFieldSetsEdit'] = [
+            'title' => $lang->myShowcaseAdminFieldSetsEdit,
+            'link' => urlHandlerBuild(['action' => 'edit', 'setid' => $fieldsetID]),
+            'description' => $lang->myShowcaseAdminFieldSetsEditDescription
+        ];
+    }
 }
 
-//edit fields in a field set
-if ($mybb->get_input('action') == 'editset') {
-    if ($mybb->get_input('setid', MyBB::INPUT_INT)) {
-        //check if set is in use, if so, limit edit ability
-        $can_edit = true;
-        $query = $db->simple_select(
-            'myshowcase_config',
-            '*',
-            'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
-        if ($db->num_rows($query) != 0 && showcaseDataTableExists((int)$result['id'])) {
-            $can_edit = false;
+if (in_array($pageAction, ['newField', 'editField'])) {
+    $newPage = $pageAction === 'newField';
+
+    hooksRun('admin_field_new_edit_start');
+
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (!$newPage && empty($fieldsetData)) {
+        flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
+
+        admin_redirect($pageTabs['myShowcaseAdminFieldSets']['link']);
+    }
+
+    $queryFields = TABLES_DATA['myshowcase_fields'];
+
+    unset($queryFields['unique_key']);
+
+    $fieldData = fieldsGet(["fid='{$fieldID}'"], array_keys($queryFields), ['limit' => 1]);
+
+    if (!$newPage && empty($fieldData)) {
+        flash_message($lang->myShowcaseAdminErrorInvalidField, 'error');
+
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+    }
+
+    $fieldIsEditable = true;
+
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+
+    if ($showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['id'])) {
+        $fieldIsEditable = false;
+    }
+
+    $page->output_header($pageTabs[$newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit']['title']);
+
+    $page->output_nav_tabs($pageTabs, $newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit');
+
+    $canEditLanguageFile = true;
+
+    if (!is_writable($languagePath) || (!is_writable(
+                $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php'
+            ) && file_exists(
+                $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php'
+            ))) {
+        $canEditLanguageFile = false;
+    }
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect(urlHandlerBuild());
         }
 
-        //get lang file status
-        $can_edit_lang = true;
-        if (!is_writable($langpath) || (!is_writable(
-                    $langpath . '/myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT) . '.lang.php'
-                ) && file_exists(
-                    $langpath . '/myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT) . '.lang.php'
-                ))) {
-            $can_edit_lang = false;
+        $errorMessages = [];
+
+        $mybb->input['name'] = trim(
+            my_strtolower(
+                preg_replace(
+                    '#[^\w]#',
+                    '_',
+                    $mybb->get_input('name')
+                )
+            ),
+            '_'
+        );
+
+        if ($fieldIsEditable && !$mybb->get_input('name')) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
-        //check if set exists
-        $query = $db->simple_select(
-            'myshowcase_fieldsets',
-            '*',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
-
-        if ($db->num_rows($query) == 0) {
-            flash_message($lang->myshowcase_fields_invalid_id, 'error');
-            admin_redirect('index.php?module=myshowcase-fields');
+        if ($mybb->get_input('min_length', MyBB::INPUT_INT) >
+            $mybb->get_input('max_length', MyBB::INPUT_INT)) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorInvalidMinMax;
         }
 
-        $page->add_breadcrumb_item(
-            $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $result['setname']),
-            'index.php?module=myshowcase-fields'
-        );
-        $page->output_header($lang->myshowcase_admin_fields);
+        $existingFields = cacheGet(CACHE_TYPE_FIELDS)[$fieldsetID] ?? [];
 
-        $plugins->run_hooks('admin_myshowcase_fields_editset_begin');
+        if ($fieldIsEditable && in_array($mybb->get_input('name'), array_column($existingFields, 'name')) && (function (
+                string $fieldName
+            ) use ($fieldsetID, $existingFields): bool {
+                $duplicatedName = false;
 
-        //user clicked Save button
-        if ($mybb->request_method == 'post') {
-            //apply changes to existing fields first
-            $query = $db->simple_select(
-                'myshowcase_fields',
-                '*',
-                'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-            );
-            while ($result = $db->fetch_array($query)) {
-                if ($can_edit) {
-                    //make field name valid and remove any starting/ending underscores after replacement
-                    $newname = $db->escape_string($mybb->get_input('name', MyBB::INPUT_ARRAY)[$result['fid']]);
-                    $newname = preg_replace('#[^\w]#', '_', $newname);
-                    $origname = '';
-                    while ($origname != $newname) {
-                        $newname = trim($newname, '_');
-                        $origname = $newname;
+                foreach ($existingFields as $fieldData) {
+                    if ($fieldData['name'] === $fieldName && $fieldData['setid'] !== $fieldsetID) {
+                        $duplicatedName = true;
                     }
-
-                    $update_array = [
-                        'name' => strtolower($newname),
-                        'field_order' => $db->escape_string(
-                            $mybb->get_input('field_order', MyBB::INPUT_ARRAY)[$result['fid']]
-                        ),
-                        'list_table_order' => $db->escape_string(
-                            $mybb->get_input('list_table_order', MyBB::INPUT_ARRAY)[$result['fid']]
-                        ),
-                        'enabled' => (isset($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'requiredField' => (isset(
-                            $mybb->get_input(
-                                'requiredField',
-                                MyBB::INPUT_ARRAY
-                            )[$result['fid']]
-                        ) ? 1 : 0),
-                        'parse' => (isset($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'searchable' => (isset(
-                            $mybb->get_input(
-                                'searchable',
-                                MyBB::INPUT_ARRAY
-                            )[$result['fid']]
-                        ) ? 1 : 0),
-                        'format' => $mybb->get_input('format', MyBB::INPUT_ARRAY)[$result['fid']]
-                    ];
-                } else {
-                    $update_array = [
-                        'field_order' => $db->escape_string(
-                            $mybb->get_input('field_order', MyBB::INPUT_ARRAY)[$result['fid']]
-                        ),
-                        'list_table_order' => $db->escape_string(
-                            $mybb->get_input('list_table_order', MyBB::INPUT_ARRAY)[$result['fid']]
-                        ),
-                        'enabled' => (isset($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'requiredField' => (isset(
-                            $mybb->get_input(
-                                'requiredField',
-                                MyBB::INPUT_ARRAY
-                            )[$result['fid']]
-                        ) ? 1 : 0),
-                        'parse' => (isset($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$result['fid']]) ? 1 : 0),
-                        'searchable' => (isset(
-                            $mybb->get_input(
-                                'searchable',
-                                MyBB::INPUT_ARRAY
-                            )[$result['fid']]
-                        ) ? 1 : 0),
-                        'format' => $mybb->get_input('format', MyBB::INPUT_ARRAY)[$result['fid']]
-                    ];
                 }
-                $update_query = $db->update_query(
-                    'myshowcase_fields',
-                    $update_array,
-                    'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $result['fid']
+
+                return $duplicatedName;
+            })(
+                $mybb->get_input('name')
+            )) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
+        }
+
+        $fieldDefaultOption = 0;
+
+        switch ($mybb->get_input('html_type')) {
+            case 'db':
+                $mybb->input['field_type'] = 'int';
+
+                $mybb->input['max_length'] = 3;
+
+                $fieldDefaultOption = 1;
+                break;
+            case 'radio':
+                $mybb->input['field_type'] = 'int';
+
+                $mybb->input['max_length'] = 1;
+
+                $fieldDefaultOption = 1;
+                break;
+            case 'checkbox':
+                $mybb->input['field_type'] = 'int';
+
+                $mybb->input['max_length'] = 1;
+                break;
+            case 'date':
+                $mybb->input['field_type'] = 'varchar';
+
+                $mybb->input['min_length'] = max(
+                    $mybb->get_input('min_length', MyBB::INPUT_INT),
+                    1901
                 );
 
-                if ($can_edit && ($mybb->get_input(
-                            'html_type',
-                            MyBB::INPUT_ARRAY
-                        )[$result['fid']] == 'db' || $mybb->get_input(
-                            'html_type',
-                            MyBB::INPUT_ARRAY
-                        )[$result['fid']] == 'radio')) {
-                    $update_array = [
-                        'name' => $db->escape_string($mybb->get_input('name', MyBB::INPUT_ARRAY)[$result['fid']])
-                    ];
-                    $update_query = $db->update_query(
-                        'myshowcase_field_data',
-                        $update_array,
-                        'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $result['fid']
+                $mybb->input['max_length'] = min(
+                    $mybb->get_input('max_length', MyBB::INPUT_INT),
+                    2038
+                );
+
+                break;
+            case 'url':
+                $mybb->input['field_type'] = 'varchar';
+
+                $mybb->input['max_length'] = 255;
+                break;
+        }
+
+        $fieldData = [
+            'setid' => $fieldsetID,
+            'min_length' => $mybb->get_input('min_length', MyBB::INPUT_INT),
+            'max_length' => $mybb->get_input('max_length', MyBB::INPUT_INT),
+            'list_table_order' => $mybb->get_input('list_table_order', MyBB::INPUT_INT),
+            'format' => $mybb->get_input('format'),
+        ];
+
+        if ($fieldIsEditable) {
+            $fieldData['name'] = $db->escape_string($mybb->get_input('name'));
+
+            $fieldData['html_type'] = $db->escape_string($mybb->get_input('html_type'));
+
+            $fieldData['field_type'] = $db->escape_string($mybb->get_input('field_type'));
+        }
+
+        if ($errorMessages) {
+            $page->output_inline_error($errorMessages);
+        } else {
+            $fieldData = hooksRun('admin_field_new_edit_post', $fieldData);
+
+            if ($newPage) {
+                $fieldID = fieldsInsert($fieldData);
+            } else {
+                fieldsUpdate(["fid='{$fieldID}'"], $fieldData);
+
+                if ($fieldIsEditable &&
+                    isset($fieldData['name']) &&
+                    in_array($fieldData['html_type'], ['db', 'radio'])) {
+                    fieldDataUpdate(
+                        ["fid='{$fieldID}'", "setid='{$fieldsetID}'"],
+                        ['name' => $fieldData['name']]
                     );
                 }
             }
 
-            //apply new field
-            $do_new_field = 0;
-            if ($mybb->get_input('newname') != '' && $mybb->get_input(
-                    'newmax_length',
-                    MyBB::INPUT_INT
-                ) != '' && is_numeric(
-                    $mybb->get_input('newmax_length', MyBB::INPUT_INT)
-                ) && $mybb->get_input('newfield_order', MyBB::INPUT_INT) != '' && is_numeric(
-                    $mybb->get_input('newfield_order', MyBB::INPUT_INT)
-                ) && $mybb->get_input('newlist_table_order', MyBB::INPUT_INT) != '' && is_numeric(
-                    $mybb->get_input('newlist_table_order', MyBB::INPUT_INT)
-                )) {
-                //set default field type/size for certain html types overwritting user entries
-                $do_default_option_insert = 0;
-                switch ($mybb->get_input('newhtml_type')) {
-                    case 'db':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 3;
-                        $do_default_option_insert = 1;
-                        break;
+            $fieldOptionID = 0;
 
-                    case 'radio':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 1;
-                        $do_default_option_insert = 1;
-                        break;
-
-                    case 'checkbox':
-                        $mybb->input['newfield_type'] = 'int';
-                        $mybb->input['newmax_length'] = 1;
-                        break;
-
-                    case 'date':
-                        $mybb->input['newfield_type'] = 'varchar';
-                        $mybb->input['newmin_length'] = max(
-                            intval($mybb->get_input('newmin_length', MyBB::INPUT_INT)),
-                            1901
-                        );
-                        $mybb->input['newmax_length'] = min(
-                            intval($mybb->get_input('newmax_length', MyBB::INPUT_INT)),
-                            2038
-                        );
-
-                        if ($mybb->get_input('newmin_length', MyBB::INPUT_INT) > $mybb->get_input(
-                                'newmax_length',
-                                MyBB::INPUT_INT
-                            )) {
-                            flash_message($lang->myshowcase_field_year_order, 'error');
-                            admin_redirect(
-                                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                                    'setid',
-                                    MyBB::INPUT_INT
-                                )
-                            );
-                        }
-
-                        break;
-
-                    case 'url':
-                        $mybb->input['newfield_type'] = 'varchar';
-                        $mybb->input['newmax_length'] = 255;
-                        break;
-                }
-
-                //make field name valid and remove any starting/ending underscores after replacement
-                $newname = $db->escape_string($mybb->get_input('newname'));
-                $newname = preg_replace('#[^\w]#', '_', $newname);
-                $origname = '';
-                while ($origname != $newname) {
-                    $newname = trim($newname, '_');
-                    $origname = $newname;
-                }
-
-                $insert_array = [
-                    'setid' => $mybb->get_input('setid', MyBB::INPUT_INT),
-                    'name' => strtolower($newname),
-                    'html_type' => $mybb->get_input('newhtml_type'),
-                    'field_type' => $mybb->get_input('newfield_type'),
-                    'min_length' => intval($mybb->get_input('newmin_length', MyBB::INPUT_INT)),
-                    'max_length' => intval($mybb->get_input('newmax_length', MyBB::INPUT_INT)),
-                    'field_order' => intval($mybb->get_input('newfield_order', MyBB::INPUT_INT)),
-                    'list_table_order' => intval($mybb->get_input('newlist_table_order', MyBB::INPUT_INT)),
-                    'enabled' => intval($mybb->get_input('newenabled', MyBB::INPUT_INT)),
-                    'requiredField' => intval($mybb->get_input('newrequire', MyBB::INPUT_INT)),
-                    'parse' => intval($mybb->get_input('newparse', MyBB::INPUT_INT)),
-                    'searchable' => intval($mybb->get_input('newsearchable', MyBB::INPUT_INT)),
-                    'format' => intval($mybb->get_input('newformat', MyBB::INPUT_INT)),
+            if ($fieldDefaultOption) {
+                $fieldOptionData = [
+                    'setid' => $fieldsetID,
+                    'fid' => $fieldID,
+                    'name' => $db->escape_string($mybb->get_input('name')),
+                    'value' => 'Not Specified'
                 ];
 
-                $insert_query = $db->insert_query('myshowcase_fields', $insert_array);
-                $do_new_field = 1;
-
-                if ($do_default_option_insert) {
-                    $insert_array = [
-                        'setid' => $mybb->get_input('setid', MyBB::INPUT_INT),
-                        'fid' => $insert_query,
-                        'name' => strtolower($newname),
-                        'value' => 'Not Specified',
-                        'valueid' => 0,
-                        'disporder' => 0
-                    ];
-
-                    $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
-                }
+                $fieldOptionID = fieldDataInsert($fieldOptionData);
             }
 
-            //edit language file if can be edited
-            if ($can_edit_lang) {
-                //get existing fields from input
-                $items_add = [];
-                foreach ($mybb->get_input('name') as $key => $value) {
-                    $items_add['myshowcase_field_' . $value] = ($mybb->get_input(
-                        'label',
-                        MyBB::INPUT_ARRAY
-                    )[$key] == '' ? $db->escape_string(
-                        $mybb->get_input('name', MyBB::INPUT_ARRAY)[$key]
-                    ) : $db->escape_string($mybb->get_input('label', MyBB::INPUT_ARRAY)[$key]));
-                }
-
-                //write new field from input
-                if ($do_new_field) {
-                    $items_add['myshowcase_field_' . $db->escape_string(
-                        $mybb->get_input('newname')
-                    )] = ($mybb->get_input('newlabel') == '' ? $db->escape_string(
-                        $mybb->get_input('newname')
-                    ) : $db->escape_string($mybb->get_input('newlabel')));
-                }
-
-                $retval = modify_lang(
-                    'myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT),
-                    $items_add,
-                    [],
-                    'english',
-                    false
+            if ($canEditLanguageFile) {
+                languageModify(
+                    'myshowcase_fs' . $fieldsetID,
+                    [
+                        'myshowcase_field_' . $mybb->get_input('name') => ucfirst(
+                            $mybb->get_input('label') ?? $mybb->get_input('name')
+                        )
+                    ]
                 );
             }
 
-            flash_message($lang->myshowcase_field_update_success, 'success');
-            admin_redirect(
-                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                    'setid',
-                    MyBB::INPUT_INT
-                )
+            cacheUpdate(CACHE_TYPE_FIELDS);
+
+            cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+            log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID, 'fieldOptionID' => $fieldOptionID]);
+
+            if ($newPage) {
+                flash_message($lang->myShowcaseAdminSuccessNewField, 'success');
+            } else {
+                flash_message($lang->myShowcaseAdminSuccessEditField, 'success');
+            }
+
+            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        }
+    }
+
+    $mybb->input = array_merge($fieldData, $mybb->input);
+
+    $form = new Form(
+        $pageTabs[$newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit']['link'],
+        'post',
+        $newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit'
+    );
+
+    echo $form->generate_hidden_field('my_post_key', $mybb->post_code);
+
+    $formContainer = new FormContainer(
+        $pageTabs[$newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit']['title']
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormName . '<em>*</em>',
+        $lang->myShowcaseAdminFieldsNewFormNameDescription,
+        $form->generate_text_box(
+            'name',
+            $mybb->get_input('name'),
+            ['id' => 'name', 'style' => $fieldIsEditable ? '' : '" disabled="disabled']
+        ),
+        'name'
+    );
+
+    if (!$newPage) {
+        include_once $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php';
+
+        $mybb->input['label'] = $l['myshowcase_field_' . $mybb->get_input('name')] ?? $mybb->get_input('label');
+    }
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormLabel,
+        $lang->myShowcaseAdminFieldsNewFormLabelDescription,
+        $form->generate_text_box(
+            'label',
+            $mybb->get_input('label'),
+            ['id' => 'label', 'style' => $canEditLanguageFile ? '' : '" disabled="disabled']
+        ),
+        'label'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormHtmlType,
+        $lang->myShowcaseAdminFieldsNewFormHtmlTypeDescription,
+        $form->generate_select_box(
+            'html_type',
+            [
+                'textbox' => 'textbox',
+                'textarea' => 'textarea',
+                'db' => 'db',
+                'radio' => 'radio',
+                'checkbox' => 'checkbox',
+                'url' => 'url',
+                'date' => 'date',
+            ],
+            $mybb->get_input('html_type'),
+            ['id' => 'html_type', 'size' => $fieldIsEditable ? '' : '" disabled="disabled']
+        ),
+        'html_type'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormFieldType,
+        $lang->myShowcaseAdminFieldsNewFormFieldTypeDescription,
+        $form->generate_select_box(
+            'field_type',
+            [
+                'varchar' => 'varchar',
+                'int' => 'int',
+                'bigint' => 'bigint',
+                'text' => 'text',
+                'timestamp' => 'timestamp',
+                //'tinyint' => 'tinyint',
+                //'smallint' => 'smallint',
+                //'mediumint' => 'mediumint',
+                //'decimal' => 'decimal',
+                //'float' => 'float',
+                //'double' => 'double',
+                //'real' => 'real',
+                //'bit' => 'bit',
+                //'boolean' => 'boolean',
+                //'serial' => 'serial',
+                //'date' => 'date',
+                //'datetime' => 'datetime',
+                //'time' => 'time',
+                //'year' => 'year',
+                //'char' => 'char',
+                //'tinytext' => 'tinytext',
+                //'mediumtext' => 'mediumtext',
+                //'longtext' => 'longtext',
+                //'binary' => 'binary',
+                //'varbinary' => 'varbinary',
+                //'tinyblob' => 'tinyblob',
+                //'mediumblob' => 'mediumblob',
+                //'blob' => 'blob',
+                //'longblob' => 'longblob',
+                //'enum' => 'enum',
+                //'set' => 'set',
+            ],
+            $mybb->get_input('field_type'),
+            ['id' => 'field_type', 'size' => $fieldIsEditable ? '' : '" disabled="disabled']
+        ),
+        'field_type'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormMinimumLength,
+        $lang->myShowcaseAdminFieldsNewFormMinimumLengthDescription,
+        $form->generate_numeric_field(
+            'min_length',
+            $mybb->get_input('min_length'),
+            ['id' => 'min_length', 'class' => 'field150', 'min' => 0],
+        ),
+        'min_length'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormMaximumLength,
+        $lang->myShowcaseAdminFieldsNewFormMaximumLengthDescription,
+        $form->generate_numeric_field(
+            'max_length',
+            $mybb->get_input('max_length'),
+            ['id' => 'max_length', 'class' => 'field150', 'min' => 0],
+        ),
+        'max_length'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormOrderList,
+        $lang->myShowcaseAdminFieldsNewFormOrderListDescription,
+        $form->generate_numeric_field(
+            'list_table_order',
+            $mybb->get_input('list_table_order'),
+            ['id' => 'list_table_order', 'class' => 'align_center field50', 'min' => 0],
+        ),
+        'list_table_order'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldsNewFormFormat,
+        $lang->myShowcaseAdminFieldsNewFormFormatDescription,
+        $form->generate_select_box('format', [
+            'no' => 'None',
+            'decimal0' => '#,###',
+            'decimal1' => '#,###.#',
+            'decimal2' => '#,###.##',
+        ], $mybb->get_input('format'), ['id' => 'format']),
+        'format'
+    );
+
+    hooksRun('admin_field_new_edit_end');
+
+    $formContainer->end();
+
+    $form->output_submit_wrapper([
+        $form->generate_submit_button($lang->myShowcaseAdminButtonSubmit),
+        $form->generate_reset_button($lang->myShowcaseAdminButtonReset)
+    ]);
+
+    $form->end();
+
+    $page->output_footer();
+} elseif (in_array($pageAction, ['new', 'edit'])) {
+    $newPage = $pageAction === 'new';
+
+    hooksRun('admin_fieldset_new_edit_start');
+
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (!$newPage && empty($fieldsetData)) {
+        flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
+
+        admin_redirect($pageTabs['myShowcaseAdminFieldSets']['link']);
+    }
+
+    $page->output_header($lang->myShowcaseAdminFieldSets);
+
+    $page->output_nav_tabs($pageTabs, $newPage ? 'myShowcaseAdminFieldSetsNew' : 'myShowcaseAdminFieldSetsEdit');
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect(urlHandlerBuild());
+        }
+
+        $errorMessages = [];
+
+        if (!$mybb->get_input('setname')) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
+        }
+
+        $existingFieldSets = cacheGet(CACHE_TYPE_FIELD_SETS);
+
+        if (in_array($mybb->get_input('setname'), array_column($existingFieldSets, 'setname')) && (function (
+                string $showcaseName
+            ) use ($fieldsetID, $existingFieldSets): bool {
+                $duplicatedName = false;
+
+                foreach ($existingFieldSets as $fieldsetData) {
+                    if ($fieldsetData['setname'] === $showcaseName && $fieldsetData['setid'] !== $fieldsetID) {
+                        $duplicatedName = true;
+                    }
+                }
+
+                return $duplicatedName;
+            })(
+                $mybb->get_input('setname')
+            )) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
+        }
+
+        if (!is_writable($languagePath)) {
+            $errorMessages[] = $lang->sprintf(
+                $lang->myshowcase_fields_lang_not_writable,
+                $lang->path . '/' . $lang->language . '/'
             );
         }
 
-        $form = new Form(
-            'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                'setid',
-                MyBB::INPUT_INT
-            ),
-            'post',
-            'editset'
-        );
-        $form_container = new FormContainer($lang->myshowcase_field_list);
+        $fieldsetData = [
+            'setname' => $db->escape_string($mybb->get_input('setname')),
+        ];
 
-        $form_container->output_row_header(
-            $lang->myshowcase_field_fid,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_name,
-            ['width' => '10%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_label,
-            ['width' => '10%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_html_type,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_field_type,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_min_length,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_max_length,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_field_order,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_list_table_order,
-            ['width' => '4%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_format,
-            ['width' => '10%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_enabled,
-            ['width' => '4%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_required,
-            ['width' => '4%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_parse,
-            ['width' => '4%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_searchable,
-            ['width' => '4%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
-
-        $max_order = 0;
-
-        $query = $db->simple_select(
-            'myshowcase_fields',
-            '*',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT),
-            ['order_by' => 'fid']
-        );
-        $num_fields = $db->num_rows($query);
-        if ($num_fields == 0) {
-            $form_container->output_cell(
-                $lang->myshowcase_fields_no_fields,
-                ['class' => 'align_center', 'colspan' => 15]
-            );
-            $form_container->construct_row();
+        if ($errorMessages) {
+            $page->output_inline_error($errorMessages);
         } else {
-            include($langpath . '/myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT) . '.lang.php');
-            $max_order = 1;
-            while ($result = $db->fetch_array($query)) {
-                // Build popup menu
-                $popup = new PopupMenu("field_{$result['fid']}", $lang->options);
+            $fieldsetData = hooksRun('admin_fieldset_new_edit_post', $fieldsetData);
+
+            if ($newPage) {
+                $fieldsetID = fieldsetInsert($fieldsetData);
+            } else {
+                fieldsetUpdate($fieldsetID, $fieldsetData);
+            }
+
+            cacheUpdate(CACHE_TYPE_CONFIG);
+
+            cacheUpdate(CACHE_TYPE_FIELDS);
+
+            cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+            cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+            log_admin_action(['fieldsetID' => $fieldsetID]);
+
+            if ($newPage) {
+                flash_message($lang->myShowcaseAdminSuccessNewFieldset, 'success');
+            } else {
+                flash_message($lang->myShowcaseAdminSuccessEditFieldset, 'success');
+            }
+
+            admin_redirect(urlHandlerBuild());
+        }
+    }
+
+    $mybb->input = array_merge($fieldsetData, $mybb->input);
+
+    $form = new Form(
+        $pageTabs[$newPage ? 'myShowcaseAdminFieldSetsNew' : 'myShowcaseAdminFieldSetsEdit']['link'],
+        'post',
+        $newPage ? 'myShowcaseAdminFieldSetsNew' : 'myShowcaseAdminFieldSetsEdit'
+    );
+
+    echo $form->generate_hidden_field('my_post_key', $mybb->post_code);
+
+    $formContainer = new FormContainer(
+        $pageTabs[$newPage ? 'myShowcaseAdminFieldSetsNew' : 'myShowcaseAdminFieldSetsEdit']['title']
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminFieldSetsNewFormName . '<em>*</em>',
+        $lang->myShowcaseAdminFieldSetsNewFormNameDescription,
+        $form->generate_text_box('setname', $mybb->get_input('setname'), ['id' => 'setname']),
+        'setname'
+    );
+
+    hooksRun('admin_fieldset_new_edit_end');
+
+    $formContainer->end();
+
+    $form->output_submit_wrapper([
+        $form->generate_submit_button($lang->myShowcaseAdminButtonSubmit),
+        $form->generate_reset_button($lang->myShowcaseAdminButtonReset)
+    ]);
+
+    $form->end();
+
+    $page->output_footer();
+} elseif ($pageAction == 'viewFields') {
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (empty($fieldsetData)) {
+        flash_message($lang->myshowcase_fields_invalid_id, 'error');
+
+        admin_redirect(urlHandlerBuild());
+    }
+
+    $page->add_breadcrumb_item(
+        $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $fieldsetData['setname']),
+        urlHandlerBuild()
+    );
+
+    $page->output_header($lang->myshowcase_admin_fields);
+
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminFields');
+
+    hooksRun('admin_view_fields_start');
+
+    if ($mybb->request_method === 'post') {
+        foreach (fieldsGet(["setid='{$fieldsetID}'"]) as $fieldID => $fieldData) {
+            $fieldData = [
+                'field_order' => (int)($mybb->get_input('field_order', MyBB::INPUT_ARRAY)[$fieldID] ?? 0),
+                'enabled' => (int)!empty($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$fieldID]),
+                'requiredField' => (int)!empty($mybb->get_input('requiredField', MyBB::INPUT_ARRAY)[$fieldID]),
+                'parse' => (int)!empty($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$fieldID]),
+                'searchable' => (int)!empty($mybb->get_input('searchable', MyBB::INPUT_ARRAY)[$fieldID]),
+            ];
+
+            $fieldData = hooksRun('admin_view_fields_update_post', $fieldData);
+
+            fieldsUpdate(["fid='{$fieldID}'", "setid='{$fieldsetID}'"], $fieldData);
+        }
+
+        flash_message($lang->myshowcase_field_update_success, 'success');
+
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+    }
+
+    $form = new Form(
+        urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+        'post',
+        'viewFields'
+    );
+
+    $formContainer = new FormContainer($lang->myshowcase_field_list);
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_fid,
+        ['width' => '1%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_name,
+        ['class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_label,
+        ['class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_html_type,
+        ['width' => '5%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_field_type,
+        ['width' => '5%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_field_order,
+        ['width' => '5%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_enabled,
+        ['width' => '4%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_required,
+        ['width' => '4%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_parse,
+        ['width' => '4%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_searchable,
+        ['width' => '4%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
+
+    $maximumViewOrder = 0;
+
+    $queryFields = TABLES_DATA['myshowcase_fields'];
+
+    unset($queryFields['unique_key']);
+
+    $fieldObjects = fieldsGet(["setid='{$fieldsetID}'"], array_keys($queryFields), ['order_by' => 'field_order']);
+
+    if (!$fieldObjects) {
+        $formContainer->output_cell(
+            $lang->myshowcase_fields_no_fields,
+            ['class' => 'align_center', 'colspan' => 11]
+        );
+
+        $formContainer->construct_row();
+    } else {
+        include_once $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php';
+
+        $maximumViewOrder = 1;
+
+        foreach ($fieldObjects as $fieldID => $fieldData) {
+            $formContainer->output_cell(my_number_format($fieldID), ['class' => 'align_center']);
+
+            $viewOptionsUrl = '';
+
+            if ($fieldData['html_type'] == 'db' || $fieldData['html_type'] == 'radio') {
+                $viewOptionsUrl = urlHandlerBuild(
+                    ['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]
+                );
+            }
+
+            $formContainer->output_cell(
+                $viewOptionsUrl ? "<a href='{$viewOptionsUrl}'>{$fieldData['name']}</a>" : $fieldData['name'],
+                ['class' => 'align_left']
+            );
+
+            $formContainer->output_cell(
+                $l['myshowcase_field_' . $fieldData['name']] ?? '',
+                ['class' => 'align_left']
+            );
+
+            $formContainer->output_cell(
+                $fieldData['html_type'],
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $fieldData['field_type'],
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_numeric_field(
+                    "field_order[{$fieldID}]",
+                    $fieldData['field_order'],
+                    ['id' => "field_order[{$fieldID}]", 'class' => 'align_center field50', 'min' => 0],
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_check_box(
+                    'enabled[' . $fieldID . ']',
+                    'true',
+                    '',
+                    ['checked' => $fieldData['enabled']],
+                    ''
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_check_box(
+                    'requiredField[' . $fieldID . ']',
+                    'true',
+                    '',
+                    ['checked' => $fieldData['requiredField']],
+                    ''
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_check_box(
+                    'parse[' . $fieldID . ']',
+                    'true',
+                    '',
+                    ['checked' => $fieldData['parse']],
+                    ''
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_check_box(
+                    'searchable[' . $fieldID . ']',
+                    'true',
+                    '',
+                    ['checked' => $fieldData['searchable']],
+                    ''
+                ),
+                ['class' => 'align_center']
+            );
+
+            $popup = new PopupMenu("field_{$fieldID}", $lang->options);
+
+            $popup->add_item(
+                $lang->edit,
+                urlHandlerBuild(['action' => 'editField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+            );
+
+            $popup->add_item(
+                $lang->myshowcase_field_delete,
+                urlHandlerBuild(['action' => 'deleteField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+            );
+
+            //add option to edit list items if db type
+            if ($fieldData['html_type'] == 'db' || $fieldData['html_type'] == 'radio') {
+                $popup->add_item(
+                    $lang->myshowcase_field_edit_options,
+                    urlHandlerBuild(['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+                );
+            }
+
+            $maximumViewOrder = max($maximumViewOrder, $fieldData['field_order']);
+
+            $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
+
+            $formContainer->construct_row();
+        }
+    }
+
+    $formContainer->end();
+
+    $buttons[] = $form->generate_submit_button($lang->myshowcase_fields_save_changes);
+
+    $form->output_submit_wrapper($buttons);
+
+    $form->end();
+
+    hooksRun('admin_view_fields_end');
+
+    $page->output_footer();
+} elseif ($pageAction == 'delete') {
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (!$fieldsetData) {
+        flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
+
+        admin_redirect(urlHandlerBuild());
+    }
+
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+
+    if (!empty($showcaseObjects)) {
+        flash_message($lang->myShowcaseAdminErrorFieldsetDeleteFailed, 'error');
+
+        admin_redirect(urlHandlerBuild());
+    }
+
+    hooksRun('admin_fieldset_delete_start');
+
+    $fieldsetName = $fieldsetData['setname'];
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect(urlHandlerBuild());
+        }
+
+        if (isset($mybb->input['no'])) {
+            admin_redirect(urlHandlerBuild());
+        }
+
+        hooksRun('admin_fieldset_delete_post');
+
+        fieldsDelete(["setid='{$fieldsetID}'"]);
+
+        fieldDataDelete(["setid='{$fieldsetID}'"]);
+
+        fieldsetDelete(["setid='{$fieldsetID}'"]);
+
+        foreach ((array)$lang->get_languages() as $langfolder => $langname) {
+            $languageFile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $fieldsetID . '.lang.php';
+
+            if (file_exists($languageFile)) {
+                unlink($languageFile);
+            }
+        }
+
+        cacheUpdate(CACHE_TYPE_CONFIG);
+
+        cacheUpdate(CACHE_TYPE_FIELDS);
+
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+        log_admin_action(['fieldsetID' => $fieldsetID]);
+
+        if (fieldsetGet(["setid='{$fieldsetID}'"])) {
+            flash_message($lang->myShowcaseAdminErrorFieldsetDelete, 'error');
+        } else {
+            flash_message($lang->myShowcaseAdminSuccessFieldsetDeleted, 'success');
+        }
+
+        admin_redirect(urlHandlerBuild());
+    }
+
+    $page->output_confirm_action(
+        urlHandlerBuild(['action' => 'delete', 'setid' => $fieldsetID]),
+        $lang->sprintf($lang->myShowcaseAdminConfirmFieldsetDelete, $fieldsetName)
+    );
+} elseif ($pageAction == 'editOption') {
+    $fieldData = fieldsGet(
+        ["fid='{$fieldID}'", "setid='{$fieldsetID}'", "html_type In ('db', 'radio')"],
+        ['name'],
+        ['limit' => 1]
+    );
+
+    if (!$fieldData) {
+        flash_message($lang->myshowcase_field_invalid_id, 'error');
+
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+    }
+
+    $can_edit = true;
+
+    foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+        if (showcaseDataTableExists($showcaseID)) {
+            $can_edit = false;
+        }
+    }
+
+    $fieldOptionData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    $page->add_breadcrumb_item(
+        $lang->sprintf($lang->myshowcase_admin_edit_fieldopt, $fieldData['name'], $fieldOptionData['setname']),
+        urlHandlerBuild()
+    );
+
+    $page->output_header($lang->myshowcase_admin_fields);
+
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminFieldsOptions');
+
+    hooksRun('admin_option_edit_start');
+
+    //user clicked Save button
+    if ($mybb->request_method === 'post') {
+        //apply changes to existing fields first
+        $fieldOptionObjects = fieldDataGet(
+            ["setid='{$fieldsetID}'", "fid='{$fieldID}'"],
+            ['valueid', 'value', 'disporder']
+        );
+
+        foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
+            $fieldOptionValueID = (int)$fieldOptionData['valueid'];
+
+            fieldDataUpdate(
+                ["setid='{$fieldsetID}'", "fid='{$fieldID}'", "valueid='{$fieldOptionValueID}'"],
+                [
+                    'value' => $db->escape_string(
+                        $mybb->get_input('value', MyBB::INPUT_ARRAY)[$fieldOptionValueID] ?? $fieldOptionData['value']
+                    ),
+                    'disporder' => (int)($mybb->get_input(
+                        'disporder',
+                        MyBB::INPUT_ARRAY
+                    )[$fieldOptionValueID] ?? $fieldOptionData['disporder']),
+                ]
+            );
+        }
+
+        if ($mybb->get_input('value') &&
+            $fieldOptionValue &&
+            $mybb->get_input('disporder', MyBB::INPUT_INT)) {
+            $fieldOptionData = [
+                'setid' => $fieldsetID,
+                'fid' => $fieldID,
+                'name' => $db->escape_string($mybb->get_input('name')),
+                'value' => $db->escape_string($mybb->get_input('value')),
+                'valueid' => $fieldOptionValue,
+                'disporder' => $mybb->get_input('disporder', MyBB::INPUT_INT)
+            ];
+
+            fieldDataInsert($fieldOptionData);
+        }
+
+        hooksRun('admin_option_edit_post');
+
+        cacheUpdate(CACHE_TYPE_CONFIG);
+
+        cacheUpdate(CACHE_TYPE_FIELDS);
+
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+        flash_message($lang->myshowcase_field_update_opt_success, 'success');
+
+        admin_redirect(
+            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        );
+    }
+
+    $form = new Form(
+        urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        'post',
+        'editOption'
+    );
+
+    $formContainer = new FormContainer($lang->myshowcase_field_list);
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_fdid,
+        ['width' => '5%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_option_text,
+        ['width' => '10%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_disporder,
+        ['width' => '5%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
+
+    $maximumViewOrder = 0;
+
+    $fieldOptionObjects = fieldDataGet(
+        ["setid='{$fieldsetID}'", "fid='{$fieldID}'"],
+        ['valueid', 'name', 'value', 'disporder'],
+        ['order_by' => 'valueid']
+    );
+
+    if (!$fieldOptionObjects) {
+        $formContainer->output_cell(
+            $lang->myshowcase_field_no_options,
+            ['class' => 'align_center', 'colspan' => 5]
+        );
+        $formContainer->construct_row();
+    } else {
+        $maximumViewOrder = 1;
+
+        $maximumViewOrder = 0;
+
+        foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
+            $fieldOptionValueID = (int)$fieldOptionData['valueid'];
+
+            $maximumViewOrder = max($maximumViewOrder, $fieldOptionData['disporder']);
+
+            $maximumViewOrder = max($maximumViewOrder, $fieldOptionValueID);
+
+            $formContainer->output_cell(
+                my_number_format($fieldOptionValueID),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_text_box(
+                    "value[{$fieldOptionValueID}]",
+                    $fieldOptionData['value'],
+                    ['id' => "value[{$fieldOptionValueID}]", 'class' => 'field150']
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_numeric_field(
+                    "disporder[{$fieldOptionValueID}]",
+                    $fieldOptionData['disporder'],
+                    ['id' => "disporder[{$fieldOptionValueID}]", 'class' => 'align_center field50', 'min' => 0]
+                ),
+                ['class' => 'align_center']
+            );
+
+            $popup = new PopupMenu("field_{$fieldOptionValueID}", $lang->options);
+
+            if ($can_edit) {
                 $popup->add_item(
                     $lang->myshowcase_field_delete,
-                    "index.php?module=myshowcase-fields&amp;action=delfield&amp;fid={$result['fid']}&amp;setid=" . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    )
+                    urlHandlerBuild([
+                        'action' => 'deleteOption',
+                        'setid' => $fieldsetID,
+                        'fid' => $fieldID,
+                        'valueid' => $fieldOptionValueID
+                    ]),
                 );
-
-                //add option to edit list items if db type
-                if ($result['html_type'] == 'db' || $result['html_type'] == 'radio') {
-                    $popup->add_item(
-                        $lang->myshowcase_field_edit_options,
-                        "index.php?module=myshowcase-fields&amp;action=editopt&amp;fid={$result['fid']}&amp;setid=" . $mybb->get_input(
-                            'setid',
-                            MyBB::INPUT_INT
-                        )
-                    );
-                }
-
-                $max_order = max($max_order, $result['field_order']);
-                $form_container->output_cell($result['fid'], ['class' => 'align_center']);
-                if ($can_edit) {
-                    $form_container->output_cell(
-                        $form->generate_text_box(
-                            'name[' . $result['fid'] . ']',
-                            $result['name'],
-                            ['id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px']
-                        ),
-                        ['class' => 'align_left']
-                    );
-                } else {
-                    $form_container->output_cell(
-                        $result['name'] . $form->generate_hidden_field('name[' . $result['fid'] . ']', $result['name']),
-                        ['class' => 'align_left']
-                    );
-                }
-                if ($can_edit_lang) {
-                    $form_container->output_cell(
-                        $form->generate_text_box(
-                            'label[' . $result['fid'] . ']',
-                            $l['myshowcase_field_' . $result['name']] ?? '',
-                            ['id' => 'label[' . $result['fid'] . ']', 'style' => 'width: 100px']
-                        ),
-                        ['class' => 'align_left']
-                    );
-                } else {
-                    $form_container->output_cell(
-                        $l['myshowcase_field_' . $result['name']],
-                        ['class' => 'align_left']
-                    );
-                }
-                $form_container->output_cell(
-                    $result['html_type'] . $form->generate_hidden_field(
-                        'html_type[' . $result['fid'] . ']',
-                        $result['html_type']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $result['field_type'] . $form->generate_hidden_field(
-                        'field_type[' . $result['fid'] . ']',
-                        $result['field_type']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $result['min_length'] . $form->generate_hidden_field(
-                        'min_length[' . $result['fid'] . ']',
-                        $result['min_length']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $result['max_length'] . $form->generate_hidden_field(
-                        'max_length[' . $result['fid'] . ']',
-                        $result['max_length']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_text_box(
-                        'field_order[' . $result['fid'] . ']',
-                        $result['field_order'],
-                        ['id' => 'field_order[' . $result['fid'] . ']', 'style' => 'width: 35px']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_text_box(
-                        'list_table_order[' . $result['fid'] . ']',
-                        $result['list_table_order'],
-                        ['id' => 'list_table_order[' . $result['fid'] . ']', 'style' => 'width: 35px']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_select_box(
-                        'format[' . $result['fid'] . ']',
-                        $field_format_options,
-                        $result['format'],
-                        ['id' => 'format[' . $result['fid'] . ']']
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_check_box(
-                        'enabled[' . $result['fid'] . ']',
-                        'true',
-                        null,
-                        ['checked' => $result['enabled']],
-                        ''
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_check_box(
-                        'requiredField[' . $result['fid'] . ']',
-                        'true',
-                        null,
-                        ['checked' => $result['requiredField']],
-                        ''
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_check_box(
-                        'parse[' . $result['fid'] . ']',
-                        'true',
-                        null,
-                        ['checked' => $result['parse']],
-                        ''
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell(
-                    $form->generate_check_box(
-                        'searchable[' . $result['fid'] . ']',
-                        'true',
-                        null,
-                        ['checked' => $result['searchable']],
-                        ''
-                    ),
-                    ['class' => 'align_center']
-                );
-                $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
-                $form_container->construct_row();
             }
-        }
-        $form_container->end();
 
-        if ($can_edit) {
-            echo '<br /><br />';
-            $form_container = new FormContainer($lang->myshowcase_field_new);
-
-            $form_container->output_row_header(
-                $lang->myshowcase_field_name,
-                ['width' => '10%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_label,
-                ['width' => '10%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_html_type,
-                ['width' => '5%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_field_type,
-                ['width' => '5%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_min_length,
-                ['width' => '5%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_max_length,
-                ['width' => '5%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_field_order,
-                ['width' => '5%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_list_table_order,
-                ['width' => '4%', 'class' => 'align_center']
-            );
-            $form_container->output_row_header(
-                $lang->myshowcase_field_format,
-                ['width' => '10%', 'class' => 'align_center']
-            );
-            /*			$form_container->output_row_header($lang->myshowcase_field_enabled, array("width" => "4%", "class" => "align_center"));
-                        $form_container->output_row_header($lang->myshowcase_field_required, array("width" => "4%", "class" => "align_center"));
-                        $form_container->output_row_header($lang->myshowcase_field_parse, array("width" => "4%", "class" => "align_center"));
-                        $form_container->output_row_header($lang->myshowcase_field_searchable, array("width" => "4%", "class" => "align_center"));*/
-
-            $form_container->output_cell(
-                $form->generate_text_box('newname', '', ['id' => 'newname', 'style' => 'width: 100px']),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_text_box('newlabel', '', ['id' => 'newlabel', 'style' => 'width: 100px']),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_select_box('newhtml_type', $html_type_options, '', ['id' => 'newhtml_type']),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_select_box('newfield_type', $field_type_options, '', ['id' => 'newfield_type']),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_text_box(
-                    'newmin_length',
-                    '',
-                    ['id' => 'newmin_length', 'style' => 'width: 50px']
-                ),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_text_box(
-                    'newmax_length',
-                    '',
-                    ['id' => 'newmax_length', 'style' => 'width: 50px']
-                ),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_text_box(
-                    'newfield_order',
-                    $max_order + 1,
-                    ['id' => 'newfield_order', 'style' => 'width: 35px']
-                ),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_text_box(
-                    'newlist_table_order',
-                    -1,
-                    ['id' => 'newlist_table_order', 'style' => 'width: 35px']
-                ),
-                ['class' => 'align_center']
-            );
-            $form_container->output_cell(
-                $form->generate_select_box('newformat', $field_format_options, '', ['id' => 'newformat']),
-                ['class' => 'align_center']
-            );
-            /*			$form_container->output_cell($form->generate_check_box('newenabled', 0, ""),array('class' => 'align_center'));
-                        $form_container->output_cell($form->generate_check_box('newrequire', 0, ""),array('class' => 'align_center'));
-                        $form_container->output_cell($form->generate_check_box('newparse', 0, ""),array('class' => 'align_center'));
-                        $form_container->output_cell($form->generate_check_box('newsearchable', 0, ""),array('class' => 'align_center')); */
-
-            $form_container->construct_row();
-            $form_container->end();
-        }
-        $buttons[] = $form->generate_submit_button($lang->myshowcase_fields_save_changes);
-        $form->output_submit_wrapper($buttons);
-
-        $form->end();
-        $plugins->run_hooks('admin_myshowcase_fields_editset_end');
-
-        cacheUpdate(CACHE_TYPE_CONFIG);
-        cacheUpdate(CACHE_TYPE_FIELDS);
-        cacheUpdate(CACHE_TYPE_FIELD_DATA);
-        cacheUpdate(CACHE_TYPE_FIELD_SETS);
-    } else {
-        flash_message($lang->myshowcase_fields_invalid_id, 'error');
-        admin_redirect('index.php?module=myshowcase-fields');
-    }
-}
-
-//delete field set
-if ($mybb->get_input('action') == 'delset') {
-    if ($mybb->get_input('setid', MyBB::INPUT_INT)) {
-        $query = $db->simple_select(
-            'myshowcase_fieldsets',
-            '*',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
-        $setname = $result['setname'];
-        if ($db->num_rows($query) == 0) {
-            flash_message($lang->myshowcase_fields_invalid_id, 'error');
-            admin_redirect('index.php?module=myshowcase-fields');
-        } else {
-            $page->add_breadcrumb_item(
-                $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $setname),
-                'index.php?module=myshowcase-fields'
-            );
-            $page->output_header($lang->myshowcase_admin_fields);
-
-            $plugins->run_hooks('admin_myshowcase_fields_deleteset_begin');
-
-            $query = $db->simple_select(
-                'myshowcase_config',
-                '*',
-                'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-            );
-            if ($db->num_rows($query) != 0) {
-                flash_message($lang->myshowcase_fields_in_use, 'error');
-                admin_redirect('index.php?module=myshowcase-fields');
+            if ($can_edit) {
+                $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
             } else {
-                $result = $db->fetch_array($query);
-                echo $lang->sprintf($lang->myshowcase_fields_confirm_delete_long, $setname);
-                $form = new Form(
-                    'index.php?module=myshowcase-fields&amp;action=do_delset&amp;setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ),
-                    'post',
-                    'do_delset'
-                );
-                $buttons[] = $form->generate_submit_button($lang->myshowcase_fields_confirm_delete);
-                $form->output_submit_wrapper($buttons);
-
-                $form->end();
+                $formContainer->output_cell('N/A', ['class' => 'align_center']);
             }
 
-            $plugins->run_hooks('admin_myshowcase_fields_deleteset_end');
+            $formContainer->construct_row();
         }
     }
-}
 
-//delete field set
-if ($mybb->get_input('action') == 'do_delset') {
-    if ($mybb->get_input('setid', MyBB::INPUT_INT) && $mybb->request_method == 'post') {
-        $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
-        $page->output_header($lang->myshowcase_admin_fields);
+    $formContainer->end();
 
+    $form->output_submit_wrapper([$form->generate_submit_button($lang->myshowcase_fields_save_changes)]);
 
-        $query = $db->delete_query('myshowcase_fieldsets', 'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT));
-        if ($db->affected_rows($query) != 1) {
-            flash_message($lang->myshowcase_fields_delete_failed, 'error');
-            admin_redirect('index.php?module=myshowcase-fields');
-        } else {
-            $plugins->run_hooks('admin_myshowcase_fields_dodeleteset_begin');
+    $form->end();
 
-            $query = $db->delete_query('myshowcase_fields', 'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT));
-            $query = $db->delete_query('myshowcase_field_data', 'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT));
+    echo '<br />';
 
-            //also delete langauge files for this fieldset
-            $langs = $lang->get_languages(false);
-            foreach ($langs as $langfolder => $langname) {
-                $langfile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ) . '.lang.php';
-                unlink($langfile);
-            }
+    $form = new Form(
+        urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        'post',
+        'editOption'
+    );
 
-            $plugins->run_hooks('admin_myshowcase_fields_dodeleteset_end');
+    $formContainer = new FormContainer($lang->myshowcase_field_new_option);
 
-            cacheUpdate(CACHE_TYPE_CONFIG);
-            cacheUpdate(CACHE_TYPE_FIELDS);
-            cacheUpdate(CACHE_TYPE_FIELD_DATA);
-            cacheUpdate(CACHE_TYPE_FIELD_SETS);
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_option_text . ' *',
+        ['width' => '65', 'class' => 'align_center']
+    );
 
-            // Log admin action
-            $log = ['setid' => $mybb->get_input('setid', MyBB::INPUT_INT)];
-            log_admin_action($log);
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_disporder,
+        ['width' => '65', 'class' => 'align_center']
+    );
 
-            flash_message($lang->myshowcase_field_delete_success, 'success');
-            admin_redirect('index.php?module=myshowcase-fields');
-        }
+    $formContainer->output_cell(
+        $form->generate_text_box('value', '', ['id' => 'value', 'class' => 'field150']),
+        ['class' => 'align_center']
+    );
+
+    echo $form->generate_hidden_field('name', $fieldData['name']);
+
+    echo $form->generate_hidden_field('valueid', ++$maximumViewOrder);
+
+    $formContainer->output_cell(
+        $form->generate_numeric_field(
+            'disporder',
+            ++$maximumViewOrder,
+            ['id' => 'disporder', 'class' => 'align_center field50', 'min' => 0]
+        ),
+        ['class' => 'align_center']
+    );
+
+    $formContainer->construct_row();
+
+    hooksRun('admin_option_edit_end');
+
+    $formContainer->end();
+
+    $form->output_submit_wrapper([$form->generate_submit_button($lang->myshowcase_fields_save_changes)]);
+
+    $form->end();
+} elseif ($pageAction == 'deleteOption') {
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (!$fieldsetData) {
+        flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
+
+        admin_redirect(urlHandlerBuild());
     }
-}
 
-//edit specific field in a field set (DB or select types)
-if ($mybb->get_input('action') == 'editopt') {
-    if ($mybb->get_input('fid', MyBB::INPUT_INT)) {
-        //check if set is in use, if so, limit edit ability
-        $can_edit = true;
-        $query = $db->simple_select(
-            'myshowcase_config',
-            '*',
-            'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
+    $fieldOptionData = fieldDataGet(["setid='{$fieldsetID}'", "valueid='{$fieldOptionValue}'"], ['name']);
 
-        if ($db->num_rows($query) != 0 && showcaseDataTableExists((int)$result['id'])) {
-            //flash_message($lang->myshowcase_fields_in_use, 'error');
-            //admin_redirect("index.php?module=myshowcase-fields");
-            $can_edit = false;
-        }
+    if (!$fieldOptionData) {
+        flash_message($lang->myshowcase_field_invalid_opt, 'error');
 
-        //get set name
-        $query = $db->simple_select(
-            'myshowcase_fieldsets',
-            'setname',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
-        $setname = $result['setname'];
-
-        //check if DB/radio type field exists
-        $query = $db->simple_select(
-            'myshowcase_fields',
-            '*',
-            'setid=' . $mybb->get_input(
-                'setid',
-                MyBB::INPUT_INT
-            ) . ' AND fid=' . $mybb->get_input('fid', MyBB::INPUT_INT) . " AND html_type In ('db', 'radio')"
-        );
-        if ($db->num_rows($query) == 0) {
-            flash_message($lang->myshowcase_field_invalid_id, 'error');
-            admin_redirect('index.php?module=myshowcase-fields');
-        }
-        $result = $db->fetch_array($query);
-        $fieldname = $result['name'];
-
-        $page->add_breadcrumb_item(
-            $lang->sprintf($lang->myshowcase_admin_edit_fieldopt, $fieldname, $setname),
-            'index.php?module=myshowcase-fields'
-        );
-        $page->output_header($lang->myshowcase_admin_fields);
-
-        $plugins->run_hooks('admin_myshowcase_fields_editopt_begin');
-
-        //user clicked Save button
-        if ($mybb->request_method == 'post') {
-            //apply changes to existing fields first
-            $query = $db->simple_select(
-                'myshowcase_field_data',
-                '*',
-                'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                    'fid',
-                    MyBB::INPUT_INT
-                )
-            );
-            while ($result = $db->fetch_array($query)) {
-                $update_array = [
-                    'value' => $db->escape_string($mybb->get_input('value', MyBB::INPUT_ARRAY)[$result['valueid']]),
-                    'disporder' => $db->escape_string(
-                        $mybb->get_input('disporder', MyBB::INPUT_ARRAY)[$result['valueid']]
-                    )
-                ];
-
-                $update_query = $db->update_query(
-                    'myshowcase_field_data',
-                    $update_array,
-                    'setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ) . ' AND fid=' . $mybb->get_input('fid', MyBB::INPUT_INT) . ' AND valueid=' . $result['valueid']
-                );
-            }
-
-            //apply new field
-            if ($mybb->get_input('newtext') != '' && $mybb->get_input(
-                    'newvalueid',
-                    MyBB::INPUT_INT
-                ) != '' && is_numeric(
-                    $mybb->get_input('newvalueid', MyBB::INPUT_INT)
-                ) && $mybb->get_input('newdisporder', MyBB::INPUT_INT) != '' && is_numeric(
-                    $mybb->get_input('newdisporder', MyBB::INPUT_INT)
-                )) {
-                $insert_array = [
-                    'setid' => $mybb->get_input('setid', MyBB::INPUT_INT),
-                    'fid' => $mybb->get_input('fid', MyBB::INPUT_INT),
-                    'name' => $db->escape_string($mybb->get_input('newfieldname')),
-                    'value' => $db->escape_string($mybb->get_input('newtext')),
-                    'valueid' => $mybb->get_input('newvalueid', MyBB::INPUT_INT),
-                    'disporder' => $mybb->get_input('newdisporder', MyBB::INPUT_INT)
-                ];
-
-                $insert_query = $db->insert_query('myshowcase_field_data', $insert_array);
-            }
-
-            cacheUpdate(CACHE_TYPE_CONFIG);
-            cacheUpdate(CACHE_TYPE_FIELDS);
-            cacheUpdate(CACHE_TYPE_FIELD_DATA);
-            cacheUpdate(CACHE_TYPE_FIELD_SETS);
-
-            flash_message($lang->myshowcase_field_update_opt_success, 'success');
-            admin_redirect(
-                'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
-                    'fid',
-                    MyBB::INPUT_INT
-                ) . '&amp;setid=' . $mybb->get_input(
-                    'setid',
-                    MyBB::INPUT_INT
-                )
-            );
-        }
-
-        $form = new Form(
-            'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            ) . '&amp;setid=' . $mybb->get_input(
-                'setid',
-                MyBB::INPUT_INT
-            ),
-            'post',
-            'editopt'
-        );
-        $form_container = new FormContainer($lang->myshowcase_field_list);
-
-        $form_container->output_row_header(
-            $lang->myshowcase_field_fdid,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_option_text,
-            ['width' => '10%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_disporder,
-            ['width' => '5%', 'class' => 'align_center']
-        );
-        $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
-
-        $max_order = 0;
-
-        $query = $db->simple_select(
-            'myshowcase_field_data',
-            '*',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            ),
-            ['order_by' => 'valueid']
-        );
-        $num_fields = $db->num_rows($query);
-        if ($num_fields == 0) {
-            $form_container->output_cell(
-                $lang->myshowcase_field_no_options,
-                ['class' => 'align_center', 'colspan' => 5]
-            );
-            $form_container->construct_row();
-        } else {
-            $max_order = 1;
-            $max_valueid = 0;
-            while ($result = $db->fetch_array($query)) {
-                // Build popup menu
-                $popup = new PopupMenu("field_{$result['valueid']}", $lang->options);
-                if ($can_edit) {
-                    $popup->add_item(
-                        $lang->myshowcase_field_delete,
-                        "index.php?module=myshowcase-fields&amp;action=delopt&amp;setid={$mybb->get_input('setid', MyBB::INPUT_INT)}&amp;fid={$mybb->get_input('fid', MyBB::INPUT_INT)}&amp;valueid={$result['valueid']}"
-                    );
-                }
-
-                $max_order = max($max_order, $result['disporder']);
-                $max_valueid = max($max_valueid, $result['valueid']);
-                $form_container->output_cell(
-                    $result['valueid'] . $form->generate_hidden_field(
-                        'fieldname[' . $result['valueid'] . ']',
-                        $result['name']
-                    ),
-                    ['class' => 'align_center']
-                );
-
-                $form_container->output_cell(
-                    $form->generate_text_box(
-                        'value[' . $result['valueid'] . ']',
-                        $result['value'],
-                        ['id' => 'value[' . $result['valueid'] . ']', 'style' => 'width: 105px']
-                    ),
-                    ['class' => 'align_center']
-                );
-
-                $form_container->output_cell(
-                    $form->generate_text_box(
-                        'disporder[' . $result['valueid'] . ']',
-                        $result['disporder'],
-                        ['id' => 'disporder[' . $result['valueid'] . ']', 'style' => 'width: 65px']
-                    ),
-                    ['class' => 'align_center']
-                );
-                if ($can_edit) {
-                    $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
-                } else {
-                    $form_container->output_cell('N/A', ['class' => 'align_center']);
-                }
-                $form_container->construct_row();
-            }
-        }
-        $form_container->end();
-
-        echo '<br /><br />';
-        $form_container = new FormContainer($lang->myshowcase_field_new_option);
-
-        $form_container->output_row_header(
-            $lang->myshowcase_field_option_text . ' *',
-            ['width' => '65', 'class' => 'align_center']
-        );
-        $form_container->output_row_header(
-            $lang->myshowcase_field_disporder,
-            ['width' => '65', 'class' => 'align_center']
-        );
-
-        $form_container->output_cell(
-            $form->generate_text_box('newtext', '', ['id' => 'newname', 'style' => 'width: 150px']) .
-            $form->generate_hidden_field('newfieldname', $fieldname) .
-            $form->generate_hidden_field('newvalueid', $max_valueid + 1)
-            ,
-            ['class' => 'align_center']
-        );
-        $form_container->output_cell(
-            $form->generate_text_box(
-                'newdisporder',
-                $max_order + 1,
-                ['id' => 'newdisporder', 'style' => 'width: 150px']
-            ),
-            ['class' => 'align_center']
-        );
-
-        $form_container->construct_row();
-        $form_container->end();
-
-        $buttons[] = $form->generate_submit_button($lang->myshowcase_fields_save_changes);
-        $form->output_submit_wrapper($buttons);
-
-        $form->end();
-
-        $plugins->run_hooks('admin_myshowcase_fields_editopt_end');
-    } else {
-        flash_message($lang->myshowcase_field_invalid_id, 'error');
-        admin_redirect('index.php?module=myshowcase-fields');
-    }
-}
-
-//delete field option
-if ($mybb->get_input('action') == 'delopt') {
-    if ($mybb->get_input('valueid', MyBB::INPUT_INT)) {
-        $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
-        $page->output_header($lang->myshowcase_admin_fields);
-
-        $query = $db->simple_select(
-            'myshowcase_field_data',
-            '*',
-            'setid=' . $mybb->get_input(
-                'setid',
-                MyBB::INPUT_INT
-            ) . ' AND fid=' . $mybb->get_input('fid', MyBB::INPUT_INT) . ' AND valueid=' . $mybb->get_input(
-                'valueid',
-                MyBB::INPUT_INT
-            )
-        );
-        $result = $db->fetch_array($query);
-        $fieldname = $result['name'];
-        if ($db->num_rows($query) == 0) {
-            flash_message($lang->myshowcase_field_invalid_opt, 'error');
-        } else {
-            $plugins->run_hooks('admin_myshowcase_fields_delopt_begin');
-
-            $query = $db->simple_select(
-                'myshowcase_config',
-                '*',
-                'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-            );
-            if ($db->num_rows($query) != 0) {
-                flash_message($lang->myshowcase_fields_in_use, 'error');
-                admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;fid=' . $mybb->get_input(
-                        'fid',
-                        MyBB::INPUT_INT
-                    ) . '&amp;setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    )
-                );
-            } else {
-                $query = $db->delete_query(
-                    'myshowcase_field_data',
-                    'setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ) . ' AND fid=' . $mybb->get_input(
-                        'fid',
-                        MyBB::INPUT_INT
-                    ) . ' AND valueid=' . $mybb->get_input('valueid', MyBB::INPUT_INT)
-                );
-
-                $plugins->run_hooks('admin_myshowcase_fields_delopt_end');
-
-                cacheUpdate(CACHE_TYPE_CONFIG);
-                cacheUpdate(CACHE_TYPE_FIELDS);
-                cacheUpdate(CACHE_TYPE_FIELD_DATA);
-                cacheUpdate(CACHE_TYPE_FIELD_SETS);
-
-                // Log admin action
-                $log = [
-                    'setid' => $mybb->get_input('setid', MyBB::INPUT_INT),
-                    'fid' => $mybb->get_input('fid', MyBB::INPUT_INT),
-                    'valueid' => $mybb->get_input('valueid', MyBB::INPUT_INT)
-                ];
-                log_admin_action($log);
-
-                flash_message($lang->myshowcase_field_delete_opt_success, 'success');
-                admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editopt&amp;setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ) . '&amp;fid=' . $mybb->get_input('fid', MyBB::INPUT_INT)
-                );
-            }
-        }
-    }
-}
-
-//delete specific field
-if ($mybb->get_input('action') == 'delfield') {
-    if ($mybb->get_input('fid', MyBB::INPUT_INT)) {
-        //check if set exists
-        $query = $db->simple_select(
-            'myshowcase_fieldsets',
-            'setname',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-        );
-        $result = $db->fetch_array($query);
-
-        if ($db->num_rows($query) == 0) {
-            flash_message($lang->myshowcase_fields_invalid_id, 'error');
-            admin_redirect('index.php?module=myshowcase-fields');
-        }
-
-        $page->add_breadcrumb_item(
-            $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $result['setname']),
-            'index.php?module=myshowcase-fields'
-        );
-        $page->output_header($lang->myshowcase_admin_fields);
-
-        $query = $db->simple_select(
-            'myshowcase_fields',
-            'fid, name',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            )
-        );
-        $result = $db->fetch_array($query);
-
-        if (empty($result['fid'])) {
-            flash_message($lang->myshowcase_field_invalid_id, 'error');
-            admin_redirect(
-                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                    'setid',
-                    MyBB::INPUT_INT
-                )
-            );
-        } else {
-            $fieldname = $result['name'] ?? $result['id'];
-
-            $plugins->run_hooks('admin_myshowcase_fields_delete_begin');
-
-            //check if tables created from this fiedlset already
-            $query = $db->simple_select(
-                'myshowcase_config',
-                'id',
-                'fieldsetid=' . $mybb->get_input('setid', MyBB::INPUT_INT)
-            );
-            $field_in_use = false;
-            while ($result = $db->fetch_array($query)) {
-                if (showcaseDataTableExists((int)$result['id'])) {
-                    $field_in_use = true;
-                }
-            }
-
-            if ($field_in_use) {
-                flash_message($lang->myshowcase_field_in_use, 'error');
-                admin_redirect(
-                    'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    )
-                );
-            } else {
-                echo $lang->sprintf($lang->myshowcase_field_confirm_delete_long, $fieldname);
-                $form = new Form(
-                    'index.php?module=myshowcase-fields&amp;action=do_delfield&amp;fid=' . $mybb->get_input(
-                        'fid',
-                        MyBB::INPUT_INT
-                    ) . '&amp;setid=' . $mybb->get_input(
-                        'setid',
-                        MyBB::INPUT_INT
-                    ),
-                    'post',
-                );
-                $buttons[] = $form->generate_submit_button($lang->myshowcase_field_confirm_delete);
-                $form->output_submit_wrapper($buttons);
-
-                $form->end();
-            }
-
-            $plugins->run_hooks('admin_myshowcase_fields_delete_end');
-        }
-    }
-}
-
-//delete field set
-if ($mybb->get_input('action') == 'do_delfield') {
-    if ($mybb->get_input('fid', MyBB::INPUT_INT) && $mybb->request_method == 'post') {
-        $page->add_breadcrumb_item($lang->myshowcase_admin_edit_fieldset, 'index.php?module=myshowcase-fields');
-        $page->output_header($lang->myshowcase_admin_fields);
-
-        //get field name being deleted
-        $query = $db->simple_select(
-            'myshowcase_fields',
-            'name',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            )
-        );
-        $result = $db->fetch_array($query);
-        $fieldname = $result['name'];
-
-        $plugins->run_hooks('admin_myshowcase_fields_dodelete_begin');
-
-        //delete actual field
-        $query = $db->delete_query(
-            'myshowcase_fields',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            )
-        );
-        if ($db->affected_rows($query) != 1) {
-            flash_message($lang->myshowcase_field_delete_failed, 'error');
-            admin_redirect(
-                'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                    'setid',
-                    MyBB::INPUT_INT
-                )
-            );
-        }
-
-        //delete field data if select type
-        $query = $db->delete_query(
-            'myshowcase_field_data',
-            'setid=' . $mybb->get_input('setid', MyBB::INPUT_INT) . ' AND fid=' . $mybb->get_input(
-                'fid',
-                MyBB::INPUT_INT
-            )
-        );
-
-        //edit language file if can be edited
-        $retval = modify_lang(
-            'myshowcase_fs' . $mybb->get_input('setid', MyBB::INPUT_INT),
-            [],
-            ['myshowcase_field_' . $fieldname => ''],
-            'english',
-            false
-        );
-
-        $plugins->run_hooks('admin_myshowcase_fields_dodelete_end');
-
-        cacheUpdate(CACHE_TYPE_CONFIG);
-        cacheUpdate(CACHE_TYPE_FIELDS);
-        cacheUpdate(CACHE_TYPE_FIELD_DATA);
-        cacheUpdate(CACHE_TYPE_FIELD_SETS);
-
-        // Log admin action
-        $log = [
-            'setid' => $mybb->get_input('setid', MyBB::INPUT_INT),
-            'fid' => $mybb->get_input('fid', MyBB::INPUT_INT)
-        ];
-        log_admin_action($log);
-
-        flash_message($lang->myshowcase_field_delete_success, 'success');
         admin_redirect(
-            'index.php?module=myshowcase-fields&amp;action=editset&amp;setid=' . $mybb->get_input(
-                'setid',
-                MyBB::INPUT_INT
-            )
+            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID]),
         );
     }
-}
-//default output
-if ($mybb->get_input('action') == '') {
+
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+
+    if (!empty($showcaseObjects)) {
+        flash_message($lang->myshowcase_fields_in_use, 'error');
+
+        admin_redirect(
+            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        );
+    }
+
+    hooksRun('admin_option_delete_start');
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect(
+                urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            );
+        }
+
+        if (isset($mybb->input['no'])) {
+            admin_redirect(
+                urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            );
+        }
+
+        hooksRun('admin_option_delete_post');
+
+        fieldDataDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'", "valueid='{$fieldOptionValue}'"]);
+
+        cacheUpdate(CACHE_TYPE_CONFIG);
+
+        cacheUpdate(CACHE_TYPE_FIELDS);
+
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+        log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID, 'valueid' => $fieldOptionValue]);
+
+        flash_message($lang->myshowcase_field_delete_opt_success, 'success');
+
+        admin_redirect(
+            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        );
+    }
+
+    $page->output_confirm_action(
+        urlHandlerBuild([
+            'action' => 'deleteOption',
+            'setid' => $fieldsetID,
+            'fid' => $fieldID,
+            'valueid' => $fieldOptionValue
+        ]),
+        $lang->sprintf($lang->myShowcaseAdminConfirmFieldsetDelete, $fieldsetData['setname'])
+    );
+} elseif ($pageAction == 'deleteField') {
+    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+
+    if (!$fieldsetData) {
+        flash_message($lang->myshowcase_fields_invalid_id, 'error');
+
+        admin_redirect(urlHandlerBuild());
+    }
+
+    $fieldData = fieldsGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"], ['name'], ['limit' => 1]);
+
+    if (empty($fieldData['fid'])) {
+        flash_message($lang->myshowcase_field_invalid_id, 'error');
+        admin_redirect(
+            urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+        );
+    }
+
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []);
+
+    $fieldName = $fieldData['name'] ?? $fieldData['id'];
+
+    $fieldIsInUse = false;
+
+    foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+        if (showcaseDataTableFieldExists($showcaseID, $fieldName)) {
+            $fieldIsInUse = true;
+
+            break;
+        }
+    }
+
+    if ($fieldIsInUse) {
+        flash_message($lang->myshowcase_field_in_use, 'error');
+
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+    }
+
+    hooksRun('admin_field_delete_start');
+
+    if ($mybb->request_method === 'post') {
+        if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
+            flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
+
+            admin_redirect(urlHandlerBuild());
+        }
+
+        if (isset($mybb->input['no'])) {
+            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        }
+
+        hooksRun('admin_field_delete_post');
+
+        languageModify(
+            'myshowcase_fs' . $fieldsetID,
+            [],
+            ['myshowcase_field_' . $fieldName => '']
+        );
+
+        if (fieldDataExists(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
+            fieldDataDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'"]);
+        }
+
+        fieldsDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'"]);
+
+        cacheUpdate(CACHE_TYPE_CONFIG);
+
+        cacheUpdate(CACHE_TYPE_FIELDS);
+
+        cacheUpdate(CACHE_TYPE_FIELD_DATA);
+
+        cacheUpdate(CACHE_TYPE_FIELD_SETS);
+
+        log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID]);
+
+        if (fieldsGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
+            flash_message($lang->myShowcaseAdminErrorFieldDelete, 'success');
+        } else {
+            flash_message($lang->myShowcaseAdminSuccessFieldDeleted, 'success');
+        }
+
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+    }
+
+    $page->output_confirm_action(
+        urlHandlerBuild(['action' => 'deleteField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+        $lang->sprintf($lang->myShowcaseAdminConfirmFieldDelete, $fieldName)
+    );
+} else {
     $page->output_header($lang->myshowcase_admin_fields);
 
-    $plugins->run_hooks('admin_myshowcase_fields_sets_start');
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminFieldSets');
 
-    $form = new Form('index.php?module=myshowcase-fields&amp;action=new', 'post', 'new');
+    hooksRun('admin_fields_start');
 
-    //existing field sets
-    $form_container = new FormContainer($lang->myshowcase_fields_title);
+    $formContainer = new FormContainer($lang->myshowcase_fields_title);
 
-    $form_container->output_row_header($lang->myshowcase_fields_id, ['width' => '5%', 'class' => 'align_center']);
-    $form_container->output_row_header($lang->myshowcase_fields_name, ['width' => '15%', 'class' => 'align_center']
+    $formContainer->output_row_header($lang->myshowcase_fields_id, ['width' => '1%', 'class' => 'align_center']);
+
+    $formContainer->output_row_header($lang->myshowcase_fields_name, ['width' => '15%', 'class' => 'align_center']
     );
-    $form_container->output_row_header(
+
+    $formContainer->output_row_header(
         $lang->myshowcase_fields_count,
-        ['width' => '25%', 'class' => 'align_center']
+        ['class' => 'align_center']
     );
-    $form_container->output_row_header(
+
+    $formContainer->output_row_header(
         $lang->myshowcase_fields_assigned_to,
         ['width' => '10%', 'class' => 'align_center']
     );
-    $form_container->output_row_header(
+
+    $formContainer->output_row_header(
         $lang->myshowcase_fields_used_by,
         ['width' => '10%', 'class' => 'align_center']
     );
-    $form_container->output_row_header(
+
+    $formContainer->output_row_header(
         $lang->myshowcase_fields_lang_exists,
         ['width' => '10%', 'class' => 'align_center']
     );
-    $form_container->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
-    $query = $db->simple_select('myshowcase_fieldsets', 'setid, setname', '1=1');
-    $num_fieldsets = $db->num_rows($query);
+    $formContainer->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
-    if ($num_fieldsets == 0) {
-        $form_container->output_cell($lang->myshowcase_fields_no_fieldsets, ['colspan' => 6]);
+    $fieldsetObjects = fieldsetGet([], ['setid', 'setname'], ['order_by' => 'setname']);
+
+    if (!$fieldsetObjects) {
+        $formContainer->output_cell($lang->myshowcase_fields_no_fieldsets, ['colspan' => 6]);
     } else {
-        while ($result = $db->fetch_array($query)) {
-            $query_used_in = $db->query(
-                'SELECT count(*) AS total FROM ' . TABLE_PREFIX . 'myshowcase_config WHERE fieldsetid=' . $result['setid']
-            );
-            $num_used = $db->fetch_array($query_used_in);
+        foreach ($fieldsetObjects as $fieldsetID => $result) {
+            $viewOptionsUrl = urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]);
 
-            $query_fields = $db->query(
-                'SELECT count(*) AS total FROM ' . TABLE_PREFIX . 'myshowcase_fields WHERE setid=' . $result['setid']
-            );
-            $num_fields = $db->fetch_array($query_fields);
+            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+                if (showcaseDataTableExists($showcaseID)) {
+                    $can_edit = false;
+                }
+            }
 
-            $query_tables = $db->simple_select('myshowcase_config', 'id', 'fieldsetid=' . $result['setid']);
-            $tables = 0;
-            while ($usetable = $db->fetch_array($query_tables)) {
-                if (showcaseDataTableExists((int)$usetable['id'])) {
-                    $tables++;
+            $totalUsedOn = showcaseGet(
+                ["fieldsetid='{$fieldsetID}'"],
+                ['COUNT(id) AS totalUsedOn']
+            )['totalUsedOn'] ?? 0;
+
+            $totalFields = fieldsGet(
+                ["setid='{$fieldsetID}'"],
+                ['COUNT(fid) AS totalFields'],
+                ['limit' => 1]
+            )['totalFields'] ?? 0;
+
+            $totalTablesUsedOn = 0;
+
+            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+                if (showcaseDataTableExists($showcaseID)) {
+                    ++$totalTablesUsedOn;
                 }
             }
 
             // Build popup menu
-            $popup = new PopupMenu("fieldset_{$result['setid']}", $lang->options);
+            $popup = new PopupMenu("fieldset_{$fieldsetID}", $lang->options);
+
             $popup->add_item(
                 $lang->edit,
-                "index.php?module=myshowcase-fields&amp;action=editset&amp;setid={$result['setid']}"
+                urlHandlerBuild(['action' => 'edit', 'setid' => $fieldsetID]),
             );
+
+            $popup->add_item(
+                'View Fields',
+                $viewOptionsUrl,
+            );
+
             $popup->add_item(
                 $lang->delete,
-                "index.php?module=myshowcase-fields&amp;action=delset&amp;setid={$result['setid']}"
+                urlHandlerBuild(['action' => 'delete', 'setid' => $fieldsetID]),
             );
 
             //grab status images for language file
-            $langfile = $langpath . '/myshowcase_fs' . $result['setid'] . '.lang.php';
-            if (file_exists($langfile)) {
-                if (is_writable($langfile)) {
-                    $status_image = "styles/{$page->style}/images/icons/tick.png";
-                    $status_alt = $lang->myshowcase_fields_lang_exists_yes;
+            $languageFile = $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php';
+
+            if (file_exists($languageFile)) {
+                if (is_writable($languageFile)) {
+                    $statusImage = "styles/{$page->style}/images/icons/tick.png";
+
+                    $statusText = $lang->myshowcase_fields_lang_exists_yes;
                 } else {
-                    $status_image = "styles/{$page->style}/images/icons/warning.png";
-                    $status_alt = $lang->myshowcase_fields_lang_exists_write;
+                    $statusImage = "styles/{$page->style}/images/icons/warning.png";
+
+                    $statusText = $lang->myshowcase_fields_lang_exists_write;
                 }
             } else {
-                $status_image = "styles/{$page->style}/images/icons/error.png";
-                $status_alt = $lang->myshowcase_fields_lang_exists_no;
+                $statusImage = "styles/{$page->style}/images/icons/error.png";
+
+                $statusText = $lang->myshowcase_fields_lang_exists_no;
             }
 
-            $form_container->output_cell($result['setid'], ['class' => 'align_center']);
-            $form_container->output_cell(
-                $form->generate_text_box('setname[' . $result['setid'] . ']', $result['setname'])
+            $formContainer->output_cell($fieldsetID, ['class' => 'align_center']);
+
+            $formContainer->output_cell(
+                "<a href='{$viewOptionsUrl}'>{$result['setname']}</a>",
             );
-            $form_container->output_cell($num_fields['total'], ['class' => 'align_center']);
-            $form_container->output_cell($num_used['total'], ['class' => 'align_center']);
-            $form_container->output_cell($tables, ['class' => 'align_center']);
-            $form_container->output_cell(
-                '<img src="' . $status_image . '" title="' . $status_alt . '">',
+
+            $formContainer->output_cell($totalFields, ['class' => 'align_center']);
+
+            $formContainer->output_cell($totalUsedOn, ['class' => 'align_center']);
+
+            $formContainer->output_cell($totalTablesUsedOn, ['class' => 'align_center']);
+
+            $formContainer->output_cell(
+                '<img src="' . $statusImage . '" title="' . $statusText . '">',
                 ['class' => 'align_center']
             );
-            $form_container->output_cell($popup->fetch(), ['class' => 'align_center']);
-            $form_container->construct_row();
+
+            $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
+
+            $formContainer->construct_row();
         }
     }
-    $form_container->end();
 
-    $forumdir = str_replace($mybb->settings['homeurl'], '.', $mybb->settings['bburl']);
+    hooksRun('admin_fields_end');
 
-    //new set
-    $form_container = new FormContainer($lang->myshowcase_fields_new);
+    $formContainer->end();
 
-    $form_container->output_row_header($lang->myshowcase_fields_name, ['width' => '25%', 'class' => 'align_left']);
-
-    $form_container->output_cell($form->generate_text_box('newname', ''));
-    $form_container->construct_row();
-    $form_container->end();
-
-    $buttons[] = $form->generate_submit_button($lang->myshowcase_fields_save_changes);
-    $form->output_submit_wrapper($buttons);
-
-    $form->end();
-}
-
-$plugins->run_hooks('admin_myshowcase_fields_end');
-
-$myshowcase_info = myshowcase_info();
-echo '<p /><small>' . $myshowcase_info['name'] . ' version ' . $myshowcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $myshowcase_info['website'] . '">' . $myshowcase_info['author'] . '</a>.</small>';
-$page->output_footer();
-
-
-/**
- * Create or edit language file.
- *
- * @param string Language file name or title.
- * @param array Language variables to add (key is varname, value is value).
- * @param array Language variables to remove (key is varname, value is value).
- * @param string Actual language.
- * @param bool Specifies if the language file is for ACP
- */
-function modify_lang(
-    string $name,
-    array $items_add = [],
-    array $items_drop = [],
-    string $language = 'english',
-    bool $isadmin = false
-): bool {
-    global $lang, $mybb;
-
-    //init var to free any lingering language file variables
-    $l = [];
-
-    //make sure items_xxx are populated arrays
-    if (count($items_add) == 0 && count($items_drop) == 0) {
-        return false;
-    }
-
-    //force lowercase for file name purposes
-    $language = my_strtolower($language);
-    $name = my_strtolower($name);
-
-    //get path to requested language folder
-    if (!$isadmin) {
-        $langpath = $lang->path . '/' . $language;
-    } else {
-        $langpath = $lang->path . $language . '/admin/';
-    }
-
-    //check if path exists and is writable
-    if (!is_writable($langpath)) {
-        return false;
-    }
-
-    //set full language file path
-    $langpath = $langpath . '/' . $name . '.lang.php';
-
-    //try to get existing file
-    if (file_exists($langpath)) {
-        //check if file is writable
-        if (!is_writable($langpath)) {
-            return false;
-        }
-
-        include($langpath);
-    }
-
-    //merge existing language from file with new items
-    //items last so it will update/replace existing
-    $l = array_merge($l, $items_add);
-
-    //diff arrays to drop the items requested
-    $l = array_diff_key($l, $items_drop);
-
-    //get plugin info
-    $myshowcase = myshowcase_info();
-
-    //open for writing
-    $fp = fopen($langpath, 'w');
-
-    //write file header
-    fwrite($fp, '<?php' . PHP_EOL);
-
-    $new_line = '/**' . PHP_EOL;
-    $new_line .= ' * MyShowcase System for MyBB - ' . $lang->language . ' Language File ' . PHP_EOL;
-    $new_line .= ' * Copyright 2010 PavementSucks.com, All Rights Reserved' . PHP_EOL;
-    $new_line .= ' *' . PHP_EOL;
-    $new_line .= ' * Website: http://www.pavementsucks.com/plugins.html' . PHP_EOL;
-    $new_line .= ' * Version ' . $myshowcase['version'] . PHP_EOL;
-    $new_line .= ' * License:' . PHP_EOL;
-    $new_line .= ' * File: \inc\langauges\\' . $lang->language . '\myshowcase.lang.php ' . PHP_EOL;
-    $new_line .= ' *' . PHP_EOL;
-    $new_line .= ' * MyShowcase language file for fieldset' . PHP_EOL;
-    $new_line .= ' */' . PHP_EOL . PHP_EOL;
-
-    fwrite($fp, $new_line);
-
-    //write items
-    foreach ($l as $key => $value) {
-        $new_line = '$l[\'' . $key . '\'] = "' . $value . '";' . PHP_EOL;
-        fwrite($fp, $new_line);
-    }
-
-    fclose($fp);
-
-    unset($l);
-    unset($fp);
-    unset($langpath);
-
-    return true;
+    $page->output_footer();
 }

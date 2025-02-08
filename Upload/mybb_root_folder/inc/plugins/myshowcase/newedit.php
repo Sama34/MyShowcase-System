@@ -321,7 +321,7 @@ switch ($mybb->get_input('action')) {
             $plugins->run_hooks('myshowcase_editnew_end');
 
             $showcase_authid = '';
-            
+
             $showcase_page .= eval(getTemplate('new_bottom'));
         } else {
             error($lang->myshowcase_not_authorized);
@@ -521,7 +521,7 @@ switch ($mybb->get_input('action')) {
                 $plugins->run_hooks('myshowcase_do_newedit_end');
 
                 //fix url insert variable to update results
-                $item_viewcode = str_replace('{gid}', $showcaseid, SHOWCASE_URL_VIEW);
+                $item_viewcode = str_replace('{gid}', (string)$showcaseid, SHOWCASE_URL_VIEW);
 
                 $redirect_newshowcase = $lang->redirect_myshowcase_new . '' . $lang->redirect_myshowcase . '' . $lang->sprintf(
                         $lang->redirect_myshowcase_return,

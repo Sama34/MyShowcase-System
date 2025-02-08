@@ -51,10 +51,10 @@ $l['myshowcase_summary_seo'] = 'Show SEO';
 
 $l = array_merge([
     'myShowcaseAdminSummary' => 'Summary',
-    'myShowcaseAdminSummaryDescription' => 'View and manage showcases',
+    'myShowcaseAdminSummaryDescription' => 'View and manage showcases.',
 
     'myShowcaseAdminSummaryNew' => 'Add New Showcase',
-    'myShowcaseAdminSummaryNewDescription' => 'Add a new showcase',
+    'myShowcaseAdminSummaryNewDescription' => 'Add a new showcase.',
     'myShowcaseAdminSummaryNewFormName' => 'Name',
     'myShowcaseAdminSummaryNewFormNameDescription' => 'This is the name used in links and titles of the showcase.',
     'myShowcaseAdminSummaryNewFormDescription' => 'Description',
@@ -69,7 +69,7 @@ $l = array_merge([
     'myShowcaseAdminSummaryNewFormFieldSetDescription' => 'Field set used to define the showcase data table.',
 
     'myShowcaseAdminSummaryEdit' => 'Edit Showcase',
-    'myShowcaseAdminSummaryEditDescription' => 'Edit a new showcase',
+    'myShowcaseAdminSummaryEditDescription' => 'Edit a new showcase.',
     'myShowcaseAdminSummaryEditFormDefaultListImage' => 'Default List Image ',
     'myShowcaseAdminSummaryEditFormDefaultListImageDescription' => 'This is the name of the image file (assuming relative to theme image folder) that is used as the default image for each record in the list view. Empty value will use View text as link.',
     'myShowcaseAdminSummaryEditFormWaterMarkImage' => 'Watermark Image',
@@ -128,7 +128,7 @@ $l = array_merge([
     'myShowcaseAdminSummaryEditPermissionsCanViewAttachments' => 'Can View Attachments?',
     'myShowcaseAdminSummaryEditPermissionsCanSearch' => 'Can Search Showcases?',
     'myShowcaseAdminSummaryEditPermissionsCanWatermark' => 'Can Watermark Images?',
-    'myShowcaseAdminSummaryEditPermissionsAttachmentLimit' => 'Max Attachments per Showcase',
+    'myShowcaseAdminSummaryEditPermissionsAttachmentLimit' => 'Max Attachments per showcase entry',
     'myShowcaseAdminSummaryEditModeratorPermissionsAssigned' => 'Moderators Assigned to "{1}"',
     'myShowcaseAdminSummaryEditModeratorPermissionsName' => 'Name',
     'myShowcaseAdminSummaryEditModeratorPermissionsCanApprove' => 'Can Approve?',
@@ -148,19 +148,8 @@ $l = array_merge([
     'myShowcaseAdminSummaryEditModeratorPermissionsAddUserUsername' => 'User',
     'myShowcaseAdminSummaryEditModeratorPermissionsAddUserUsernameDescription' => 'Username of the moderator to be added.',
 
-    'myShowcaseAdminButtonSubmit' => 'Submit',
-    'myShowcaseAdminButtonSubmitOther' => 'Submit Other',
-    'myShowcaseAdminButtonSubmitPermissions' => 'Submit Permissions',
-    'myShowcaseAdminButtonSubmitSaveModeratorPermissions' => 'Save Moderator Permissions',
-    'myShowcaseAdminButtonSubmitAddModeratorGroup' => 'Add Group Moderator',
-    'myShowcaseAdminButtonSubmitAddModeratorUser' => 'Add User Moderator',
-    'myShowcaseAdminButtonReset' => 'Reset',
-    'myShowcaseAdminButtonDelete' => 'Delete',
-
-    'myShowcaseAdminErrorInvalidPostKey' => 'Invalid post key',
     'myShowcaseAdminErrorInvalidShowcase' => 'Invalid showcase',
     'myShowcaseAdminErrorNoFieldSets' => 'Can not create a new showcase as there are no field sets defined.',
-    'myShowcaseAdminErrorMissingRequiredFields' => 'Some required fields are missing.',
     'myShowcaseAdminErrorDuplicatedName' => 'The selected name is already in use.',
     'myShowcaseAdminErrorDuplicatedMainFile' => 'The selected main file is already in use.',
     'myShowcaseAdminErrorTableDelete' => "This showcase's data table contains data and can not be deleted separately. If you wish to delete the populated table, delete the entire showcase.",
@@ -181,12 +170,12 @@ $l = array_merge([
     'myShowcaseAdminSuccessShowcaseEditModerators' => 'The showcase moderators were successfully edited.',
     'myShowcaseAdminSuccessShowcaseEditModeratorDelete' => 'The moderator was successfully removed.',
 
-    'myShowcaseAdminConfirmTableDrop' => 'Are you sure you want to drop the table for the {1} showcase?',
-    'myShowcaseAdminConfirmShowcaseDelete' => 'Are you sure you want to delete this Showcase? All comments, attachment references and showcase entries will be permantently deleted.',
+    'myShowcaseAdminConfirmTableDrop' => 'Are you sure you want to drop the table for the "{1}" showcase?',
+    'myShowcaseAdminConfirmShowcaseDelete' => 'Are you sure you want to delete the "{1}" showcase? All comments, attachment references and showcase entries will be permanently deleted.',
     'myShowcaseAdminConfirmModeratorDelete' => 'Are you sure you want to remove this moderator?',
 
     'myShowcaseAdminSummaryViewRewrites' => 'View Rewrites',
-    'myShowcaseAdminSummaryViewRewritesDescription' => 'If you are using the built-in MyBB SEO or other SEO plugin, you will need to enter the information below into your .htaccess file. These settings are specific to the {1} Showcase. If there are other showcases, the SEO settings for those will need to be added as well. If the {2} Showcase name is changed, these .htaccess settings will need to be updated. After changing the name, return to this page to obtain the new settings and update the .htaccess file as appropriate.<br /><br />',
+    'myShowcaseAdminSummaryViewRewritesDescription' => 'If you are using the built-in MyBB SEO or other SEO plugin, you will need to enter the information below into your .htaccess file. These settings are specific to the "{1}" showcase. If there are other showcases, the SEO settings for those will need to be added as well. If the "{2}" showcase name is changed, these .htaccess settings will need to be updated. After changing the name, return to this page to obtain the new settings and update the .htaccess file as appropriate.<br /><br />',
     'myShowcaseAdminSummaryViewRewritesMain' => 'RewriteRule ^{1}\.html$ {2} [L,QSA]<br />',
     'myShowcaseAdminSummaryViewRewritesPage' => 'RewriteRule ^{1}-page-([0-9]+)\.html$ {2}?page=$1 [L,QSA]<br />',
     'myShowcaseAdminSummaryViewRewritesView' => 'RewriteRule ^{1}-view-([0-9]+)\.html$ {2}?action=view&gid=$1 [L,QSA]<br />',

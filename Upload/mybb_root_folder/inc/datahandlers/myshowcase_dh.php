@@ -78,11 +78,7 @@ class MyShowcaseDataHandler extends DataHandler
         $myshowcase_data = &$this->data;
 
         //get this myshowcase's field info
-        $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
-        if (!is_array($fieldcache[$me->fieldsetid])) {
-            cacheUpdate(CACHE_TYPE_FIELDS);
-            $fieldcache = cacheGet(CACHE_TYPE_FIELD_SETS);
-        }
+        $fieldcache = cacheGet(CACHE_TYPE_FIELDS);
 
         //get this myshowcase's permissions
         $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
@@ -167,7 +163,7 @@ class MyShowcaseDataHandler extends DataHandler
             //$myshowcase_data[$fname] = $db->escape_string($myshowcase_data[$fname]);
         }
 
-        $plugins->run_hooks('datahandler_post_validate_post', $this);
+        //$plugins->run_hooks('datahandler_post_validate_post', $this);
 
         // We are done validating, return.
         $this->set_validated(true);

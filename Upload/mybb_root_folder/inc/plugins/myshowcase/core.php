@@ -211,6 +211,23 @@ function showcaseDataTableExists(int $showcaseID): bool
     return $db->table_exists('myshowcase_data' . $showcaseID);
 }
 
+function showcaseDataTableFieldExists(int $showcaseID, string $fieldName): bool
+{
+    global $db;
+
+    return $db->table_exists('myshowcase_data' . $showcaseID) &&
+        $db->field_exists($fieldName, 'myshowcase_data' . $showcaseID);
+}
+
+function fieldDataExists(array $whereClauses = []): bool
+{
+    global $db;
+
+    $query = $db->simple_select('myshowcase_field_data', implode(' AND ', $whereClauses));
+
+    return $db->num_rows($query) > 0;
+}
+
 function showcaseDataTableDrop(int $showcaseID): bool
 {
     global $db;
@@ -324,13 +341,29 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_FIELDS:
             $query = $db->simple_select(
                 'myshowcase_fields',
-                '*',
+                'fid, setid, name, html_type, enabled, field_type, min_length, max_length, requiredField, parse, field_order, list_table_order, searchable, format',
                 '1=1',
                 ['order_by' => 'setid, field_order']
             );
 
             while ($fieldData = $db->fetch_array($query)) {
-                $cacheData[(int)$fieldData['setid']][(int)$fieldData['fid']] = $fieldData;
+                $cacheData[(int)$fieldData['setid']][(int)$fieldData['fid']] =
+                    [
+                        'fid' => (int)$fieldData['fid'],
+                        'setid' => (int)$fieldData['setid'],
+                        'name' => (string)$fieldData['name'],
+                        'html_type' => (string)$fieldData['html_type'],
+                        'enabled' => (bool)$fieldData['enabled'],
+                        'field_type' => (string)$fieldData['field_type'],
+                        'min_length' => (int)$fieldData['min_length'],
+                        'max_length' => (int)$fieldData['max_length'],
+                        'requiredField' => (bool)$fieldData['requiredField'],
+                        'parse' => (bool)$fieldData['parse'],
+                        'field_order' => (int)$fieldData['field_order'],
+                        'list_table_order' => (int)$fieldData['list_table_order'],
+                        'searchable' => (bool)$fieldData['searchable'],
+                        'format' => (string)$fieldData['format'],
+                    ];
             }
 
             break;
@@ -536,6 +569,28 @@ function moderatorsDelete(array $whereClauses = []): bool
     return true;
 }
 
+function fieldsetInsert(array $fieldsetData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_fieldsets', $fieldsetData);
+
+    return (int)$db->insert_id();
+}
+
+function fieldsetUpdate(int $fieldsetID, array $fieldsetData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_fieldsets',
+        $fieldsetData,
+        "setid='{$fieldsetID}'"
+    );
+
+    return true;
+}
+
 function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
@@ -560,7 +615,38 @@ function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $q
     return $fieldsetData;
 }
 
-function fieldsGet(array $whereClauses = [], array $queryFields = []): array
+function fieldsetDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_fieldsets', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function fieldsInsert(array $fieldData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_fields', $fieldData);
+
+    return (int)$db->insert_id();
+}
+
+function fieldsUpdate(array $whereClauses, array $fieldData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_fields',
+        $fieldData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function fieldsGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
 
@@ -568,7 +654,12 @@ function fieldsGet(array $whereClauses = [], array $queryFields = []): array
         'myshowcase_fields',
         implode(',', array_merge(['fid'], $queryFields)),
         implode(' AND ', $whereClauses),
+        $queryOptions
     );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
 
     $fieldData = [];
 
@@ -577,6 +668,70 @@ function fieldsGet(array $whereClauses = [], array $queryFields = []): array
     }
 
     return $fieldData;
+}
+
+function fieldsDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_fields', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function fieldDataInsert(array $fieldData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_field_data', $fieldData);
+
+    return (int)$db->insert_id();
+}
+
+function fieldDataUpdate(array $whereClauses, array $fieldData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_field_data',
+        $fieldData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function fieldDataGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_field_data',
+        implode(',', array_merge(['fieldDataID'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $fieldData = [];
+
+    while ($field = $db->fetch_array($query)) {
+        $fieldData[(int)$field['fieldDataID']] = $field;
+    }
+
+    return $fieldData;
+}
+
+function fieldDataDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_field_data', implode(' AND ', $whereClauses));
+
+    return true;
 }
 
 function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): array

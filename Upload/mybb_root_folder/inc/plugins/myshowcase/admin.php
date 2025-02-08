@@ -525,10 +525,15 @@ const TABLES_DATA = [
         'unique_key' => ['setid_fid' => 'setid,fid']
     ],
     'myshowcase_field_data' => [
+        'fieldDataID' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
         'setid' => [
             'type' => 'INT',
             'unsigned' => true,
-            'primary_key' => true
         ],
         'fid' => [
             'type' => 'INT',
@@ -539,7 +544,7 @@ const TABLES_DATA = [
             'type' => 'VARCHAR',
             'size' => 15,
             'default' => '',
-            'unique_key' => true
+            //'unique_key' => true
         ],
         'valueid' => [
             'type' => 'SMALLINT',
@@ -556,6 +561,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        'unique_key' => ['setid_fid_valueid' => 'setid,fid,valueid']
     ],
 ];
 
@@ -747,7 +753,7 @@ function pluginInstallation(): bool
 
 function pluginIsInstalled(): bool
 {
-    return dbVerifyTablesExists() && dbVerifyColumnsExists();
+    return dbVerifyTablesExists() && dbVerifyColumnsExists() && dbVerifyColumnsExists(TABLES_DATA);
 }
 
 function pluginUninstallation(): bool
@@ -951,6 +957,7 @@ function dbVerifyTables(array $tableObjects = TABLES_DATA): bool
                 if ($db->field_exists($fieldName, $tableName)) {
                     $db->modify_column($tableName, "`{$fieldName}`", $fieldData);
                 } else {
+                    var_dump($tableName, $fieldName, $fieldData);
                     $db->add_column($tableName, $fieldName, $fieldData);
                 }
             }
@@ -1097,4 +1104,93 @@ function buildDbFieldDefinition(array $fieldData): string
     }
 
     return $fieldDefinition;
+}
+
+/**
+ * Create or edit language file.
+ *
+ * @param string Language file name or title.
+ * @param array Language variables to add (key is varname, value is value).
+ * @param array Language variables to remove (key is varname, value is value).
+ * @param string Actual language.
+ * @param bool Specifies if the language file is for ACP
+ */
+function languageModify(
+    string $languageFileName,
+    array $languageVariablesAddition = [],
+    array $languageVariablesDelete = [],
+    string $languageName = 'english',
+    bool $isAdministrator = false
+): bool {
+    global $lang;
+
+    if (count($languageVariablesAddition) == 0 && count($languageVariablesDelete) == 0) {
+        return false;
+    }
+
+    $languageName = my_strtolower($languageName);
+
+    $languageFileName = my_strtolower($languageFileName);
+
+    if (!$isAdministrator) {
+        $languagePath = $lang->path . '/' . $languageName;
+    } else {
+        $languagePath = $lang->path . $languageName . '/admin/';
+    }
+
+    if (!is_writable($languagePath)) {
+        return false;
+    }
+
+    $languagePath = $languagePath . '/' . $languageFileName . '.lang.php';
+
+    if (file_exists($languagePath)) {
+        if (!is_writable($languagePath)) {
+            return false;
+        }
+
+        include_once $languagePath;
+    }
+
+    if (!isset($l) || !is_array($l)) {
+        $l = [];
+    }
+
+    $l = array_merge($l, $languageVariablesAddition);
+
+    $l = array_diff_key($l, $languageVariablesDelete);
+
+    $pluginInformation = myshowcase_info();
+
+    $fp = fopen($languagePath, 'w');
+
+    fwrite($fp, '<?php' . PHP_EOL);
+
+    $languageLines = '/**' . PHP_EOL;
+    $languageLines .= ' * MyShowcase System for MyBB - ' . $lang->language . ' Language File ' . PHP_EOL;
+    $languageLines .= ' * Copyright 2010 PavementSucks.com, All Rights Reserved' . PHP_EOL;
+    $languageLines .= ' *' . PHP_EOL;
+    $languageLines .= ' * Website: http://www.pavementsucks.com/plugins.html' . PHP_EOL;
+    $languageLines .= ' * Version ' . $pluginInformation['version'] . PHP_EOL;
+    $languageLines .= ' * License:' . PHP_EOL;
+    $languageLines .= ' * File: \inc\langauges\\' . $lang->language . '\myshowcase.lang.php ' . PHP_EOL;
+    $languageLines .= ' *' . PHP_EOL;
+    $languageLines .= ' * MyShowcase language file for fieldset' . PHP_EOL;
+    $languageLines .= ' */' . PHP_EOL . PHP_EOL;
+
+    fwrite($fp, $languageLines);
+
+    foreach ($l as $languageVariableKey => $languageVariableValue) {
+        $languageVariableValue = ucfirst($languageVariableValue);
+
+        $languageLines = "\$l['{$languageVariableKey}'] = '{$languageVariableValue}';" . PHP_EOL;
+
+        fwrite($fp, $languageLines);
+    }
+
+    fclose($fp);
+
+    unset($l, $fp, $languagePath);
+
+    return true;
 }

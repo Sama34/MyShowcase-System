@@ -67,11 +67,9 @@ $page->add_breadcrumb_item($lang->myShowcaseSystem, urlHandlerBuild());
 
 $page->add_breadcrumb_item($lang->myShowcaseAdminSummary, urlHandlerBuild());
 
-loadLanguage();
-
 $showcaseID = $mybb->get_input('id', MyBB::INPUT_INT);
 
-$sub_tabs = [
+$pageTabs = [
     'myShowcaseAdminSummary' => [
         'title' => $lang->myShowcaseAdminSummary,
         'link' => urlHandlerBuild(),
@@ -82,12 +80,15 @@ $sub_tabs = [
         'link' => urlHandlerBuild(['action' => 'new']),
         'description' => $lang->myShowcaseAdminSummaryNewDescription
     ],
-    'myShowcaseAdminSummaryEdit' => [
+];
+
+if ($mybb->get_input('action') == 'edit') {
+    $pageTabs['myShowcaseAdminSummaryEdit'] = [
         'title' => $lang->myShowcaseAdminSummaryEdit,
         'link' => urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID]),
         'description' => $lang->myShowcaseAdminSummaryEditDescription
-    ],
-];
+    ];
+}
 
 $groupsCache = $cache->read('usergroups') ?? [];
 
@@ -105,18 +106,18 @@ if ($mybb->get_input('action') === 'new') {
     if (!$fieldsetObjects) {
         flash_message($lang->myShowcaseAdminErrorNoFieldSets, 'error');
 
-        admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+        admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
 
     $page->output_header($lang->myShowcaseAdminSummary);
 
-    $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummaryNew');
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminSummaryNew');
 
     if ($mybb->request_method === 'post') {
         if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
             flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
 
-            admin_redirect($sub_tabs['myShowcaseAdminSummaryNew']['link']);
+            admin_redirect($pageTabs['myShowcaseAdminSummaryNew']['link']);
         }
 
         $errorMessages = [];
@@ -171,15 +172,15 @@ if ($mybb->get_input('action') === 'new') {
 
             flash_message($lang->myShowcaseAdminSuccessNewShowcase, 'success');
 
-            admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+            admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
         }
     }
 
-    $form = new Form($sub_tabs['myShowcaseAdminSummaryNew']['link'], 'post', 'myShowcaseAdminSummaryNew');
+    $form = new Form($pageTabs['myShowcaseAdminSummaryNew']['link'], 'post', 'myShowcaseAdminSummaryNew');
 
     echo $form->generate_hidden_field('my_post_key', $mybb->post_code);
 
-    $formContainer = new FormContainer($sub_tabs['myShowcaseAdminSummaryNew']['title']);
+    $formContainer = new FormContainer($pageTabs['myShowcaseAdminSummaryNew']['title']);
 
     $formContainer->output_row(
         $lang->myShowcaseAdminSummaryNewFormName . '<em>*</em>',
@@ -246,7 +247,7 @@ if ($mybb->get_input('action') === 'new') {
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
 
-        admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+        admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
 
     $page->add_breadcrumb_item(
@@ -256,7 +257,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_header($lang->myShowcaseAdminSummaryEdit);
 
-    $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummaryEdit');
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminSummaryEdit');
 
     if ($mybb->request_method == 'post') {
         switch ($mybb->get_input('type')) {
@@ -1317,7 +1318,7 @@ if ($mybb->get_input('action') === 'new') {
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
 
-        admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+        admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
 
     $showcaseData = ['enabled' => $enableShowcase ? SHOWCASE_STATUS_ENABLED : SHOWCASE_STATUS_DISABLED];
@@ -1335,11 +1336,11 @@ if ($mybb->get_input('action') === 'new') {
         'success'
     );
 
-    admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+    admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
 } elseif (in_array($mybb->get_input('action'), ['tableCreate', 'tableRebuild'])) {
     $createTable = $mybb->get_input('action') === 'tableCreate';
 
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"]);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid']);
 
     if (!$showcaseData || $createTable && showcaseDataTableExists($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1477,7 +1478,7 @@ if ($mybb->get_input('action') === 'new') {
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
 
-        admin_redirect($sub_tabs['myShowcaseAdminSummary']['link']);
+        admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
 
     $page->add_breadcrumb_item(
@@ -1600,8 +1601,10 @@ if ($mybb->get_input('action') === 'new') {
 
         cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
+        log_admin_action(['showcaseID' => $showcaseID]);
+
         if (showcaseGet(["id='{$showcaseID}'"])) {
-            flash_message($lang->myShowcaseAdminErrorShowcaseDelete, 'success');
+            flash_message($lang->myShowcaseAdminErrorShowcaseDelete, 'error');
         } else {
             flash_message($lang->myShowcaseAdminSuccessShowcaseDeleted, 'success');
         }
@@ -1618,7 +1621,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_header($lang->myShowcaseAdminSummary);
 
-    $page->output_nav_tabs($sub_tabs, 'myShowcaseAdminSummary');
+    $page->output_nav_tabs($pageTabs, 'myShowcaseAdminSummary');
 
     $formContainer = new FormContainer($lang->myshowcase_summary_existing);
 

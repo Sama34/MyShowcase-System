@@ -210,6 +210,8 @@ class System
      */
     public array $modperms;
 
+    public bool $seo_support;
+
     /**
      * Constructor of class.
      *
@@ -218,6 +220,12 @@ class System
     public function __construct(string $filename = THIS_SCRIPT)
     {
         global $db, $mybb, $cache;
+
+        if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && isset($_SERVER['SEO_SUPPORT']) && $_SERVER['SEO_SUPPORT'] == 1)) {
+            $this->seo_support = true;
+        } else {
+            $this->seo_support = false;
+        }
 
         //make sure plugin is installed and active
         $plugin_cache = $cache->read('plugins');
@@ -265,9 +273,10 @@ class System
         //make sure data table exists and assign table name var if it does
         if (showcaseDataTableExists($this->id)) {
             $this->table_name = 'myshowcase_data' . $this->id;
+        } else {
+            $this->table_name = '';
         }
 
-        //simple tests for proper setup.
         if (!$this->id || !$this->table_name || $this->fieldsetid == 0) {
             error('This file is not properly configured in the MyShowcase Admin section of the ACP');
         }
