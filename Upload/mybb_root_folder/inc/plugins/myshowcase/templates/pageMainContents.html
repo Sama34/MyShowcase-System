@@ -1,0 +1,83 @@
+<div class="float_left">
+    {$pagination}
+</div>
+<div class="float_right">
+    {$buttonNewEntry}
+</div>
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder clear">
+    <tr>
+        <td class="thead" colspan="{$showcaseColumnsCount}">
+            <div>
+                <strong>{$showcaseName}</strong>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td class="tcat" width="15%">
+            <span class="smalltext"><strong>
+                <a href="{$urlBase}/{$urlSortByUsername}">{$lang->myShowcaseMainTableTheadAuthor}</a>
+                {$orderInput['username']}
+            </strong></span>
+        </td>
+        {$showcaseTableTheadExtra}
+        <td class="tcat" align="center" width="5%">
+            <span class="smalltext"><strong>
+                <a href="{$urlBase}/{$urlSortByComments}">{$lang->myShowcaseMainTableTheadComments}</a>
+                {$orderInput['comments']}
+            </strong></span>
+        </td>
+        <td class="tcat" align="center" width="5%">
+            <span class="smalltext"><strong>
+                <a href="{$urlBase}/{$urlSortByViews}">{$lang->myShowcaseMainTableTheadViews}</a>
+                {$orderInput['views']}
+            </strong></span>
+        </td>
+        <td class="tcat" align="right" width="20%">
+            <span class="smalltext"><strong>
+                <a href="{$urlBase}/{$urlSortByCreateDate}">{$lang->myShowcaseMainTableTheadLastEdit}</a>
+                {$orderInput['dateline']}
+            </strong></span>
+        </td>
+        {$showcaseTableTheadInlineModeration}
+    </tr>
+    {$showcaseEntriesList}
+    <tr>
+        <td class="tfoot" align="right" colspan="{$showcaseColumnsCount}">
+            <form action="{$urlBase}/{$urlShowcase}" method="get">
+                <input type="hidden" name="page" value="{$currentPage}"/>
+                {$selectFieldCode}
+                <select name="order">
+                    <option value="asc" {$showcaseSelectOrderAscendingSelectedElement}>
+                        {$lang->myShowcaseMainSelectOrderDirection}
+                        {$lang->myShowcaseMainSelectAscending}
+                    </option>
+                    <option value="desc" {$showcaseSelectOrderDescendingSelectedElement}>
+                        {$lang->myShowcaseMainSelectOrderDirection}
+                        {$lang->myShowcaseMainSelectDescending}
+                    </option>
+                </select>
+                {$lang->myShowcaseMainSearch}
+                <select name="search_field">
+                    {$selectOptionsSearchField}
+                </select>
+                {$lang->myShowcaseMainSearchFor}
+                <input type="text" class="textbox" name="keywords" value="{$showcaseInputSearchKeywords}" size="20"/>
+                {$lang->myShowcaseMainSearchMatch}
+                <input type="checkbox" name="exact_match" {$showcaseInputSearchExactMatchCheckElement }>
+                {$buttonGo}
+            </form>
+        </td>
+    </tr>
+</table>
+<div class="float_left">
+    {$pagination}
+</div>
+<div class="float_right" style="margin-top: 4px;">
+    {$buttonNewEntry}
+</div>
+<br class="clear"/>
+<br/>
+<div class="float_right" style="text-align: right;">
+    {$showcaseInlineModeration}
+</div>
+<br class="clear"/>

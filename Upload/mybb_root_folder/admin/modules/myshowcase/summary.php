@@ -15,13 +15,16 @@ declare(strict_types=1);
 
 use function MyShowcase\Admin\dbVerifyTables;
 use function MyShowcase\Core\attachmentDelete;
+use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\commentDelete;
+use function MyShowcase\Core\commentGet;
+use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldsetGet;
-use function MyShowcase\Core\fieldsGet;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\moderatorGet;
 use function MyShowcase\Core\moderatorsDelete;
 use function MyShowcase\Core\moderatorsInsert;
 use function MyShowcase\Core\moderatorsUpdate;
@@ -32,19 +35,13 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseDelete;
 use function MyShowcase\Core\showcaseGet;
-use function MyShowcase\Core\showcaseGetFieldsData;
+use function MyShowcase\Core\showcaseDataGet;
 use function MyShowcase\Core\showcaseInsert;
 use function MyShowcase\Core\showcasePermissions;
 use function MyShowcase\Core\showcaseUpdate;
 use function MyShowcase\Core\urlHandlerBuild;
 
-use const MyShowcase\Admin\DATA_TABLE_STRUCTURE;
-use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
-use const MyShowcase\Admin\FIELD_TYPE_INT;
-use const MyShowcase\Admin\FIELD_TYPE_TEXT;
-use const MyShowcase\Admin\FIELD_TYPE_TIMESTAMP;
-use const MyShowcase\Admin\FIELD_TYPE_VARCHAR;
-use const MyShowcase\Admin\TABLES_DATA;
+use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
@@ -242,7 +239,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_footer();
 } elseif ($mybb->get_input('action') == 'edit') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], array_keys(TABLES_DATA['myshowcase_config']));
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], array_keys(TABLES_DATA['myshowcase_config']), ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1019,16 +1016,21 @@ if ($mybb->get_input('action') === 'new') {
         ['width' => '10%', 'class' => 'align_center']
     );
 
-    $query = $db->simple_select(
-        "myshowcase_moderators m LEFT JOIN {$db->table_prefix}users u ON (m.uid=u.uid) LEFT JOIN {$db->table_prefix}usergroups g ON (m.uid=g.gid)",
-        'm.*, u.username, g.title',
-        "id='{$showcaseID}'",
-        ['order_by' => 'm.isgroup DESC, u.username, g.title']
+    $fieldObjects = moderatorGet(
+        ["id='{$showcaseID}'"],
+        ['mid', 'uid', 'isgroup', 'canmodapprove', 'canmodedit', 'canmoddelete', 'canmoddelcomment'],
+        ['order_by' => 'isgroup']
     );
 
     while ($moderatorData = $db->fetch_array($query)) {
         if (!empty($moderatorData['isgroup'])) {
             $moderatorData['img'] = "<img src=\"styles/{$page->style}/images/icons/group.png\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
+
+            foreach ($groupsCache as $groupData) {
+                if ($groupData['gid'] == $moderatorData['uid']) {
+                    $moderatorData['title'] = $groupData['title'];
+                }
+            }
 
             $formContainer->output_cell(
                 "{$moderatorData['img']} <a href=\"index.php?module=user-groups&amp;action=edit&amp;gid={$moderatorData['id']}\">" . htmlspecialchars_uni(
@@ -1038,9 +1040,11 @@ if ($mybb->get_input('action') === 'new') {
         } else {
             $moderatorData['img'] = "<img src=\"styles/{$page->style}/images/icons/user.png\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
 
+            $userData = get_user($moderatorData['uid']);
+
             $formContainer->output_cell(
                 "{$moderatorData['img']} <a href=\"index.php?module=user-users&amp;action=edit&amp;uid={$moderatorData['id']}\">" . htmlspecialchars_uni(
-                    $moderatorData['username']
+                    $userData['username']
                 ) . '</a>'
             );
         }
@@ -1273,7 +1277,7 @@ if ($mybb->get_input('action') === 'new') {
 				dataType: \'json\',
 				data: function (term, page) {
 					return {
-						query: term, // search term
+						query: term, // search_field term
 					};
 				},
 				results: function (data, page) { // parse the results into the format expected by Select2.
@@ -1313,7 +1317,7 @@ if ($mybb->get_input('action') === 'new') {
 } elseif (in_array($mybb->get_input('action'), ['enable', 'disable'])) {
     $enableShowcase = $mybb->get_input('action') === 'enable';
 
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"]);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1340,7 +1344,7 @@ if ($mybb->get_input('action') === 'new') {
 } elseif (in_array($mybb->get_input('action'), ['tableCreate', 'tableRebuild'])) {
     $createTable = $mybb->get_input('action') === 'tableCreate';
 
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid']);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]);
 
     if (!$showcaseData || $createTable && showcaseDataTableExists($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1348,67 +1352,9 @@ if ($mybb->get_input('action') === 'new') {
         admin_redirect(urlHandlerBuild());
     }
 
-    $dataTableStructure = DATA_TABLE_STRUCTURE['myshowcase_data'];
-
-    $fieldsetID = (int)$showcaseData['fieldsetid'];
-
-    $showcaseFields = fieldsGet(
-        ["setid='{$fieldsetID}'"],
-        ['name', 'field_type', 'max_length', 'requiredField']
-    );
+    $dataTableStructure = dataTableStructureGet();
 
     hooksRun('admin_summary_table_create_rebuild_start');
-
-    foreach ($showcaseFields as $fieldID => $fieldData) {
-        $dataTableStructure[$fieldData['name']] = [];
-
-        $field = &$dataTableStructure[$fieldData['name']];
-
-        switch ($fieldData['field_type']) {
-            case FIELD_TYPE_VARCHAR:
-                $field['type'] = 'VARCHAR';
-
-                $field['size'] = (int)$fieldData['max_length'];
-
-                if (empty($fieldData['requiredField'])) {
-                    $field['default'] = '';
-                }
-                break;
-            case FIELD_TYPE_TEXT:
-                $field['type'] = 'TEXT';
-
-                if (empty($fieldData['requiredField'])) {
-                    $field['null'] = true;
-                }
-                break;
-            case FIELD_TYPE_INT:
-            case FIELD_TYPE_BIGINT:
-                $field['type'] = my_strtoupper($fieldData['field_type']);
-
-                $field['size'] = (int)$fieldData['max_length'];
-
-                if (empty($fieldData['requiredField'])) {
-                    $field['default'] = 0;
-                }
-                break;
-            case FIELD_TYPE_TIMESTAMP:
-                $field['type'] = 'TIMESTAMP';
-                break;
-        }
-
-        if (!empty($fieldData['requiredField'])) {
-            if ($fieldData['field_type'] === FIELD_TYPE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
-                $create_index = ', FULLTEXT KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
-            } else {
-                $create_index = ', KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
-            }
-            // todo: add key for uid & approved
-        }
-
-        unset($field);
-    }
-
-    hooksRun('admin_summary_table_create_rebuild_intermediate');
 
     dbVerifyTables(["myshowcase_data{$showcaseID}" => $dataTableStructure]);
 
@@ -1426,7 +1372,7 @@ if ($mybb->get_input('action') === 'new') {
 
     admin_redirect(urlHandlerBuild());
 } elseif ($mybb->get_input('action') === 'tableDrop') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name']);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name'], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1438,7 +1384,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $showcaseName = $showcaseData['name'];
 
-    if (showcaseGetFieldsData($showcaseID)) {
+    if (showcaseDataGet($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorTableDrop, 'error');
 
         admin_redirect(urlHandlerBuild());
@@ -1473,7 +1419,7 @@ if ($mybb->get_input('action') === 'new') {
         $lang->sprintf($lang->myShowcaseAdminConfirmTableDrop, $showcaseName)
     );
 } elseif ($mybb->get_input('action') === 'viewRewrites') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name', 'mainfile']);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name', 'mainfile'], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1558,7 +1504,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_footer();
 } elseif ($mybb->get_input('action') == 'delete') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"]);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1603,7 +1549,7 @@ if ($mybb->get_input('action') === 'new') {
 
         log_admin_action(['showcaseID' => $showcaseID]);
 
-        if (showcaseGet(["id='{$showcaseID}'"])) {
+        if (showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1])) {
             flash_message($lang->myShowcaseAdminErrorShowcaseDelete, 'error');
         } else {
             flash_message($lang->myShowcaseAdminSuccessShowcaseDeleted, 'success');
@@ -1684,7 +1630,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
-    $showcaseObjects = showcaseGet([], array_keys(TABLES_DATA['myshowcase_config']), []);
+    $showcaseObjects = showcaseGet([], array_keys(TABLES_DATA['myshowcase_config']));
 
     if (!$showcaseObjects) {
         $formContainer->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
@@ -1697,36 +1643,29 @@ if ($mybb->get_input('action') === 'new') {
             $showcaseDataTableExists = showcaseDataTableExists($showcaseID);
 
             if ($showcaseDataTableExists) {
-                $showcaseTotalEntries = $db->fetch_field(
-                    $db->simple_select(
-                        'myshowcase_data' . $showcaseID,
-                        'count(gid) AS showcaseTotalEntries'
-                    ),
-                    'showcaseTotalEntries'
-                ) ?? 0;
+                $showcaseTotalEntries = showcaseDataGet(
+                    $showcaseID,
+                    [],
+                    ['COUNT(gid) AS showcaseTotalEntries']
+                )['showcaseTotalEntries'] ?? 0;
 
-                $attachmentsStats = $db->fetch_array(
-                    $db->simple_select(
-                        "myshowcase_attachments a LEFT JOIN {$db->table_prefix}myshowcase_data{$showcaseID} d ON (d.gid=a.gid)",
-                        'count(aid) AS showcaseTotalAttachments, sum(filesize) AS showcaseTotalFilesSize',
-                        "a.id='{$showcaseID}'",
-                        ['group_by' => 'a.id']
-                    )
-                );
+                $showcaseTotalAttachments = attachmentGet(
+                    ["id='{$showcaseID}'"],
+                    ['COUNT(aid) AS showcaseTotalAttachments'],
+                    ['group_by' => 'id']
+                )['showcaseTotalAttachments'] ?? 0;
 
-                $showcaseTotalAttachments = $attachmentsStats['showcaseTotalAttachments'] ?? 0;
+                $showcaseTotalFilesSize = attachmentGet(
+                    ["id='{$showcaseID}'"],
+                    ['SUM(filesize) AS showcaseTotalFilesSize'],
+                    ['group_by' => 'id']
+                )['showcaseTotalFilesSize'] ?? 0;
 
-                $showcaseTotalFilesSize = $attachmentsStats['showcaseTotalFilesSize'] ?? 0;
-
-                $showcaseTotalComments = $db->fetch_field(
-                    $db->simple_select(
-                        "myshowcase_comments c LEFT JOIN {$db->table_prefix}myshowcase_data{$showcaseID} d ON (d.gid=c.gid)",
-                        'count(cid) AS showcaseTotalComments',
-                        "c.id='{$showcaseID}'",
-                        ['group_by' => 'c.id']
-                    ),
-                    'showcaseTotalComments'
-                ) ?? 0;
+                $showcaseTotalComments = commentGet(
+                    ["id='{$showcaseID}'"],
+                    ['COUNT(cid) AS showcaseTotalComments'],
+                    ['group_by' => 'id']
+                )['showcaseTotalComments'] ?? 0;
             }
 
             // Build popup menu

@@ -13,12 +13,12 @@
 
 declare(strict_types=1);
 
-global $showcase_proper, $showcase_lower;
+global $showcaseName, $showcase_lower;
 
-//$l['nav_myshowcase'] = $showcase_proper; //for breadcrumb
-//$l['myshowcase'] = $showcase_proper; //for rest of myshowcase
+//$l['nav_myshowcase'] = $showcaseName; //for breadcrumb
+//$l['myshowcase'] = $showcaseName; //for rest of myshowcase
 $l['myshowcase_specifications'] = 'Specs';
-$l['latest_myshowcases'] = "Latest {$showcase_proper}";
+$l['latest_myshowcases'] = "Latest {$showcaseName}";
 $l['myshowcase_showcase'] = 'Showcase';
 
 //headerinclude / JS confirmations
@@ -27,11 +27,13 @@ $l['removeshowcaseattach_confirm'] = 'Are you sure you want to remove the select
 $l['removeshowcasecomment_confirm'] = 'Are you sure you want to remove the selected comment from this entry?';
 
 //basic headers for index table
-$l['myshowcase_view'] = 'View';
-$l['myshowcase_member'] = 'Member';
-$l['myshowcase_lastedit'] = 'Last Updated';
-$l['myshowcase_views'] = 'Views';
-$l['myshowcase_comments'] = 'Comments';
+$l['myShowcaseMainTableTheadView'] = 'View';
+$l['myShowcaseMainTableTheadAuthor'] = 'Author';
+$l['myShowcaseMainTableTheadComments'] = 'Comments';
+$l['myShowcaseMainTableTheadViews'] = 'Views';
+$l['myShowcaseMainTableTheadLastEdit'] = 'Last Updated';
+
+$l['myShowcaseMainTableRowLastComment'] = 'Last comment';
 
 //error messages
 $l['myshowcase_disabled'] = 'This system is disabled.';
@@ -61,27 +63,27 @@ $l['myshowcase_unapproved_exist_title'] = 'Unapproved Entries';
 $l['myshowcase_unapproved_link'] = 'Click to view unapproved.';
 
 //sorting words
-$l['myshowcase_sort_by'] = 'Sort By:';
-$l['myshowcase_sort_createdate'] = 'Creation Date';
-$l['myshowcase_sort_editdate'] = 'Edited Date';
-$l['myshowcase_sort_username'] = 'Username';
-$l['myshowcase_sort_views'] = '#Views';
-$l['myshowcase_sort_comments'] = '#Comments';
-$l['myshowcase_sort_asc'] = 'Ascending';
-$l['myshowcase_sort_desc'] = 'Descending';
+$l['myShowcaseMainSelectSortBy'] = 'Sort By:';
+$l['myShowcaseMainSortDateline'] = 'Creation Date';
+$l['myShowcaseMainSortEditDate'] = 'Edited Date';
+$l['myShowcaseMainSortUsername'] = 'Username';
+$l['myShowcaseMainSortViews'] = 'Views';
+$l['myShowcaseMainSortComments'] = 'Comments';
+$l['myShowcaseMainSelectAscending'] = 'Ascending';
+$l['myShowcaseMainSelectDescending'] = 'Descending';
 $l['myshowcase_order'] = 'Order By:';
-$l['myshowcase_search'] = 'Search:';
-$l['myshowcase_for'] = 'for:';
-$l['myshowcase_sort_in'] = 'Direction:';
+$l['myShowcaseMainSearch'] = 'Search:';
+$l['myShowcaseMainSearchFor'] = 'for:';
+$l['myShowcaseMainSelectOrderDirection'] = 'Direction:';
 
 $l['myshowcase_asc'] = 'asc';
 $l['myshowcase_desc'] = 'desc';
 
-$l['myshowcase_exact_match'] = 'exact match';
+$l['myShowcaseMainSearchMatch'] = 'exact match';
 
 //query results
 $l['myshowcase_empty'] = 'There are no entries at this time.';
-$l['myshowcase_no_results'] = 'The query returned no results. Please try another search term.';
+$l['myShowcaseMainTableEmptySearch'] = 'The search returned no results. Please try another search term.';
 $l['myshowcase_invalid_id'] = 'The specified Entry ID is invalid.';
 $l['myshowcase_invalid_cid'] = 'The specified Comment ID is invalid.';
 $l['myshowcase_invalid_aid'] = 'The specified Attachment ID is invalid.';
@@ -93,7 +95,7 @@ $l['myshowcase_viewing_user'] = 'Viewing entry for &quot;{username}&quot;';
 $l['myshowcase_viewing_attachment'] = 'Viewing Attachment of &quot;{username}&quot;';
 
 //new/edit myshowcase
-$l['myshowcase_new'] = 'Post New';
+$l['myShowcaseButtonNewEntry'] = 'New Entry';
 $l['myshowcase_post'] = 'Post';
 $l['myshowcase_edit_user'] = 'Edit entry of &quot;{username}&quot;';
 $l['myshowcase_editing_user'] = 'Editing entry of &quot;{username}&quot;';

@@ -13,11 +13,31 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\Core;
+namespace MyShowcase\System;
 
-class System
+use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\attachmentRemove;
+use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\commentDelete;
+use function MyShowcase\Core\getSetting;
+use function MyShowcase\Core\showcaseDataDelete;
+use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\showcasePermissions;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+
+const PERMISSION_USER_CAN_NEW_ENTRY = 'canadd';
+
+const PERMISSION_USER_CAN_EDIT_ENTRY = 'canedit';
+
+const PERMISSION_MODERATOR_CAN_APPROVE = 'canmodapprove';
+
+const PERMISSION_MODERATOR_CAN_DELETE = 'canmoddelete';
+
+class Showcase
 {
-
     /**
      * The ID of the current showcase.
      * @var int
@@ -215,7 +235,7 @@ class System
     /**
      * Constructor of class.
      *
-     * @return System
+     * @return Showcase
      */
     public function __construct(string $filename = THIS_SCRIPT)
     {
@@ -303,10 +323,8 @@ class System
 
         $usergroups = $cache->read('usergroups');
 
-        //load permsissions already in cache
-//		$query = $db->simple_select("myshowcase_permissions", "*", "id={$this->id}");
-//		while($showperms = $db->fetch_array($query))
         $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
+
         foreach ($permcache[$this->id] as $id => $showperms) {
             $showcase_group_perms[$showperms['gid']]['id'] = $showperms['gid'];
             $showcase_group_perms[$showperms['gid']]['name'] = $usergroups[$showperms['gid']]['title'];
@@ -357,7 +375,7 @@ class System
      */
     public function get_user_permissions(array $user): array
     {
-        global $cache, $mybb;
+        global $cache, $mybb, $currentUserID;
 
         //basic user permissions
 
@@ -433,7 +451,7 @@ class System
                     }
 
                     //check for specific user and use those permissions regardless of group perms
-                    if (!$moddata['isgroup'] && $moddata['uid'] == $mybb->user['uid']) {
+                    if (!$moddata['isgroup'] && $moddata['uid'] == $currentUserID) {
                         $modperms3 = [
                             'canmodapprove' => $moddata['canmodapprove'],
                             'canmodedit' => $moddata['canmodedit'],
@@ -491,7 +509,7 @@ class System
 
         $this->delete_comments($gid, $this->id);
 
-        $db->delete_query($this->table_name, 'gid=' . $gid);
+        showcaseDataDelete($this->id, ["gid='{$gid}'"]);
 
         return true;
     }
@@ -501,14 +519,10 @@ class System
      */
     public function delete_attachments(int $entryID, int $id): bool
     {
-        global $db;
-
-        $query = $db->simple_select('myshowcase_attachments', 'aid', "gid={$entryID} AND id={$id}");
-
-        if ($db->num_rows($query)) {
-            while ($attachmentID = $db->fetch_field($query, 'aid')) {
-                attachmentRemove($this, '', (int)$attachmentID);
-            }
+        foreach (
+            attachmentGet(["gid='{$entryID}'", "id='{$id}'"]) as $attachmentID => $attachmentData
+        ) {
+            attachmentRemove($this, '', (int)$attachmentID);
         }
 
         return true;
@@ -521,7 +535,7 @@ class System
     {
         global $db;
 
-        $db->delete_query('myshowcase_comments', "gid={$gid} AND id={$id}");
+        commentDelete(["gid='{$gid}'", "id='{$id}'"]);
 
         return true;
     }
@@ -548,4 +562,8 @@ class System
         return true;
     }
 
+    public function permissionCheck(string $permissionType): bool
+    {
+        return !empty($this->userperms[$permissionType]);
+    }
 }

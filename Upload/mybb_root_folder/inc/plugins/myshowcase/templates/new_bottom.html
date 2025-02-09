@@ -1,12 +1,12 @@
 </table>
 {$showcase_attachments}
 <br />
-<div align="center"><input type="submit" class="button" name="submit" value="{$lang->myshowcase_save}" tabindex="3" accesskey="s" />  <input type="submit" class="button" name="cancel" value="{$lang->myshowcase_cancel}" tabindex="4" onclick="window.location = "{$mybb->settings['myshowcase_file']}?action=view&gid={$mybb->input['gid']}" "/></div>
+<div align="center"><input type="submit" class="button" name="submit" value="{$lang->myshowcase_save}" tabindex="3" accesskey="s" />  <input type="submit" class="button" name="cancel" value="{$lang->myshowcase_cancel}" tabindex="4" onclick="window.location = "{$mybb->settings['myshowcase_file']}?action=view&gid={$entryID}" "/></div>
 <input type="hidden" name="action" value="{$showcase_action}" />
-<input type="hidden" name="posthash" value="{$posthash}" />
+<input type="hidden" name="posthash" value="{$entryHash}" />
 <input type="hidden" name="attachmentaid" value="" />
 <input type="hidden" name="attachmentact" value="" />
-<input type="hidden" name="gid" value="{$mybb->input['gid']}" />
+<input type="hidden" name="gid" value="{$entryID}" />
 <input type="hidden" name="authid" value="{$showcase_authid}" />
 </form>
 {$footer}

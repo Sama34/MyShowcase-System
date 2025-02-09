@@ -14,9 +14,12 @@
 declare(strict_types=1);
 
 use function MyShowcase\Core\getTemplate;
+use function MyShowcase\Core\showcaseDataUpdate;
 
 global $mybb, $lang, $db, $templates, $plugins;
 global $me;
+
+global $showcaseInputOrder, $currentUserID, $showcaseInputSortBy, $currentPage;
 
 switch ($mybb->get_input('action')) {
     case 'multiapprove';
@@ -39,15 +42,12 @@ switch ($mybb->get_input('action')) {
             error($lang->myshowcase_no_showcaseselected);
         }
 
-        $query = $db->query(
-            '
-			UPDATE ' . TABLE_PREFIX . $me->table_name . '
-			SET approved = ' . ($mybb->get_input(
-                'action'
-            ) == 'multiapprove' ? 1 : 0) . ', approved_by = ' . $mybb->user['uid'] . '
-			WHERE gid IN (' . implode(',', $gids) . ')
-			'
-        );
+        $groupIDs = implode(',', $gids);
+
+        showcaseDataUpdate($me->id, ["gid IN ('{$groupIDs}')"], [
+            'approved' => $mybb->get_input('action') === 'multiapprove' ? 1 : 0,
+            'approved_by' => $currentUserID,
+        ]);
 
         $modlogdata = [
             'id' => $me->id,
@@ -63,19 +63,18 @@ switch ($mybb->get_input('action')) {
         $me->clearinline('all', 'showcase');
 
         //build URL to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
-        if ($mybb->get_input('sortby') != '') {
-            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
+        $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
+        if ($showcaseInputSortBy != '') {
+            $url_params[] = 'sort_by=' . $showcaseInputSortBy;
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
-        if ($mybb->get_input('order') != '') {
-            $url_params[] = 'order=' . $mybb->get_input('order');
+        if ($showcaseInputOrder) {
+            $url_params[] = 'order=' . $showcaseInputOrder;
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
-        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
+        $currentPage = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        if ($currentPage != '') {
+            $url_params[] = 'page=' . $currentPage;
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
@@ -110,19 +109,18 @@ switch ($mybb->get_input('action')) {
         $me->clearinline('all', 'showcase');
 
         //build URl to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
-        if ($mybb->get_input('sortby') != '') {
-            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
+        $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
+        if ($showcaseInputSortBy != '') {
+            $url_params[] = 'sort_by=' . $showcaseInputSortBy;
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
-        if ($mybb->get_input('order') != '') {
-            $url_params[] = 'order=' . $mybb->get_input('order');
+        if ($showcaseInputOrder) {
+            $url_params[] = 'order=' . $showcaseInputOrder;
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
-        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
+        $currentPage = intval($currentPage);
+        if ($currentPage != '') {
+            $url_params[] = 'page=' . $currentPage;
         }
 
         $return_url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');
@@ -153,19 +151,18 @@ switch ($mybb->get_input('action')) {
         $me->clearinline('all', 'showcase');
 
         //build URl to get back to where mod action happened
-        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
-        if ($mybb->get_input('sortby') != '') {
-            $url_params[] = 'sortby=' . $mybb->get_input('sortby');
+        $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
+        if ($showcaseInputSortBy != '') {
+            $url_params[] = 'sort_by=' . $showcaseInputSortBy;
         }
 
-        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
-        if ($mybb->get_input('order') != '') {
-            $url_params[] = 'order=' . $mybb->get_input('order');
+        if ($showcaseInputOrder) {
+            $url_params[] = 'order=' . $showcaseInputOrder;
         }
 
-        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
-        if ($mybb->get_input('page', MyBB::INPUT_INT) != '') {
-            $url_params[] = 'page=' . $mybb->get_input('page', MyBB::INPUT_INT);
+        $currentPage = intval($currentPage);
+        if ($currentPage != '') {
+            $url_params[] = 'page=' . $currentPage;
         }
 
         $url = SHOWCASE_URL . (count($url_params) > 0 ? '?' . implode('&amp;', $url_params) : '');

@@ -44,7 +44,7 @@ $custom_fieldsets[] = ['Trucks'];
 // parse - int, 1 to run the field through the parser, 0 otherwise
 // field_order - int, order in which fields are displayed during view
 // list_table_order - int, order in which fields are listed in the list view (default view). '-1' excludes field from list view
-// searchable - int, 1 to enable the field in search option at bottom of page, 0 to no include
+// searchable - int, 1 to enable the field in search_field option at bottom of page, 0 to no include
 //----------------------------------------------------------
 global $custom_fields;
 

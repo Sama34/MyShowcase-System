@@ -17,15 +17,26 @@ declare(strict_types=1);
  * Only user edits required
 */
 
-use MyShowcase\Core\System;
+use MyShowcase\System\Output;
+use MyShowcase\System\Render;
+use MyShowcase\System\Showcase;
 
+use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentRemove;
+use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\attachmentUpload;
 use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\commentDelete;
+use function MyShowcase\Core\commentGet;
+use function MyShowcase\Core\commentInsert;
+use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
+use function MyShowcase\Core\showcaseDataGet;
+use function MyShowcase\Core\showcaseDataUpdate;
+use function MyShowcase\Core\urlHandlerSet;
 
+use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\VERSION_CODE;
 use const MyShowcase\ROOT;
@@ -40,7 +51,8 @@ define('IN_MYBB', 1);
 define('IN_SHOWCASE', 1);
 define('VERSION_OF_FILE', 3000);
 
-$filename = substr($_SERVER['SCRIPT_NAME'], -strpos(strrev($_SERVER['SCRIPT_NAME']), '/'));
+$filename = substr($_SERVER['SCRIPT_NAME'], -mb_strpos(strrev($_SERVER['SCRIPT_NAME']), '/'));
+
 define('THIS_SCRIPT', $filename);
 
 $current_dir = getcwd();
@@ -60,8 +72,8 @@ if (!chdir($forumdir) && !empty($forumdir)) {
 //setup templates
 $templatelist = 'myshowcase_list, myshowcase_list_empty, myshowcase_list_items, myshowcase_list_no_results, myshowcase_orderarrow, ';
 $templatelist .= 'myshowcase_view, myshowcase_view_attachments, myshowcase_view_comments, myshowcase_view_comments_add, myshowcase_view_comments_add_login, ';
-$templatelist .= 'myshowcase_view_comments_admin, myshowcase_view_comments_none, myshowcase_view_data, myshowcase_inlinemod_col, myshowcase_inlinemod, ';
-$templatelist .= 'myshowcase_orderarrow, myshowcase_list_custom_header, multipage_page_current, multipage_page, multipage_end, ';
+$templatelist .= 'myshowcase_view_comments_admin, myshowcase_view_comments_none, myshowcase_view_data, myshowcase_pageMainTableTheadRowInlineModeration, myshowcase_inlinemod, ';
+$templatelist .= 'myshowcase_orderarrow, myshowcase_pageMainTableTheadRowField, multipage_page_current, multipage_page, multipage_end, ';
 $templatelist .= 'multipage_nextpage, multipage, myshowcase_list_custom_fields, myshowcase_inlinemod_item, myshowcase_list_items, myshowcase_list, ';
 $templatelist .= 'myshowcase_top, myshowcase_new_button, myshowcase_field_date, myshowcase_js_header, ';
 $templatelist .= 'myshowcase_view_admin_edit, myshowcase_view_admin_delete, myshowcase_view_admin, myshowcase_table_header, myshowcase_view_data_1, myshowcase_view_data_2, myshowcase_view_data_3, myshowcase_view_attachments_image, ';
@@ -87,10 +99,12 @@ $theme['imglangdir'] = $forumdirslash . substr($theme['imglangdir'], 0);
 
 //start by constructing the showcase
 require_once ROOT . '/class_showcase.php';
-$me = new System();
+$me = new Showcase();
+
+urlHandlerSet($me->mainfile);
 
 // Load global language phrases
-//global $showcase_proper, $showcase_lower;
+//global $showcaseName, $showcase_lower;
 
 //try to load showcase specific language file
 loadLanguage();
@@ -104,11 +118,21 @@ if($lang->myshowcase == '')
 
 global $lang, $mybb, $cache, $db, $plugins;
 
+$buttonGo = &$gobutton;
+
 $mybb->settings['myshowcase_file'] = THIS_SCRIPT;
 
-$mybb->input['gid'] = $mybb->get_input('gid', MyBB::INPUT_INT);
+$entryID = $mybb->input['gid'] = $mybb->get_input('gid', MyBB::INPUT_INT);
 
-$lang->nav_myshowcase = $lang->myshowcase = $showcase_proper = ucwords(strtolower($me->name));
+$attachmentID = $mybb->input['aid'] = $mybb->get_input('aid', MyBB::INPUT_INT);
+
+$commentID = $mybb->input['cid'] = $mybb->get_input('cid', MyBB::INPUT_INT);
+
+$entryHash = $mybb->input['posthash'] = $mybb->get_input('posthash');
+
+$currentUserID = (int)$mybb->user['uid'];
+
+$lang->nav_myshowcase = $lang->myshowcase = $showcaseName = ucwords(strtolower($me->name));
 $showcase_lower = strtolower($me->name);
 
 //check if this showcase is enabled
@@ -116,46 +140,201 @@ if (!$me->enabled) {
     error($lang->myshowcase_disabled);
 }
 
-$mybb->input['sortby'] = $mybb->get_input('sortby');
+$orderInput = [
+    'username' => '',
+    'comments' => '',
+    'views' => '',
+    'dateline' => ''
+];
 
-$mybb->input['order'] = $mybb->get_input('order');
+//get this showcase's field info
+$fieldcache = cacheGet(CACHE_TYPE_FIELDS);
 
-$mybb->input['page'] = $mybb->get_input('page', MyBB::INPUT_INT);
+$showcaseFieldsShow =
+$showcaseFieldsFormat =
+$showcaseFields = [];
 
-$mybb->input['search'] = $mybb->get_input('search');
+$showcaseFieldsSearchable = [
+    'username' => 'username',
+    'views' => 'views',
+    'comments' => 'comments',
+    'dateline' => 'dateline'
+];
 
-$mybb->input['searchterm'] = $mybb->get_input('searchterm');
+foreach ($fieldcache[$me->fieldsetid] as $field) {
+    $showcaseFields[$field['name']] = $field['html_type'];
 
-$mybb->input['exactmatch'] = $mybb->get_input('exactmatch');
+    $showcaseFieldsFormat[$field['name']] = $field['format'];
+
+    $showcaseFieldsMaximumLength[$field['name']] = $field['max_length'];
+    $showcaseFieldsMinimumLength[$field['name']] = $field['min_length'];
+
+    //limit array only to those fields that are required
+    if ($field['enabled'] == 1 || $field['requiredField'] == 1) {
+        $showcaseFieldEnabled[$field['name']] = $field['html_type'];
+    }
+
+    //limit array only to those fields that are required
+    if ($field['requiredField'] == 1) {
+        $showcaseFieldsRequired[$field['name']] = 1;
+    } else {
+        $showcaseFieldsRequired[$field['name']] = 0;
+    }
+
+    //limit array to those fields to show in the list of showcases
+    if ($field['list_table_order'] != -1) {
+        //$showcaseFieldsShow[$field['list_table_order']] = $field['name'];
+    }
+
+    $showcaseFieldsShow[$field['list_table_order']] = $field['name'];
+
+    //limit array to searchable fields
+    if ($field['searchable'] == 1) {
+        $showcaseFieldsSearchable[$field['field_order']] = $field['name'];
+    }
+
+    //limit array to searchable fields
+    if ($field['parse'] == 1) {
+        $showcaseFieldsParseable[$field['name']] = 1;
+    } else {
+        $showcaseFieldsParseable[$field['name']] = 0;
+    }
+
+    $orderInput[$field['name']] = '';
+}
+
+//sort array of searchable fields by their field order
+ksort($showcaseFieldsSearchable);
+
+//sort array of header fields by their list display order
+ksort($showcaseFieldsShow);
+
+$showcaseFieldsOrder = [
+    'dateline' => $lang->myShowcaseMainSortDateline,
+    'dateline' => $lang->myShowcaseMainSortEditDate,
+    'username' => $lang->myShowcaseMainSortUsername,
+    'views' => $lang->myShowcaseMainSortViews,
+    'comments' => $lang->myShowcaseMainSortComments
+];
+
+foreach ($showcaseFieldsShow as $forder => $fname) {
+    $showcaseFieldsOrder[$fname] = $lang->{"myshowcase_field_{$fname}"} ?? ucfirst($fname);
+}
+
+$urlParams = [];
+
+$unapproved = $mybb->input['unapproved'] = $mybb->get_input('unapproved', MyBB::INPUT_INT);
+
+if ($unapproved) {
+    $urlParams['unapproved'] = $unapproved;
+}
+
+$showcaseInputSortBy = $mybb->get_input('sort_by');
+
+if (!array_key_exists($showcaseInputSortBy, $showcaseFieldsOrder)) {
+    $showcaseInputSortBy = 'dateline';
+}
+
+if (array_key_exists($showcaseInputSortBy, $showcaseFieldsOrder)) {
+    $urlParams['sort_by'] = $showcaseInputSortBy;
+}
+
+$showcaseInputSearchExactMatch = $mybb->input['exact_match'] = $mybb->get_input('exact_match');
+
+if ($showcaseInputSearchExactMatch) {
+    $urlParams['exact_match'] = $showcaseInputSearchExactMatch;
+}
+
+$showcaseInputSearchKeywords = $mybb->get_input('keywords');
+
+if ($showcaseInputSearchKeywords) {
+    $urlParams['keywords'] = $showcaseInputSearchKeywords;
+}
+
+$showcaseInputSearchField = $mybb->input['search_field'] = $mybb->get_input('search_field');
+
+if (in_array($showcaseInputSearchField, $showcaseFieldsSearchable)) {
+    $urlParams['search_field'] = $showcaseInputSearchField;
+}
+
+$showcaseInputOrder = $mybb->input['order'] = $mybb->get_input('order');
+
+if (in_array($showcaseInputOrder, ['asc', 'desc'])) {
+    $urlParams['order'] = $showcaseInputOrder;
+} else {
+    $showcaseInputOrder = '';
+}
+
+$currentPage = $mybb->input['page'] = $mybb->get_input('page', MyBB::INPUT_INT);
+
+if ($currentPage) {
+    $urlParams['page'] = $currentPage;
+}
+
+/* URL Definitions */
+
+$URLStart = $mybb->settings['bburl'] . '/';
+if ($forumdir != '' && $forumdir != '.') {
+    $URLStart = $mybb->settings['homeurl'] . '/';
+}
+
+if ($me->seo_support) {
+    $showcase_name = strtolower($me->name);
+    define('SHOWCASE_URL', $me->clean_name . '.html');
+    define('SHOWCASE_URL_PAGED', $me->clean_name . '-page-{page}.html');
+    define('SHOWCASE_URL_VIEW', $me->clean_name . '-view-{gid}.html');
+    define('SHOWCASE_URL_COMMENT', $me->clean_name . '-view-{gid}-last-comment.html');
+    define('SHOWCASE_URL_NEW', $me->clean_name . '-new.html');
+    define('SHOWCASE_URL_VIEW_ATTACH', $me->clean_name . '-attachment-{aid}.html');
+    define('SHOWCASE_URL_ITEM', $me->clean_name . '-item-{aid}.php');
+    $amp = '?';
+} else {
+    define('SHOWCASE_URL', $me->prefix . '.php');
+    define('SHOWCASE_URL_PAGED', $me->prefix . '.php?page={page}');
+    define('SHOWCASE_URL_VIEW', $me->prefix . '.php?action=view&gid={gid}');
+    define('SHOWCASE_URL_COMMENT', $me->prefix . '.php?action=view&gid={gid}&action=lastComment');
+    define('SHOWCASE_URL_NEW', $me->prefix . '.php?action=new');
+    define('SHOWCASE_URL_VIEW_ATTACH', $me->prefix . '.php?action=attachment&aid={aid}');
+    define('SHOWCASE_URL_ITEM', $me->prefix . '.php?action=item&aid={aid}');
+    $amp = '&amp;';
+}
+
+$urlBase = $mybb->settings['bburl'];
+
+$urlShowcase = $me->mainfile;
+
+$urlSort = SHOWCASE_URL . (my_strpos(SHOWCASE_URL, '?') ? $amp : '?');
 
 // Check if the active user is a moderator and get the inline moderation tools.
-$mybb->input['unapproved'] = $mybb->get_input('unapproved', MyBB::INPUT_INT);
+$showcaseColumnsCount = 5;
+
+if ($me->userperms['canmodapprove'] || $me->userperms['canmoddelete']) {
+    ++$showcaseColumnsCount;
+}
+
 if ($me->userperms['canmodapprove']) {
     $list_where_clause = '(g.approved=0 or g.approved=1)';
-    if ($mybb->get_input('unapproved', MyBB::INPUT_INT) == 1) {
+    if ($unapproved == 1) {
         $list_where_clause = 'g.approved=0';
     }
     $inlinecount = 0;
-    $showcase_inlinemod_col = eval(getTemplate('inlinemod_col'));
+    $showcaseTableTheadInlineModeration = eval(getTemplate('pageMainTableTheadRowInlineModeration'));
+
+    ++$showcaseColumnsCount;
 
     $customthreadtools = '';
 
-    $showcase_inlinemod = eval(getTemplate('inlinemod'));
+    $showcaseInlineModeration = eval(getTemplate('inlinemod'));
 } else {
     $ismod = false;
-    $list_where_clause = '(g.approved=1 OR g.uid=' . $mybb->user['uid'] . ')';
+    $list_where_clause = '(g.approved=1 OR g.uid=' . $currentUserID . ')';
 }
 
 //handle image output here for performance reasons since we dont need fields and stuff
 if ($mybb->get_input('action') == 'item') {
-    $aid = intval($mybb->get_input('aid', MyBB::INPUT_INT));
+    $aid = intval($attachmentID);
 
-    // Select attachment data from database
-    if ($aid) {
-        $query = $db->simple_select('myshowcase_attachments', '*', "aid='{$aid}'");
-    }
-
-    $attachment = $db->fetch_array($query);
+    $attachment = attachmentGet(["aid='{$aid}'"], array_keys(TABLES_DATA['myshowcase_attachments']), ['limit' => 1]);
 
     // Error if attachment is invalid or not visible
     if (!$attachment['aid'] || !$attachment['attachname'] || (!$ismod && $attachment['visible'] != 1)) {
@@ -166,7 +345,7 @@ if ($mybb->get_input('action') == 'item') {
         error_no_permission();
     }
 
-    $ext = get_extension($attachment['filename']);
+    $attachmentExtension = get_extension($attachment['filename']);
 
     switch ($attachment['filetype']) {
         case 'application/pdf':
@@ -185,13 +364,13 @@ if ($mybb->get_input('action') == 'item') {
             $disposition = 'attachment';
     }
 
-    if (strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie') !== false) {
+    if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie') !== false) {
         header("Content-disposition: attachment; filename=\"{$attachment['filename']}\"");
     } else {
         header("Content-disposition: {$disposition}; filename=\"{$attachment['filename']}\"");
     }
 
-    if (strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0') !== false) {
+    if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0') !== false) {
         header('Expires: -1');
     }
 
@@ -207,14 +386,9 @@ if ($mybb->get_input('action') == 'item') {
 //here for performance since we dont need the fields and other stuff
 //this block is only used if user disables JS or if admin removes FancyBox code
 if ($mybb->get_input('action') == 'attachment') {
-    $aid = intval($mybb->get_input('aid', MyBB::INPUT_INT));
+    $aid = intval($attachmentID);
 
-    // Select attachment data from database
-    if ($aid) {
-        $query = $db->simple_select('myshowcase_attachments', '*', "aid='{$aid}'");
-    }
-
-    $attachment = $db->fetch_array($query);
+    $attachment = attachmentGet(["aid='{$aid}'"], array_keys(TABLES_DATA['myshowcase_attachments']), ['limit' => 1]);
 
     // Error if attachment is invalid or not visible
     if (!$attachment['aid'] || !$attachment['attachname'] || (!$ismod && $attachment['visible'] != 1)) {
@@ -227,7 +401,7 @@ if ($mybb->get_input('action') == 'attachment') {
 
     $plugins->run_hooks('myshowcase_attachment_start');
 
-    $db->update_query('myshowcase_attachments', ['downloads' => $attachment['downloads'] + 1], "aid='{$aid}'");
+    attachmentUpdate(["aid='{$aid}'"], ['downloads' => $attachment['downloads'] + 1]);
 
     if (stristr($attachment['filetype'], 'image/')) {
         $posterdata = get_user($attachment['uid']);
@@ -251,9 +425,9 @@ if ($mybb->get_input('action') == 'attachment') {
 
         $lasteditdate = my_date($mybb->settings['dateformat'], $attachment['dateuploaded']);
         $lastedittime = my_date($mybb->settings['timeformat'], $attachment['dateuploaded']);
-        $item_lastedit = $lasteditdate . '&nbsp;' . $lastedittime;
+        $entryDateline = $lasteditdate . '&nbsp;' . $lastedittime;
 
-        $showcase_attachment_description = $lang->myshowcase_attachment_filename . $attachment['filename'] . '<br />' . $lang->myshowcase_attachment_uploaded . $item_lastedit;
+        $showcase_attachment_description = $lang->myshowcase_attachment_filename . $attachment['filename'] . '<br />' . $lang->myshowcase_attachment_uploaded . $entryDateline;
         $showcase_table_header = eval(getTemplate('table_header'));
         $showcase_attachment = str_replace(
             '{aid}',
@@ -296,32 +470,6 @@ if (!$me->userperms['canview']) {
 //init time
 $dateline = TIME_NOW;
 
-/* URL Definitions */
-
-$URLStart = $mybb->settings['bburl'] . '/';
-if ($forumdir != '' && $forumdir != '.') {
-    $URLStart = $mybb->settings['homeurl'] . '/';
-}
-
-if ($me->seo_support) {
-    $showcase_name = strtolower($me->name);
-    define('SHOWCASE_URL', $URLStart . $me->clean_name . '.html');
-    define('SHOWCASE_URL_PAGED', $URLStart . $me->clean_name . '-page-{page}.html');
-    define('SHOWCASE_URL_VIEW', $URLStart . $me->clean_name . '-view-{gid}.html');
-    define('SHOWCASE_URL_NEW', $URLStart . $me->clean_name . '-new.html');
-    define('SHOWCASE_URL_VIEW_ATTACH', $URLStart . $me->clean_name . '-attachment-{aid}.html');
-    define('SHOWCASE_URL_ITEM', $URLStart . $me->clean_name . '-item-{aid}.php');
-    $amp = '?';
-} else {
-    define('SHOWCASE_URL', $URLStart . $me->prefix . '.php');
-    define('SHOWCASE_URL_PAGED', $URLStart . $me->prefix . '.php?page={page}');
-    define('SHOWCASE_URL_VIEW', $URLStart . $me->prefix . '.php?action=view&gid={gid}');
-    define('SHOWCASE_URL_NEW', $URLStart . $me->prefix . '.php?action=new');
-    define('SHOWCASE_URL_VIEW_ATTACH', $URLStart . $me->prefix . '.php?action=attachment&aid={aid}');
-    define('SHOWCASE_URL_ITEM', $URLStart . $me->prefix . '.php?action=item&aid={aid}');
-    $amp = '&amp;';
-}
-
 //make var for JS in template
 $showcase_url = SHOWCASE_URL;
 
@@ -333,8 +481,8 @@ add_breadcrumb($lang->nav_myshowcase, SHOWCASE_URL);
 if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
-    if (!$mybb->get_input('gid', MyBB::INPUT_INT)) {
-        attachmentRemove($me, $mybb->get_input('posthash'));
+    if (!$entryID) {
+        attachmentRemove($me, $entryHash);
     }
 
     if ($mybb->get_input('action') == 'do_editshowcase' || $mybb->get_input('action') == 'do_newshowcase') {
@@ -344,13 +492,14 @@ if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
 
 //get count of existing attachments if editing (posthash sent)
 $current_attach_count = 0;
-if ($mybb->get_input('posthash') != '' && $mybb->request_method == 'post') {
+if ($entryHash != '' && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
-    $mybb->input['posthash'] = $db->escape_string($mybb->get_input('posthash'));
-    $query = $db->simple_select('myshowcase_attachments', '*', "posthash = '" . $mybb->get_input('posthash') . "'");
-    $current_attach_count = $db->num_rows($query);
-    unset($query);
+    $current_attach_count = attachmentGet(
+        ["posthash='{$db->escape_string($entryHash)}'"],
+        ['COUNT(aid) as totalAttachments'],
+        ['limit' => 1]
+    )['totalAttachments'] ?? 0;
 }
 
 $plugins->run_hooks('myshowcase_start');
@@ -370,10 +519,10 @@ if (!$mybb->get_input(
 
     $can_add_attachments = $me->userperms['canattach'];
     $attach_limit = $me->userperms['attachlimit'];
-    $showcase_uid = $mybb->user['uid'];
+    $showcase_uid = $currentUserID;
 
     //if a mod is editing someone elses showcase, get orig authors perms
-    if ($mybb->get_input('action') == 'do_editshowcase' && $mybb->user['uid'] != $mybb->get_input(
+    if ($mybb->get_input('action') == 'do_editshowcase' && $currentUserID != $mybb->get_input(
             'authid',
             MyBB::INPUT_INT
         )) {
@@ -398,10 +547,10 @@ if (!$mybb->get_input(
             $attachedfile = attachmentUpload(
                 $me,
                 $_FILES['attachment'],
-                $mybb->get_input('posthash'),
+                $entryHash,
                 $update_attachment,
                 (bool)$mybb->get_input('watermark', MyBB::INPUT_INT),
-                $mybb->get_input('gid', MyBB::INPUT_INT)
+                $entryID
             );
         }
         if ($attachedfile['error']) {
@@ -411,7 +560,7 @@ if (!$mybb->get_input(
     }
 
     if (!$mybb->get_input('submit')) {
-        if ($mybb->get_input('gid', MyBB::INPUT_INT) && $mybb->get_input('gid', MyBB::INPUT_INT) != '') {
+        if ($entryID && $entryID != '') {
             $mybb->input['action'] = 'do_editshowcase';
         } else {
             $mybb->input['action'] = 'do_newshowcase';
@@ -420,19 +569,18 @@ if (!$mybb->get_input(
 }
 
 // Remove an attachment.
-if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $mybb->get_input(
-        'posthash'
-    ) && ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
+if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $entryHash &&
+    ($me->userperms['canedit'] || $me->userperms['canmodedit']) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
 
     attachmentRemove(
         $me,
-        $mybb->get_input('posthash'),
+        $entryHash,
         $mybb->get_input('attachmentaid', MyBB::INPUT_INT)
     );
 
     if (!$mybb->get_input('submit')) {
-        if ($mybb->get_input('gid', MyBB::INPUT_INT) && $mybb->get_input('gid', MyBB::INPUT_INT) != '') {
+        if ($entryID && $entryID != '') {
             $mybb->input['action'] = 'do_editshowcase';
         } else {
             $mybb->input['action'] = 'do_newshowcase';
@@ -441,22 +589,18 @@ if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $mybb->get_input(
 }
 
 //setup add comment
-if (!$mybb->get_input('commentcid', MyBB::INPUT_INT) && $mybb->get_input('addcomment') && $mybb->get_input(
-        'posthash'
-    )) {
+if (!$mybb->get_input('commentcid', MyBB::INPUT_INT) && $mybb->get_input('addcomment') && $entryHash) {
     $mybb->input['action'] = 'addcomment';
 }
 
 //setup remove comment
-if ($mybb->get_input('commentcid', MyBB::INPUT_INT) && $mybb->get_input('remcomment') && $mybb->get_input(
-        'posthash'
-    )) {
+if ($mybb->get_input('commentcid', MyBB::INPUT_INT) && $mybb->get_input('remcomment') && $entryHash) {
     $mybb->input['action'] = 'delcomment';
     $mybb->input['cid'] = $mybb->get_input('commentcid', MyBB::INPUT_INT);
 }
 
 //deal with admin buttons from view page
-if ($mybb->get_input('showcasegid') && $mybb->get_input('posthash')) {
+if ($mybb->get_input('showcasegid') && $entryHash) {
     if ($mybb->get_input('showcaseact') == 'remove') {
         $mybb->input['action'] = 'delete';
     }
@@ -466,65 +610,15 @@ if ($mybb->get_input('showcasegid') && $mybb->get_input('posthash')) {
     }
 }
 
-//get this showcase's field info
-$fieldcache = cacheGet(CACHE_TYPE_FIELDS);
-
 //init dynamic field info
-$showcase_fields = [];
-$showcase_fields_enabled = [];
-$showcase_fields_showinlist = [];
-$showcase_fields_searchable = [];
-$showcase_fields_parse = [];
-$showcase_fields_max_length = [];
-$showcase_fields_require = [];
-$showcase_fields_require['uid'] = 1;
-$showcase_fields_format = [];
+$showcaseFieldEnabled = [];
+$showcaseFieldsParseable = [];
+$showcaseFieldsMaximumLength = [];
+$showcaseFieldsRequired = [
+    'uid' => 1,
+];
 
-$showcase_fields_min_length = $showcase_fields_min_length ?? [];
-
-foreach ($fieldcache[$me->fieldsetid] as $field) {
-    $showcase_fields[$field['name']] = $field['html_type'];
-
-    $showcase_fields_format[$field['name']] = $field['format'];
-
-    $showcase_fields_max_length[$field['name']] = $field['max_length'];
-    $showcase_fields_min_length[$field['name']] = $field['min_length'];
-
-    //limit array only to those fields that are required
-    if ($field['enabled'] == 1 || $field['requiredField'] == 1) {
-        $showcase_fields_enabled[$field['name']] = $field['html_type'];
-    }
-
-    //limit array only to those fields that are required
-    if ($field['requiredField'] == 1) {
-        $showcase_fields_require[$field['name']] = 1;
-    } else {
-        $showcase_fields_require[$field['name']] = 0;
-    }
-
-    //limit array to those fields to show in the list of showcases
-    if ($field['list_table_order'] != -1) {
-        $showcase_fields_showinlist[$field['list_table_order']] = $field['name'];
-    }
-
-    //limit array to searchable fields
-    if ($field['searchable'] == 1) {
-        $showcase_fields_searchable[$field['field_order']] = $field['name'];
-    }
-
-    //limit array to searchable fields
-    if ($field['parse'] == 1) {
-        $showcase_fields_parse[$field['name']] = 1;
-    } else {
-        $showcase_fields_parse[$field['name']] = 0;
-    }
-}
-
-//sort array of header fields by their list display order
-ksort($showcase_fields_showinlist);
-
-//sort array of searchable fields by their field order
-ksort($showcase_fields_searchable);
+$showcaseFieldsMinimumLength = [];
 
 //clean up/default expected inputs
 if (empty($mybb->get_input('action'))) {
@@ -538,15 +632,11 @@ if (!$mybb->get_input('showall', MyBB::INPUT_INT) || $mybb->get_input('showall',
 }
 
 // Setup our posthash for managing attachments.
-if (!$mybb->get_input('posthash')) {
-    mt_srand((int)(microtime() * 1000000));
-    $mybb->input['posthash'] = md5(
-        intval($mybb->get_input('gid', MyBB::INPUT_INT)) . $mybb->user['uid'] . mt_rand()
-    );
+if (!$entryHash) {
+    $entryHash = md5(($entryID . $currentUserID) . random_str());
 }
 
 //init form action
-$form_page = $me->mainfile;
 
 //get FancyBox JS for header if viewing
 $myshowcase_js_header = '';
@@ -554,482 +644,35 @@ $myshowcase_js_header = '';
 if ($mybb->get_input('action') == 'view') {
     $myshowcase_js_header = eval(getTemplate('js_header'));
 }
+
 $showcase_top = eval(getTemplate('top'));
+
+$pagination = '';
+
+require_once ROOT . '/System/Render.php';
+require_once ROOT . '/System/Output.php';
+
+$myShowcaseRender = new Render($me);
+
+$myShowcaseOutput = new Output($me);
 
 //main showcase code
 switch ($mybb->get_input('action')) {
-    case 'list':
-    {
-        $showcase_url_new = SHOWCASE_URL_NEW;
-
-        $plugins->run_hooks('myshowcase_list_start');
-
-        if ($me->userperms['canadd']) {
-            $new_button = eval(getTemplate('new_button'));
-        }
-
-        //init fixed fields for list view and insert the custom fields into the options list array
-        $showcase_order_fields = [];
-        $showcase_order_fields['createdate'] = $lang->myshowcase_sort_createdate;
-        $showcase_order_fields['dateline'] = $lang->myshowcase_sort_editdate;
-        $showcase_order_fields['username'] = $lang->myshowcase_sort_username;
-        foreach ($showcase_fields_showinlist as $forder => $fname) {
-            $order_text = $lang->{"myshowcase_field_{$fname}"};
-            $showcase_order_fields[$fname] = $order_text;
-        }
-        $showcase_order_fields['views'] = $lang->myshowcase_sort_views;
-        $showcase_order_fields['comments'] = $lang->myshowcase_sort_comments;
-
-        //init fixed fields for list view and insert the custom fields into the options list array
-        $showcase_search_fields = [];
-        $showcase_search_fields['username'] = $lang->myshowcase_sort_username;
-        foreach ($showcase_fields_searchable as $forder => $fname) {
-            $order_text = $lang->{"myshowcase_field_{$fname}"};
-            $showcase_search_fields[$fname] = $order_text;
-        }
-
-        //clean up inputs
-        $mybb->input['searchterm'] = $db->escape_string($mybb->get_input('searchterm'));
-
-        if (!isset($mybb->input['sortby'])) {
-            $mybb->input['sortby'] = 'dateline';
-        }
-        $mybb->input['sortby'] = $db->escape_string($mybb->get_input('sortby'));
-
-        // orderrow
-        if (strpos(SHOWCASE_URL, '?')) {
-            $sorturl = SHOWCASE_URL . $amp;
-        } else {
-            $sorturl = SHOWCASE_URL . '?';
-        }
-
-        $mybb->input['page'] = intval($mybb->get_input('page', MyBB::INPUT_INT));
-
-        if ($mybb->get_input('page', MyBB::INPUT_INT) && !strpos(SHOWCASE_URL, 'page=')) {
-            $sorturl .= 'page=' . $mybb->get_input('page', MyBB::INPUT_INT) . $amp;
-        }
-
-        // Pick out some sorting options.
-        // Pick the sort order.
-        if (!isset($mybb->input['order'])) {
-            $mybb->input['order'] = 'DESC';
-        }
-
-        $mybb->input['order'] = $db->escape_string($mybb->get_input('order'));
-
-        switch (strtolower($mybb->get_input('order'))) {
-            case 'asc':
-                $sortordernow = 'ASC';
-                $orderascsel = "selected=\"selected\"";
-                $oppsort = $lang->myshowcase_desc;
-                $oppsortnext = 'desc';
-                break;
-            default:
-                $sortordernow = 'DESC';
-                $orderdescsel = "selected=\"selected\"";
-                $oppsort = $lang->myshowcase_asc;
-                $oppsortnext = 'asc';
-                break;
-        }
-
-        //make sure specified sortby is valid
-        if (!array_key_exists($mybb->get_input('sortby'), $showcase_order_fields)) {
-            $mybb->input['sortby'] = 'createdate';
-        }
-
-        //set sort field (required since test data does not have correct create date)
-        if ($mybb->get_input('sortby') == 'createdate') {
-            $sortfield = '`gid` ' . $sortordernow;
-        } else {
-            $sortfield = '`' . $mybb->get_input('sortby') . '` ' . $sortordernow . ', gid ASC';
-        }
-
-        //build sortby option list
-        $showcase_orderby = '';
-        reset($showcase_order_fields);
-        foreach ($showcase_order_fields as $ordername => $ordertext) {
-            $showcase_orderby .= '<option value="' . $ordername . '" ' . ($mybb->get_input(
-                    'sortby'
-                ) == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
-        }
-
-        //build searchfield option list
-        $showcase_search = '';
-        reset($showcase_search_fields);
-        foreach ($showcase_search_fields as $ordername => $ordertext) {
-            $showcase_search .= '<option value="' . $ordername . '" ' . ($mybb->get_input(
-                    'search'
-                ) == $ordername ? 'selected' : '') . '>' . $ordertext . '</option>';
-        }
-
-        //set alternate sort code
-        $matchchecked = ($mybb->get_input('exactmatch') == 'on' ? 'checked' : '');
-        $orderarrow[$mybb->get_input('sortby')] = eval(getTemplate('orderarrow'));
-
-        if ($me->seo_support) {
-            $amp = '?';
-        } else {
-            $amp = '&amp;';
-        }
-
-        //build custom list header based on field settings
-        $showcase_list_custom_header = '';
-        foreach ($showcase_fields_showinlist as $forder => $fname) {
-            $custom_header = $lang->{"myshowcase_field_{$fname}"};
-            $custom_orderarrow = $orderarrow[$fname];
-            $showcase_list_custom_header .= eval(getTemplate('list_custom_header'));
-        }
-
-        //setup joins for query and build where clause based on search terms
-        $showcase_fields_for_search = $showcase_fields;
-        $addon_join = '';
-        $addon_fields = '';
-        $searchdone = 0;
-        reset($showcase_fields_for_search);
-
-        $mybb->input['searchterm'] = $db->escape_string($mybb->get_input('searchterm'));
-        $mybb->input['search'] = $db->escape_string($mybb->get_input('search'));
-        $mybb->input['exactmatch'] = $db->escape_string($mybb->get_input('exactmatch'));
-
-        foreach ($showcase_fields_for_search as $fname => $ftype) {
-            if ($ftype == 'db' || $ftype == 'radio') {
-                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $fname . ' ON (tbl_' . $fname . '.valueid = g.' . $fname . ' AND tbl_' . $fname . ".name = '" . $fname . "') ";
-                $addon_fields .= ', tbl_' . $fname . '.value AS `' . $fname . '`';
-                if ($mybb->get_input('searchterm') != '' && $mybb->get_input('search') == $fname) {
-                    if ($mybb->get_input('exactmatch')) {
-                        $list_where_clause .= ' AND tbl_' . $fname . ".value ='" . $mybb->get_input('searchterm') . "'";
-                    } else {
-                        $list_where_clause .= ' AND tbl_' . $fname . ".value LIKE '%" . $mybb->get_input(
-                                'searchterm'
-                            ) . "%'";
-                    }
-                    $list_where_clause .= ' AND tbl_' . $fname . '.setid = ' . $me->fieldsetid;
-                }
-            } elseif ($mybb->get_input('search') == 'username' && !$searchdone) {
-                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'users us ON (g.uid = us.uid) ';
-                $addon_fields .= ', `' . $fname . '`';
-                if ($mybb->get_input('searchterm') != '') {
-                    if ($mybb->get_input('exactmatch')) {
-                        $list_where_clause .= " AND us.username='" . $mybb->get_input('searchterm') . "'";
-                    } else {
-                        $list_where_clause .= " AND us.username LIKE '%" . $mybb->get_input('searchterm') . "%'";
-                    }
-                }
-                $searchdone = 1;
-            } else {
-                $addon_fields .= ', `' . $fname . '`';
-                if ($mybb->get_input('searchterm') != '' && $mybb->get_input('search') == $fname) {
-                    if ($mybb->get_input('exactmatch')) {
-                        $list_where_clause .= ' AND g.' . $fname . "='" . $mybb->get_input('searchterm') . "'";
-                    } else {
-                        $list_where_clause .= ' AND g.' . $fname . " LIKE '%" . $mybb->get_input('searchterm') . "%'";
-                    }
-                }
-            }
-        }
-
-        // How many entries are there?
-        $showcasecount = 0;
-
-        //$query = $db->simple_select($me->table_name.' g', "gid", $list_where_clause);
-        $query = $db->query(
-            'SELECT count(*) AS total FROM ' . TABLE_PREFIX . $me->table_name . ' g ' . $addon_join . ' WHERE ' . $list_where_clause
-        );
-
-        $result = $db->fetch_array($query);
-        $showcasecount = $result['total'];
-
-        $showcase_list_items = '';
-
-        if ($showcasecount != 0) {
-            // How many pages are there?
-            $perpage = $mybb->settings['threadsperpage'];
-
-            if ($mybb->get_input('page', MyBB::INPUT_INT) > 0) {
-                $page = $mybb->get_input('page', MyBB::INPUT_INT);
-                $start = ($page - 1) * $perpage;
-                $pages = $showcasecount / $perpage;
-                $pages = ceil($pages);
-                if ($page > $pages) {
-                    $start = 0;
-                    $page = 1;
-                }
-            } else {
-                $start = 0;
-                $page = 1;
-            }
-            $end = $start + $perpage;
-            $lower = $start + 1;
-            $upper = $end;
-            if ($upper > $showcasecount) {
-                $upper = $showcasecount;
-            }
-
-            $multipage = multipage(
-                $showcasecount,
-                $perpage,
-                $page,
-                SHOWCASE_URL_PAGED . $amp . 'sortby=' . $mybb->get_input(
-                    'sortby'
-                ) . '&amp;order=' . $sortordernow . ($mybb->get_input(
-                    'unapproved',
-                    MyBB::INPUT_INT
-                ) ? '&amp;unapproved=' . $mybb->get_input(
-                        'unapproved',
-                        MyBB::INPUT_INT
-                    ) : '') . ($mybb->get_input('search') <> '' ? '&amp;search=' . $mybb->get_input(
-                        'search'
-                    ) : '') . ($mybb->get_input('search') <> '' ? '&amp;searchterm=' . $mybb->get_input(
-                        'searchterm'
-                    ) : '')
-            );
-
-            $trow_style = 'trow2';
-
-
-            // start getting showcases
-            $query = $db->query(
-                '
-				SELECT `gid`, u.username, `views`, `comments`, `dateline`, `createdate`, `approved`, `approved_by`, `posthash`, g.uid' . $addon_fields . '
-				FROM ' . TABLE_PREFIX . $me->table_name . ' g
-				LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.uid)
-				' . $addon_join . "
-				WHERE $list_where_clause
-				ORDER BY $sortfield
-				LIMIT $start, $perpage
-				"
-            );
-
-            // get first attachment for each showcase on this page
-            $showcase_images = [];
-            if ($me->use_attach == 1) {
-                $gidlist = '';
-                while ($results = $db->fetch_array($query)) {
-                    if ($gidlist == '') {
-                        $gidlist = $results['gid'];
-                    } else {
-                        $gidlist = $gidlist . ',' . $results['gid'];
-                    }
-                }
-
-                $attquery = $db->query(
-                    'SELECT gid, min(aid) as aid, filetype, filename, attachname, thumbnail FROM ' . TABLE_PREFIX . 'myshowcase_attachments WHERE id=' . $me->id . ' AND gid IN (' . $gidlist . ') AND visible=1 GROUP BY gid'
-                );
-
-                while ($results = $db->fetch_array($attquery)) {
-                    $showcase_images[$results['gid']]['aid'] = $results['aid'];
-                    $showcase_images[$results['gid']]['attachname'] = $results['attachname'];
-                    $showcase_images[$results['gid']]['thumbnail'] = $results['thumbnail'];
-                    $showcase_images[$results['gid']]['filetype'] = $results['filetype'];
-                    $showcase_images[$results['gid']]['filename'] = $results['filename'];
-                }
-            }
-
-            //reset results since we may have iterated for attachments.
-            $db->data_seek($query, 0);
-
-            unset($showcase_items);
-
-            $trow_style = 'trow2';
-            while ($showcase = $db->fetch_array($query)) {
-                //obtain fixed field items
-                $item_uid = $showcase['uid'];
-                $item_view = $showcase['gid'];
-                $item_member = $showcase['username'];
-                $item_numview = $showcase['views'];
-                $item_numcomment = $showcase['comments'];
-
-                $usersearch = $mybb->get_input('searchterm');
-
-                $lasteditdate = my_date($mybb->settings['dateformat'], $showcase['dateline']);
-                $lastedittime = my_date($mybb->settings['timeformat'], $showcase['dateline']);
-                $item_lastedit = $lasteditdate . '<br />' . $lastedittime;
-
-                if ($showcase['username'] == '') {
-                    $showcase['username'] = $lang->guest;
-                    $showcase['uid'] = 0;
-                }
-
-                $item_member = build_profile_link($showcase['username'], $showcase['uid'], '', '', $forumdir . '/');
-
-                $showcase_view_user = str_replace('{username}', $showcase['username'], $lang->myshowcase_view_user);
-
-                $item_viewcode = str_replace('{gid}', $item_view, SHOWCASE_URL_VIEW);
-
-                //add bits for search highlighting
-                if ($mybb->get_input('searchterm') != '') {
-                    $item_viewcode .= '?search=' . $mybb->get_input('search') . '&highlight=' . urlencode(
-                            $mybb->get_input('searchterm')
-                        );
-                }
-
-                //build link for list view, starting with basic text
-                $item_viewimage = $lang->myshowcase_view;
-
-                //use default image is specified
-                if ($me->defaultimage != '' && (file_exists($theme['imgdir'] . '/' . $me->defaultimage) || stristr(
-                            $theme['imgdir'],
-                            'http://'
-                        ))) {
-                    $item_viewimage = '<img src="' . $theme['imgdir'] . '/' . $me->defaultimage . '" border="0" alt="' . $showcase_view_user . '">';
-                }
-
-                //use showcase attachment if one exists, scaled of course
-                if ($me->use_attach) {
-                    if (stristr($showcase_images[$showcase['gid']]['filetype'], 'image/')) {
-                        if ($showcase_images[$showcase['gid']]['aid'] && file_exists(
-                                $me->imgfolder . '/' . $showcase_images[$showcase['gid']]['attachname']
-                            )) {
-                            if ($showcase_images[$showcase['gid']]['thumbnail'] == 'SMALL') {
-                                $item_viewimage = '<img src="' . $me->imgfolder . '/' . $showcase_images[$showcase['gid']]['attachname'] . '" width="50" border="0" alt="' . $showcase_view_user . '">';
-                            } else {
-                                $item_viewimage = '<img src="' . $me->imgfolder . '/' . $showcase_images[$showcase['gid']]['thumbnail'] . '" width="50" border="0" alt="' . $showcase_view_user . '">';
-                            }
-                        }
-                    } else {
-                        $attachtypes = $cache->read('attachtypes');
-                        $ext = get_extension($showcase_images[$showcase['gid']]['filename']);
-                        if (array_key_exists($ext, $attachtypes)) {
-                            $item_image = $mybb->settings['bburl'] . '/' . $attachtypes[$ext]['icon'];
-                            $item_viewimage = '<img src="' . $item_image . '" border="0" alt="' . $showcase_view_user . '">';
-                        }
-                    }
-                }
-
-                //set row style for default use
-                $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
-
-                //change style is unapproved
-                if ($showcase['approved'] != 1) {
-                    $trow_style = 'trow_shaded';
-                }
-
-                //build custom list items based on field settings
-                $showcase_list_custom_fields = '';
-                foreach ($showcase_fields_showinlist as $forder => $fname) {
-                    $item_text = $showcase[$fname];
-
-                    //format numbers as requested
-                    switch ($showcase_fields_format[$fname]) {
-                        case 'no':
-                            $item_text = $item_text;
-                            break;
-
-                        case 'decimal0':
-                            $item_text = number_format($item_text);
-                            break;
-
-                        case 'decimal1':
-                            $item_text = number_format(floatval($item_text), 1);
-                            break;
-
-                        case 'decimal2':
-                            $item_text = number_format(floatval($item_text), 2);
-                            break;
-                    }
-
-                    switch ($showcase_fields[$fname]) {
-                        case 'date':
-                            if ($item_text == 0) {
-                                $item_text = '';
-                            } else {
-                                $date_bits = explode('|', $item_text);
-                                $date_bits = array_map('intval', $date_bits);
-                                if ($date_bits[0] > 0 && $date_bits[1] > 0 && $date_bits[2] > 0) {
-                                    $item_text = my_date(
-                                        $mybb->settings['dateformat'],
-                                        mktime(0, 0, 0, $date_bits[0], $date_bits[1], $date_bits[2])
-                                    );
-                                } else {
-                                    $item_text = '';
-                                    if ($date_bits[0]) {
-                                        $item_text .= $date_bits[0];
-                                    }
-                                    if ($date_bits[1]) {
-                                        $item_text .= ($item_text != '' ? '-' : '') . $date_bits[1];
-                                    }
-                                    if ($date_bits[2]) {
-                                        $item_text .= ($item_text != '' ? '-' : '') . $date_bits[2];
-                                    }
-                                }
-                            }
-                            break;
-                    }
-
-                    $item_text = htmlspecialchars_uni($item_text);
-                    $showcase_list_custom_fields .= eval(getTemplate('list_custom_fields'));
-                }
-                if ($me->userperms['canmodapprove'] || $me->userperms['canmoddelete']) {
-                    $multigid = $showcase['gid'];
-                    $showcase_inlinemod_item = eval(getTemplate('inlinemod_item'));
-                }
-
-                $showcase_list_items .= eval(getTemplate('list_items'));
-
-                //add row indicating report
-                if (!empty($reports) && is_array($reports[$showcase['gid']])) {
-                    foreach ($reports[$showcase['gid']] as $rid => $report) {
-                        $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
-                        $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
-
-                        $reporter = get_user($report['uid']);
-                        $reporter_link = build_profile_link(
-                            $reporter['username'],
-                            $reporter['uid'],
-                            '',
-                            '',
-                            $forumdir . '/'
-                        );
-
-                        $trow_style = 'red_alert';
-                        $message = '<img src="' . $mybb->settings['bburl'] . '/images/nav_bit.gif" alt="Above">  ';
-                        $message .= $lang->sprintf(
-                            $lang->myshowcase_report_item,
-                            $reportdate . ' ' . $reporttime,
-                            $reporter_link,
-                            $report['reason']
-                        );
-                        $showcase_num_headers = ($showcase_inlinemod_item ? 6 : 5) + count($showcase_fields_showinlist);
-                        $showcase_list_items .= eval(getTemplate('list_message'));
-                    }
-                }
-            }
-        } else {
-            $trow_style = 'trow1';
-            $colcount = 5;
-            if ($me->userperms['canmodapprove'] || $me->userperms['canmoddelete']) {
-                $colcount = 6;
-            }
-            $showcase_num_headers = $colcount + count($showcase_fields_showinlist);
-            if ($mybb->get_input('searchterm') == '') {
-                $message = $lang->myshowcase_empty;
-                $showcase_list_items .= eval(getTemplate('list_message'));
-            } else {
-                $message = $lang->myshowcase_no_results;
-                $showcase_list_items .= eval(getTemplate('list_message'));
-            }
-        }
-
-        $plugins->run_hooks('myshowcase_list_end');
-
-        $showcase_page = eval(getTemplate('list'));
-
-        break;
-    }
     case 'view':
     {
-        $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
-
         $plugins->run_hooks('myshowcase_view_start');
 
-        if ($mybb->get_input('gid', MyBB::INPUT_INT) == '' || $mybb->get_input('gid', MyBB::INPUT_INT) == 0) {
+        if ($entryID == '' || $entryID == 0) {
             error($lang->myshowcase_invalid_id);
         }
 
         $addon_join = '';
         $addon_fields = '';
-        reset($showcase_fields);
-        foreach ($showcase_fields_enabled as $fname => $ftype) {
+        reset($showcaseFields);
+
+        $view_where_clause = '';
+
+        foreach ($showcaseFieldEnabled as $fname => $ftype) {
             if ($ftype == 'db' || $ftype == 'radio') {
                 $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $fname . ' ON (tbl_' . $fname . '.valueid = g.' . $fname . ' AND tbl_' . $fname . ".name = '" . $fname . "') ";
                 $addon_fields .= ', tbl_' . $fname . '.value AS `' . $fname . '`';
@@ -1045,7 +688,7 @@ switch ($mybb->get_input('action')) {
 			FROM ' . TABLE_PREFIX . $me->table_name . ' g
 			LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.uid)
 			' . $addon_join . '
-			WHERE g.gid=' . $mybb->get_input('gid', MyBB::INPUT_INT) . $view_where_clause
+			WHERE g.gid=' . $entryID . $view_where_clause
         );
 
         if ($db->num_rows($query) == 0) {
@@ -1065,29 +708,29 @@ switch ($mybb->get_input('action')) {
         //set up jump to links
         $jumpto = $lang->myshowcase_jumpto;
 
-        $item_viewcode = str_replace('{gid}', (string)$mybb->get_input('gid'), SHOWCASE_URL_VIEW);
+        $entryUrl = str_replace('{gid}', (string)$mybb->get_input('gid'), SHOWCASE_URL_VIEW);
         if ($me->allow_attachments && $me->userperms['canviewattach']) {
-            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->get_input(
+            $jumpto .= ' <a href="' . $entryUrl . ($mybb->get_input(
                     'showall',
                     MyBB::INPUT_INT
                 ) == 1 ? '&showall=1' : '') . '#images">' . $lang->myshowcase_attachments . '</a>';
         }
 
         if ($me->allow_comments && $me->userperms['canviewcomment']) {
-            $jumpto .= ' <a href="' . $item_viewcode . ($mybb->get_input(
+            $jumpto .= ' <a href="' . $entryUrl . ($mybb->get_input(
                     'showall',
                     MyBB::INPUT_INT
-                ) == 1 ? '&showall=1' : '') . '#comments">' . $lang->myshowcase_comments . '</a>';
+                ) == 1 ? '&showall=1' : '') . '#comments">' . $lang->myShowcaseMainTableTheadComments . '</a>';
         }
 
-        $jumptop = '(<a href="' . $item_viewcode . ($mybb->get_input(
+        $jumptop = '(<a href="' . $entryUrl . ($mybb->get_input(
                 'showall',
                 MyBB::INPUT_INT
             ) == 1 ? '&showall=1' : '') . '#top">' . $lang->myshowcase_top . '</a>)';
 
-        $posthash = $showcase['posthash'];
+        $entryHash = $showcase['posthash'];
 
-        $showcase_gid = $mybb->get_input('gid', MyBB::INPUT_INT);
+        $showcase_gid = $entryID;
         $showcase_views = $showcase['views'];
         $showcase_numcomments = $showcase['comments'];
 
@@ -1096,11 +739,11 @@ switch ($mybb->get_input('action')) {
 
         $showcase_admin_url = SHOWCASE_URL;
 
-        if ($me->userperms['canmodedit'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit'])) {
+        if ($me->userperms['canmodedit'] || ($showcase['uid'] == $currentUserID && $me->userperms['canedit'])) {
             $showcase_view_admin_edit = eval(getTemplate('view_admin_edit'));
         }
 
-        if ($me->userperms['canmoddelete'] || ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['canedit'])) {
+        if ($me->userperms['canmoddelete'] || ($showcase['uid'] == $currentUserID && $me->userperms['canedit'])) {
             $showcase_view_admin_delete = eval(getTemplate('view_admin_delete'));
         }
 
@@ -1115,22 +758,24 @@ switch ($mybb->get_input('action')) {
         define('IN_ARCHIVE', 1);
 
         $mybb->input['highlight'] = $db->escape_string($mybb->get_input('highlight'));
-        $mybb->input['search'] = $db->escape_string($mybb->get_input('search'));
 
         require_once(MYBB_ROOT . 'inc/class_parser.php');
         $parser = new postParser();
 
-        reset($showcase_fields_enabled);
-        $trow_style = 'trow2';
-        foreach ($showcase_fields_enabled as $fname => $ftype) {
+        reset($showcaseFieldEnabled);
+        $alternativeBackground = 'trow2';
+
+        $showcase_data = '';
+
+        foreach ($showcaseFieldEnabled as $fname => $ftype) {
             $temp = 'myshowcase_field_' . $fname;
             $field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
 
-            $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
+            $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
-            //if we have search handle search term highlighting
+            //if we have search_field handle search_field term highlighting
             $highlight = 0;
-            if ($mybb->get_input('highlight') != '' && $mybb->get_input('search') == $fname) {
+            if ($mybb->get_input('highlight') != '' && $showcaseInputSearchField == $fname) {
                 $highlight = $mybb->get_input('highlight');
             }
 
@@ -1144,12 +789,11 @@ switch ($mybb->get_input('action')) {
                 'highlight' => $highlight,
                 'nl2br' => 1
             ];
-
             switch ($ftype) {
                 case 'textarea':
                     $field_data = $showcase[$fname];
                     if ($field_data != '' || $me->disp_empty == 1) {
-                        if ($showcase_fields_parse[$fname] || $highlight) {
+                        if ($showcaseFieldsParseable[$fname] || $highlight) {
                             $field_data = $parser->parse_message($field_data, $parser_options);
                         } else {
                             $field_data = htmlspecialchars_uni($field_data);
@@ -1163,7 +807,7 @@ switch ($mybb->get_input('action')) {
                     $field_data = $showcase[$fname];
 
                     //format numbers as requested
-                    switch ($showcase_fields_format[$fname]) {
+                    switch ($showcaseFieldsFormat[$fname]) {
                         case 'no':
                             $field_data = $field_data;
                             break;
@@ -1183,7 +827,7 @@ switch ($mybb->get_input('action')) {
 
                     if ($field_data != '' || $me->disp_empty == 1) {
                         $field_data = htmlspecialchars_uni($field_data);
-                        if ($showcase_fields_parse[$fname] || $highlight) {
+                        if ($showcaseFieldsParseable[$fname] || $highlight) {
                             $field_data = $parser->parse_message($field_data, $parser_options);
                         }
                         $showcase_data .= eval(getTemplate('view_data_1'));
@@ -1232,7 +876,7 @@ switch ($mybb->get_input('action')) {
                 case 'db':
                     $field_data = $showcase[$fname];
                     if (($field_data != '') || $me->disp_empty == 1) {
-                        if ($showcase_fields_parse[$fname] || $highlight) {
+                        if ($showcaseFieldsParseable[$fname] || $highlight) {
                             $field_data = $parser->parse_message($field_data, $parser_options);
                         }
                         $showcase_data .= eval(getTemplate('view_data_1'));
@@ -1276,41 +920,48 @@ switch ($mybb->get_input('action')) {
         $showcase_data .= eval(getTemplate('view_data_3'));
 
         if ($me->allow_comments && $me->userperms['canviewcomment']) {
-            // start getting comments
-            $query = $db->query(
-                '
-				SELECT gc.*, u.username
-				FROM ' . TABLE_PREFIX . 'myshowcase_comments gc
-				LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = gc.uid)
-				WHERE gc.gid=' . $mybb->get_input('gid', MyBB::INPUT_INT) . ' AND gc.id=' . $me->id . '
-				ORDER BY dateline DESC' .
-                ($mybb->get_input('showall', MyBB::INPUT_INT) == 1 ? '' : ' LIMIT ' . $me->comment_dispinit)
+            $queryOptions = ['order_by' => 'dateline', 'order_dir' => 'DESC'];
+
+            if (!$mybb->get_input('showall', MyBB::INPUT_INT)) {
+                $queryOptions['limit'] = $me->comment_dispinit;
+            }
+
+            $commentObjects = commentGet(
+                ["gid='{$entryID}'", "id='{$me->id}'"],
+                ['uid', 'comment', 'dateline'],
+                $queryOptions
             );
 
-            $trow_style = 'trow2';
+            // start getting comments
+            $alternativeBackground = 'trow2';
+
             $showcase_comments = '';
-            while ($gcomments = $db->fetch_array($query)) {
-                $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
+
+            foreach ($commentObjects as $commentID => $commentData) {
+                $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
                 //clean up comment and timestamp
-                $comment_date = my_date($mybb->settings['dateformat'], $gcomments['dateline']);
-                $comment_time = my_date($mybb->settings['timeformat'], $gcomments['dateline']);
+                $comment_date = my_date($mybb->settings['dateformat'], $commentData['dateline']);
+                $comment_time = my_date($mybb->settings['timeformat'], $commentData['dateline']);
                 $comment_posted = $comment_date . ' ' . $comment_time;
-                $comment_poster = $item_member = build_profile_link(
-                    $gcomments['username'],
-                    $gcomments['uid'],
+
+                $userData = get_user($commentData['uid']);
+
+                $comment_poster = $entryUsername = build_profile_link(
+                    $userData['username'],
+                    $commentData['uid'],
                     '',
                     '',
                     $forumdir . '/'
                 );
-                $comment_data = $parser->parse_message($gcomments['comment'], $parser_options);
+                $comment_data = $parser->parse_message($commentData['comment'], $parser_options);
 
                 //setup comment admin options
                 //only mods, original author (if allowed) or owner (if allowed) can delete comments
                 if (
                     ($me->userperms['canmoddelcomment']) ||
-                    ($gcomments['uid'] == $mybb->user['uid'] && $me->userperms['candelowncomment']) ||
-                    ($showcase['uid'] == $mybb->user['uid'] && $me->userperms['candelauthcomment'])
+                    ($commentData['uid'] == $currentUserID && $me->userperms['candelowncomment']) ||
+                    ($showcase['uid'] == $currentUserID && $me->userperms['candelauthcomment'])
                 ) {
                     $showcase_comments_admin = eval(getTemplate('view_comments_admin'));
                 }
@@ -1320,7 +971,7 @@ switch ($mybb->get_input('action')) {
 
             $showcase_show_all = '';
             if ($mybb->get_input('showall', MyBB::INPUT_INT) != 1 && $showcase_numcomments > $me->comment_dispinit) {
-                $showcase_show_all = '(<a href="' . $item_viewcode . $amp . 'showall=1#comments">' . str_replace(
+                $showcase_show_all = '(<a href="' . $entryUrl . $amp . 'showall=1#comments">' . str_replace(
                         '{count}',
                         $showcase['comments'],
                         $lang->myshowcase_comment_show_all
@@ -1328,19 +979,19 @@ switch ($mybb->get_input('action')) {
             }
 
             $showcase_comment_form_url = SHOWCASE_URL;//.'?action=view&gid='.$mybb->get_input('gid', \MyBB::INPUT_INT);
-            $showcase_header_label = '<a name="comments"><form action="' . $showcase_comment_form_url . '" method="post" name="comment">' . $lang->myshowcase_comments . '</a>';
+            $showcase_header_label = '<a name="comments"><form action="' . $showcase_comment_form_url . '" method="post" name="comment">' . $lang->myShowcaseMainTableTheadComments . '</a>';
             $showcase_header_jumpto = $jumptop;
             $showcase_header_special = $showcase_show_all;
             $showcase_comment_header = eval(getTemplate('table_header'));
 
-            $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
+            $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
             if ($showcase_comments == '') {
                 $showcase_comments = eval(getTemplate('view_comments_none'));
             }
 
             //check if logged in for ability to add comments
-            $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
-            if (!$mybb->user['uid']) {
+            $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
+            if (!$currentUserID) {
                 $showcase_comments .= eval(getTemplate('view_comments_add_login'));
             } elseif ($me->userperms['cancomment']) {
                 $comment_text_limit = str_replace(
@@ -1353,23 +1004,20 @@ switch ($mybb->get_input('action')) {
         }
 
         if ($me->allow_attachments && $me->userperms['canviewattach']) {
-            // start getting attachments
-            $query = $db->query(
-                '
-				SELECT ga.*
-				FROM ' . TABLE_PREFIX . 'myshowcase_attachments ga
-				WHERE ga.gid=' . $mybb->get_input('gid', MyBB::INPUT_INT) . ' AND ga.id=' . $me->id
+            $attachmentObjects = attachmentGet(
+                ["gid='{$entryID}'", "id='{$me->id}'"],
+                ['filename', 'filetype']
             );
 
             $attach_count = 0;
             $showcase_attachment_data = '';
-            while ($gattachments = $db->fetch_array($query)) {
+            foreach ($attachmentObjects as $attachmentID => $attachmentData) {
                 //setup default and non-JS enabled URLs
-                $item_attachurljs = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_ITEM);
-                $item_attachurl = str_replace('{aid}', $gattachments['aid'], SHOWCASE_URL_VIEW_ATTACH);
+                $item_attachurljs = str_replace('{aid}', $attachmentData['aid'], SHOWCASE_URL_ITEM);
+                $item_attachurl = str_replace('{aid}', $attachmentData['aid'], SHOWCASE_URL_VIEW_ATTACH);
 
                 //if mime is image
-                if (stristr($gattachments['filetype'], 'image/')) {
+                if (stristr($attachmentData['filetype'], 'image/')) {
                     //determine what image to use for thumbnail
                     if ($gattachments['thumbnail'] != 'SMALL' && file_exists(
                             $me->imgfolder . '/' . $gattachments['thumbnail']
@@ -1388,11 +1036,11 @@ switch ($mybb->get_input('action')) {
                 } else //it's any other allowed type, so use this
                 {
                     $item_class = "class=\\\"attachment\\\"";
-                    $attachtypes = $cache->read('attachtypes');
-                    $ext = get_extension($gattachments['filename']);
+                    $attachmentTypes = (array)$cache->read('attachtypes');
+                    $attachmentExtension = get_extension($attachmentData['filename']);
                     $item_image = $theme['imgdir'] . '/error.gif';
-                    if (array_key_exists($ext, $attachtypes)) {
-                        $item_image = $mybb->settings['bburl'] . '/' . $attachtypes[$ext]['icon'];
+                    if (array_key_exists($attachmentExtension, $attachmentTypes)) {
+                        $item_image = $mybb->settings['bburl'] . '/' . $attachmentTypes[$attachmentExtension]['icon'];
                     }
                 }
 
@@ -1432,10 +1080,7 @@ switch ($mybb->get_input('action')) {
 
         // Update view count
         $db->shutdown_query(
-            'UPDATE ' . TABLE_PREFIX . $me->table_name . ' SET views=views+1 WHERE gid=' . $mybb->get_input(
-                'gid',
-                MyBB::INPUT_INT
-            )
+            'UPDATE ' . TABLE_PREFIX . $me->table_name . ' SET views=views+1 WHERE gid=' . $entryID
         );
 
         $plugins->run_hooks('myshowcase_view_end');
@@ -1444,7 +1089,6 @@ switch ($mybb->get_input('action')) {
 
         break;
     }
-
     case 'report':
     case 'do_report':
     case 'reports':
@@ -1454,10 +1098,9 @@ switch ($mybb->get_input('action')) {
             require_once(MYBB_ROOT . 'inc/plugins/myshowcase/report.php');
         }
         break;
-
     case 'addcomment':
     {
-        if (!$mybb->user['uid']) {
+        if (!$currentUserID) {
             error($lang->myshowcase_comments_not_logged_in);
         }
 
@@ -1466,9 +1109,8 @@ switch ($mybb->get_input('action')) {
 
             $plugins->run_hooks('myshowcase_add_comment_start');
 
-            $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
 
-            if ($mybb->get_input('gid', MyBB::INPUT_INT) == '' || $mybb->get_input('gid', MyBB::INPUT_INT) == 0) {
+            if ($entryID == '' || $entryID == 0) {
                 error($lang->myshowcase_invalid_id);
             }
 
@@ -1476,38 +1118,29 @@ switch ($mybb->get_input('action')) {
                 error($lang->myshowcase_comment_empty);
             }
 
-            $query = $db->simple_select(
-                $me->table_name,
-                'gid, uid',
-                'gid=' . $mybb->get_input('gid', MyBB::INPUT_INT)
-            );
-            if ($db->num_rows($query) == 0) {
+            $showcaseUserData = showcaseDataGet($me->id, ["gid='{$entryID}'"], ['uid']);
+
+            if (!$showcaseUserData) {
                 error($lang->myshowcase_invalid_id);
             }
 
-            $authorid = $db->fetch_field($query, 'uid');
+            $authorid = $showcaseUserData['uid'];
 
             //don't trust the myshowcase_data comment count, get the real count at time of insert to cover deletions and edits at same time.
-            $query = $db->query(
-                '
-				SELECT COUNT(*) AS num_comments
-				FROM ' . TABLE_PREFIX . 'myshowcase_comments
-				WHERE gid = ' . $mybb->get_input('gid', MyBB::INPUT_INT) . ' AND id=' . $me->id . '
-				GROUP BY gid
-				LIMIT 1
-			'
-            );
-
-            $showcase = $db->fetch_array($query);
-            $num_comments = $showcase['num_comments'];
+            $totalComments = commentGet(
+                ["gid='{$entryID}'", "id='{$me->id}'"],
+                ['COUNT(cid) AS totalComments'],
+                ['group_by' => 'gid'],
+                ['group_by' => 'gid', 'limit' => 1]
+            )['totalComments'] ?? 0;
 
             $mybb->input['comments'] = $db->escape_string($mybb->get_input('comments'));
 
             if ($mybb->get_input('comments') != '') {
                 $comment_insert_data = [
                     'id' => $me->id,
-                    'gid' => $mybb->get_input('gid', MyBB::INPUT_INT),
-                    'uid' => $mybb->user['uid'],
+                    'gid' => $entryID,
+                    'uid' => $currentUserID,
                     'ipaddress' => get_ip(),
                     'comment' => $mybb->get_input('comments'),
                     'dateline' => TIME_NOW
@@ -1515,17 +1148,15 @@ switch ($mybb->get_input('action')) {
 
                 $plugins->run_hooks('myshowcase_add_comment_commit');
 
-                $db->insert_query('myshowcase_comments', $comment_insert_data);
+                $commentID = commentInsert($comment_insert_data);
 
-                $db->update_query(
-                    $me->table_name,
-                    ['comments' => $num_comments + 1],
-                    'gid=' . $mybb->get_input('gid', MyBB::INPUT_INT)
-                );
+                $commentID = $entryID;
+
+                showcaseDataUpdate($this->id, ["gid='{$commentID}'"], ['comments' => $totalComments + 1]);
 
                 //notify showcase owner of new comment by others
                 $author = get_user($authorid);
-                if ($author['allownotices'] && $author['uid'] != $mybb->user['uid']) {
+                if ($author['allownotices'] && $author['uid'] != $currentUserID) {
                     require_once MYBB_ROOT . 'inc/class_parser.php';
                     $parser = new Postparser();
 
@@ -1539,13 +1170,13 @@ switch ($mybb->get_input('action')) {
                             $mybb->settings['subscribeexcerpt']
                         ) . $lang->myshowcase_comment_more;
 
-                    $item_viewcode = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
+                    $entryUrl = str_replace('{gid}', $mybb->get_input('gid'), SHOWCASE_URL_VIEW);
 
                     if ($forumdir == '' || $forumdir == './') {
-                        $showcase_url = $mybb->settings['bburl'] . '/' . $item_viewcode;
+                        $showcase_url = $mybb->settings['bburl'] . '/' . $entryUrl;
                     } else {
                         $forumdir = str_replace('.', '', $forumdir);
-                        $showcase_url = str_replace($forumdir, '', $mybb->settings['bburl']) . '/' . $item_viewcode;
+                        $showcase_url = str_replace($forumdir, '', $mybb->settings['bburl']) . '/' . $entryUrl;
                     }
 
 
@@ -1573,9 +1204,9 @@ switch ($mybb->get_input('action')) {
                     $cache->update_mailqueue();
                 }
 
-                $item_viewcode = str_replace('{gid}', $mybb->get_input('gid', MyBB::INPUT_INT), SHOWCASE_URL_VIEW);
+                $entryUrl = str_replace('{gid}', $entryID, SHOWCASE_URL_VIEW);
 
-                redirect($item_viewcode . '#comments', $lang->myshowcase_comment_added);
+                redirect($entryUrl . '#comments', $lang->myshowcase_comment_added);
             }
         } else {
             error($lang->myshowcase_not_authorized);
@@ -1588,60 +1219,50 @@ switch ($mybb->get_input('action')) {
     {
         $plugins->run_hooks('myshowcase_del_comment_start');
 
-        $mybb->input['cid'] = intval($mybb->get_input('cid', MyBB::INPUT_INT));
-
-        if ($mybb->get_input('cid', MyBB::INPUT_INT) == '' || $mybb->get_input('cid', MyBB::INPUT_INT) == 0) {
+        if (!$commentID) {
             error($lang->myshowcase_invalid_cid);
         }
 
-        $query = $db->query(
-            'SELECT c.cid, g.uid AS owner, c.uid AS author, c.gid FROM ' . TABLE_PREFIX . 'myshowcase_comments c
-				LEFT JOIN ' . TABLE_PREFIX . $me->table_name . ' g
-				ON g.gid = c.gid
-				WHERE c.cid = ' . $mybb->get_input('cid', MyBB::INPUT_INT)
+        $commentData = commentGet(
+            ["cid='{$commentID}"],
+            ['uid', 'gid'],
+            ['limit' => 1]
         );
 
-        if ($db->num_rows($query) == 0) {
+        if (!$commentData) {
             error($lang->myshowcase_invalid_cid);
         }
 
-        $gcomments = $db->fetch_array($query);
+        $entryID = (int)$commentData['gid'];
+
+        $entryData = showcaseDataGet($me->id, ["gid='{$entryID}'"], ['uid']);
+
+        if (!$entryData) {
+            error($lang->myshowcase_invalid_id);
+        }
 
         if (
-            (($mybb->user['uid'] == $gcomments['author'] && $me->userperms['candelowncomment']) ||
-                ($mybb->user['uid'] == $gcomments['owner'] && $me->userperms['candelauthcomment']) ||
+            (($currentUserID == $commentData['uid'] && $me->userperms['candelowncomment']) ||
+                ($currentUserID == $entryData['uid'] && $me->userperms['candelauthcomment']) ||
                 ($me->userperms['canmoddelcomment']) && $mybb->request_method == 'post')
         ) {
             verify_post_check($mybb->get_input('my_post_key'));
 
-            $query = $db->delete_query(
-                'myshowcase_comments',
-                'id=' . $me->id . ' AND cid=' . $mybb->get_input('cid', MyBB::INPUT_INT)
-            );
-            if ($db->affected_rows($query) != 1) {
-                error($lang->myshowcase_comment_error);
-            } else {
-                $query = $db->query(
-                    '
-					SELECT COUNT(*) AS num_comments
-					FROM ' . TABLE_PREFIX . 'myshowcase_comments
-					WHERE gid = ' . $gcomments['gid'] . ' AND id=' . $me->id . '
-					GROUP BY gid
-					LIMIT 1
-				'
-                );
+            commentDelete(["id='{$me->id}'", "cid='{$commentID}'"]);
 
-                $showcase = $db->fetch_array($query);
-                $num_comments = $showcase['num_comments'];
+            $totalComments = commentGet(
+                ["gid='{$entryID}'", "id='{$me->id}'"],
+                ['COUNT(cid) AS totalComments'],
+                ['group_by' => 'gid', 'limit' => 1]
+            )['totalComments'] ?? 0;
 
-                $plugins->run_hooks('myshowcase_del_comment_commit');
+            $plugins->run_hooks('myshowcase_del_comment_commit');
 
-                $db->update_query($me->table_name, ['comments' => $num_comments], 'gid=' . $gcomments['gid']);
+            showcaseDataUpdate($this->id, ["gid='{$entryID}'"], ['comments' => $totalComments]);
 
-                $item_viewcode = str_replace('{gid}', $gcomments['gid'], SHOWCASE_URL_VIEW);
+            $entryUrl = str_replace('{gid}', (string)$entryID, SHOWCASE_URL_VIEW);
 
-                redirect($item_viewcode . '#comments', $lang->myshowcase_comment_deleted);
-            }
+            redirect($entryUrl . '#comments', $lang->myshowcase_comment_deleted);
         } else {
             error($lang->myshowcase_not_authorized);
         }
@@ -1653,30 +1274,30 @@ switch ($mybb->get_input('action')) {
         if ($mybb->request_method == 'post') {
             verify_post_check($mybb->get_input('my_post_key'));
 
-            if (!$mybb->user['uid'] || !$me->userperms['canedit']) {
+            if (!$currentUserID || !$me->userperms['canedit']) {
                 error($lang->myshowcase_not_authorized);
             }
 
             $plugins->run_hooks('myshowcase_delete_start');
 
-            $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
 
-            if ($mybb->get_input('gid', MyBB::INPUT_INT) == '' || $mybb->get_input('gid', MyBB::INPUT_INT) == 0) {
+            if ($entryID == '' || $entryID == 0) {
                 error($lang->myshowcase_invalid_id);
             }
 
-            $query = $db->simple_select($me->table_name, '*', 'gid=' . $mybb->get_input('gid', MyBB::INPUT_INT));
-            if ($db->num_rows($query) == 0) {
+            $dataTableStructure = dataTableStructureGet();
+
+            $showcaseUserData = showcaseDataGet($me->id, ["gid='{$entryID}'"], array_keys($dataTableStructure));
+
+            if (!$showcaseUserData) {
                 error($lang->myshowcase_invalid_id);
             }
 
-            $showcase_data = $db->fetch_array($query);
-
-            if (!$me->userperms['canmoddelete'] && $mybb->user['uid'] != $showcase_data['uid']) {
+            if (!$me->userperms['canmoddelete'] && $currentUserID != $showcaseUserData['uid']) {
                 error($lang->myshowcase_not_authorized);
             }
 
-            $gid = $showcase_data['gid'];
+            $gid = $showcaseUserData['gid'];
             $me->delete($gid);
 
             //log_moderator_action($modlogdata, $lang->multi_deleted_threads);
@@ -1687,7 +1308,6 @@ switch ($mybb->get_input('action')) {
         exit;
         break;
     }
-
     case 'edit':
     case 'new':
     case 'do_editshowcase':
@@ -1696,7 +1316,6 @@ switch ($mybb->get_input('action')) {
             require_once(MYBB_ROOT . 'inc/plugins/myshowcase/newedit.php');
         }
         break;
-
     case 'multiapprove':
     case 'multiunapprove':
     case 'multidelete':
@@ -1705,10 +1324,19 @@ switch ($mybb->get_input('action')) {
             require_once(MYBB_ROOT . 'inc/plugins/myshowcase/inlinemod.php');
         }
         break;
+    default:
+    {
+        $myShowcaseOutput->main();
+    }
 }
 
+$pageContents = eval(getTemplate('page'));
+
 $plugins->run_hooks('myshowcase_end');
-output_page($showcase_page);
+
+output_page($pageContents);
+
+exit;
 
 
 //query to get templates

@@ -17,7 +17,6 @@ use function MyShowcase\Admin\languageModify;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\fieldDataDelete;
-use function MyShowcase\Core\fieldDataExists;
 use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\fieldDataInsert;
 use function MyShowcase\Core\fieldDataUpdate;
@@ -37,7 +36,7 @@ use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerSet;
 
-use const MyShowcase\Admin\TABLES_DATA;
+use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -148,7 +147,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $fieldIsEditable = true;
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
 
     if ($showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['id'])) {
         $fieldIsEditable = false;
@@ -260,7 +259,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 break;
         }
 
-        $fieldData = [
+        $fieldDataQuery = [
             'setid' => $fieldsetID,
             'min_length' => $mybb->get_input('min_length', MyBB::INPUT_INT),
             'max_length' => $mybb->get_input('max_length', MyBB::INPUT_INT),
@@ -269,22 +268,22 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         ];
 
         if ($fieldIsEditable) {
-            $fieldData['name'] = $db->escape_string($mybb->get_input('name'));
+            $fieldDataQuery['name'] = $db->escape_string($mybb->get_input('name'));
 
-            $fieldData['html_type'] = $db->escape_string($mybb->get_input('html_type'));
+            $fieldDataQuery['html_type'] = $db->escape_string($mybb->get_input('html_type'));
 
-            $fieldData['field_type'] = $db->escape_string($mybb->get_input('field_type'));
+            $fieldDataQuery['field_type'] = $db->escape_string($mybb->get_input('field_type'));
         }
 
         if ($errorMessages) {
             $page->output_inline_error($errorMessages);
         } else {
-            $fieldData = hooksRun('admin_field_new_edit_post', $fieldData);
+            $fieldDataQuery = hooksRun('admin_field_new_edit_post', $fieldDataQuery);
 
             if ($newPage) {
-                $fieldID = fieldsInsert($fieldData);
+                $fieldID = fieldsInsert($fieldDataQuery);
             } else {
-                fieldsUpdate(["fid='{$fieldID}'"], $fieldData);
+                fieldsUpdate(["fid='{$fieldID}'"], $fieldDataQuery);
 
                 if ($fieldIsEditable &&
                     isset($fieldData['name']) &&
@@ -313,7 +312,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 languageModify(
                     'myshowcase_fs' . $fieldsetID,
                     [
-                        'myshowcase_field_' . $mybb->get_input('name') => ucfirst(
+                        'myshowcase_field_' . ($fieldDataQuery['name'] ?? $fieldData['name']) => ucfirst(
                             $mybb->get_input('label') ?? $mybb->get_input('name')
                         )
                     ]
@@ -876,7 +875,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         admin_redirect(urlHandlerBuild());
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
 
     if (!empty($showcaseObjects)) {
         flash_message($lang->myShowcaseAdminErrorFieldsetDeleteFailed, 'error');
@@ -953,7 +952,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $can_edit = true;
 
-    foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+    foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
         if (showcaseDataTableExists($showcaseID)) {
             $can_edit = false;
         }
@@ -1199,7 +1198,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         );
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
 
     if (!empty($showcaseObjects)) {
         flash_message($lang->myshowcase_fields_in_use, 'error');
@@ -1274,13 +1273,17 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         );
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []);
+    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
 
     $fieldName = $fieldData['name'] ?? $fieldData['id'];
 
     $fieldIsInUse = false;
 
     foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+        if (!showcaseDataTableExists($showcaseID)) {
+            break;
+        }
+
         if (showcaseDataTableFieldExists($showcaseID, $fieldName)) {
             $fieldIsInUse = true;
 
@@ -1315,7 +1318,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             ['myshowcase_field_' . $fieldName => '']
         );
 
-        if (fieldDataExists(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
+        if (fieldDataGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
             fieldDataDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'"]);
         }
 
@@ -1388,7 +1391,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         foreach ($fieldsetObjects as $fieldsetID => $result) {
             $viewOptionsUrl = urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]);
 
-            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
                 if (showcaseDataTableExists($showcaseID)) {
                     $can_edit = false;
                 }
@@ -1396,7 +1399,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $totalUsedOn = showcaseGet(
                 ["fieldsetid='{$fieldsetID}'"],
-                ['COUNT(id) AS totalUsedOn']
+                ['COUNT(id) AS totalUsedOn'],
+                ['limit' => 1]
             )['totalUsedOn'] ?? 0;
 
             $totalFields = fieldsGet(
@@ -1407,7 +1411,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $totalTablesUsedOn = 0;
 
-            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"], [], []) as $showcaseID => $showcaseData) {
+            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
                 if (showcaseDataTableExists($showcaseID)) {
                     ++$totalTablesUsedOn;
                 }

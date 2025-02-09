@@ -13,8 +13,12 @@
 
 declare(strict_types=1);
 
+use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
+
+use function MyShowcase\Core\showcaseDataInsert;
+use function MyShowcase\Core\showcaseDataUpdate;
 
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
@@ -199,15 +203,13 @@ class MyShowcaseDataHandler extends DataHandler
         }
         $plugins->run_hooks('datahandler_myshowcase_insert', $this);
 
-        $this->gid = $db->insert_query($me->table_name, $this->myshowcase_insert_data);
+        $this->gid = showcaseDataInsert($this->gid, $this->myshowcase_insert_data);
 
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
             $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
-            $attachmentassign = [
-                'gid' => $this->gid
-            ];
-            $db->update_query('myshowcase_attachments', $attachmentassign, "posthash='{$myshowcase_data['posthash']}'");
+
+            attachmentUpdate(["posthash='{$myshowcase_data['posthash']}'"], ['gid' => $this->gid]);
         }
 
         // Return the post's pid and whether or not it is visible.
@@ -241,7 +243,7 @@ class MyShowcaseDataHandler extends DataHandler
 
         $plugins->run_hooks('datahandler_myshowcase_update', $this);
 
-        $db->update_query($me->table_name, $this->myshowcase_update_data, 'gid=' . $myshowcase_data['gid']);
+        showcaseDataUpdate($this->id, ["gid='{$myshowcase_data['gid']}'"], $this->myshowcase_update_data);
 
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
@@ -249,10 +251,10 @@ class MyShowcaseDataHandler extends DataHandler
             $attachmentassign = [
                 'gid' => $myshowcase_data['gid']
             ];
-            $db->update_query(
-                'myshowcase_attachments',
-                $attachmentassign,
-                'id=' . $me->id . " AND posthash='{$myshowcase_data['posthash']}'"
+
+            attachmentUpdate(
+                ["id='{$me->id}'", "posthash='{$myshowcase_data['posthash']}'"],
+                $attachmentassign
             );
         }
 

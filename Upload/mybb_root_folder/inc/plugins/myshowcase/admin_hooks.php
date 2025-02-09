@@ -20,6 +20,9 @@ use MyBB;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 
+use function MyShowcase\Core\permissionsDelete;
+use function MyShowcase\Core\permissionsInsert;
+
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
@@ -71,7 +74,7 @@ function admin_user_groups_edit(): bool
                 $myshowcase_defaultperms['id'] = $myshowcase['id'];
                 $myshowcase_defaultperms['gid'] = $group['gid'];
 
-                $db->insert_query('myshowcase_permissions', $myshowcase_defaultperms);
+                permissionsInsert($myshowcase_defaultperms);
             }
         }
     }
@@ -85,9 +88,10 @@ function admin_user_groups_edit(): bool
  */
 function admin_user_groups_delete_commit(): bool
 {
-    global $db, $cache, $usergroup;
+    global $usergroup;
 
-    $db->delete_query('myshowcase_permissions', "gid='{$usergroup['gid']}'");
+    permissionsDelete(["gid='{$usergroup['gid']}'"]);
+
     cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
     return true;

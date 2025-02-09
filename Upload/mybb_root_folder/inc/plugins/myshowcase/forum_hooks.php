@@ -15,11 +15,15 @@ declare(strict_types=1);
 
 namespace MyShowcase\Hooks\Forum;
 
+use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
+
+use function MyShowcase\Core\reportGet;
+use function MyShowcase\Core\showcaseDataGet;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
@@ -65,6 +69,8 @@ function global_intermediate(): bool
 {
     global $mybb, $db, $cache, $myshowcase_unapproved, $myshowcase_reported, $theme, $templates, $lang;
 
+    global $currentUserID;
+
     $myshowcase_unapproved = $myshowcase_reported = '';
 
     //get showcases and mods
@@ -87,7 +93,7 @@ function global_intermediate(): bool
             if (!empty($moderators[$id])) {
                 foreach ($moderators[$id] as $mid => $mod) {
                     //check if user is specifically a mod
-                    if ($mybb->user['uid'] == $mod[$mod['id']]['uid'] && $mod[$mod['id']]['isgroup'] == 0) {
+                    if ($currentUserID == $mod[$mod['id']]['uid'] && $mod[$mod['id']]['isgroup'] == 0) {
                         if ($mod[$mod['id']]['canmodapprove'] == 1) {
                             $canapprove = 1;
                         }
@@ -150,17 +156,23 @@ function global_intermediate(): bool
     }
 
     if (count($rep_ids) > 0) {
-        $ids = implode(',', array_keys($rep_ids));
-        $query = $db->query(
-            'SELECT `id`, COUNT(*) AS total FROM ' . TABLE_PREFIX . 'myshowcase_reports WHERE `id` IN (' . $ids . ') AND `status`=0 GROUP BY `id`, `status`'
+        $ids = implode("','", array_keys($rep_ids));
+        $reportObjects = reportGet(
+            ["id IN ('{$ids}')", "status='0'"],
+            ['COUNT(*) AS total'],
+            ['group_by' => 'id, status']
         );
-        while ($reports = $db->fetch_array($query)) {
-            $reported_text = str_replace('{num}', $reports['total'], $lang->myshowcase_report_count);
-            $reported_text = str_replace('{name}', $rep_ids[$reports['id']]['name'], $reported_text);
+
+        foreach ($reportObjects as $reportID => $reportData) {
+            $reported_text = str_replace('{num}', $reportData['total'], $lang->myshowcase_report_count);
+
+            $reported_text = str_replace('{name}', $rep_ids[$reportData['id']]['name'], $reported_text);
+
             if ($reported_notice != '') {
                 $reported_notice .= '<br />';
             }
-            $reported_notice .= "<a href=\"" . $rep_ids[$reports['id']]['path'] . "?action=reports\" />{$reported_text}</a>";
+
+            $reported_notice .= "<a href=\"" . $rep_ids[$reportData['id']]['path'] . "?action=reports\" />{$reported_text}</a>";
         }
     }
 
@@ -215,12 +227,12 @@ function fetch_wol_activity_end(array &$user_activity): array
                 $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
 
                 if ($parameters['action'] == 'view') {
-                    $user_activity['activity'] = 'myshowcase_view';
+                    $user_activity['activity'] = 'myShowcaseMainTableTheadView';
                     if (is_numeric($parameters['gid'])) {
                         $user_activity['gid'] = $parameters['gid'];
                     }
                 } elseif ($parameters['action'] == 'new') {
-                    $user_activity['activity'] = 'myshowcase_new';
+                    $user_activity['activity'] = 'myShowcaseLocationNewEntry';
                 } elseif ($parameters['action'] == 'attachment') {
                     $user_activity['activity'] = 'myshowcase_view_attach';
                     if (is_numeric($parameters['aid'])) {
@@ -312,13 +324,14 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
         case 'myshowcase_view':
             if (array_key_exists('gid', $plugin_array['user_activity'])) {
-                $query = $db->simple_select(
-                    "myshowcase_data{$plugin_array['user_activity']['myshowcase_id']}",
-                    'gid,uid',
-                    'gid=' . $plugin_array['user_activity']['gid']
-                );
-                while ($myshowcase = $db->fetch_array($query)) {
-                    $uid = $myshowcase['uid'];
+                $showcaseID = (int)$plugin_array['user_activity']['myshowcase_id'];
+
+                $entryID = $plugin_array['user_activity']['gid'];
+
+                $showcaseObjects = showcaseDataGet($showcaseID, ["gid='{$entryID}'"], ['uid']);
+
+                foreach ($showcaseObjects as $entryID => $entryData) {
+                    $uid = $entryData['uid'];
                     $userinfo = get_user($uid);
                 }
             }
@@ -331,7 +344,7 @@ function build_friendly_wol_location_end(array &$plugin_array): array
             );
             break;
 
-        case 'myshowcase_new':
+        case 'myShowcaseLocationNewEntry':
             $plugin_array['location_name'] = $lang->sprintf(
                 $lang->viewing_myshowcase_new,
                 $myshowcase_url_new,
@@ -348,14 +361,15 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
         case 'myshowcase_view_attach':
             if (array_key_exists('aid', $plugin_array['user_activity'])) {
-                $query = $db->simple_select(
-                    'myshowcase_attachments',
-                    'aid,gid,uid',
-                    'aid=' . $plugin_array['user_activity']['aid']
-                );
-                while ($showcase = $db->fetch_array($query)) {
-                    $uid = $showcase['uid'];
-                    $gid = $showcase['gid'];
+                $attachmentID = (int)$plugin_array['user_activity']['aid'];
+
+                $attachmentObjects = attachmentGet(["aid='{$attachmentID}'"], ['uid', 'gid']);
+
+                foreach ($attachmentObjects as $attachmentID => $attachmentData) {
+                    $uid = $attachmentData['uid'];
+
+                    $gid = $attachmentData['gid'];
+
                     $userinfo = get_user($uid);
                 }
             }
@@ -395,25 +409,35 @@ function showthread_start(): bool
     if (count($myshowcase_uids) > 0) {
         $gidlist = implode(',', array_keys($myshowcase_uids));
 
+        $threadID = (int)$thread['tid'];
+
         //get uids for users that posted to the thread
-        $query = $db->query(
-            'SELECT uid FROM ' . TABLE_PREFIX . 'posts WHERE tid=' . (int)$thread['tid'] . ' AND uid > 0 GROUP BY uid'
+        $query = $db->simple_select(
+            'posts',
+            'uid',
+            "tid='{$threadID}' AND uid>'0'",
+            ['group_by' => 'uid']
         );
+
         $uids = [];
         while ($result = $db->fetch_array($query)) {
             $uids[$result['uid']] = 0;
         }
-        $uidlist = implode(',', array_keys($uids));
+        $userIDs = implode("','", array_keys($uids));
         unset($query, $result);
 
         //get myshowcase counts for users in thread
         if (count($uids)) {
             foreach ($myshowcase_uids as $gid => $data) {
-                $query = $db->query(
-                    'SELECT uid, count(uid) AS total FROM ' . TABLE_PREFIX . 'myshowcase_data' . $gid . " WHERE uid IN ({$uidlist}) AND approved = 1 GROUP BY uid"
+                $entryFieldObjects = showcaseDataGet(
+                    $gid,
+                    ["uid IN ('{$userIDs}')", "approved='1'"],
+                    ['uid', 'COUNT(uid) AS total'],
+                    ['group_by' => 'uid']
                 );
-                while ($result = $db->fetch_array($query)) {
-                    $myshowcase_uids[$gid]['uids'][$result['uid']] = $result['total'];
+
+                foreach ($entryFieldObjects as $entryFieldID => $entryFieldData) {
+                    $myshowcase_uids[$gid]['uids'][$entryFieldData['uid']] = $entryFieldData['total'];
                 }
             }
         }
@@ -442,9 +466,9 @@ function postbit(array &$post): array
             }
 
             if ($data['uids'][$post['uid']] > 0) {
-                $post['user_details'] .= '<br />' . $showcase_name . ':  <a href="' . $showcase_fldr . $showcase_file . '?search=username&searchterm=' . rawurlencode(
+                $post['user_details'] .= '<br />' . $showcase_name . ':  <a href="' . $showcase_fldr . $showcase_file . '?search_field=username&keywords=' . rawurlencode(
                         $post['username']
-                    ) . '&exactmatch=1">' . $data['uids'][$post['uid']] . '</a>';
+                    ) . '&exact_match=1">' . $data['uids'][$post['uid']] . '</a>';
             }
         }
     }
@@ -459,7 +483,7 @@ function portal_start(): bool
 
     //if user is guest or no showcases set to show on portal output something else?
     /*
-    if($mybb->user['uid'] == 0)
+    if($currentUserID == 0)
     {
         //add code here to display something for guests
     }

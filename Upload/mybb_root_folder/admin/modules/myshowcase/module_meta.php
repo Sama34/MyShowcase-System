@@ -50,7 +50,7 @@ function myshowcase_meta(): bool
     if (function_exists('MyShowcase\Core\hooksRun')) {
         $sub_menu = hooksRun('admin_module_meta_start', $sub_menu);
 
-        foreach (showcaseGet([], ['name'], []) as $showcaseID => $showcaseData) {
+        foreach (showcaseGet([], ['name']) as $showcaseID => $showcaseData) {
             $sub_menu[$displayOrder += 10] = [
                 'id' => "showcase{$showcaseID}",
                 'title' => $showcaseData['name'],

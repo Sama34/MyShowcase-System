@@ -1,0 +1,29 @@
+<tr class="inline_row">
+    <td class="{$alternativeBackground}">
+        {$viewAttachmentsCount}
+        <div>
+            <span>
+                <a href="{$entryUrl}">{$entryImage}</a>
+                {$viewPagination}
+            </span>
+            <div>
+                <span class="author smalltext">{$entryUsernameFormatted}{$lang->comma}</span>
+                <span class="thread_start_datetime smalltext">{$entryDateline}</span>
+            </div>
+        </div>
+    </td>
+    {$showcaseTableRowExtra}
+    <td align="center" class="{$alternativeBackground}">
+        {$entryComments}
+    </td>
+    <td align="center" class="{$alternativeBackground}">
+        {$entryViews}
+        {$entryUnapproved}
+    </td>
+    <td class="{$alternativeBackground}" style="white-space: nowrap; text-align: right;">
+		<span class="lastpost smalltext">{$entryDateline}<br/>
+		<a href="{$entryUrlLastComment}">{$lang->myShowcaseMainTableRowLastComment}</a>: {$viewLastCommenter}</span>
+    </td>
+    {$showcaseTableRowInlineModeration}
+</tr>
+

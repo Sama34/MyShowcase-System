@@ -17,6 +17,13 @@ namespace MyShowcase\Core;
 
 use DirectoryIterator;
 
+use MyShowcase\System\Showcase;
+
+use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
+use const MyShowcase\Admin\FIELD_TYPE_INT;
+use const MyShowcase\Admin\FIELD_TYPE_TEXT;
+use const MyShowcase\Admin\FIELD_TYPE_TIMESTAMP;
+use const MyShowcase\Admin\FIELD_TYPE_VARCHAR;
 use const MyShowcase\ROOT;
 
 const VERSION = '3.0.0';
@@ -49,6 +56,607 @@ const MODERATOR_TYPE_USER = 0;
 const MODERATOR_TYPE_GROUP = 1;
 
 const URL = 'index.php?module=myshowcase-summary';
+
+const TABLES_DATA = [
+    'myshowcase_attachments' => [
+        'aid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'posthash' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'filename' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'filetype' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'filesize' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'attachname' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'downloads' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'dateuploaded' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'thumbnail' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => ''
+        ],
+        'visible' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_comments' => [
+        'cid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'ipaddress' => [
+            'type' => 'VARCHAR',
+            'size' => 30,
+            'default' => ''
+        ],
+        'comment' => [
+            'type' => 'TEXT',
+            'null' => true
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_key' => ['cid_gid' => 'cid,gid']
+    ],
+    'myshowcase_config' => [
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+            'unique_key' => true
+        ],
+        'description' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'mainfile' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => ''
+        ],
+        'fieldsetid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'imgfolder' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'defaultimage' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+        ],
+        'watermarkimage' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+        ],
+        'watermarkloc' => [
+            'type' => 'VARCHAR',
+            'size' => 12,
+            'default' => 'lower-right'
+        ],
+        'use_attach' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'f2gpath' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => ''
+        ],
+        'enabled' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowsmilies' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowbbcode' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'allowhtml' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'prunetime' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 0
+        ],
+        'modnewedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'othermaxlength' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 500
+        ],
+        'allow_attachments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'allow_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'thumb_width' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'thumb_height' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'comment_length' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 200
+        ],
+        'comment_dispinit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 5
+        ],
+        'disp_attachcols' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'disp_empty' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'link_in_postbit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'portal_random' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_fieldsets' => [
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'setname' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => ''
+        ],
+    ],
+    'myshowcase_permissions' => [
+        'pid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canview' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canadd' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'cancomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canattach' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canviewcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canviewattach' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'candelowncomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'candelauthcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'cansearch' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canwatermark' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'attachlimit' => [
+            'type' => 'INT',
+            'default' => 0
+        ],
+    ],
+    'myshowcase_moderators' => [
+        'mid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'isgroup' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmodapprove' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmodedit' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmoddelete' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'canmoddelcomment' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_key' => ['id_uid_isgroup' => 'id,uid,isgroup']
+    ],
+    'myshowcase_reports' => [
+        'rid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'reporteruid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'authoruid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'status' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'reason' => [
+            'type' => 'VARCHAR',
+            'size' => 250,
+            'default' => ''
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+    ],
+    'myshowcase_fields' => [
+        'fid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 30,
+            'default' => ''
+        ],
+        'html_type' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => ''
+        ],
+        'enabled' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'field_type' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 'varchar'
+        ],
+        'min_length' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'max_length' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'requiredField' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ], // todo, rename from require to requiredField
+        'parse' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'field_order' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'list_table_order' => [
+            'type' => 'SMALLINT',
+            'default' => -1
+        ],
+        'searchable' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'format' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => 'no'
+        ],
+        'unique_key' => ['setid_fid' => 'setid,fid']
+    ],
+    'myshowcase_field_data' => [
+        'fieldDataID' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'setid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+        ],
+        'fid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'name' => [
+            'type' => 'VARCHAR',
+            'size' => 15,
+            'default' => '',
+            //'unique_key' => true
+        ],
+        'valueid' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'value' => [
+            'type' => 'VARCHAR',
+            'size' => 15,
+            'default' => ''
+        ],
+        'disporder' => [
+            'type' => 'SMALLINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_key' => ['setid_fid_valueid' => 'setid,fid,valueid']
+    ],
+];
+
+const FIELDS_DATA = [
+];
+
+const DATA_TABLE_STRUCTURE = [
+    'myshowcase_data' => [
+        'gid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'views' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'comments' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ],
+        'submit_date' => [
+            'type' => 'VARCHAR',
+            'size' => 20,
+            'default' => ''
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'createdate' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'approved' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'approved_by' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'posthash' => [
+            'type' => 'VARCHAR',
+            'size' => 32,
+            'default' => ''
+        ],
+    ],
+];
 
 function loadLanguage(
     string $languageFileName = 'myshowcase',
@@ -171,7 +779,7 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true)
 
         $templates->cache[getTemplateName($templateName)] = $templateContents;
     } elseif (my_strpos($templateName, '/') !== false) {
-        $templateName = substr($templateName, strpos($templateName, '/') + 1);
+        $templateName = substr($templateName, my_strpos($templateName, '/') + 1);
     }
 
     return $templates->render(getTemplateName($templateName), true, $enableHTMLComments);
@@ -202,39 +810,6 @@ function showcasePermissions(): array
     }
 
     return $defaultPermissions;
-}
-
-function showcaseDataTableExists(int $showcaseID): bool
-{
-    global $db;
-
-    return $db->table_exists('myshowcase_data' . $showcaseID);
-}
-
-function showcaseDataTableFieldExists(int $showcaseID, string $fieldName): bool
-{
-    global $db;
-
-    return $db->table_exists('myshowcase_data' . $showcaseID) &&
-        $db->field_exists($fieldName, 'myshowcase_data' . $showcaseID);
-}
-
-function fieldDataExists(array $whereClauses = []): bool
-{
-    global $db;
-
-    $query = $db->simple_select('myshowcase_field_data', implode(' AND ', $whereClauses));
-
-    return $db->num_rows($query) > 0;
-}
-
-function showcaseDataTableDrop(int $showcaseID): bool
-{
-    global $db;
-
-    $db->drop_table('myshowcase_data' . $showcaseID);
-
-    return true;
 }
 
 function getTemplatesList(): array
@@ -274,14 +849,14 @@ function cacheUpdate(string $cacheKey): array
 
     switch ($cacheKey) {
         case CACHE_TYPE_CONFIG:
-            $query = $db->simple_select(
-                'myshowcase_config',
-                'id, name, description, mainfile, fieldsetid, imgfolder, defaultimage, watermarkimage, watermarkloc, use_attach, f2gpath, enabled, allowsmilies, allowbbcode, allowhtml, prunetime, modnewedit, othermaxlength, allow_attachments, allow_comments, thumb_width, thumb_height, comment_length, comment_dispinit, disp_attachcols, disp_empty, link_in_postbit, portal_random'
+            $showcaseObjects = showcaseGet(
+                [],
+                array_keys(TABLES_DATA['myshowcase_config'])
             );
 
-            while ($showcaseData = $db->fetch_array($query)) {
-                $cacheData[(int)$showcaseData['id']] = [
-                    'id' => (int)$showcaseData['id'],
+            foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+                $cacheData[$showcaseID] = [
+                    'id' => $showcaseID,
                     'name' => (string)$showcaseData['name'],
                     'description' => (string)$showcaseData['description'],
                     'mainfile' => (string)$showcaseData['mainfile'],
@@ -314,24 +889,24 @@ function cacheUpdate(string $cacheKey): array
 
             break;
         case CACHE_TYPE_PERMISSIONS:
-            $query = $db->simple_select(
-                'myshowcase_permissions',
-                'pid, id, gid, canview, canadd, canedit, cancomment, canattach, canviewcomment, canviewattach, candelowncomment, candelauthcomment, cansearch, canwatermark, attachlimit'
+            $permissionsObjects = permissionsGet(
+                [],
+                array_keys(TABLES_DATA['myshowcase_permissions'])
             );
 
-            while ($permissionData = $db->fetch_array($query)) {
+            foreach ($permissionsObjects as $permissionID => $permissionData) {
                 $cacheData[(int)$permissionData['id']][(int)$permissionData['gid']] = $permissionData;
             }
 
             break;
         case CACHE_TYPE_FIELD_SETS:
-            $query = $db->simple_select(
-                'myshowcase_fieldsets',
-                'setid, setname'
+            $fieldsetObjects = fieldsetGet(
+                [],
+                ['setid', 'setname']
             );
 
-            while ($fieldsetData = $db->fetch_array($query)) {
-                $cacheData[(int)$fieldsetData['setid']] = [
+            foreach ($fieldsetObjects as $fieldsetID => $fieldsetData) {
+                $cacheData[$fieldsetID] = [
                     'setid' => (int)$fieldsetData['setid'],
                     'setname' => (string)$fieldsetData['setname'],
                 ];
@@ -339,66 +914,67 @@ function cacheUpdate(string $cacheKey): array
 
             break;
         case CACHE_TYPE_FIELDS:
-            $query = $db->simple_select(
-                'myshowcase_fields',
-                'fid, setid, name, html_type, enabled, field_type, min_length, max_length, requiredField, parse, field_order, list_table_order, searchable, format',
-                '1=1',
+            $queryFields = TABLES_DATA['myshowcase_fields'];
+
+            unset($queryFields['unique_key']);
+
+            $fieldObjects = fieldsGet(
+                [],
+                array_keys($queryFields),
                 ['order_by' => 'setid, field_order']
             );
 
-            while ($fieldData = $db->fetch_array($query)) {
-                $cacheData[(int)$fieldData['setid']][(int)$fieldData['fid']] =
-                    [
-                        'fid' => (int)$fieldData['fid'],
-                        'setid' => (int)$fieldData['setid'],
-                        'name' => (string)$fieldData['name'],
-                        'html_type' => (string)$fieldData['html_type'],
-                        'enabled' => (bool)$fieldData['enabled'],
-                        'field_type' => (string)$fieldData['field_type'],
-                        'min_length' => (int)$fieldData['min_length'],
-                        'max_length' => (int)$fieldData['max_length'],
-                        'requiredField' => (bool)$fieldData['requiredField'],
-                        'parse' => (bool)$fieldData['parse'],
-                        'field_order' => (int)$fieldData['field_order'],
-                        'list_table_order' => (int)$fieldData['list_table_order'],
-                        'searchable' => (bool)$fieldData['searchable'],
-                        'format' => (string)$fieldData['format'],
-                    ];
+            foreach ($fieldObjects as $fieldID => $fieldData) {
+                $cacheData[(int)$fieldData['setid']][$fieldID] = [
+                    'fid' => (int)$fieldData['fid'],
+                    'setid' => (int)$fieldData['setid'],
+                    'name' => (string)$fieldData['name'],
+                    'html_type' => (string)$fieldData['html_type'],
+                    'enabled' => (bool)$fieldData['enabled'],
+                    'field_type' => (string)$fieldData['field_type'],
+                    'min_length' => (int)$fieldData['min_length'],
+                    'max_length' => (int)$fieldData['max_length'],
+                    'requiredField' => (bool)$fieldData['requiredField'],
+                    'parse' => (bool)$fieldData['parse'],
+                    'field_order' => (int)$fieldData['field_order'],
+                    'list_table_order' => (int)$fieldData['list_table_order'],
+                    'searchable' => (bool)$fieldData['searchable'],
+                    'format' => (string)$fieldData['format'],
+                ];
             }
 
             break;
         case CACHE_TYPE_FIELD_DATA;
-            $query = $db->simple_select(
-                'myshowcase_field_data',
-                '*',
-                '1=1',
+            $fieldDataObjects = fieldDataGet(
+                [],
+                ['setid', 'fid', 'valueid', 'value', 'valueid', 'disporder'],
                 ['order_by' => 'setid, fid, disporder']
             );
 
-            while ($fieldValueData = $db->fetch_array($query)) {
-                $cacheData[(int)$fieldValueData['setid']][(int)$fieldValueData['fid']][(int)$fieldValueData['valueid']] = $fieldValueData;
+            foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
+                $cacheData[(int)$fieldData['setid']][$fieldDataID][(int)$fieldData['valueid']] = $fieldData;
             }
 
             break;
         case CACHE_TYPE_MODERATORS;
-            $query = $db->simple_select(
-                'myshowcase_moderators'
+            $moderatorObjects = moderatorGet(
+                [],
+                ['mid', 'id', 'uid', 'isgroup', 'canmodapprove', 'canmodedit', 'canmoddelete', 'canmoddelcomment']
             );
 
-            while ($moderatorData = $db->fetch_array($query)) {
-                $cacheData[(int)$moderatorData['id']][(int)$moderatorData['mid']] = $moderatorData;
+            foreach ($moderatorObjects as $moderatorID => $moderatorData) {
+                $cacheData[(int)$moderatorData['id']][$moderatorID] = $moderatorData;
             }
 
             break;
         case CACHE_TYPE_REPORTS;
-            $query = $db->simple_select(
-                'myshowcase_reports',
-                '*',
-                'status=0'
+            $reportObjects = reportGet(
+                ["status='0'"],
+                ['rid', 'id', 'gid', 'uid', 'reporter', 'reason', 'dateline']
             );
 
-            while ($reportData = $db->fetch_array($query)) {
-                $cacheData[(int)$reportData['id']][(int)$reportData['gid']][(int)$reportData['rid']] = $reportData;
+            foreach ($reportObjects as $reportID => $reportData) {
+                $cacheData[(int)$reportData['id']][(int)$reportData['gid']][$reportID] = $reportData;
             }
 
             break;
@@ -455,7 +1031,7 @@ function showcaseDelete(array $whereClauses = []): bool
     return true;
 }
 
-function showcaseGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = ['limit' => 1]): array
+function showcaseGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
 
@@ -479,13 +1055,78 @@ function showcaseGet(array $whereClauses = [], array $queryFields = [], array $q
     return $showcaseObjects;
 }
 
-function showcaseGetFieldsData(int $showcaseID, array $queryFields = []): array
+function showcaseDataTableExists(int $showcaseID): bool
+{
+    global $db;
+
+    return $db->table_exists('myshowcase_data' . $showcaseID);
+}
+
+function showcaseDataTableFieldExists(int $showcaseID, string $fieldName): bool
+{
+    global $db;
+
+    return $db->field_exists($fieldName, 'myshowcase_data' . $showcaseID);
+}
+
+function showcaseDataTableDrop(int $showcaseID): bool
+{
+    global $db;
+
+    $db->drop_table('myshowcase_data' . $showcaseID);
+
+    return true;
+}
+
+function showcaseDataTableFieldDrop(int $showcaseID, string $fieldName): bool
+{
+    global $db;
+
+    $db->drop_column('myshowcase_data' . $showcaseID, $fieldName);
+
+    return true;
+}
+
+function showcaseDataInsert(int $showcaseID, array $fieldData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_data' . $showcaseID, $fieldData);
+
+    return (int)$db->insert_id();
+}
+
+function showcaseDataUpdate(int $showcaseID, array $whereClauses = [], array $fieldData = []): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_data' . $showcaseID,
+        $fieldData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function showcaseDataDelete(int $showcaseID, array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_data' . $showcaseID, implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
 
     $query = $db->simple_select(
         'myshowcase_data' . $showcaseID,
         implode(',', array_merge(['gid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
     );
 
     $fieldData = [];
@@ -507,13 +1148,13 @@ function showcaseGetFieldsData(int $showcaseID, array $queryFields = []): array
     return $fieldData;
 }
 
-function permissionsInsert(array $permissionData): bool
+function permissionsInsert(array $permissionData): int
 {
     global $db;
 
     $db->insert_query('myshowcase_permissions', $permissionData);
 
-    return true;
+    return (int)$db->insert_id();
 }
 
 function permissionsUpdate(array $whereClauses = [], array $permissionData = []): bool
@@ -538,6 +1179,30 @@ function permissionsDelete(array $whereClauses = []): bool
     return true;
 }
 
+function permissionsGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_permissions',
+        implode(',', array_merge(['pid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $permissionData = [];
+
+    while ($permission = $db->fetch_array($query)) {
+        $permissionData[(int)$permission['pid']] = $permission;
+    }
+
+    return $permissionData;
+}
+
 function moderatorsInsert(array $moderatorData): bool
 {
     global $db;
@@ -558,6 +1223,30 @@ function moderatorsUpdate(array $whereClauses = [], array $moderatorData = []): 
     );
 
     return true;
+}
+
+function moderatorGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_moderators',
+        implode(',', array_merge(['mid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $moderatorData = [];
+
+    while ($moderator = $db->fetch_array($query)) {
+        $moderatorData[(int)$moderator['mid']] = $moderator;
+    }
+
+    return $moderatorData;
 }
 
 function moderatorsDelete(array $whereClauses = []): bool
@@ -734,21 +1423,49 @@ function fieldDataDelete(array $whereClauses = []): bool
     return true;
 }
 
-function attachmentGet(array $queryFields = ['aid'], array $whereClauses = []): array
+function attachmentInsert(array $attachmentData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_attachments', $attachmentData);
+
+    return (int)$db->insert_id();
+}
+
+function attachmentUpdate(array $whereClauses, array $attachmentData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_attachments',
+        $attachmentData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function attachmentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
 
     $query = $db->simple_select(
         'myshowcase_attachments',
-        implode(', ', $queryFields),
+        implode(', ', array_merge(['aid'], $queryFields)),
         implode(' AND ', $whereClauses)
     );
 
-    if ($db->num_rows($query)) {
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
         return (array)$db->fetch_array($query);
     }
 
-    return [];
+    $attachmentObjects = [];
+
+    while ($attachment = $db->fetch_array($query)) {
+        $attachmentObjects[(int)$attachment['aid']] = $attachment;
+    }
+
+    return $attachmentObjects;
 }
 
 function attachmentDelete(array $whereClauses = []): bool
@@ -760,6 +1477,52 @@ function attachmentDelete(array $whereClauses = []): bool
     return true;
 }
 
+function commentInsert(array $commentData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_comments', $commentData);
+
+    return (int)$db->insert_id();
+}
+
+function commentUpdate(array $whereClauses, array $commentData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_comments',
+        $commentData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function commentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_comments',
+        implode(', ', array_merge(['cid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $commentObjects = [];
+
+    while ($comment = $db->fetch_array($query)) {
+        $commentObjects[(int)$comment['cid']] = $comment;
+    }
+
+    return $commentObjects;
+}
+
 function commentDelete(array $whereClauses = []): bool
 {
     global $db;
@@ -767,6 +1530,61 @@ function commentDelete(array $whereClauses = []): bool
     $db->delete_query('myshowcase_comments', implode(' AND ', $whereClauses));
 
     return true;
+}
+
+function reportInsert(array $reportData): int
+{
+    global $db;
+
+    $db->insert_query('myshowcase_reports', $reportData);
+
+    return (int)$db->insert_id();
+}
+
+function reportUpdate(array $whereClauses, array $reportData): bool
+{
+    global $db;
+
+    $db->update_query(
+        'myshowcase_reports',
+        $reportData,
+        implode(' AND ', $whereClauses)
+    );
+
+    return true;
+}
+
+function reportDelete(array $whereClauses = []): bool
+{
+    global $db;
+
+    $db->delete_query('myshowcase_reports', implode(' AND ', $whereClauses));
+
+    return true;
+}
+
+function reportGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+{
+    global $db;
+
+    $query = $db->simple_select(
+        'myshowcase_reports',
+        implode(', ', array_merge(['rid'], $queryFields)),
+        implode(' AND ', $whereClauses),
+        $queryOptions
+    );
+
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $reportObjects = [];
+
+    while ($report = $db->fetch_array($query)) {
+        $reportObjects[(int)$report['rid']] = $report;
+    }
+
+    return $reportObjects;
 }
 
 /**
@@ -777,7 +1595,7 @@ function commentDelete(array $whereClauses = []): bool
  * @param int The attachment ID
  */
 function attachmentRemove(
-    System $showcase,
+    Showcase $showcase,
     string $entryHash = '',
     int $attachmentID = 0,
     int $entryID = 0
@@ -792,7 +1610,7 @@ function attachmentRemove(
         $whereClauses[] = "gid='{$entryID}'";
     }
 
-    $attachmentData = attachmentGet(['aid', 'attachname', 'thumbnail', 'visible'], $whereClauses);
+    $attachmentData = attachmentGet($whereClauses, ['attachname', 'thumbnail', 'visible'], ['limit' => 1]);
 
     $attachmentData = hooksRun('remove_attachment_do_delete', $attachmentData);
 
@@ -821,7 +1639,7 @@ function attachmentRemove(
  * @return array Array of attachment data if successful, otherwise array of error data
  */
 function attachmentUpload(
-    System $showcase,
+    Showcase $showcase,
     array $attachmentData,
     string $entryHash = '',
     bool $isUpdate = false,
@@ -888,13 +1706,15 @@ function attachmentUpload(
 
     // Double check attachment space usage
     if ($mybb->usergroup['attachquota'] > 0) {
-        $query = $db->simple_select(
-            'myshowcase_attachments',
-            'SUM(filesize) AS userTotalUsage',
-            "uid='" . intval($showcase_uid) . "'"
-        );
+        $showcase_uid = (int)$showcase_uid;
 
-        $userTotalUsage = $db->fetch_field($query, 'userTotalUsage') + $attachmentData['size'];
+        $userTotalUsage = attachmentGet(
+            ["uid='{$showcase_uid}'"],
+            ['SUM(filesize) AS userTotalUsage'],
+            ['group_by' => 'id']
+        )['userTotalUsage'] ?? 0;
+
+        $userTotalUsage = $userTotalUsage + $attachmentData['size'];
 
         if ($userTotalUsage > ($mybb->usergroup['attachquota'] * 1024)) {
             $returnData['error'] = $lang->sprintf(
@@ -906,11 +1726,15 @@ function attachmentUpload(
         }
     }
 
-    $existingAttachment = attachmentGet(['aid'], [
-        "filename='{$db->escape_string($attachmentData['name'])}'",
-        "id='{$showcase->id}'",
-        "(posthash='{$db->escape_string($entryHash)}' OR (gid='{$gid}' AND gid!='0'))"
-    ]);
+    $existingAttachment = attachmentGet(
+        [
+            "filename='{$db->escape_string($attachmentData['name'])}'",
+            "id='{$showcase->id}'",
+            "(posthash='{$db->escape_string($entryHash)}' OR (gid='{$gid}' AND gid!='0'))"
+        ],
+        [],
+        ['limit' => 1]
+    );
 
     $attachmentID = (int)($existingAttachment['aid'] ?? 0);
 
@@ -1189,13 +2013,12 @@ function attachmentUpload(
     if ($attachmentID && $isUpdate) {
         unset($insertData['downloads']); // Keep our download count if we're updating an attachment
 
-        $db->update_query(
-            'myshowcase_attachments',
-            $insertData,
-            "aid='{$attachmentID}'"
+        attachmentUpdate(
+            ["aid='{$attachmentID}'"],
+            $insertData
         );
     } else {
-        $attachmentID = (int)$db->insert_query('myshowcase_attachments', $insertData);
+        $attachmentID = attachmentInsert($insertData);
     }
 
     return $returnData;
@@ -1295,7 +2118,7 @@ function entryGetRandom(): string
         //get fields that are enabled and set for list display with pad to help sorting fixed fields)
         $description_list = [];
         foreach ($fields as $id => $field) {
-            if ($field['list_table_order'] != -1 && $field['enabled'] == 1) {
+            if (/*$field['list_table_order'] != -1 && */ $field['enabled'] == 1) {
                 $field_list[$field['list_table_order'] + 10]['name'] = $field['name'];
                 $field_list[$field['list_table_order'] + 10]['type'] = $field['html_type'];
                 $description_list[$field['list_table_order']] = $field['name'];
@@ -1308,7 +2131,7 @@ function entryGetRandom(): string
         //sort array of header fields by their list display order
         ksort($fields_for_search);
 
-        //build where clause based on search terms
+        //build where clause based on search_field terms
         $addon_join = '';
         $addon_fields = '';
         reset($fields_for_search);
@@ -1324,13 +2147,15 @@ function entryGetRandom(): string
 
         $rand_entry = 0;
         while ($rand_entry == 0) {
-            $query = $db->query(
-                'SELECT gid, attachname, thumbnail FROM `' . TABLE_PREFIX . "myshowcase_attachments` WHERE filetype LIKE 'image%' AND gid <> 0 AND visible =1 AND id=" . $rand_id . ' ORDER BY RAND( ) LIMIT 0 , 1'
+            $attachmentData = attachmentGet(
+                ["id='{$rand_id}'", "filetype LIKE 'image%'", "visible='1'", "gid!='0'"],
+                ['gid', 'attachname', 'thumbnail'],
+                ['limit' => 1, 'order_by' => 'RAND()']
             );
-            $result = $db->fetch_array($query);
-            $rand_entry = $result['gid'];
-            $rand_entry_img = $result['attachname'];
-            $rand_entry_thumb = $result['thumbnail'];
+
+            $rand_entry = $attachmentData['gid'];
+            $rand_entry_img = $attachmentData['attachname'];
+            $rand_entry_thumb = $attachmentData['thumbnail'];
 
             if ($rand_entry) {
                 $query = $db->query(
@@ -1351,7 +2176,7 @@ function entryGetRandom(): string
             }
         }
 
-        $trow_style = 'trow2';
+        $alternativeBackground = 'trow2';
         $entry = $db->fetch_array($query);
 
         $lasteditdate = my_date($mybb->settings['dateformat'], $entry['dateline']);
@@ -1362,14 +2187,14 @@ function entryGetRandom(): string
 
         $item_view_user = str_replace('{username}', $entry['username'], $lang->myshowcase_view_user);
 
-        $item_viewcode = str_replace('{gid}', $entry['gid'], $showcase_file);
+        $entryUrl = str_replace('{gid}', $entry['gid'], $showcase_file);
 
         $entry['description'] = '';
         foreach ($description_list as $order => $name) {
             $entry['description'] .= $entry[$name] . ' ';
         }
 
-        $trow_style = ($trow_style == 'trow1' ? 'trow2' : 'trow1');
+        $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
         if ($rand_entry_thumb == 'SMALL') {
             $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_img;
@@ -1379,4 +2204,73 @@ function entryGetRandom(): string
 
         return eval($templates->render('portal_rand_showcase'));
     }
+}
+
+function dataTableStructureGet(int $showcaseID = 0): array
+{
+    $dataTableStructure = DATA_TABLE_STRUCTURE['myshowcase_data'];
+
+    if ($showcaseID && ($showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]))) {
+        $fieldsetID = (int)$showcaseData['fieldsetid'];
+
+        $showcaseFields = fieldsGet(
+            ["setid='{$fieldsetID}'"],
+            ['name', 'field_type', 'max_length', 'requiredField']
+        );
+
+        hooksRun('admin_summary_table_create_rebuild_start');
+
+        foreach ($showcaseFields as $fieldID => $fieldData) {
+            $dataTableStructure[$fieldData['name']] = [];
+
+            $field = &$dataTableStructure[$fieldData['name']];
+
+            switch ($fieldData['field_type']) {
+                case FIELD_TYPE_VARCHAR:
+                    $field['type'] = 'VARCHAR';
+
+                    $field['size'] = (int)$fieldData['max_length'];
+
+                    if (empty($fieldData['requiredField'])) {
+                        $field['default'] = '';
+                    }
+                    break;
+                case FIELD_TYPE_TEXT:
+                    $field['type'] = 'TEXT';
+
+                    if (empty($fieldData['requiredField'])) {
+                        $field['null'] = true;
+                    }
+                    break;
+                case FIELD_TYPE_INT:
+                case FIELD_TYPE_BIGINT:
+                    $field['type'] = my_strtoupper($fieldData['field_type']);
+
+                    $field['size'] = (int)$fieldData['max_length'];
+
+                    if (empty($fieldData['requiredField'])) {
+                        $field['default'] = 0;
+                    }
+                    break;
+                case FIELD_TYPE_TIMESTAMP:
+                    $field['type'] = 'TIMESTAMP';
+                    break;
+            }
+
+            if (!empty($fieldData['requiredField'])) {
+                global $mybb;
+
+                if ($fieldData['field_type'] === FIELD_TYPE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
+                    $create_index = ', FULLTEXT KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
+                } else {
+                    $create_index = ', KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
+                }
+                // todo: add key for uid & approved
+            }
+
+            unset($field);
+        }
+    }
+
+    return hooksRun('admin_data_table_structure', $dataTableStructure);
 }

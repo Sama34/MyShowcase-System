@@ -99,7 +99,7 @@ These fields can be represented in the showcase form as
 </ul><br />
 These are the supported HTML types (how the data is displayed or input by the user). The URL and Data types are not actual HTML form inputs, but are listed here in order to support the expected input and proper disply of these type of data as well as provide the required input form objects to make use of them.<br />
 <br />
-To edit the fields of a field set, browse to the Field Settings sub-menu and for the field set you want to edit the fields for, click Edit in the Control menu. When creating or editing a field, you can specify the field name (up until the table is created), the label for the field, its size, whether or not the field is required, searchable and enabled in the form. Required fields are those that must have data entered into them when saving a showcase entry, enabled fields are those displayed to the user in a showcase entry and searchable fields are those that the MyShowcase search functionality will support. Please note that the Field Name must be a valid field name for use in a database table and as such any entry for Field Name will be sanitized to a valid string. <br />
+To edit the fields of a field set, browse to the Field Settings sub-menu and for the field set you want to edit the fields for, click Edit in the Control menu. When creating or editing a field, you can specify the field name (up until the table is created), the label for the field, its size, whether or not the field is required, searchable and enabled in the form. Required fields are those that must have data entered into them when saving a showcase entry, enabled fields are those displayed to the user in a showcase entry and searchable fields are those that the MyShowcase search_field functionality will support. Please note that the Field Name must be a valid field name for use in a database table and as such any entry for Field Name will be sanitized to a valid string. <br />
 <br />
 There are also settings for minimum and maximum data lengths for each field. In cases of required fields, for example a 'Year' field should have minimum and maximum values for 4 in order to to force users to enter a 4-digit year. All fields are validated against these values, so the minimum length of non-required fields should be set to 0.<br />
 <br />
@@ -186,7 +186,7 @@ The MyShowcase System supports group based permissions and honors the built-in M
 <li><strong>Can Comment:</strong> Can the group members add comments to a showcase entry.
 <li><strong>Can Delete Own Comments:</strong> Can the group members delete their own comments in any showcase entry.
 <li><strong>Can Delete Author Comments:</strong> Can the group members delete comments of others in the user's own showcase entries.
-<li><strong>Can Search MyShowcases:</strong> Can the group members search the showcase.
+<li><strong>Can Search MyShowcases:</strong> Can the group members search_field the showcase.
 <li><strong>Can Watermark Images:</strong> Can the group members add a watermark to image uploads. This only applies when the Watermark Image is set on the Main Settings tab and a valid file.
 <li><strong>Max Attachments per MyShowcase:</strong> The maximum number of attachments group members can add to their own showcase entries. This is per showcase entry, not a total.
 </ul>

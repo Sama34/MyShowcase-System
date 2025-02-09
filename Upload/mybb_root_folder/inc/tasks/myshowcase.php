@@ -14,9 +14,10 @@
 
 declare(strict_types=1);
 
-use MyShowcase\Core\System;
+use MyShowcase\System\Showcase;
 
 use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\showcaseDataGet;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\SHOWCASE_STATUS_ENABLED;
@@ -34,11 +35,11 @@ function task_myshowcase(array $taskData): array
         if ($showcasePruneTime[0] > 0 && $showcaseData['enabled'] === SHOWCASE_STATUS_ENABLED) {
             $pruneTime = (int)strtotime('-' . $showcasePruneTime[0] . ' ' . $showcasePruneTime[1], TIME_NOW);
 
-            $showcase = new System($showcaseData['mainfile']);
+            $showcase = new Showcase($showcaseData['mainfile']);
 
-            $query = $db->simple_select($showcase->table_name, 'gid', "dateline<='{$pruneTime}'");
+            $showcaseObjects = showcaseDataGet($showcaseID, ["dateline<='{$pruneTime}'"]);
 
-            while ($entryID = $db->fetch_field($query, 'gid')) {
+            foreach ($showcaseObjects as $entryID => $entryData) {
                 $showcase->delete((int)$entryID);
             }
 

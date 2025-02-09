@@ -17,10 +17,19 @@ use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
 
+use function MyShowcase\Core\reportGet;
+
+use function MyShowcase\Core\reportInsert;
+use function MyShowcase\Core\reportUpdate;
+
+use function MyShowcase\Core\showcaseDataGet;
+
 use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 
 global $mybb, $lang, $db, $templates, $plugins;
 global $me, $forumdir;
+
+global $currentUserID, $entryID;
 
 switch ($mybb->get_input('action')) {
     case 'report':
@@ -36,9 +45,8 @@ switch ($mybb->get_input('action')) {
 
         add_breadcrumb($lang->myshowcase_report, SHOWCASE_URL);
 
-        $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
 
-        if ($mybb->get_input('gid', MyBB::INPUT_INT) == '' || $mybb->get_input('gid', MyBB::INPUT_INT) == 0) {
+        if ($entryID == '' || $entryID == 0) {
             error($lang->myshowcase_invalid_id);
         }
 
@@ -68,25 +76,23 @@ switch ($mybb->get_input('action')) {
         }
         //add_breadcrumb($lang->myshowcase_report, SHOWCASE_URL);
 
-        $mybb->input['gid'] = intval($mybb->get_input('gid', MyBB::INPUT_INT));
+        $showcaseUserData = showcaseDataGet($me->id, ["gid='{$entryID}'"], ['uid']);
 
-        $query = $db->simple_select($me->table_name, 'gid,uid', "gid={$mybb->get_input('gid', MyBB::INPUT_INT)}");
-        $result = $db->fetch_array($query);
-        if (!$result['gid']) {
+        if (!$showcaseUserData) {
             error($lang->myshowcase_invalid_id);
         }
 
         $insert_array = [
             'id' => $me->id,
-            'gid' => $result['gid'],
-            'reporteruid' => $mybb->user['uid'],
-            'authoruid' => $result['uid'],
+            'gid' => $showcaseUserData['gid'],
+            'reporteruid' => $currentUserID,
+            'authoruid' => $showcaseUserData['uid'],
             'status' => 0,
             'reason' => $db->escape_string($mybb->get_input('reason')),
             'dateline' => TIME_NOW
         ];
 
-        $rid = $db->insert_query('myshowcase_reports', $insert_array);
+        $rid = reportInsert($insert_array);
 
         cacheUpdate(CACHE_TYPE_REPORTS);
 
@@ -99,9 +105,9 @@ switch ($mybb->get_input('action')) {
             $report = eval($templates->render('report_thanks'));
             output_page($report);
             exit;
-//			$item_viewcode = str_replace('{gid}', $mybb->get_input('gid', \MyBB::INPUT_INT), SHOWCASE_URL_VIEW);
+//			$entryUrl = str_replace('{gid}', $mybb->get_input('gid', \MyBB::INPUT_INT), SHOWCASE_URL_VIEW);
 //			$redirect_newshowcase = $lang->myshowcase_report_success.''.$lang->redirect_myshowcase_back.''.$lang->sprintf($lang->redirect_myshowcase_return, $showcase_url);
-//			redirect($item_viewcode, $redirect_newshowcase);
+//			redirect($entryUrl, $redirect_newshowcase);
 //			exit;
         }
         break;
@@ -122,34 +128,39 @@ switch ($mybb->get_input('action')) {
         }
 
         // Figure out if we need to display multiple pages.
-        $perpage = $mybb->settings['threadsperpage'];
-        if ($mybb->get_input('page', MyBB::INPUT_INT) != 'last') {
-            $page = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        $reportsPerPage = $mybb->settings['threadsperpage'];
+        $currentPage = $mybb->get_input('page', MyBB::INPUT_INT); // todo, will be int
+
+        if ($currentPage != 'last') {
+            $page = intval($currentPage);
         }
 
-        $query = $db->simple_select('myshowcase_reports', 'COUNT(rid) AS count', "status ='0' AND id=" . $me->id);
-        $report_count = $db->fetch_field($query, 'count');
+        $report_count = reportGet(
+            ["status='0'", "id={$me->id}"],
+            ['COUNT(rid) AS totalReports'],
+            ['limit' => 1]
+        )['totalReports'] ?? 0;
 
         $mybb->input['rid'] = intval($mybb->get_input('rid', MyBB::INPUT_INT));
 
         if ($mybb->get_input('rid', MyBB::INPUT_INT)) {
-            $query = $db->simple_select(
-                'myshowcase_reports',
-                'COUNT(rid) AS count',
-                "rid <= '" . $mybb->get_input('rid', MyBB::INPUT_INT) . "' AND id=" . $me->id
-            );
-            $result = $db->fetch_field($query, 'count');
-            if (($result % $perpage) == 0) {
-                $page = $result / $perpage;
+            $report_count = reportGet(
+                ["rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'", "id={$me->id}"],
+                ['COUNT(rid) AS totalReports'],
+                ['limit' => 1]
+            )['totalReports'] ?? 0;
+
+            if (($result % $reportsPerPage) == 0) {
+                $page = $result / $reportsPerPage;
             } else {
-                $page = intval($result / $perpage) + 1;
+                $page = intval($result / $reportsPerPage) + 1;
             }
         }
         $postcount = intval($report_count);
-        $pages = $postcount / $perpage;
+        $pages = $postcount / $reportsPerPage;
         $pages = ceil($pages);
 
-        if ($mybb->get_input('page', MyBB::INPUT_INT) == 'last') {
+        if ($currentPage == 'last') {
             $page = $pages;
         }
 
@@ -158,15 +169,15 @@ switch ($mybb->get_input('action')) {
         }
 
         if ($page && $page > 0) {
-            $start = ($page - 1) * $perpage;
+            $start = ($page - 1) * $reportsPerPage;
         } else {
             $start = 0;
             $page = 1;
         }
-        $upper = $start + $perpage;
+        $upper = $start + $reportsPerPage;
 
-        $multipage = multipage($postcount, $perpage, $page, $me->mainfile . '?action=reports');
-        if ($postcount > $perpage) {
+        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainfile . '?action=reports');
+        if ($postcount > $reportsPerPage) {
             $reportspages = eval(getTemplate('reports_multipage'));
         }
 
@@ -180,7 +191,7 @@ switch ($mybb->get_input('action')) {
 			LEFT JOIN ' . TABLE_PREFIX . "users ua ON (r.authoruid=ua.uid)
 			WHERE r.status='0' AND r.id={$me->id}
 			ORDER BY r.dateline DESC
-			LIMIT {$start}, {$perpage}
+			LIMIT {$start}, {$reportsPerPage}
 		"
         );
 
@@ -204,8 +215,8 @@ switch ($mybb->get_input('action')) {
                 $forumdir . '/'
             );
 
-            $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
-            $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
+            $entryReportDate = my_date($mybb->settings['dateformat'], $report['dateline']);
+            $entryReportTime = my_date($mybb->settings['timeformat'], $report['dateline']);
             $reports .= eval(getTemplate('reports_report'));
         }
         if (!$reports) {
@@ -240,9 +251,9 @@ switch ($mybb->get_input('action')) {
         $rids = implode($mybb->get_input('reports', MyBB::INPUT_ARRAY), "','");
         $rids = "'0','{$rids}'";
 
-        $db->update_query('myshowcase_reports', ['status' => 1], "rid IN ({$rids}) AND id=" . $me->id);
+        reportUpdate(['status' => 1], ["rid IN ({$rids})", "id={$me->id}"]);
 
-        $page = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        $page = intval($currentPage);
 
         redirect(SHOWCASE_URL . "?action=reports&page={$page}", $lang->redirect_reportsmarked);
 
@@ -264,34 +275,37 @@ switch ($mybb->get_input('action')) {
         }
 
         // Figure out if we need to display multiple pages.
-        $perpage = $mybb->settings['threadsperpage'];
-        if ($mybb->get_input('page', MyBB::INPUT_INT) != 'last') {
-            $page = intval($mybb->get_input('page', MyBB::INPUT_INT));
+        $reportsPerPage = $mybb->settings['threadsperpage'];
+        if ($currentPage != 'last') {
+            $page = intval($currentPage);
         }
 
-        $query = $db->simple_select('myshowcase_reports', 'COUNT(rid) AS count', 'id=' . $me->id);
-        $report_count = $db->fetch_field($query, 'count');
+        $report_count = reportGet(
+            ["id='{$me->id}'"],
+            ['COUNT(rid) AS totalReports'],
+            ['limit' => 1]
+        )['totalReports'] ?? 0;
 
         $mybb->input['rid'] = intval($mybb->get_input('rid', MyBB::INPUT_INT));
 
         if ($mybb->get_input('rid', MyBB::INPUT_INT)) {
-            $query = $db->simple_select(
-                'myshowcase_reports',
-                'COUNT(rid) AS count',
-                "rid <= '" . $mybb->get_input('rid', MyBB::INPUT_INT) . "' AND id=" . $me->id
-            );
-            $result = $db->fetch_field($query, 'count');
-            if (($result % $perpage) == 0) {
-                $page = $result / $perpage;
+            $totalReports = reportGet(
+                ["rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'", "id={$me->id}"],
+                ['COUNT(rid) AS totalReports'],
+                ['limit' => 1]
+            )['totalReports'] ?? 0;
+
+            if (($totalReports % $reportsPerPage) == 0) {
+                $page = $totalReports / $reportsPerPage;
             } else {
-                $page = intval($result / $perpage) + 1;
+                $page = intval($totalReports / $reportsPerPage) + 1;
             }
         }
         $postcount = intval($report_count);
-        $pages = $postcount / $perpage;
+        $pages = $postcount / $reportsPerPage;
         $pages = ceil($pages);
 
-        if ($mybb->get_input('page', MyBB::INPUT_INT) == 'last') {
+        if ($currentPage == 'last') {
             $page = $pages;
         }
 
@@ -300,15 +314,15 @@ switch ($mybb->get_input('action')) {
         }
 
         if ($page && $page > 0) {
-            $start = ($page - 1) * $perpage;
+            $start = ($page - 1) * $reportsPerPage;
         } else {
             $start = 0;
             $page = 1;
         }
-        $upper = $start + $perpage;
+        $upper = $start + $reportsPerPage;
 
-        $multipage = multipage($postcount, $perpage, $page, $me->mainfile . '?action=allreports');
-        if ($postcount > $perpage) {
+        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainfile . '?action=allreports');
+        if ($postcount > $reportsPerPage) {
             $reportspages = eval(getTemplate('reports_multipage'));
         }
 
@@ -322,7 +336,7 @@ switch ($mybb->get_input('action')) {
 			LEFT JOIN ' . TABLE_PREFIX . "users ua ON (r.authoruid=ua.uid)
 			WHERE  r.id={$me->id}
 			ORDER BY r.dateline DESC
-			LIMIT {$start}, {$perpage}
+			LIMIT {$start}, {$reportsPerPage}
 		"
         );
 
@@ -350,8 +364,8 @@ switch ($mybb->get_input('action')) {
                 $forumdir . '/'
             );
 
-            $reportdate = my_date($mybb->settings['dateformat'], $report['dateline']);
-            $reporttime = my_date($mybb->settings['timeformat'], $report['dateline']);
+            $entryReportDate = my_date($mybb->settings['dateformat'], $report['dateline']);
+            $entryReportTime = my_date($mybb->settings['timeformat'], $report['dateline']);
             $reports .= eval(getTemplate('reports_allreport'));
         }
         if (!$reports) {
