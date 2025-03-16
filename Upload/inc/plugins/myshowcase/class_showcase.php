@@ -13,7 +13,9 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\System;
+namespace inc\plugins\myshowcase;
+
+use MyShowcase\System\Array;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentRemove;

@@ -13,6 +13,10 @@
 
 declare(strict_types=1);
 
+namespace inc\datahandlers;
+
+use DataHandler;
+
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;

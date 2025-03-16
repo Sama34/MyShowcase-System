@@ -17,7 +17,7 @@ namespace MyShowcase\Core;
 
 use DirectoryIterator;
 
-use MyShowcase\System\Showcase;
+use inc\plugins\myshowcase\Showcase;
 
 use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
 use const MyShowcase\Admin\FIELD_TYPE_INT;

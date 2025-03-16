@@ -13,6 +13,8 @@
 
 declare(strict_types=1);
 
+use inc\datahandlers\MyShowcaseDataHandler;
+
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\getTemplate;

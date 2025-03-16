@@ -17,9 +17,9 @@ declare(strict_types=1);
  * Only user edits required
 */
 
-use MyShowcase\System\Output;
-use MyShowcase\System\Render;
-use MyShowcase\System\Showcase;
+use inc\plugins\myshowcase\System\Output;
+use inc\plugins\myshowcase\System\Render;
+use inc\plugins\myshowcase\Showcase;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentRemove;

@@ -13,8 +13,9 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\System;
+namespace inc\plugins\myshowcase\System;
 
+use inc\plugins\myshowcase\Showcase;
 use JetBrains\PhpStorm\NoReturn;
 
 use function MyShowcase\Core\attachmentGet;
@@ -23,6 +24,10 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerGet;
 use function MyShowcase\Core\urlHandlerSet;
+
+use const MyShowcase\System\PERMISSION_MODERATOR_CAN_APPROVE;
+use const MyShowcase\System\PERMISSION_MODERATOR_CAN_DELETE;
+use const MyShowcase\System\PERMISSION_USER_CAN_NEW_ENTRY;
 
 class Output
 {

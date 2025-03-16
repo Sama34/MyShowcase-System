@@ -13,7 +13,9 @@
 
 declare(strict_types=1);
 
-namespace MyShowcase\System;
+namespace inc\plugins\myshowcase\System;
+
+use inc\plugins\myshowcase\Showcase;
 
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\urlHandlerBuild;
