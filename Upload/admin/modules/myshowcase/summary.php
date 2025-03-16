@@ -1634,6 +1634,8 @@ if ($mybb->get_input('action') === 'new') {
 
     if (!$showcaseObjects) {
         $formContainer->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
+
+        $formContainer->construct_row();
     } else {
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
             $showcaseTotalEntries = $showcaseTotalAttachments = $showcaseTotalFilesSize = $showcaseTotalComments = 0;

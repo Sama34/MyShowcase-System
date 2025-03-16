@@ -989,7 +989,7 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_REPORTS;
             $reportObjects = reportGet(
                 ["status='0'"],
-                ['rid', 'id', 'gid', 'uid', 'reporter', 'reason', 'dateline']
+                ['rid', 'id', 'gid', 'reporteruid', 'authoruid', 'status', 'reason', 'dateline']
             );
 
             foreach ($reportObjects as $reportID => $reportData) {

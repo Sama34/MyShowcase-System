@@ -1407,6 +1407,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     if (!$fieldsetObjects) {
         $formContainer->output_cell($lang->myshowcase_fields_no_fieldsets, ['colspan' => 6]);
+
+        $formContainer->construct_row();
     } else {
         foreach ($fieldsetObjects as $fieldsetID => $result) {
             $viewOptionsUrl = urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]);
@@ -1420,13 +1422,13 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             $totalUsedOn = showcaseGet(
                 ["fieldsetid='{$fieldsetID}'"],
                 ['COUNT(id) AS totalUsedOn'],
-                ['limit' => 1]
+                ['limit' => 1, 'group_by' => 'id']
             )['totalUsedOn'] ?? 0;
 
             $totalFields = fieldsGet(
                 ["setid='{$fieldsetID}'"],
                 ['COUNT(fid) AS totalFields'],
-                ['limit' => 1]
+                ['limit' => 1, 'group_by' => 'fid']
             )['totalFields'] ?? 0;
 
             $totalTablesUsedOn = 0;
