@@ -36,6 +36,25 @@ use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerSet;
 
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_DATE;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_DATETIME;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_DECIMAL;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_DOUBLE;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_FLOAT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TIME;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
 use const MyShowcase\Core\FORMAT_TYPES;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
@@ -150,7 +169,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
 
-    if ($showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['id'])) {
+    if (!$newPage && $showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['id'])) {
         $fieldIsEditable = false;
     }
 
@@ -410,30 +429,30 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $form->generate_select_box(
             'field_type',
             [
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_INT => \MyShowcase\Core\FIELD_TYPE_STORAGE_INT,
+                FIELD_TYPE_STORAGE_TINYINT => FIELD_TYPE_STORAGE_TINYINT,
+                FIELD_TYPE_STORAGE_SMALLINT => FIELD_TYPE_STORAGE_SMALLINT,
+                FIELD_TYPE_STORAGE_MEDIUMINT => FIELD_TYPE_STORAGE_MEDIUMINT,
+                FIELD_TYPE_STORAGE_BIGINT => FIELD_TYPE_STORAGE_BIGINT,
+                FIELD_TYPE_STORAGE_INT => FIELD_TYPE_STORAGE_INT,
 
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_DECIMAL => \MyShowcase\Core\FIELD_TYPE_STORAGE_DECIMAL,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_FLOAT => \MyShowcase\Core\FIELD_TYPE_STORAGE_FLOAT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_DOUBLE => \MyShowcase\Core\FIELD_TYPE_STORAGE_DOUBLE,
+                FIELD_TYPE_STORAGE_DECIMAL => FIELD_TYPE_STORAGE_DECIMAL,
+                FIELD_TYPE_STORAGE_FLOAT => FIELD_TYPE_STORAGE_FLOAT,
+                FIELD_TYPE_STORAGE_DOUBLE => FIELD_TYPE_STORAGE_DOUBLE,
 
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR => \MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR => \MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR,
+                FIELD_TYPE_STORAGE_CHAR => FIELD_TYPE_STORAGE_CHAR,
+                FIELD_TYPE_STORAGE_VARCHAR => FIELD_TYPE_STORAGE_VARCHAR,
 
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT,
+                FIELD_TYPE_STORAGE_TINYTEXT => FIELD_TYPE_STORAGE_TINYTEXT,
+                FIELD_TYPE_STORAGE_TEXT => FIELD_TYPE_STORAGE_TEXT,
+                FIELD_TYPE_STORAGE_MEDIUMTEXT => FIELD_TYPE_STORAGE_MEDIUMTEXT,
 
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_DATE => \MyShowcase\Core\FIELD_TYPE_STORAGE_DATE,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_TIME => \MyShowcase\Core\FIELD_TYPE_STORAGE_TIME,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_DATETIME => \MyShowcase\Core\FIELD_TYPE_STORAGE_DATETIME,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP => \MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP,
+                FIELD_TYPE_STORAGE_DATE => FIELD_TYPE_STORAGE_DATE,
+                FIELD_TYPE_STORAGE_TIME => FIELD_TYPE_STORAGE_TIME,
+                FIELD_TYPE_STORAGE_DATETIME => FIELD_TYPE_STORAGE_DATETIME,
+                FIELD_TYPE_STORAGE_TIMESTAMP => FIELD_TYPE_STORAGE_TIMESTAMP,
 
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY => \MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY,
-                \MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY => \MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY,
+                FIELD_TYPE_STORAGE_BINARY => FIELD_TYPE_STORAGE_BINARY,
+                FIELD_TYPE_STORAGE_VARBINARY => FIELD_TYPE_STORAGE_VARBINARY,
 
                 //'real' => 'real',
                 //'bit' => 'bit',

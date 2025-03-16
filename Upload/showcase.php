@@ -61,7 +61,7 @@ $current_dir = getcwd();
 $forumdirslash = ($forumdir == '' ? '' : $forumdir . '/');
 $change_dir = './';
 
-if (!chdir($forumdir) && !empty($forumdir)) {
+if (!empty($forumdir) && !chdir($forumdir)) {
     if (is_dir($forumdir)) {
         $change_dir = $forumdir;
     } else {
@@ -99,7 +99,7 @@ $theme['imglangdir'] = $forumdirslash . substr($theme['imglangdir'], 0);
 
 //start by constructing the showcase
 require_once ROOT . '/class_showcase.php';
-$me = new Showcase();
+$me = new \MyShowcase\System\Showcase();
 
 urlHandlerSet($me->mainfile);
 
@@ -153,6 +153,8 @@ $fieldcache = cacheGet(CACHE_TYPE_FIELDS);
 $showcaseFieldsShow =
 $showcaseFieldsFormat =
 $showcaseFieldsParseable =
+$showcaseFieldEnabled =
+$showcaseFieldsMaximumLength =
 $showcaseFields = [];
 
 $showcaseFieldsSearchable = [
@@ -162,10 +164,14 @@ $showcaseFieldsSearchable = [
     'dateline' => 'dateline'
 ];
 
+$showcaseFieldsRequired = [
+    'uid' => 1,
+];
+
 foreach ($fieldcache[$me->fieldsetid] as $field) {
     $showcaseFields[$field['name']] = $field['html_type'];
 
-    $showcaseFieldsFormat[$field['name']] = $field['format'];
+    $showcaseFieldsFormat[$field['name']] = (int)$field['format'];
 
     $showcaseFieldsMaximumLength[$field['name']] = $field['max_length'];
     $showcaseFieldsMinimumLength[$field['name']] = $field['min_length'];
@@ -502,23 +508,27 @@ if ($entryHash != '' && $mybb->request_method == 'post') {
     $current_attach_count = attachmentGet(
         ["posthash='{$db->escape_string($entryHash)}'"],
         ['COUNT(aid) as totalAttachments'],
-        ['limit' => 1]
+        ['limit' => 1, 'group_by' => 'aid']
     )['totalAttachments'] ?? 0;
 }
 
 $plugins->run_hooks('myshowcase_start');
 
 //process new/updated attachments
-if (!$mybb->get_input(
-        'attachmentaid',
-        MyBB::INPUT_INT
-    ) && ($mybb->get_input('newattachment') || $mybb->get_input('updateattachment') || (($mybb->get_input(
+if (!$mybb->get_input('attachmentaid', MyBB::INPUT_INT) &&
+    ($mybb->get_input('newattachment') ||
+        $mybb->get_input('updateattachment') ||
+        (($mybb->get_input(
                     'action'
                 ) == 'new' || $mybb->get_input(
                     'action'
-                ) == 'edit') && $mybb->get_input(
+                ) == 'edit') &&
+            $mybb->get_input(
                 'submit'
-            ) && isset($_FILES['attachment']))) && $mybb->request_method == 'post') {
+            ) && isset($_FILES['attachment']))
+    ) &&
+    $mybb->request_method == 'post') {
+    _dump();
     verify_post_check($mybb->get_input('my_post_key'));
 
     $can_add_attachments = $me->userperms['canattach'];
@@ -526,10 +536,8 @@ if (!$mybb->get_input(
     $showcase_uid = $currentUserID;
 
     //if a mod is editing someone elses showcase, get orig authors perms
-    if ($mybb->get_input('action') == 'edit' && $currentUserID != $mybb->get_input(
-            'authid',
-            MyBB::INPUT_INT
-        )) {
+    if ($mybb->get_input('action') == 'edit' &&
+        $currentUserID != $mybb->get_input('authid', MyBB::INPUT_INT)) {
         //get showcase author info
         $showcase_uid = (int)$mybb->get_input('authid', MyBB::INPUT_INT);
         $showcase_user = get_user($showcase_uid);
@@ -558,7 +566,7 @@ if (!$mybb->get_input(
             );
         }
         if ($attachedfile['error']) {
-            $attacherror = eval($templates->render('error_attacherror'));
+            $errorsAttachments = eval($templates->render('error_attacherror'));
             $mybb->input['action'] = 'new';
         }
     }
@@ -614,13 +622,6 @@ if ($mybb->get_input('showcasegid') && $entryHash) {
     }
 }
 
-//init dynamic field info
-$showcaseFieldEnabled = [];
-$showcaseFieldsMaximumLength = [];
-$showcaseFieldsRequired = [
-    'uid' => 1,
-];
-
 $showcaseFieldsMinimumLength = [];
 
 //clean up/default expected inputs
@@ -637,15 +638,6 @@ if (!$mybb->get_input('showall', MyBB::INPUT_INT) || $mybb->get_input('showall',
 // Setup our posthash for managing attachments.
 if (!$entryHash) {
     $entryHash = md5(($entryID . $currentUserID) . random_str());
-}
-
-//init form action
-
-//get FancyBox JS for header if viewing
-$myshowcase_js_header = '';
-
-if ($mybb->get_input('action') == 'view') {
-    $myshowcase_js_header = eval(getTemplate('js_header'));
 }
 
 $showcase_top = eval(getTemplate('top'));
@@ -1291,13 +1283,13 @@ switch ($mybb->get_input('action')) {
         exit;
         break;
     }
-    case 'edit':
     case 'new':
-    case 'edit':
     case 'new':
-        {
-            require_once(MYBB_ROOT . 'inc/plugins/myshowcase/newedit.php');
-        }
+        $myShowcaseOutput->newEdit();
+        break;
+    case 'edit':
+    case 'edit':
+        $myShowcaseOutput->newEdit(true);
         break;
     case 'multiapprove':
     case 'multiunapprove':
@@ -1312,6 +1304,8 @@ switch ($mybb->get_input('action')) {
         $myShowcaseOutput->main();
     }
 }
+
+$pageTitle = $me->name;
 
 $pageContents = eval(getTemplate('page'));
 

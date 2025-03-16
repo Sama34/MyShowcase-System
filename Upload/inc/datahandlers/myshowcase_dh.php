@@ -77,7 +77,7 @@ class MyShowcaseDataHandler extends DataHandler
 
     protected Showcase $showcase;
 
-    public function __construct(Showcase $showcase, string $method = "insert")
+    public function __construct(Showcase $showcase, string $method = 'insert')
     {
         $this->showcase = $showcase;
 
