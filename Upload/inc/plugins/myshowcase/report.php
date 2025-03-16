@@ -7,7 +7,7 @@
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\plugins\myshowcase\report.php
+ * File: \MyShowcase\report.php
  *
  */
 

@@ -1352,7 +1352,7 @@ if ($mybb->get_input('action') === 'new') {
         admin_redirect(urlHandlerBuild());
     }
 
-    $dataTableStructure = dataTableStructureGet();
+    $dataTableStructure = dataTableStructureGet($showcaseID);
 
     hooksRun('admin_summary_table_create_rebuild_start');
 
@@ -1648,25 +1648,26 @@ if ($mybb->get_input('action') === 'new') {
                 $showcaseTotalEntries = showcaseDataGet(
                     $showcaseID,
                     [],
-                    ['COUNT(gid) AS showcaseTotalEntries']
+                    ['COUNT(gid) AS showcaseTotalEntries'],
+                    ['group_by' => 'gid']
                 )['showcaseTotalEntries'] ?? 0;
 
                 $showcaseTotalAttachments = attachmentGet(
                     ["id='{$showcaseID}'"],
                     ['COUNT(aid) AS showcaseTotalAttachments'],
-                    ['group_by' => 'id']
+                    ['group_by' => 'id, aid']
                 )['showcaseTotalAttachments'] ?? 0;
 
                 $showcaseTotalFilesSize = attachmentGet(
                     ["id='{$showcaseID}'"],
                     ['SUM(filesize) AS showcaseTotalFilesSize'],
-                    ['group_by' => 'id']
+                    ['group_by' => 'id, aid, filesize']
                 )['showcaseTotalFilesSize'] ?? 0;
 
                 $showcaseTotalComments = commentGet(
                     ["id='{$showcaseID}'"],
                     ['COUNT(cid) AS showcaseTotalComments'],
-                    ['group_by' => 'id']
+                    ['group_by' => 'id, cid']
                 )['showcaseTotalComments'] ?? 0;
             }
 

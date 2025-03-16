@@ -13,9 +13,9 @@
 
 declare(strict_types=1);
 
-namespace inc\plugins\myshowcase;
+namespace MyShowcase\System;
 
-use MyShowcase\System\Array;
+use Postparser;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentRemove;
@@ -262,7 +262,7 @@ class Showcase
 
         //check if the requesting file is in the cache
         foreach ($showcases as $showcase) {
-            if ($showcase['mainfile'] == $filename)//THIS_SCRIPT)
+            if ($showcase['mainfile'] === $filename)//THIS_SCRIPT)
             {
                 foreach ($showcase as $key => $value) {
                     $this->$key = $value;
@@ -310,7 +310,7 @@ class Showcase
         $this->prefix = $temp[0];
 
         //get group permissions now
-        $this->userperms = $this->get_user_permissions($mybb->user);
+        $this->userperms = $this->get_user_permissions((int)$mybb->user['uid']);
 
         $this->parser_options = [
             'filter_badwords' => true,
@@ -387,11 +387,13 @@ class Showcase
      * @param int The User array for the user to build permissions for
      * @return array user permissions for the specific showcase
      */
-    public function get_user_permissions(array $user): array
+    public function get_user_permissions(int $userID): array
     {
         global $cache, $mybb, $currentUserID;
 
         //basic user permissions
+
+        $user = get_user($userID);
 
         $showcase_group_perms = $this->get_group_permissions();
 
@@ -499,7 +501,7 @@ class Showcase
     /**
      * get ids from cookie inline moderation
      */
-    public function getids(int|string $id, string $type): array
+    public function getids(int $id, string $type): array
     {
         global $mybb;
         $cookie = 'inlinemod_' . $type . $id;
@@ -557,8 +559,12 @@ class Showcase
     /**
      * clear cookie inline moderation
      */
-    public function clearinline(int|string $id, string $type): bool
+    public function clearinline(int $id, string $type): bool
     {
+        if ($id === -1) {
+            $id = 'all';
+        }
+
         my_unsetcookie('inlinemod_' . $type . $id);
 
         return true;
@@ -581,14 +587,14 @@ class Showcase
         return !empty($this->userperms[$permissionType]);
     }
 
-    public function parser(): \postParser
+    public function parser(): postParser
     {
         global $parser;
 
-        if (!($parser instanceof \postParser)) {
+        if (!($parser instanceof postParser)) {
             require_once MYBB_ROOT . 'inc/class_parser.php';
 
-            $parser = new \Postparser();
+            $parser = new Postparser();
         }
 
         return $parser;

@@ -36,6 +36,7 @@ use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerSet;
 
+use const MyShowcase\Core\FORMAT_TYPES;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
@@ -409,17 +410,31 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $form->generate_select_box(
             'field_type',
             [
-                'varchar' => 'varchar',
-                'int' => 'int',
-                'bigint' => 'bigint',
-                'text' => 'text',
-                'timestamp' => 'timestamp',
-                //'tinyint' => 'tinyint',
-                //'smallint' => 'smallint',
-                //'mediumint' => 'mediumint',
-                //'decimal' => 'decimal',
-                //'float' => 'float',
-                //'double' => 'double',
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT => \MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_INT => \MyShowcase\Core\FIELD_TYPE_STORAGE_INT,
+
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_DECIMAL => \MyShowcase\Core\FIELD_TYPE_STORAGE_DECIMAL,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_FLOAT => \MyShowcase\Core\FIELD_TYPE_STORAGE_FLOAT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_DOUBLE => \MyShowcase\Core\FIELD_TYPE_STORAGE_DOUBLE,
+
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR => \MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR => \MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR,
+
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT => \MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT,
+
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_DATE => \MyShowcase\Core\FIELD_TYPE_STORAGE_DATE,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_TIME => \MyShowcase\Core\FIELD_TYPE_STORAGE_TIME,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_DATETIME => \MyShowcase\Core\FIELD_TYPE_STORAGE_DATETIME,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP => \MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP,
+
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY => \MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY,
+                \MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY => \MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY,
+
                 //'real' => 'real',
                 //'bit' => 'bit',
                 //'boolean' => 'boolean',
@@ -428,12 +443,6 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 //'datetime' => 'datetime',
                 //'time' => 'time',
                 //'year' => 'year',
-                //'char' => 'char',
-                //'tinytext' => 'tinytext',
-                //'mediumtext' => 'mediumtext',
-                //'longtext' => 'longtext',
-                //'binary' => 'binary',
-                //'varbinary' => 'varbinary',
                 //'tinyblob' => 'tinyblob',
                 //'mediumblob' => 'mediumblob',
                 //'blob' => 'blob',
@@ -488,7 +497,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             (function (): array {
                 $selectOptions = [];
 
-                $formatTypes = \MyShowcase\Core\FORMAT_TYPES;
+                $formatTypes = FORMAT_TYPES;
 
                 $formatTypes = array_flip($formatTypes);
 

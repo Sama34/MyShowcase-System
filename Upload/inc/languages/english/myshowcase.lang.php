@@ -82,7 +82,7 @@ $l['myshowcase_desc'] = 'desc';
 $l['myShowcaseMainSearchMatch'] = 'exact match';
 
 //query results
-$l['myshowcase_empty'] = 'There are no entries at this time.';
+$l['myShowcaseMainTableEmpty'] = 'There are no entries at this time.';
 $l['myShowcaseMainTableEmptySearch'] = 'The search returned no results. Please try another search term.';
 $l['myshowcase_invalid_id'] = 'The specified Entry ID is invalid.';
 $l['myshowcase_invalid_cid'] = 'The specified Comment ID is invalid.';
@@ -199,3 +199,13 @@ $l['viewing_myshowcase'] = "Viewing <a href=\"../{1}\">{2} entry</a> of <a href=
 $l['viewing_myshowcase_new'] = "Creating <a href=\"../{1}\">New {2}</a>";
 $l['viewing_myshowcase_edit'] = 'Editing a {1} entry';
 $l['viewing_myshowcase_attach'] = "Viewing <a href=\"../{1}\">Attachment</a> in a <a href=\"../{2}\">{3} entry</a> of <a href=\"{4}\">{5}</a>";
+
+$l = array_merge($l, [
+    'myShowcaseNewEditFormTitle' => 'New Entry',
+    'myShowcaseNewEditFormField' => 'Field',
+    'myShowcaseNewEditFormValue' => 'Value',
+
+    'myShowcaseNewEditFormButtonPost' => 'Post Entry',
+    'myShowcaseNewEditFormButtonUpdate' => 'Update Entry',
+    'myShowcaseNewEditFormButtonPreview' => 'Preview Entry',
+]);

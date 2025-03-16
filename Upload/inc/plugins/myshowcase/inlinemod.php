@@ -7,7 +7,7 @@
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\plugins\myshowcase\inlinemod.php
+ * File: \MyShowcase\inlinemod.php
  *
  */
 
@@ -44,10 +44,12 @@ switch ($mybb->get_input('action')) {
 
         $groupIDs = implode(',', $gids);
 
-        showcaseDataUpdate($me->id, ["gid IN ('{$groupIDs}')"], [
-            'approved' => $mybb->get_input('action') === 'multiapprove' ? 1 : 0,
-            'approved_by' => $currentUserID,
-        ]);
+        foreach ($gids as $entryID) {
+            showcaseDataUpdate($me->id, $entryID, [
+                'approved' => $mybb->get_input('action') === 'multiapprove' ? 1 : 0,
+                'approved_by' => $currentUserID,
+            ]);
+        }
 
         $modlogdata = [
             'id' => $me->id,
@@ -60,7 +62,7 @@ switch ($mybb->get_input('action')) {
             ) == 'multiapprove' ? $lang->myshowcase_mod_approve : $lang->myshowcase_mod_unapprove)
         );
 
-        $me->clearinline('all', 'showcase');
+        $me->clearinline(-1, 'showcase');
 
         //build URL to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
@@ -106,7 +108,7 @@ switch ($mybb->get_input('action')) {
 
         $inlineids = implode('|', $gids);
 
-        $me->clearinline('all', 'showcase');
+        $me->clearinline(-1, 'showcase');
 
         //build URl to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
@@ -148,7 +150,7 @@ switch ($mybb->get_input('action')) {
 
         //log_moderator_action($modlogdata, $lang->multi_deleted_threads);
 
-        $me->clearinline('all', 'showcase');
+        $me->clearinline(-1, 'showcase');
 
         //build URl to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);

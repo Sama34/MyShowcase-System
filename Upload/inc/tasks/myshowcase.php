@@ -14,7 +14,7 @@
 
 declare(strict_types=1);
 
-use inc\plugins\myshowcase\Showcase;
+use MyShowcase\Showcase;
 
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\showcaseDataGet;

@@ -17,9 +17,9 @@ declare(strict_types=1);
  * Only user edits required
 */
 
-use inc\plugins\myshowcase\System\Output;
-use inc\plugins\myshowcase\System\Render;
-use inc\plugins\myshowcase\Showcase;
+use MyShowcase\System\Output;
+use MyShowcase\System\Render;
+use MyShowcase\Showcase;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentRemove;
@@ -489,7 +489,7 @@ if (isset($mybb->input['cancel']) && $mybb->request_method == 'post') {
         attachmentRemove($me, $entryHash);
     }
 
-    if ($mybb->get_input('action') == 'do_editshowcase' || $mybb->get_input('action') == 'do_newshowcase') {
+    if ($mybb->get_input('action') == 'edit' || $mybb->get_input('action') == 'new') {
         $mybb->input['action'] = 'view';
     }
 }
@@ -514,9 +514,9 @@ if (!$mybb->get_input(
         MyBB::INPUT_INT
     ) && ($mybb->get_input('newattachment') || $mybb->get_input('updateattachment') || (($mybb->get_input(
                     'action'
-                ) == 'do_newshowcase' || $mybb->get_input(
+                ) == 'new' || $mybb->get_input(
                     'action'
-                ) == 'do_editshowcase') && $mybb->get_input(
+                ) == 'edit') && $mybb->get_input(
                 'submit'
             ) && isset($_FILES['attachment']))) && $mybb->request_method == 'post') {
     verify_post_check($mybb->get_input('my_post_key'));
@@ -526,7 +526,7 @@ if (!$mybb->get_input(
     $showcase_uid = $currentUserID;
 
     //if a mod is editing someone elses showcase, get orig authors perms
-    if ($mybb->get_input('action') == 'do_editshowcase' && $currentUserID != $mybb->get_input(
+    if ($mybb->get_input('action') == 'edit' && $currentUserID != $mybb->get_input(
             'authid',
             MyBB::INPUT_INT
         )) {
@@ -565,9 +565,9 @@ if (!$mybb->get_input(
 
     if (!$mybb->get_input('submit')) {
         if ($entryID && $entryID != '') {
-            $mybb->input['action'] = 'do_editshowcase';
+            $mybb->input['action'] = 'edit';
         } else {
-            $mybb->input['action'] = 'do_newshowcase';
+            $mybb->input['action'] = 'new';
         }
     }
 }
@@ -585,9 +585,9 @@ if ($mybb->get_input('attachmentaid', MyBB::INPUT_INT) && $entryHash &&
 
     if (!$mybb->get_input('submit')) {
         if ($entryID && $entryID != '') {
-            $mybb->input['action'] = 'do_editshowcase';
+            $mybb->input['action'] = 'edit';
         } else {
-            $mybb->input['action'] = 'do_newshowcase';
+            $mybb->input['action'] = 'new';
         }
     }
 }
@@ -1136,7 +1136,7 @@ switch ($mybb->get_input('action')) {
 
                 $commentID = $entryID;
 
-                showcaseDataUpdate($this->id, ["gid='{$commentID}'"], ['comments' => $totalComments + 1]);
+                showcaseDataUpdate($this->id, $entryID, ['comments' => $totalComments + 1]);
 
                 //notify showcase owner of new comment by others
                 $author = get_user($authorid);
@@ -1241,7 +1241,7 @@ switch ($mybb->get_input('action')) {
 
             $plugins->run_hooks('myshowcase_del_comment_commit');
 
-            showcaseDataUpdate($this->id, ["gid='{$entryID}'"], ['comments' => $totalComments]);
+            showcaseDataUpdate($this->id, $entryID, ['comments' => $totalComments]);
 
             $entryUrl = str_replace('{gid}', (string)$entryID, SHOWCASE_URL_VIEW);
 
@@ -1293,8 +1293,8 @@ switch ($mybb->get_input('action')) {
     }
     case 'edit':
     case 'new':
-    case 'do_editshowcase':
-    case 'do_newshowcase':
+    case 'edit':
+    case 'new':
         {
             require_once(MYBB_ROOT . 'inc/plugins/myshowcase/newedit.php');
         }

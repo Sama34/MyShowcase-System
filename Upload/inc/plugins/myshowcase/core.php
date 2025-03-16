@@ -7,7 +7,7 @@
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\plugins\myshowcase\plugin.php
+ * File: \MyShowcase\plugin.php
  *
  */
 
@@ -17,7 +17,7 @@ namespace MyShowcase\Core;
 
 use DirectoryIterator;
 
-use inc\plugins\myshowcase\Showcase;
+use MyShowcase\Showcase;
 
 use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
 use const MyShowcase\Admin\FIELD_TYPE_INT;
@@ -55,6 +55,62 @@ const CACHE_TYPE_FIELD_DATA = 'field_data'; // todo, add cache update method
 const MODERATOR_TYPE_USER = 0;
 
 const MODERATOR_TYPE_GROUP = 1;
+
+const FIELD_TYPE_HTML_TEXT_BOX = 'textbox';
+
+const FIELD_TYPE_HTML_URL = 'url';
+
+const FIELD_TYPE_HTML_TEXTAREA = 'textarea';
+
+const FIELD_TYPE_HTML_RADIO = 'radio';
+
+const FIELD_TYPE_HTML_CHECK_BOX = 'checkbox';
+
+const FIELD_TYPE_HTML_DB = 'db';
+
+const FIELD_TYPE_HTML_DATE = 'date';
+
+const FIELD_TYPE_STORAGE_TINYINT = 'tinyint';
+
+const FIELD_TYPE_STORAGE_SMALLINT = 'smallint';
+
+const FIELD_TYPE_STORAGE_MEDIUMINT = 'mediumint';
+
+const FIELD_TYPE_STORAGE_INT = 'int';
+
+const FIELD_TYPE_STORAGE_BIGINT = 'bigint';
+
+const FIELD_TYPE_STORAGE_DECIMAL = 'decimal';
+
+const FIELD_TYPE_STORAGE_FLOAT = 'float';
+
+const FIELD_TYPE_STORAGE_DOUBLE = 'double';
+
+const FIELD_TYPE_STORAGE_CHAR = 'char';
+
+const FIELD_TYPE_STORAGE_VARCHAR = 'varchar';
+
+const FIELD_TYPE_STORAGE_TINYTEXT = 'tinytext';
+
+const FIELD_TYPE_STORAGE_TEXT = 'text';
+
+const FIELD_TYPE_STORAGE_MEDIUMTEXT = 'mediumtext';
+
+const FIELD_TYPE_STORAGE_DATE = 'date';
+
+const FIELD_TYPE_STORAGE_TIME = 'time';
+
+const FIELD_TYPE_STORAGE_DATETIME = 'datetime';
+
+const FIELD_TYPE_STORAGE_TIMESTAMP = 'timestamp';
+
+const FIELD_TYPE_STORAGE_BINARY = 'binary';
+
+const FIELD_TYPE_STORAGE_VARBINARY = 'varbinary';
+
+const ATTACHMENT_UNLIMITED = -1;
+
+const ATTACHMENT_ZERO = 0;
 
 const URL = 'index.php?module=myshowcase-summary';
 
@@ -1106,26 +1162,114 @@ function showcaseDataTableFieldDrop(int $showcaseID, string $fieldName): bool
     return true;
 }
 
-function showcaseDataInsert(int $showcaseID, array $fieldData): int
+function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = false, int $entryID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_data' . $showcaseID, $fieldData);
+    $showcaseFieldSetID = (int)(showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1])['fieldsetid'] ?? 0);
 
-    return (int)$db->insert_id();
-}
-
-function showcaseDataUpdate(int $showcaseID, array $whereClauses = [], array $fieldData = []): bool
-{
-    global $db;
-
-    $db->update_query(
-        'myshowcase_data' . $showcaseID,
-        $fieldData,
-        implode(' AND ', $whereClauses)
+    $fieldObjects = fieldsGet(
+        ["setid='{$showcaseFieldSetID}'", "enabled='1'"],
+        [
+            'fid',
+            'name',
+            'field_type'
+        ]
     );
 
-    return true;
+    $showcaseInsertData = [];
+
+    if (isset($entryData['uid'])) {
+        $showcaseInsertData['uid'] = (int)$entryData['uid'];
+    }
+
+    if (isset($entryData['views'])) {
+        $showcaseInsertData['views'] = (int)$entryData['views'];
+    }
+
+    if (isset($entryData['comments'])) {
+        $showcaseInsertData['comments'] = (int)$entryData['comments'];
+    }
+
+    if (isset($entryData['submit_data'])) {
+        $showcaseInsertData['submit_data'] = (int)$entryData['submit_data'];
+    }
+
+    if (isset($entryData['dateline'])) {
+        $showcaseInsertData['dateline'] = (int)$entryData['dateline'];
+    } elseif (!$isUpdate) {
+        $showcaseInsertData['dateline'] = TIME_NOW;
+    }
+
+    if (isset($entryData['createdate'])) {
+        $showcaseInsertData['createdate'] = (int)$entryData['createdate'];
+    }
+
+    if (isset($entryData['approved'])) {
+        $showcaseInsertData['approved'] = (int)$entryData['approved'];
+    }
+
+    if (isset($entryData['approved_by'])) {
+        $showcaseInsertData['approved_by'] = (int)$entryData['approved_by'];
+    }
+
+    if (isset($entryData['posthash'])) {
+        $showcaseInsertData['posthash'] = $db->escape_string($entryData['posthash']);
+    }
+
+    foreach ($fieldObjects as $fieldID => $fieldData) {
+        if (isset($entryData[$fieldData['name']])) {
+            if (in_array($fieldData['field_type'], [
+                FIELD_TYPE_HTML_DATE,
+                FIELD_TYPE_STORAGE_TINYINT,
+                FIELD_TYPE_STORAGE_SMALLINT,
+                FIELD_TYPE_STORAGE_MEDIUMINT,
+                FIELD_TYPE_STORAGE_INT,
+                FIELD_TYPE_STORAGE_BIGINT
+            ])) {
+                $showcaseInsertData[$fieldData['name']] = (int)$entryData[$fieldData['name']];
+            } elseif (in_array($fieldData['field_type'], [
+                FIELD_TYPE_STORAGE_DECIMAL,
+                FIELD_TYPE_STORAGE_FLOAT,
+                FIELD_TYPE_STORAGE_DOUBLE
+            ])) {
+                $showcaseInsertData[$fieldData['name']] = (float)$entryData[$fieldData['name']];
+            } elseif (in_array($fieldData['field_type'], [
+                FIELD_TYPE_STORAGE_CHAR,
+                FIELD_TYPE_STORAGE_VARCHAR,
+                FIELD_TYPE_STORAGE_TINYTEXT,
+                FIELD_TYPE_STORAGE_TEXT,
+                FIELD_TYPE_STORAGE_MEDIUMTEXT,
+
+                FIELD_TYPE_STORAGE_DATE,
+                FIELD_TYPE_STORAGE_TIME,
+                FIELD_TYPE_STORAGE_DATETIME,
+                FIELD_TYPE_STORAGE_TIMESTAMP
+            ])) {
+                $showcaseInsertData[$fieldData['name']] = $db->escape_string($entryData[$fieldData['name']]);
+            } elseif (in_array($fieldData['field_type'], [
+                FIELD_TYPE_STORAGE_BINARY,
+                FIELD_TYPE_STORAGE_VARBINARY
+            ])) {
+                $showcaseInsertData[$fieldData['name']] = $db->escape_binary($entryData[$fieldData['name']]);
+            }
+        }
+    }
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_data' . $showcaseID, $showcaseInsertData, "gid='{$entryID}'");
+    } elseif ($showcaseInsertData) {
+        $entryID = $db->insert_query('myshowcase_data' . $showcaseID, $showcaseInsertData);
+    }
+
+    return $entryID;
+}
+
+function showcaseDataUpdate(int $showcaseID, int $entryID, array $entryData): int
+{
+    global $db;
+
+    return showcaseDataInsert($showcaseID, $entryData, true, $entryID);
 }
 
 function showcaseDataDelete(int $showcaseID, array $whereClauses = []): bool
@@ -1153,7 +1297,7 @@ function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryField
     while ($fieldValueData = $db->fetch_array($query)) {
         $fieldData[(int)$fieldValueData['gid']] = $fieldValueData;
 
-        foreach (\MyShowcase\Core\DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
+        foreach (DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
             if (isset($fieldData[(int)$fieldValueData['gid']][$defaultFieldKey])) {
                 //$fieldData[(int)$fieldValueData['gid']][$defaultFieldKey] = 123;
             }
@@ -1467,7 +1611,8 @@ function attachmentGet(array $whereClauses = [], array $queryFields = [], array 
     $query = $db->simple_select(
         'myshowcase_attachments',
         implode(', ', array_merge(['aid'], $queryFields)),
-        implode(' AND ', $whereClauses)
+        implode(' AND ', $whereClauses),
+        $queryOptions
     );
 
     if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {

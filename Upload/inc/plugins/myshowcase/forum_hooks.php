@@ -7,7 +7,7 @@
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\plugins\myshowcase\plugin.php
+ * File: \MyShowcase\plugin.php
  *
  */
 
@@ -159,8 +159,8 @@ function global_intermediate(): bool
         $ids = implode("','", array_keys($rep_ids));
         $reportObjects = reportGet(
             ["id IN ('{$ids}')", "status='0'"],
-            ['COUNT(*) AS total'],
-            ['group_by' => 'id, status']
+            ['COUNT(rid) AS total'],
+            ['group_by' => 'id, rid, status']
         );
 
         foreach ($reportObjects as $reportID => $reportData) {

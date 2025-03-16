@@ -17,6 +17,8 @@ namespace inc\datahandlers;
 
 use DataHandler;
 
+use MyShowcase\System\Showcase;
+
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
@@ -72,6 +74,15 @@ class MyShowcaseDataHandler extends DataHandler
      * @var array
      */
     public array $myshowcase_update_data = [];
+
+    protected Showcase $showcase;
+
+    public function __construct(Showcase $showcase, string $method = "insert")
+    {
+        $this->showcase = $showcase;
+
+        parent::__construct($method);
+    }
 
 
     /**
@@ -207,7 +218,7 @@ class MyShowcaseDataHandler extends DataHandler
         }
         $plugins->run_hooks('datahandler_myshowcase_insert', $this);
 
-        $this->gid = showcaseDataInsert($this->gid, $this->myshowcase_insert_data);
+        $this->gid = showcaseDataInsert($this->showcase->id, $this->myshowcase_insert_data);
 
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
@@ -247,7 +258,7 @@ class MyShowcaseDataHandler extends DataHandler
 
         $plugins->run_hooks('datahandler_myshowcase_update', $this);
 
-        showcaseDataUpdate($this->id, ["gid='{$myshowcase_data['gid']}'"], $this->myshowcase_update_data);
+        showcaseDataUpdate($this->id, $entryID, $this->myshowcase_update_data);
 
         // Assign any uploaded attachments with the specific posthash to the newly created post.
         if ($myshowcase_data['posthash']) {
