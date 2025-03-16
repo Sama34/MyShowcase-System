@@ -152,6 +152,7 @@ $fieldcache = cacheGet(CACHE_TYPE_FIELDS);
 
 $showcaseFieldsShow =
 $showcaseFieldsFormat =
+$showcaseFieldsParseable =
 $showcaseFields = [];
 
 $showcaseFieldsSearchable = [
@@ -170,12 +171,12 @@ foreach ($fieldcache[$me->fieldsetid] as $field) {
     $showcaseFieldsMinimumLength[$field['name']] = $field['min_length'];
 
     //limit array only to those fields that are required
-    if ($field['enabled'] == 1 || $field['requiredField'] == 1) {
+    if (!empty($field['enabled']) || !empty($field['requiredField'])) {
         $showcaseFieldEnabled[$field['name']] = $field['html_type'];
     }
 
     //limit array only to those fields that are required
-    if ($field['requiredField'] == 1) {
+    if (!empty($field['requiredField'])) {
         $showcaseFieldsRequired[$field['name']] = 1;
     } else {
         $showcaseFieldsRequired[$field['name']] = 0;
@@ -189,12 +190,12 @@ foreach ($fieldcache[$me->fieldsetid] as $field) {
     $showcaseFieldsShow[$field['list_table_order']] = $field['name'];
 
     //limit array to searchable fields
-    if ($field['searchable'] == 1) {
+    if (!empty($field['searchable'])) {
         $showcaseFieldsSearchable[$field['field_order']] = $field['name'];
     }
 
     //limit array to searchable fields
-    if ($field['parse'] == 1) {
+    if (!empty($field['parse'])) {
         $showcaseFieldsParseable[$field['name']] = 1;
     } else {
         $showcaseFieldsParseable[$field['name']] = 0;
@@ -270,6 +271,9 @@ $currentPage = $mybb->input['page'] = $mybb->get_input('page', MyBB::INPUT_INT);
 if ($currentPage) {
     $urlParams['page'] = $currentPage;
 }
+
+//if we have search_field handle search_field term highlighting
+$showcaseInputHighlight = $mybb->input['highlight'] = $mybb->get_input('highlight');
 
 /* URL Definitions */
 
@@ -612,7 +616,6 @@ if ($mybb->get_input('showcasegid') && $entryHash) {
 
 //init dynamic field info
 $showcaseFieldEnabled = [];
-$showcaseFieldsParseable = [];
 $showcaseFieldsMaximumLength = [];
 $showcaseFieldsRequired = [
     'uid' => 1,
@@ -757,11 +760,6 @@ switch ($mybb->get_input('action')) {
         //doing this now should not impact anyhting. no issues with gomobile beta4
         define('IN_ARCHIVE', 1);
 
-        $mybb->input['highlight'] = $db->escape_string($mybb->get_input('highlight'));
-
-        require_once(MYBB_ROOT . 'inc/class_parser.php');
-        $parser = new postParser();
-
         reset($showcaseFieldEnabled);
         $alternativeBackground = 'trow2';
 
@@ -773,28 +771,14 @@ switch ($mybb->get_input('action')) {
 
             $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
-            //if we have search_field handle search_field term highlighting
-            $highlight = 0;
-            if ($mybb->get_input('highlight') != '' && $showcaseInputSearchField == $fname) {
-                $highlight = $mybb->get_input('highlight');
-            }
-
             //set parser options for current field
-            $parser_options = [
-                'filter_badwords' => 1,
-                'allow_html' => $me->allowhtml,
-                'allow_mycode' => $me->allowbbcode,
-                'me_username' => 0,
-                'allow_smilies' => $me->allowsmilies,
-                'highlight' => $highlight,
-                'nl2br' => 1
-            ];
+
             switch ($ftype) {
                 case 'textarea':
                     $field_data = $showcase[$fname];
                     if ($field_data != '' || $me->disp_empty == 1) {
-                        if ($showcaseFieldsParseable[$fname] || $highlight) {
-                            $field_data = $parser->parse_message($field_data, $parser_options);
+                        if ($showcaseFieldsParseable[$fname] || $showcaseInputHighlight) {
+                            $field_data = $me->parse_message($field_data, ['highlight' => $showcaseInputHighlight]);
                         } else {
                             $field_data = htmlspecialchars_uni($field_data);
                             $field_data = nl2br($field_data);
@@ -827,8 +811,8 @@ switch ($mybb->get_input('action')) {
 
                     if ($field_data != '' || $me->disp_empty == 1) {
                         $field_data = htmlspecialchars_uni($field_data);
-                        if ($showcaseFieldsParseable[$fname] || $highlight) {
-                            $field_data = $parser->parse_message($field_data, $parser_options);
+                        if ($showcaseFieldsParseable[$fname] || $showcaseInputHighlight) {
+                            $field_data = $me->parse_message($field_data, ['highlight' => $showcaseInputHighlight]);
                         }
                         $showcase_data .= eval(getTemplate('view_data_1'));
                     }
@@ -876,8 +860,8 @@ switch ($mybb->get_input('action')) {
                 case 'db':
                     $field_data = $showcase[$fname];
                     if (($field_data != '') || $me->disp_empty == 1) {
-                        if ($showcaseFieldsParseable[$fname] || $highlight) {
-                            $field_data = $parser->parse_message($field_data, $parser_options);
+                        if ($showcaseFieldsParseable[$fname] || $showcaseInputHighlight) {
+                            $field_data = $me->parse_message($field_data, ['highlight' => $showcaseInputHighlight]);
                         }
                         $showcase_data .= eval(getTemplate('view_data_1'));
                     }
@@ -954,7 +938,7 @@ switch ($mybb->get_input('action')) {
                     '',
                     $forumdir . '/'
                 );
-                $comment_data = $parser->parse_message($commentData['comment'], $parser_options);
+                $comment_data = $me->parse_message($commentData['comment'], ['highlight' => $showcaseInputHighlight]);
 
                 //setup comment admin options
                 //only mods, original author (if allowed) or owner (if allowed) can delete comments
@@ -1157,13 +1141,11 @@ switch ($mybb->get_input('action')) {
                 //notify showcase owner of new comment by others
                 $author = get_user($authorid);
                 if ($author['allownotices'] && $author['uid'] != $currentUserID) {
-                    require_once MYBB_ROOT . 'inc/class_parser.php';
-                    $parser = new Postparser();
-
-                    $excerpt = $parser->text_parse_message(
+                    $excerpt = $me->parser()->text_parse_message(
                         $mybb->get_input('comments'),
-                        ['me_username' => $mybb->user['username'], 'filter_badwords' => 1, 'safe_html' => 1]
+                        ['me_username' => $mybb->user['username']]
                     );
+
                     $excerpt = my_substr(
                             $excerpt,
                             0,
@@ -1181,6 +1163,7 @@ switch ($mybb->get_input('action')) {
 
 
                     $emailsubject = $lang->sprintf($lang->myshowcase_comment_emailsubject, $me->name);
+
                     $emailmessage = $lang->sprintf(
                         $lang->myshowcase_comment_email,
                         $author['username'],
