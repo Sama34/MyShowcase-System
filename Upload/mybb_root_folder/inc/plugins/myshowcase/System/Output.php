@@ -43,7 +43,7 @@ class Output
         global $showcaseInputSearchExactMatch, $showcaseFieldsShow, $showcaseFields, $unapproved;
         global $showcaseInputSearchKeywords, $urlParams, $urlBase, $showcaseInputSearchField, $showcaseColumnsCount;
         global $showcaseFieldsFormat, $showcaseName, $showcaseTableTheadInlineModeration, $urlShowcase, $showcase_url;
-        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder;
+        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder, $showcaseFieldsParseable;
 
         $hookArguments = [];
 
@@ -447,70 +447,88 @@ class Output
                 //build custom list items based on field settings
                 $showcaseTableRowExtra = '';
 
-                foreach ($showcaseFieldsShow as $forder => $fieldName) {
+                foreach ($showcaseFieldsShow as $fieldKey => $fieldName) {
                     $entryFieldText = $entryFieldData[$fieldName];
 
-                    //format numbers as requested
-                    switch ($showcaseFieldsFormat[$fieldName]) {
-                        case 'decimal0':
-                            $entryFieldText = number_format((int)$entryFieldText);
-                            break;
-
-                        case 'decimal1':
-                            $entryFieldText = number_format((float)$entryFieldText, 1);
-                            break;
-
-                        case 'decimal2':
-                            $entryFieldText = number_format((float)$entryFieldText, 2);
-                            break;
-                        default:
-                            $entryFieldText = htmlspecialchars_uni($entryFieldText);
-                            break;
+                    if ((string)$entryFieldText === '') {
+                        $entryFieldText = '';
                     }
 
-                    switch ($showcaseFields[$fieldName]) {
-                        case 'date':
-                            if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
-                                $entryFieldText = '';
-                            } else {
-                                $entryFieldDateValue = explode('|', $entryFieldText);
+                    if (empty($showcaseFieldsParseable[$fieldName])) {
+                        // todo, remove this legacy updating the database and updating the format field to TINYINT
+                        switch ($showcaseFieldsFormat[$fieldName]) {
+                            case 'decimal0':
+                                $showcaseFieldsFormat[$fieldName] = 1;
+                                break;
+                            case 'decimal1':
+                                $showcaseFieldsFormat[$fieldName] = 2;
+                                break;
+                            case 'decimal2':
+                                $showcaseFieldsFormat[$fieldName] = 3;
+                                break;
+                            case 'no':
+                                $showcaseFieldsFormat[$fieldName] = 0;
+                        }
 
-                                $entryFieldDateValue = array_map('intval', $entryFieldDateValue);
+                        $formatTypes = \MyShowcase\Core\FORMAT_TYPES;
 
-                                if ($entryFieldDateValue[0] > 0 && $entryFieldDateValue[1] > 0 && $entryFieldDateValue[2] > 0) {
-                                    $entryFieldText = my_date(
-                                        $mybb->settings['dateformat'],
-                                        mktime(
-                                            0,
-                                            0,
-                                            0,
-                                            $entryFieldDateValue[0],
-                                            $entryFieldDateValue[1],
-                                            $entryFieldDateValue[2]
-                                        )
-                                    );
+                        if (!empty($formatTypes[$showcaseFieldsFormat[$fieldName]]) &&
+                            function_exists($formatTypes[$showcaseFieldsFormat[$fieldName]])) {
+                            $entryFieldText = $formatTypes[$showcaseFieldsFormat[$fieldName]]($entryFieldText);
+                        } else {
+                            $entryFieldText = match ((int)$showcaseFieldsFormat[$fieldName]) {
+                                2 => number_format((float)$entryFieldText, 1),
+                                3 => number_format((float)$entryFieldText, 2),
+                                default => htmlspecialchars_uni($entryFieldText),
+                            };
+                        }
+
+                        switch ($showcaseFields[$fieldName]) {
+                            case 'date':
+                                if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
+                                    $entryFieldText = '';
                                 } else {
-                                    $entryFieldText = [];
+                                    $entryFieldDateValue = explode('|', $entryFieldText);
 
-                                    if (!empty($entryFieldDateValue[0])) {
-                                        $entryFieldText[] = $entryFieldDateValue[0];
+                                    $entryFieldDateValue = array_map('intval', $entryFieldDateValue);
+
+                                    if ($entryFieldDateValue[0] > 0 && $entryFieldDateValue[1] > 0 && $entryFieldDateValue[2] > 0) {
+                                        $entryFieldText = my_date(
+                                            $mybb->settings['dateformat'],
+                                            mktime(
+                                                0,
+                                                0,
+                                                0,
+                                                $entryFieldDateValue[0],
+                                                $entryFieldDateValue[1],
+                                                $entryFieldDateValue[2]
+                                            )
+                                        );
+                                    } else {
+                                        $entryFieldText = [];
+
+                                        if (!empty($entryFieldDateValue[0])) {
+                                            $entryFieldText[] = $entryFieldDateValue[0];
+                                        }
+
+                                        if (!empty($entryFieldDateValue[1])) {
+                                            $entryFieldText[] = $entryFieldDateValue[1];
+                                        }
+
+                                        if (!empty($entryFieldDateValue[2])) {
+                                            $entryFieldText[] = $entryFieldDateValue[2];
+                                        }
+
+                                        $entryFieldText = implode('-', $entryFieldText);
                                     }
-
-                                    if (!empty($entryFieldDateValue[1])) {
-                                        $entryFieldText[] = $entryFieldDateValue[1];
-                                    }
-
-                                    if (!empty($entryFieldDateValue[2])) {
-                                        $entryFieldText[] = $entryFieldDateValue[2];
-                                    }
-
-                                    $entryFieldText = implode('-', $entryFieldText);
                                 }
-                            }
-                            break;
+                                break;
+                        }
+                    } else {
+                        $entryFieldText = $this->showcase->parse_message($entryFieldText);
                     }
 
-                    $showcaseTableRowExtra .= eval(getTemplate('list_custom_fields'));
+                    $showcaseTableRowExtra .= eval(getTemplate('pageMainTableRowsExtra'));
                 }
 
                 if ($this->showcase->permissionCheck(PERMISSION_MODERATOR_CAN_APPROVE) &&

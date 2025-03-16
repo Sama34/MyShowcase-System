@@ -51,7 +51,7 @@ switch ($mybb->get_input('action')) {
         }
 
         $report_url = SHOWCASE_URL;
-        $showcase_page = eval(getTemplate('report'));
+        $pageContents = eval(getTemplate('report'));
 
         break;
     }
@@ -224,7 +224,7 @@ switch ($mybb->get_input('action')) {
         }
 
         $showcase_file = SHOWCASE_URL;
-        $showcase_page = eval(getTemplate('reports'));
+        $pageContents = eval(getTemplate('reports'));
 
         break;
     }
@@ -373,7 +373,7 @@ switch ($mybb->get_input('action')) {
         }
 
         $showcase_file = SHOWCASE_URL;
-        $showcase_page = eval(getTemplate('allreports'));
+        $pageContents = eval(getTemplate('allreports'));
 
         break;
     }

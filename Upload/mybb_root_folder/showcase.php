@@ -74,7 +74,7 @@ $templatelist = 'myshowcase_list, myshowcase_list_empty, myshowcase_list_items, 
 $templatelist .= 'myshowcase_view, myshowcase_view_attachments, myshowcase_view_comments, myshowcase_view_comments_add, myshowcase_view_comments_add_login, ';
 $templatelist .= 'myshowcase_view_comments_admin, myshowcase_view_comments_none, myshowcase_view_data, myshowcase_pageMainTableTheadRowInlineModeration, myshowcase_inlinemod, ';
 $templatelist .= 'myshowcase_orderarrow, myshowcase_pageMainTableTheadRowField, multipage_page_current, multipage_page, multipage_end, ';
-$templatelist .= 'multipage_nextpage, multipage, myshowcase_list_custom_fields, myshowcase_inlinemod_item, myshowcase_list_items, myshowcase_list, ';
+$templatelist .= 'multipage_nextpage, multipage, myshowcase_pageMainTableRowsExtra, myshowcase_inlinemod_item, myshowcase_list_items, myshowcase_list, ';
 $templatelist .= 'myshowcase_top, myshowcase_new_button, myshowcase_field_date, myshowcase_js_header, ';
 $templatelist .= 'myshowcase_view_admin_edit, myshowcase_view_admin_delete, myshowcase_view_admin, myshowcase_table_header, myshowcase_view_data_1, myshowcase_view_data_2, myshowcase_view_data_3, myshowcase_view_attachments_image, ';
 $templatelist .= 'myshowcase_new_attachments_input, myshowcase_new_attachments, myshowcase_new_top, myshowcase_field_textbox, myshowcase_new_fields, myshowcase_field_db, myshowcase_field_textarea, myshowcase_new_bottom, ';
@@ -434,10 +434,10 @@ if ($mybb->get_input('action') == 'attachment') {
             $attachment['aid'],
             SHOWCASE_URL_ITEM
         );//$me->imgfolder."/".$attachment['attachname'];
-        $showcase_page = eval(getTemplate('attachment_view'));
+        $pageContents = eval(getTemplate('attachment_view'));
 
         $plugins->run_hooks('myshowcase_attachment_end');
-        output_page($showcase_page);
+        output_page($pageContents);
         die();
     } else //should never really be called, but just incase, support inline output
     {
@@ -1085,7 +1085,7 @@ switch ($mybb->get_input('action')) {
 
         $plugins->run_hooks('myshowcase_view_end');
 
-        $showcase_page = eval(getTemplate('view'));
+        $pageContents = eval(getTemplate('view'));
 
         break;
     }

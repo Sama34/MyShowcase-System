@@ -124,19 +124,19 @@ class Showcase
 
     /**
      * Allow smilies in the current showcase
-     * @var int
+     * @var bool
      */
     public bool $allowsmilies;
 
     /**
      * Allow BBCode the current showcase
-     * @var int
+     * @var bool
      */
     public bool $allowbbcode;
 
     /**
      * Allow HTML the current showcase
-     * @var int
+     * @var bool
      */
     public bool $allowhtml;
 
@@ -148,7 +148,7 @@ class Showcase
 
     /**
      * Allow attachments in the current showcase
-     * @var int
+     * @var bool
      */
     public bool $allow_attachments;
 
@@ -232,6 +232,8 @@ class Showcase
 
     public bool $seo_support;
 
+    public array $parser_options;
+
     /**
      * Constructor of class.
      *
@@ -307,6 +309,16 @@ class Showcase
 
         //get group permissions now
         $this->userperms = $this->get_user_permissions($mybb->user);
+
+        $this->parser_options = [
+            'filter_badwords' => true,
+            'allow_html' => $this->allowhtml,
+            'allow_mycode' => $this->allowbbcode,
+            'me_username' => '',
+            'highlight' => '',
+            'allow_smilies' => $this->allowsmilies,
+            'nl2br' => true
+        ];
     }
 
     /**
@@ -565,5 +577,23 @@ class Showcase
     public function permissionCheck(string $permissionType): bool
     {
         return !empty($this->userperms[$permissionType]);
+    }
+
+    public function parser(): \postParser
+    {
+        global $parser;
+
+        if (!($parser instanceof \postParser)) {
+            require_once MYBB_ROOT . 'inc/class_parser.php';
+
+            $parser = new \Postparser();
+        }
+
+        return $parser;
+    }
+
+    public function parse_message(string $message, array $parserOptions = []): string
+    {
+        return $this->parser()->parse_message($message, array_merge($this->parser_options, $parserOptions));
     }
 }

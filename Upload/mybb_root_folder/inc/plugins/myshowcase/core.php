@@ -27,6 +27,7 @@ use const MyShowcase\Admin\FIELD_TYPE_VARCHAR;
 use const MyShowcase\ROOT;
 
 const VERSION = '3.0.0';
+
 const VERSION_CODE = 3000;
 
 const SHOWCASE_STATUS_DISABLED = 0;
@@ -307,6 +308,9 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        // todo, trigger notification (user, group), pm, or alert
+        // todo, DVZ Stream
+        // todo, latest entries helper
     ],
     'myshowcase_fieldsets' => [
         'setid' => [
@@ -557,6 +561,9 @@ const TABLES_DATA = [
             'default' => 'no'
         ],
         'unique_key' => ['setid_fid' => 'setid,fid']
+        // todo, add view permission
+        // todo, add edit permission
+        // todo, validation regex for text fields
     ],
     'myshowcase_field_data' => [
         'fieldDataID' => [
@@ -656,6 +663,18 @@ const DATA_TABLE_STRUCTURE = [
             'default' => ''
         ],
     ],
+];
+
+const FORMAT_TYPES = [
+    //'no' => 'None',
+    //'decimal0' => '#,###',
+    //'decimal1' => '#,###.#',
+    //'decimal2' => '#,###.##',
+    //0 => 'htmlspecialchars_uni',
+    0 => '',
+    1 => 'number_format',
+    2 => '#,###.#',
+    3 => '#,###.##',
 ];
 
 function loadLanguage(
@@ -1132,17 +1151,13 @@ function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryField
     $fieldData = [];
 
     while ($fieldValueData = $db->fetch_array($query)) {
-        $fieldData[(int)$fieldValueData['gid']] = [
-            'uid' => (int)$fieldValueData['uid'],
-            'views' => (int)$fieldValueData['views'],
-            'comments' => (int)$fieldValueData['comments'],
-            'submit_date' => (int)$fieldValueData['submit_date'],
-            'dateline' => (int)$fieldValueData['dateline'],
-            'createdate' => (int)$fieldValueData['createdate'],
-            'approved' => (bool)$fieldValueData['approved'],
-            'approved_by' => (int)$fieldValueData['approved_by'],
-            'posthash' => (string)$fieldValueData['posthash']
-        ];
+        $fieldData[(int)$fieldValueData['gid']] = $fieldValueData;
+
+        foreach (\MyShowcase\Core\DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
+            if (isset($fieldData[(int)$fieldValueData['gid']][$defaultFieldKey])) {
+                //$fieldData[(int)$fieldValueData['gid']][$defaultFieldKey] = 123;
+            }
+        }
     }
 
     return $fieldData;

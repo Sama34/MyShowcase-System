@@ -29,12 +29,12 @@ global $me, $showcaseFieldsMaximumLength, $showcaseFieldsFormat, $showcaseFields
 
 global $currentUserID, $entryID, $entryHash, $showcase_data;
 
-$showcase_page = '';
+$pageContents = '';
 
 switch ($mybb->get_input('action')) {
     case 'edit':
     {
-        if (!$currentUserID || !$me->showcase->permissionCheck(PERMISSION_USER_CAN_NEW_ENTRY)) {
+        if (!$currentUserID || !$me->permissionCheck(PERMISSION_USER_CAN_NEW_ENTRY)) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -77,7 +77,7 @@ switch ($mybb->get_input('action')) {
         } elseif ($mybb->get_input('action') == 'edit') {
             $showcase_editing_user = str_replace(
                 '{username}',
-                $showcase_user['username'],
+                (string)$showcase_user['username'],
                 $lang->myshowcase_editing_user
             );
             add_breadcrumb($showcase_editing_user, SHOWCASE_URL);
@@ -146,7 +146,7 @@ switch ($mybb->get_input('action')) {
                 }
             }
 
-            $showcase_page .= eval(getTemplate('new_top'));
+            $pageContents .= eval(getTemplate('new_top'));
 
             $alternativeBackground = 'trow2';
 
@@ -327,14 +327,14 @@ switch ($mybb->get_input('action')) {
                 }
 
                 $field_header = ($showcaseFieldsRequired[$fname] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
-                $showcase_page .= eval(getTemplate('new_fields'));
+                $pageContents .= eval(getTemplate('new_fields'));
             }
 
             $plugins->run_hooks('myshowcase_editnew_end');
 
             $showcase_authid = '';
 
-            $showcase_page .= eval(getTemplate('new_bottom'));
+            $pageContents .= eval(getTemplate('new_bottom'));
         } else {
             error($lang->myshowcase_not_authorized);
         }
@@ -514,7 +514,7 @@ switch ($mybb->get_input('action')) {
             }
             if (count($showcase_errors) > 0) {
                 $error = inline_error($showcase_errors);
-                $showcase_page = eval($templates->render('error'));
+                $pageContents = eval($templates->render('error'));
             } else {
                 //update showcase
                 if ($mybb->get_input('action') == 'do_editshowcase') {
@@ -541,7 +541,7 @@ switch ($mybb->get_input('action')) {
         } else {
             $plugins->run_hooks('myshowcase_newedit_start');
 
-            $showcase_page .= eval(getTemplate('new_top'));
+            $pageContents .= eval(getTemplate('new_top'));
 
             reset($showcaseFieldEnabled);
             foreach ($showcaseFieldEnabled as $fname => $ftype) {
@@ -709,12 +709,12 @@ switch ($mybb->get_input('action')) {
                 }
 
                 $field_header = ($showcaseFieldsRequired[$fname] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
-                $showcase_page .= eval(getTemplate('new_fields'));
+                $pageContents .= eval(getTemplate('new_fields'));
             }
 
             $plugins->run_hooks('myshowcase_newedit_end');
 
-            $showcase_page .= eval(getTemplate('new_bottom'));
+            $pageContents .= eval(getTemplate('new_bottom'));
         }
         break;
     }

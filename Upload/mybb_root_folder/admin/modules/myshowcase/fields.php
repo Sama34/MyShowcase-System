@@ -385,6 +385,12 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             [
                 'textbox' => 'textbox',
                 'textarea' => 'textarea',
+                //single select
+                //multiselect
+                //captcha
+                //files|attachments
+                // todo, implement additional field types
+                // todo, add note field for admins to add a note
                 'db' => 'db',
                 'radio' => 'radio',
                 'checkbox' => 'checkbox',
@@ -477,12 +483,26 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     $formContainer->output_row(
         $lang->myShowcaseAdminFieldsNewFormFormat,
         $lang->myShowcaseAdminFieldsNewFormFormatDescription,
-        $form->generate_select_box('format', [
-            'no' => 'None',
-            'decimal0' => '#,###',
-            'decimal1' => '#,###.#',
-            'decimal2' => '#,###.##',
-        ], $mybb->get_input('format'), ['id' => 'format']),
+        $form->generate_select_box(
+            'format',
+            (function (): array {
+                $selectOptions = [];
+
+                $formatTypes = \MyShowcase\Core\FORMAT_TYPES;
+
+                $formatTypes = array_flip($formatTypes);
+
+                ksort($formatTypes);
+
+                foreach ($formatTypes as $formatTypeName => $formatTypeKey) {
+                    $selectOptions[$formatTypeKey] = $formatTypeName;
+                }
+
+                return $selectOptions;
+            })(),
+            $mybb->get_input('format'),
+            ['id' => 'format']
+        ),
         'format'
     );
 

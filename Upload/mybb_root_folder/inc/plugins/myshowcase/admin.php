@@ -20,7 +20,6 @@ use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
-
 use function MyShowcase\Core\showcaseGet;
 
 use const MyShowcase\Core\FIELDS_DATA;

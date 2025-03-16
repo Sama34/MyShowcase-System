@@ -1,19 +1,15 @@
-{$showcase_top}
 {$showcase_data_header}
 <table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
-{$showcase_data}
+    {$showcase_data}
 </table>
 {$showcase_attachment_header}
 <table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
-{$showcase_attachments}
+    {$showcase_attachments}
 </table>
 {$showcase_comment_header}
 <form action="{$showcase_comment_form_url}" method="post" name="comment">
-<input type="hidden" name="my_post_key" value="{$mybb->post_code}" />
-<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
-{$showcase_comments}
-</table>
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+    <table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+        {$showcase_comments}
+    </table>
 </form>
-{$footer}
-</body>
-</html>
