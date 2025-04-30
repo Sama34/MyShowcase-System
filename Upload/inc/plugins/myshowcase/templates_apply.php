@@ -21,9 +21,7 @@ require_once '../../../global.php';
 
 global $mybb, $db;
 
-global $currentUserID;
-
-if ($currentUserID == 0) {
+if (empty($mybb->user['uid'])) {
     die('You are not logged in.');
 }
 

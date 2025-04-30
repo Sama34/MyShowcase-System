@@ -22,25 +22,28 @@ use function MyShowcase\Admin\pluginUninstallation;
 use function MyShowcase\Core\addHooks;
 use function MyShowcase\Core\cacheUpdate;
 
+use const MyShowcase\ROOT;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\CACHE_TYPE_REPORTS;
-use const MyShowcase\ROOT;
 
 defined('IN_MYBB') || die('This file cannot be accessed directly.');
 
 // You can uncomment the lines below to avoid storing some settings in the DB
 define('MyShowcase\Core\SETTINGS', [
     //'key' => '',
-    'moderatorGroups' => '3,4',
+    'superModeratorGroups' => '3,4',
 ]);
-
-define('MyShowcase\Core\DEBUG', true);
+ 
+define('MyShowcase\Core\DEBUG', false);
 
 define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
+
+require_once ROOT . '/System/UserPermissions.php';
+require_once ROOT . '/System/ModeratorPermissions.php';
 
 require_once ROOT . '/core.php';
 

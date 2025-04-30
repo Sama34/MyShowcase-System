@@ -15,9 +15,11 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
+use Postparser;
 use DirectoryIterator;
-
-use MyShowcase\Showcase;
+use MyShowcase\System\ModeratorPermissions;
+use MyShowcase\System\UserPermissions;
+use MyShowcase\System\Showcase;
 
 use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
 use const MyShowcase\Admin\FIELD_TYPE_INT;
@@ -113,6 +115,16 @@ const ATTACHMENT_UNLIMITED = -1;
 const ATTACHMENT_ZERO = 0;
 
 const URL = 'index.php?module=myshowcase-summary';
+
+const ALL_UNLIMITED_VALUE = -1;
+
+const ENTRY_STATUS_UNAPPROVED = 0;
+
+const REPORT_STATUS_PENDING = 0;
+
+const ERROR_TYPE_NOT_INSTALLED = 1;
+
+const ERROR_TYPE_NOT_CONFIGURED = 1;
 
 const TABLES_DATA = [
     'myshowcase_attachments' => [
@@ -398,62 +410,62 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'canview' => [
+        UserPermissions::CanAddEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canadd' => [
+        UserPermissions::CanEditEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canedit' => [
+        UserPermissions::CanAttachFiles => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'cancomment' => [
+        UserPermissions::CanView => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canattach' => [
+        UserPermissions::CanViewComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canviewcomment' => [
+        UserPermissions::CanViewAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canviewattach' => [
+        UserPermissions::CanAddComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'candelowncomment' => [
+        UserPermissions::CanDeleteComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'candelauthcomment' => [
+        UserPermissions::CanDeleteAuthorComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'cansearch' => [
+        UserPermissions::CanSearch => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canwatermark' => [
+        UserPermissions::CanWaterMarkAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'attachlimit' => [
+        UserPermissions::AttachmentsLimit => [
             'type' => 'INT',
             'default' => 0
         ],
@@ -480,22 +492,22 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'canmodapprove' => [
+        ModeratorPermissions::CanApproveEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canmodedit' => [
+        ModeratorPermissions::CanEditEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canmoddelete' => [
+        ModeratorPermissions::CanDeleteEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'canmoddelcomment' => [
+        ModeratorPermissions::CanDeleteComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -604,7 +616,7 @@ const TABLES_DATA = [
         ],
         'list_table_order' => [
             'type' => 'SMALLINT',
-            'default' => -1
+            'default' => ALL_UNLIMITED_VALUE
         ],
         'searchable' => [
             'type' => 'TINYINT',
@@ -733,6 +745,8 @@ const FORMAT_TYPES = [
     3 => '#,###.##',
 ];
 
+const GUEST_GROUP_ID = 1;
+
 function loadLanguage(
     string $languageFileName = 'myshowcase',
     bool $forceUserArea = false,
@@ -832,7 +846,7 @@ function getSetting(string $settingKey = '')
     );
 }
 
-function getTemplateName(string $templateName = ''): string
+function getTemplateName(string $templateName = '', int $showcaseID = 0): string
 {
     $templatePrefix = '';
 
@@ -840,10 +854,14 @@ function getTemplateName(string $templateName = ''): string
         $templatePrefix = '_';
     }
 
-    return "myshowcase{$templatePrefix}{$templateName}";
+    if ($showcaseID) {
+        return "myShowcase{$showcaseID}{$templatePrefix}{$templateName}";
+    }
+
+    return "myShowcase{$templatePrefix}{$templateName}";
 }
 
-function getTemplate(string $templateName = '', bool $enableHTMLComments = true): string
+function getTemplate(string $templateName = '', bool $enableHTMLComments = true, int $showcaseID = 0): string
 {
     global $templates;
 
@@ -857,34 +875,38 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true)
         $templateName = substr($templateName, my_strpos($templateName, '/') + 1);
     }
 
-    return $templates->render(getTemplateName($templateName), true, $enableHTMLComments);
+    return $templates->render(getTemplateName($templateName, $showcaseID), true, $enableHTMLComments);
 }
 
 //set default permissions for all groups in all myshowcases
 //if you edit or reorder these, you need to also edit
 //the summary.php file (starting line 156) so the fields match this order
-function showcasePermissions(): array
+function showcaseDefaultPermissions(): array
 {
-    static $defaultPermissions;
+    return [
+        UserPermissions::CanAddEntries => false,
+        UserPermissions::CanEditEntries => false,
+        UserPermissions::CanAttachFiles => false,
+        UserPermissions::CanView => true,
+        UserPermissions::CanViewComments => true,
+        UserPermissions::CanViewAttachments => true,
+        UserPermissions::CanAddComments => false,
+        UserPermissions::CanDeleteComments => false,
+        UserPermissions::CanDeleteAuthorComments => false,
+        UserPermissions::CanSearch => true,
+        UserPermissions::CanWaterMarkAttachments => false,
+        UserPermissions::AttachmentsLimit => 0
+    ];
+}
 
-    if ($defaultPermissions === null) {
-        $defaultPermissions = [
-            'canadd' => 0,
-            'canedit' => 0,
-            'canattach' => 0,
-            'canview' => 1,
-            'canviewcomment' => 1,
-            'canviewattach' => 1,
-            'cancomment' => 0,
-            'candelowncomment' => 0,
-            'candelauthcomment' => 0,
-            'cansearch' => 1,
-            'canwatermark' => 0,
-            'attachlimit' => 0,
-        ];
-    }
-
-    return $defaultPermissions;
+function showcaseDefaultModeratorPermissions(): array
+{
+    return [
+        ModeratorPermissions::CanApproveEntries => false,
+        ModeratorPermissions::CanEditEntries => false,
+        ModeratorPermissions::CanDeleteEntries => false,
+        ModeratorPermissions::CanDeleteComments => false
+    ];
 }
 
 function getTemplatesList(): array
@@ -970,7 +992,23 @@ function cacheUpdate(string $cacheKey): array
             );
 
             foreach ($permissionsObjects as $permissionID => $permissionData) {
-                $cacheData[(int)$permissionData['id']][(int)$permissionData['gid']] = $permissionData;
+                $cacheData[(int)$permissionData['id']][(int)$permissionData['gid']] = [
+                    'pid' => (int)$permissionData['pid'],
+                    'id' => (int)$permissionData['id'],
+                    'gid' => (int)$permissionData['gid'],
+                    UserPermissions::CanAddEntries => !empty($permissionData[UserPermissions::CanAddEntries]),
+                    UserPermissions::CanEditEntries => !empty($permissionData[UserPermissions::CanEditEntries]),
+                    UserPermissions::CanAttachFiles => !empty($permissionData[UserPermissions::CanAttachFiles]),
+                    UserPermissions::CanView => !empty($permissionData[UserPermissions::CanView]),
+                    UserPermissions::CanViewComments => !empty($permissionData[UserPermissions::CanViewComments]),
+                    UserPermissions::CanViewAttachments => !empty($permissionData[UserPermissions::CanViewAttachments]),
+                    UserPermissions::CanAddComments => !empty($permissionData[UserPermissions::CanAddComments]),
+                    UserPermissions::CanDeleteComments => !empty($permissionData[UserPermissions::CanDeleteComments]),
+                    UserPermissions::CanDeleteAuthorComments => !empty($permissionData[UserPermissions::CanDeleteAuthorComments]),
+                    UserPermissions::CanSearch => !empty($permissionData[UserPermissions::CanSearch]),
+                    UserPermissions::CanWaterMarkAttachments => !empty($permissionData[UserPermissions::CanWaterMarkAttachments]),
+                    UserPermissions::AttachmentsLimit => (int)$permissionData[UserPermissions::AttachmentsLimit]
+                ];
             }
 
             break;
@@ -1034,7 +1072,16 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_MODERATORS;
             $moderatorObjects = moderatorGet(
                 [],
-                ['mid', 'id', 'uid', 'isgroup', 'canmodapprove', 'canmodedit', 'canmoddelete', 'canmoddelcomment']
+                [
+                    'mid',
+                    'id',
+                    'uid',
+                    'isgroup',
+                    ModeratorPermissions::CanApproveEntries,
+                    ModeratorPermissions::CanEditEntries,
+                    ModeratorPermissions::CanDeleteEntries,
+                    ModeratorPermissions::CanDeleteComments
+                ]
             );
 
             foreach ($moderatorObjects as $moderatorID => $moderatorData) {
@@ -1132,9 +1179,15 @@ function showcaseGet(array $whereClauses = [], array $queryFields = [], array $q
 
 function showcaseDataTableExists(int $showcaseID): bool
 {
-    global $db;
+    static $dataTableExists = [];
 
-    return $db->table_exists('myshowcase_data' . $showcaseID);
+    if (!isset($dataTableExists[$showcaseID])) {
+        global $db;
+
+        $dataTableExists[$showcaseID] = (bool)$db->table_exists('myshowcase_data' . $showcaseID);
+    }
+
+    return $dataTableExists[$showcaseID];
 }
 
 function showcaseDataTableFieldExists(int $showcaseID, string $fieldName): bool
@@ -1270,15 +1323,6 @@ function showcaseDataUpdate(int $showcaseID, int $entryID, array $entryData): in
     global $db;
 
     return showcaseDataInsert($showcaseID, $entryData, true, $entryID);
-}
-
-function showcaseDataDelete(int $showcaseID, array $whereClauses = []): bool
-{
-    global $db;
-
-    $db->delete_query('myshowcase_data' . $showcaseID, implode(' AND ', $whereClauses));
-
-    return true;
 }
 
 function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryFields = [], array $queryOptions = []): array
@@ -1683,7 +1727,7 @@ function commentGet(array $whereClauses = [], array $queryFields = [], array $qu
     return $commentObjects;
 }
 
-function commentDelete(array $whereClauses = []): bool
+function commentsDelete(array $whereClauses = []): bool
 {
     global $db;
 
@@ -2029,7 +2073,9 @@ function attachmentUpload(
         }
 
         //if requested and enabled, watermark the master image
-        if ($showcase->userperms['canwatermark'] && $addWaterMark && file_exists($showcase->watermarkimage)) {
+        if ($showcase->userPermissions[UserPermissions::CanWaterMarkAttachments] && $addWaterMark && file_exists(
+                $showcase->watermarkimage
+            )) {
             //get watermark image object
             switch (strtolower(get_extension($showcase->watermarkimage))) {
                 case 'gif':
@@ -2278,7 +2324,7 @@ function entryGetRandom(): string
         //get fields that are enabled and set for list display with pad to help sorting fixed fields)
         $description_list = [];
         foreach ($fields as $id => $field) {
-            if (/*$field['list_table_order'] != -1 && */ $field['enabled'] == 1) {
+            if (/*(int)$field['list_table_order'] !== \MyShowcase\Core\ALL_UNLIMITED_VALUE && */ $field['enabled'] == 1) {
                 $field_list[$field['list_table_order'] + 10]['name'] = $field['name'];
                 $field_list[$field['list_table_order'] + 10]['type'] = $field['html_type'];
                 $description_list[$field['list_table_order']] = $field['name'];
@@ -2433,4 +2479,36 @@ function dataTableStructureGet(int $showcaseID = 0): array
     }
 
     return hooksRun('admin_data_table_structure', $dataTableStructure);
+}
+
+function postParser(): postParser
+{
+    global $parser;
+
+    if (!($parser instanceof postParser)) {
+        require_once MYBB_ROOT . 'inc/class_parser.php';
+
+        $parser = new Postparser();
+    }
+
+    return $parser;
+}
+
+function showcaseGetObject(string $mainFile, bool $loadCurrentUser = false): \MyShowcase\System\Showcase
+{
+    require_once ROOT . '/System/Showcase.php';
+
+    static $showcaseObjects = [];
+
+    if (!isset($showcaseObjects[$mainFile])) {
+        if ($loadCurrentUser) {
+            global $mybb;
+
+            $showcaseObjects[$mainFile] = new Showcase($mainFile, userData: $mybb->user);
+        } else {
+            $showcaseObjects[$mainFile] = new Showcase($mainFile);
+        }
+    }
+
+    return $showcaseObjects[$mainFile];
 }

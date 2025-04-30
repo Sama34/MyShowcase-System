@@ -13,6 +13,8 @@
 
 declare(strict_types=1);
 
+use MyShowcase\System\UserPermissions;
+
 use function MyShowcase\Core\getTemplatesList;
 
 if (!defined('IN_MYBB')) {
@@ -468,9 +470,13 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             $db->insert_query('templates', $insert_array);
 
             //add watermark fields
-            if (!$db->field_exists('canwatermark', 'myshowcase_permissions')) {
+            if (!$db->field_exists(UserPermissions::CanWaterMarkAttachments, 'myshowcase_permissions')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `cansearch`';
-                $db->add_column('myshowcase_permissions', 'canwatermark', $newdef);
+                $db->add_column(
+                    'myshowcase_permissions',
+                    UserPermissions::CanWaterMarkAttachments,
+                    $newdef
+                );
             }
 
             if (!$db->field_exists('watermarkimage', 'myshowcase_config')) {

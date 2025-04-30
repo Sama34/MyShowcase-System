@@ -89,9 +89,11 @@ function myshowcase_action_handler(string $action): string
 
     if (isset($actions[$action])) {
         $page->active_action = $actions[$action]['active'];
+
         return $actions[$action]['file'];
     } else {
         $page->active_action = 'summary';
+
         return 'summary.php';
     }
 }

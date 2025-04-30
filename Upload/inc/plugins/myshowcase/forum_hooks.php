@@ -15,16 +15,18 @@ declare(strict_types=1);
 
 namespace MyShowcase\Hooks\Forum;
 
+use MyShowcase\System\Showcase;
+use MyShowcase\System\ModeratorPermissions;
+
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\entryGetRandom;
-use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
-
 use function MyShowcase\Core\reportGet;
 use function MyShowcase\Core\showcaseDataGet;
 
+use const MyShowcase\ROOT;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 
@@ -34,7 +36,7 @@ use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
  */
 function global_start(): bool
 {
-    global $templatelist, $mybb;
+    global $templatelist;
 
     if (isset($templatelist)) {
         $templatelist .= ',';
@@ -42,19 +44,45 @@ function global_start(): bool
         $templatelist = '';
     }
 
-    $templatelist .= ',';
-
     if (defined('THIS_SCRIPT')) {
-        if (THIS_SCRIPT == 'showthread.php') {
+        $templateObjects = [
+            'globalMessageUnapprovedEntries',
+            'globalMessageReportedEntries'
+        ];
+
+        $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
+
+        foreach ($showcaseObjects as $showcaseData) {
+            $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile']);
+
+            if (THIS_SCRIPT === $me->fileName) {
+                $templateObjects = array_merge($templateObjects, [
+                    'page'
+                ]);
+            }
+        }
+
+        if (THIS_SCRIPT === 'showthread.php') {
             $templatelist .= ', ';
         }
 
-        if (THIS_SCRIPT == 'editpost.php' || THIS_SCRIPT == 'newthread.php') {
+        if (THIS_SCRIPT === 'editpost.php' || THIS_SCRIPT === 'newthread.php') {
             $templatelist .= ', ';
         }
 
-        if (THIS_SCRIPT == 'forumdisplay.php') {
+        if (THIS_SCRIPT === 'forumdisplay.php') {
             $templatelist .= ', ';
+        }
+
+        $templatelist .= ', myShowcase_' . implode(', myShowcase_', $templateObjects);
+
+        foreach ($showcaseObjects as $showcaseData) {
+            $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile']);
+
+            //if showcase is enabled...
+            if ($me->enabled) {
+                $templatelist .= ", myShowcase{$me->id}_" . implode(", myShowcase{$me->id}_", $templateObjects);
+            }
         }
     }
 
@@ -67,122 +95,79 @@ function global_start(): bool
  */
 function global_intermediate(): bool
 {
-    global $mybb, $db, $cache, $myshowcase_unapproved, $myshowcase_reported, $theme, $templates, $lang;
+    global $mybb, $db, $lang;
+    global $myShowcaseGlobalMessagesUnapprovedEntries, $myShowcaseGlobalMessagesReportedEntries;
 
-    global $currentUserID;
+    $myShowcaseGlobalMessagesUnapprovedEntries = $myShowcaseGlobalMessagesReportedEntries = '';
 
-    $myshowcase_unapproved = $myshowcase_reported = '';
+    $moderatorsCache = cacheGet(CACHE_TYPE_MODERATORS);
 
-    //get showcases and mods
-    $showcases = cacheGet(CACHE_TYPE_CONFIG);
-    $moderators = cacheGet(CACHE_TYPE_MODERATORS);
+    $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
-    //loop through showcases
-    $rep_ids = [];
-    foreach ($showcases as $id => $showcase) {
+    foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
+        $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile'], true);
+
         //if showcase is enabled...
-        if ($showcase['enabled']) {
-            ///get array of all user's groups
-            $usergroups = explode(',', $mybb->user['additionalgroups']);
-            $usergroups[] = $mybb->user['usergroup'];
-
-            //...loop through mods
-            $canapprove = 0;
-            $caneditdel = 0;
-
-            if (!empty($moderators[$id])) {
-                foreach ($moderators[$id] as $mid => $mod) {
-                    //check if user is specifically a mod
-                    if ($currentUserID == $mod[$mod['id']]['uid'] && $mod[$mod['id']]['isgroup'] == 0) {
-                        if ($mod[$mod['id']]['canmodapprove'] == 1) {
-                            $canapprove = 1;
-                        }
-
-                        if ($mod[$mod['id']]['canmodedit'] == 1 || $mod[$mod['id']]['canmoddelete'] == 1 || $mod[$mod['id']]['canmoddelcomment'] == 1) {
-                            $caneditdel = 1;
-                        }
-                        continue;
-                    }
-
-                    //check if user in mod group
-                    if (array_key_exists($mod[$mod['id']]['uid'], $usergroups) && $mod[$mod['id']]['isgroup'] == 1) {
-                        if ($mod[$mod['id']]['canmodapprove'] == 1) {
-                            $canapprove = 1;
-                        }
-
-                        if ($mod[$mod['id']]['canmodedit'] == 1 || $mod[$mod['id']]['canmoddelete'] == 1 || $mod[$mod['id']]['canmoddelcomment'] == 1) {
-                            $caneditdel = 1;
-                        }
-                        continue;
-                    }
-                }
-            }
-
-            //check if user in default mod groups
-            if (is_member(getSetting('moderatorGroups'))) {
-                $canapprove = 1;
-                $caneditdel = 1;
-            }
-
+        if ($me->enabled) {
             //load language if we are going to use it
-            if ($canapprove || $caneditdel) {
+            if ($me->userPermissions[ModeratorPermissions::CanApproveEntries] || $me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
                 loadLanguage();
             }
 
-            $showcase_path = $mybb->settings['bburl'] . '/' . $showcase['f2gpath'] . $showcase['mainfile'];
+            $showcaseUrl = \MyShowcase\Core\urlHandlerSet($me->mainFile);
 
             //awaiting approval
-            if ($canapprove) {
-                $query = $db->query(
-                    'SELECT COUNT(*) AS total FROM ' . TABLE_PREFIX . 'myshowcase_data' . $id . ' WHERE approved=0 GROUP BY approved'
-                );
-                $num_unapproved = $db->fetch_field($query, 'total');
-                if ($num_unapproved > 0) {
-                    $unapproved_text = str_replace('{num}', $num_unapproved, $lang->myshowcase_unapproved_count);
-                    $unapproved_text = str_replace('{name}', $showcase['name'], $unapproved_text);
-                    if ($unapproved_notice != '') {
-                        $unapproved_notice .= '<br />';
-                    }
-                    $unapproved_notice .= "<a href=\"" . $showcase_path . "?unapproved=1\" />{$unapproved_text}</a>";
+            if ($me->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+                $showcaseUnapprovedEntriesUrl = \MyShowcase\Core\urlHandlerBuild(['unapproved' => 1]);
+
+                $totalUnapprovedEntries = $me->entriesGetUnapprovedCount();
+
+                if ($totalUnapprovedEntries > 0) {
+                    $unapprovedText = $lang->sprintf(
+                        $lang->myshowcase_unapproved_count,
+                        $me->name,
+                        my_number_format($totalUnapprovedEntries)
+                    );
+
+                    $unapprovedEntriesNotices[] = eval(
+                    getTemplate(
+                        'globalMessageUnapprovedEntries',
+                        showcaseID: $me->id
+                    )
+                    );
                 }
             }
 
             //report notices
-            if ($caneditdel) {
-                $rep_ids[$id]['name'] = $showcase['name'];
-                $rep_ids[$id]['path'] = $showcase_path;
+            if ($me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
+                $showcaseReportedEntriesUrl = \MyShowcase\Core\urlHandlerBuild(['action' => 'reports']);
+
+                $totalReportedEntries = $me->entriesGetReportedCount();
+
+                if ($totalReportedEntries > 0) {
+                    $unapprovedText = $lang->sprintf(
+                        $lang->myshowcase_report_count,
+                        $me->name,
+                        my_number_format($totalReportedEntries)
+                    );
+
+                    $reportedEntriesNotices[] = eval(
+                    getTemplate(
+                        'globalMessageReportedEntries',
+                        showcaseID: $me->id
+                    )
+                    );
+                }
             }
         }
     }
 
-    if (count($rep_ids) > 0) {
-        $ids = implode("','", array_keys($rep_ids));
-        $reportObjects = reportGet(
-            ["id IN ('{$ids}')", "status='0'"],
-            ['COUNT(rid) AS total'],
-            ['group_by' => 'id, rid, status']
-        );
-
-        foreach ($reportObjects as $reportID => $reportData) {
-            $reported_text = str_replace('{num}', $reportData['total'], $lang->myshowcase_report_count);
-
-            $reported_text = str_replace('{name}', $rep_ids[$reportData['id']]['name'], $reported_text);
-
-            if ($reported_notice != '') {
-                $reported_notice .= '<br />';
-            }
-
-            $reported_notice .= "<a href=\"" . $rep_ids[$reportData['id']]['path'] . "?action=reports\" />{$reported_text}</a>";
-        }
+    if (!empty($unapprovedEntriesNotices)) {
+        $myShowcaseGlobalMessagesUnapprovedEntries = implode('', $unapprovedEntriesNotices);
     }
 
-    //get templates
-    if (!empty($unapproved_notice)) {
-        $myshowcase_unapproved = eval(getTemplate('unapproved'));
-    }
-
-    if (!empty($reported_notice)) {
-        $myshowcase_reported = eval(getTemplate('reported'));
+    if (!empty($reportedEntriesNotices)) {
+        $myShowcaseGlobalMessagesReportedEntries = implode('', $reportedEntriesNotices);
     }
 
     return true;

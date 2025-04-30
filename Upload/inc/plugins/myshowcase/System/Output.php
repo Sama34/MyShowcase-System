@@ -15,10 +15,9 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
+use MyBB;
 use JetBrains\PhpStorm\NoReturn;
 use inc\datahandlers\MyShowcaseDataHandler;
-
-use MyBB;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\getTemplate;
@@ -67,7 +66,7 @@ class Output
 
         $buttonNewEntry = '';
 
-        if ($this->showcase->permissionCheck(PERMISSION_USER_CAN_NEW_ENTRY)) {
+        if ($this->showcase->userPermissions[UserPermissions::CanAddEntries]) {
             $urlNewEntry = SHOWCASE_URL_NEW;
 
             $buttonNewEntry = eval(getTemplate('buttonNewEntry'));
@@ -152,7 +151,7 @@ class Output
 
         $orderInput[$showcaseInputSortBy] = eval(getTemplate('pageMainTableTheadFieldSort'));
 
-        if ($this->showcase->seo_support) {
+        if ($this->showcase->friendlyUrlsEnabled) {
             $amp = '?';
         } else {
             $amp = '&amp;';
@@ -174,7 +173,7 @@ class Output
         //setup joins for query and build where clause based on search_field terms
         $showcaseSearchFields = $showcaseFields;
 
-        $queryTables = ["{$this->showcase->table_name} g"];
+        $queryTables = ["{$this->showcase->dataTableName} g"];
 
         $queryTables [] = 'users u ON (u.uid = g.uid)';
 
@@ -212,7 +211,7 @@ class Output
                         $whereClauses[] = "tbl_{$fieldName}.value LIKE '%{$db->escape_string($showcaseInputSearchKeywords)}%'";
                     }
 
-                    $whereClauses[] = "tbl_{$fieldName}.setid='{$this->showcase->fieldsetid}'";
+                    $whereClauses[] = "tbl_{$fieldName}.setid='{$this->showcase->fieldSetID}'";
                 }
             } elseif ($showcaseInputSearchField == 'username' && !$searchDone) {
                 $queryTables[] = 'users us ON (g.uid = us.uid)';
@@ -321,7 +320,7 @@ class Output
             // get first attachment for each showcase on this page
             $entryAttachmentsCache = [];
 
-            if ($this->showcase->use_attach) {
+            if ($this->showcase->userEntryAttachmentAsImage) {
                 $entryIDs = [];
 
                 while ($entryFieldData = $db->fetch_array($query)) {
@@ -416,21 +415,21 @@ class Output
                 $entryImageText = str_replace('{username}', $entryUsername, $lang->myshowcase_view_user);
 
                 //use default image is specified
-                if ($this->showcase->defaultimage != '' && (file_exists(
-                            $theme['imgdir'] . '/' . $this->showcase->defaultimage
+                if ($this->showcase->defaultImage != '' && (file_exists(
+                            $theme['imgdir'] . '/' . $this->showcase->defaultImage
                         ) || stristr(
                             $theme['imgdir'],
                             'http://'
                         ))) {
-                    $urlImage = $mybb->get_asset_url($theme['imgdir'] . '/' . $this->showcase->defaultimage);
+                    $urlImage = $mybb->get_asset_url($theme['imgdir'] . '/' . $this->showcase->defaultImage);
 
                     $entryImage = eval(getTemplate('pageMainTableRowsImage'));
                 }
 
                 //use showcase attachment if one exists, scaled of course
-                if ($this->showcase->use_attach) {
+                if ($this->showcase->userEntryAttachmentAsImage) {
                     if (stristr($entryAttachmentsCache[$entryFieldData['gid']]['filetype'], 'image/')) {
-                        $imagePath = $this->showcase->imgfolder . '/' . $entryAttachmentsCache[$entryFieldData['gid']]['attachname'];
+                        $imagePath = $this->showcase->imageFolder . '/' . $entryAttachmentsCache[$entryFieldData['gid']]['attachname'];
 
                         if ($entryAttachmentsCache[$entryFieldData['gid']]['aid'] && file_exists($imagePath)) {
                             if ($entryAttachmentsCache[$entryFieldData['gid']]['thumbnail'] == 'SMALL') {
@@ -439,7 +438,7 @@ class Output
                                 $entryImage = eval(getTemplate('pageMainTableRowsImage'));
                             } else {
                                 $urlImage = $mybb->get_asset_url(
-                                    $this->showcase->imgfolder . '/' . $entryAttachmentsCache[$entryFieldData['gid']]['thumbnail']
+                                    $this->showcase->imageFolder . '/' . $entryAttachmentsCache[$entryFieldData['gid']]['thumbnail']
                                 );
 
                                 $entryImage = eval(getTemplate('pageMainTableRowsImage'));
@@ -541,14 +540,14 @@ class Output
                                 break;
                         }
                     } else {
-                        $entryFieldText = $this->showcase->parse_message($entryFieldText);
+                        $entryFieldText = $this->showcase->parseMessage($entryFieldText);
                     }
 
                     $showcaseTableRowExtra .= eval(getTemplate('pageMainTableRowsExtra'));
                 }
 
-                if ($this->showcase->permissionCheck(PERMISSION_MODERATOR_CAN_APPROVE) &&
-                    $this->showcase->permissionCheck(PERMISSION_MODERATOR_CAN_DELETE)) {
+                if ($this->showcase->userPermissions[ModeratorPermissions::CanApproveEntries] &&
+                    $this->showcase->userPermissions[ModeratorPermissions::CanDeleteEntries]) {
                     $inlineModerationCheckElement = '';
 
                     if (isset($mybb->cookies['inlinemod_showcase' . $this->showcase->id]) &&
@@ -600,8 +599,8 @@ class Output
         } else {
             //$colcount = 5;
 
-            if ($this->showcase->permissionCheck(PERMISSION_MODERATOR_CAN_APPROVE) &&
-                $this->showcase->permissionCheck(PERMISSION_MODERATOR_CAN_DELETE)) {
+            if ($this->showcase->userPermissions[ModeratorPermissions::CanApproveEntries] &&
+                $this->showcase->userPermissions[ModeratorPermissions::CanDeleteEntries]) {
                 // ++$colcount;
             }
 
@@ -656,22 +655,22 @@ class Output
         global $showcaseFieldsMaximumLength, $showcaseFieldsFormat, $showcaseFieldsRequired, $showcaseFieldsMinimumLength, $showcase_url;
 
 
-        global $currentUserID, $entryID, $entryHash, $showcase_data;
+        global $entryID, $entryHash, $showcase_data;
 
         $hookArguments = [];
 
-        $showcaseUserID = $currentUserID;
+        $showcaseUserID = $this->showcase->currentUserID;
 
         $showcaseUserData = $mybb->user;
 
-        if ($isEditPage && $currentUserID != $mybb->get_input('authid', MyBB::INPUT_INT)) {
+        if ($isEditPage && $this->showcase->currentUserID != $mybb->get_input('authid', MyBB::INPUT_INT)) {
             //get showcase author info
             $showcaseUserID = (int)$mybb->get_input('authid', MyBB::INPUT_INT);
 
             $showcaseUserData = get_user($showcaseUserID);
         }
 
-        $showcaseUserPermissions = $this->showcase->get_user_permissions($showcaseUserID);
+        $showcaseUserPermissions = $this->showcase->userPermissionsGet($showcaseUserID);
 
         if ($mybb->request_method === 'post') {
             verify_post_check($mybb->get_input('my_post_key'));
@@ -694,7 +693,7 @@ class Output
                     $showcase_action = 'new';
 
                     //need to populated a default user value here for new entries
-                    $showcase_data['uid'] = $currentUserID;
+                    $showcase_data['uid'] = $this->showcase->currentUserID;
                 } else {
                     $showcase_editing_user = str_replace(
                         '{username}',
@@ -706,7 +705,7 @@ class Output
                 }
 
                 // Get a listing of the current attachments.
-                if (!empty($showcaseUserPermissions['canattach'])) {
+                if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
                     $attachcount = 0;
 
                     $attachments = '';
@@ -737,10 +736,10 @@ class Output
                     $lang->myshowcase_attach_quota = $lang->sprintf(
                             $lang->myshowcase_attach_quota,
                             $attachcount,
-                            ($showcaseUserPermissions['attachlimit'] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions['attachlimit'])
+                            ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
                         ) . '<br>';
-                    if ($showcaseUserPermissions['attachlimit'] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions['attachlimit'] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions['attachlimit']))) {
-                        if ($this->showcase->userperms['canwatermark']) {
+                    if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit]))) {
+                        if ($this->showcase->userPermissions[UserPermissions::CanWaterMarkAttachments]) {
                             $showcase_watermark = eval(getTemplate('watermark'));
                         }
                         $showcase_new_attachments_input = eval(getTemplate('new_attachments_input'));
@@ -750,12 +749,12 @@ class Output
 
                 if ($mybb->request_method == 'post' && $mybb->get_input('submit')) {
                     // Decide on the visibility of this post.
-                    if ($this->showcase->modnewedit && !$this->showcase->userperms['canmodapprove']) {
+                    if ($this->showcase->moderateEdits && !$this->showcase->userPermissions[ModeratorPermissions::CanApproveEntries]) {
                         $approved = 0;
                         $approved_by = 0;
                     } else {
                         $approved = 1;
-                        $approved_by = $currentUserID;
+                        $approved_by = $this->showcase->currentUserID;
                     }
 
                     $plugins->run_hooks('myshowcase_do_newedit_start');
@@ -917,7 +916,7 @@ class Output
                                 $showcase_field_options = '';
 
                                 $fieldDataObjects = fieldDataGet(
-                                    ["setid='{$this->showcase->fieldsetid}'", "name='{$fname}'", "valueid!='0'"],
+                                    ["setid='{$this->showcase->fieldSetID}'", "name='{$fname}'", "valueid!='0'"],
                                     ['valueid', 'value'],
                                     ['order_by' => 'disporder']
                                 );
@@ -959,7 +958,7 @@ class Output
                                 $showcase_field_checked = '';
 
                                 $fieldDataObjects = fieldDataGet(
-                                    ["setid='{$this->showcase->fieldsetid}'", "name='{$fname}'", "valueid!='0'"],
+                                    ["setid='{$this->showcase->fieldSetID}'", "name='{$fname}'", "valueid!='0'"],
                                     ['valueid', 'value'],
                                     ['order_by' => 'disporder']
                                 );
@@ -1046,10 +1045,10 @@ class Output
         }
 
         if ($isEditPage) {
-            if (!$this->showcase->permissionCheck(PERMISSION_USER_CAN_EDIT_ENTRY)) {
+            if (!$this->showcase->userPermissions[UserPermissions::CanEditEntries]) {
                 error($lang->myshowcase_not_authorized);
             }
-        } elseif (!$this->showcase->permissionCheck(PERMISSION_USER_CAN_NEW_ENTRY)) {
+        } elseif (!$this->showcase->userPermissions[UserPermissions::CanAddEntries]) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -1062,7 +1061,7 @@ class Output
         $attachmentsTable = '';
 
         // Get a listing of the current attachments.
-        if (!empty($showcaseUserPermissions['canattach'])) {
+        if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
             $attachcount = 0;
 
             $attachments = '';
@@ -1092,11 +1091,11 @@ class Output
             $lang->myshowcase_attach_quota = $lang->sprintf(
                     $lang->myshowcase_attach_quota,
                     $attachcount,
-                    ($showcaseUserPermissions['attachlimit'] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions['attachlimit'])
+                    ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
                 ) . '<br>';
-            if ($showcaseUserPermissions['attachlimit'] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions['attachlimit'] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions['attachlimit'])) {
-                if ($this->showcase->userperms['canwatermark'] && $this->showcase->watermarkimage != '' && file_exists(
-                        $this->showcase->watermarkimage
+            if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit])) {
+                if ($this->showcase->userPermissions[UserPermissions::CanWaterMarkAttachments] && $this->showcase->waterMarkImage != '' && file_exists(
+                        $this->showcase->waterMarkImage
                     )) {
                     $showcase_watermark = eval(getTemplate('watermark'));
                 }
@@ -1166,7 +1165,7 @@ class Output
                     $showcase_field_options = '';
 
                     $fieldObjects = fieldDataGet(
-                        ["setid='{$this->showcase->fieldsetid}'", "name='{$fieldName}'", "valueid!='0'"],
+                        ["setid='{$this->showcase->fieldSetID}'", "name='{$fieldName}'", "valueid!='0'"],
                         ['valueid', 'value'],
                         ['order_by' => 'disporder']
                     );
@@ -1209,7 +1208,7 @@ class Output
                     $showcase_field_checked = '';
 
                     $fieldDataObjects = fieldDataGet(
-                        ["setid='{$this->showcase->fieldsetid}'", "name='{$fieldName}'", "valueid!='0'"],
+                        ["setid='{$this->showcase->fieldSetID}'", "name='{$fieldName}'", "valueid!='0'"],
                         ['valueid', 'value'],
                         ['order_by' => 'disporder']
                     );
@@ -1299,6 +1298,8 @@ class Output
 
     #[NoReturn] public function edit(): void
     {
+        global $lang;
+
         if (!$entryID || $entryID == '') {
             error($lang->myshowcase_invalid_id);
         }
@@ -1310,7 +1311,7 @@ class Output
         }
 
         //make sure current user is moderator or the myshowcase author
-        if (!$this->showcase->userperms['canmodedit'] && $currentUserID != $entryFieldData['uid']) {
+        if (!$this->showcase->userPermissions[ModeratorPermissions::CanEditEntries] && $this->showcase->currentUserID != $entryFieldData['uid']) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -1322,7 +1323,7 @@ class Output
         $showcase_authid = $showcaseUserData['uid'];
 
         //get permissions for user
-        $showcase_authorperms = $this->showcase->get_user_permissions($showcaseUserID);
+        $showcase_authorperms = $this->showcase->userPermissionsGet($showcaseUserID);
 
         $entryHash = $entryFieldData['posthash'];
         //no break since edit will share NEW code

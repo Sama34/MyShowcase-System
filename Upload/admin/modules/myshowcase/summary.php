@@ -13,12 +13,15 @@
 
 declare(strict_types=1);
 
+use MyShowcase\System\ModeratorPermissions;
+use MyShowcase\System\UserPermissions;
+
 use function MyShowcase\Admin\dbVerifyTables;
 use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
-use function MyShowcase\Core\commentDelete;
+use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentGet;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldsetGet;
@@ -37,7 +40,7 @@ use function MyShowcase\Core\showcaseDelete;
 use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\showcaseDataGet;
 use function MyShowcase\Core\showcaseInsert;
-use function MyShowcase\Core\showcasePermissions;
+use function MyShowcase\Core\showcaseDefaultPermissions;
 use function MyShowcase\Core\showcaseUpdate;
 use function MyShowcase\Core\urlHandlerBuild;
 
@@ -151,12 +154,12 @@ if ($mybb->get_input('action') === 'new') {
 
             $showcaseID = showcaseInsert($showcaseData);
 
-            $defaultShowcasePermissions = showcasePermissions();
+            $defaultShowcasePermissions = showcaseDefaultPermissions();
 
             foreach ($groupsCache as $groupData) {
                 $defaultShowcasePermissions['id'] = $showcaseID;
 
-                $defaultShowcasePermissions['gid'] = $groupData['gid'];
+                $defaultShowcasePermissions['gid'] = (int)$groupData['gid'];
 
                 permissionsInsert($defaultShowcasePermissions);
             }
@@ -389,7 +392,7 @@ if ($mybb->get_input('action') === 'new') {
 
                     $permissionsData = [];
 
-                    foreach (showcasePermissions() as $permissionKey => $defaultValue) {
+                    foreach (showcaseDefaultPermissions() as $permissionKey => $permissionValue) {
                         $permissionsData[$permissionKey] = (int)($groupPermissions[$permissionKey] ?? 0);
                     }
 
@@ -421,10 +424,10 @@ if ($mybb->get_input('action') === 'new') {
                         $permissions = array_map('intval', $permissions);
 
                         $moderatorData = [
-                            'canmodapprove' => $permissions['canmodapprove'] ?? 0,
-                            'canmodedit' => $permissions['canmodedit'] ?? 0,
-                            'canmoddelete' => $permissions['canmoddelete'] ?? 0,
-                            'canmoddelcomment' => $permissions['canmoddelcomment'] ?? 0,
+                            ModeratorPermissions::CanApproveEntries => $permissions[ModeratorPermissions::CanApproveEntries] ?? 0,
+                            ModeratorPermissions::CanEditEntries => $permissions[ModeratorPermissions::CanEditEntries] ?? 0,
+                            ModeratorPermissions::CanDeleteEntries => $permissions[ModeratorPermissions::CanDeleteEntries] ?? 0,
+                            ModeratorPermissions::CanDeleteComments => $permissions[ModeratorPermissions::CanDeleteComments] ?? 0,
                         ];
 
                         moderatorsUpdate(["id='{$showcaseID}'", "mid='{$moderatorID}'"], $moderatorData);
@@ -448,10 +451,22 @@ if ($mybb->get_input('action') === 'new') {
                         'id' => $showcaseID,
                         'uid' => $groupID,
                         'isgroup' => MODERATOR_TYPE_GROUP,
-                        'canmodapprove' => $mybb->get_input('gcanmodapprove', MyBB::INPUT_INT),
-                        'canmodedit' => $mybb->get_input('gcanmodedit', MyBB::INPUT_INT),
-                        'canmoddelete' => $mybb->get_input('gcanmoddelete', MyBB::INPUT_INT),
-                        'canmoddelcomment' => $mybb->get_input('gcanmoddelcomment', MyBB::INPUT_INT),
+                        ModeratorPermissions::CanApproveEntries => $mybb->get_input(
+                            'gcanmodapprove',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanEditEntries => $mybb->get_input(
+                            'gcanmodedit',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanDeleteEntries => $mybb->get_input(
+                            'gcanmoddelete',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanDeleteComments => $mybb->get_input(
+                            'gcanmoddelcomment',
+                            MyBB::INPUT_INT
+                        ),
                     ];
 
                     moderatorsInsert($moderatorData);
@@ -472,10 +487,22 @@ if ($mybb->get_input('action') === 'new') {
                         'id' => $showcaseID,
                         'uid' => (int)$userData['uid'],
                         'isgroup' => MODERATOR_TYPE_USER,
-                        'canmodapprove' => $mybb->get_input('ucanmodapprove', MyBB::INPUT_INT),
-                        'canmodedit' => $mybb->get_input('ucanmodedit', MyBB::INPUT_INT),
-                        'canmoddelete' => $mybb->get_input('ucanmoddelete', MyBB::INPUT_INT),
-                        'canmoddelcomment' => $mybb->get_input('ucanmoddelcomment', MyBB::INPUT_INT),
+                        ModeratorPermissions::CanApproveEntries => $mybb->get_input(
+                            'ucanmodapprove',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanEditEntries => $mybb->get_input(
+                            'ucanmodedit',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanDeleteEntries => $mybb->get_input(
+                            'ucanmoddelete',
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanDeleteComments => $mybb->get_input(
+                            'ucanmoddelcomment',
+                            MyBB::INPUT_INT
+                        ),
                     ];
 
                     moderatorsInsert($moderatorData);
@@ -921,11 +948,11 @@ if ($mybb->get_input('action') === 'new') {
         ['class' => 'align_center']
     );
 
-    $defaultShowcasePermissions = showcasePermissions();
+    $defaultShowcasePermissions = showcaseDefaultPermissions();
 
     reset($groupsCache);
 
-    reset($defaultShowcasePermissions);
+    //reset($defaultShowcasePermissions);
 
     foreach ($groupsCache as $group) {
         $formContainer->output_cell(
@@ -933,10 +960,10 @@ if ($mybb->get_input('action') === 'new') {
             ['class' => 'align_left']
         );
 
-        foreach ($defaultShowcasePermissions as $permissionKey => $defaultValue) {
+        foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
             $lang_field = 'myshowcase_' . $permissionKey;
 
-            if ($permissionKey == 'attachlimit') {
+            if ($permissionKey == UserPermissions::AttachmentsLimit) {
                 $formContainer->output_cell(
                     $form->generate_numeric_field(
                         "permissions[{$group['gid']}][{$permissionKey}]",
@@ -1018,7 +1045,15 @@ if ($mybb->get_input('action') === 'new') {
 
     $fieldObjects = moderatorGet(
         ["id='{$showcaseID}'"],
-        ['mid', 'uid', 'isgroup', 'canmodapprove', 'canmodedit', 'canmoddelete', 'canmoddelcomment'],
+        [
+            'mid',
+            'uid',
+            'isgroup',
+            ModeratorPermissions::CanApproveEntries,
+            ModeratorPermissions::CanEditEntries,
+            ModeratorPermissions::CanDeleteEntries,
+            ModeratorPermissions::CanDeleteComments
+        ],
         ['order_by' => 'isgroup']
     );
 
@@ -1054,7 +1089,10 @@ if ($mybb->get_input('action') === 'new') {
                 "permissions[{$moderatorData['mid']}][canmodapprove]",
                 1,
                 '',
-                ['checked' => $moderatorData['canmodapprove'], 'id' => "modapprove{$moderatorData['mid']}"]
+                [
+                    'checked' => $moderatorData[ModeratorPermissions::CanApproveEntries],
+                    'id' => "modapprove{$moderatorData['mid']}"
+                ]
             ),
             ['class' => 'align_center']
         );
@@ -1064,7 +1102,10 @@ if ($mybb->get_input('action') === 'new') {
                 "permissions[{$moderatorData['mid']}][canmodedit]",
                 1,
                 '',
-                ['checked' => $moderatorData['canmodedit'], 'id' => "modedit{$moderatorData['mid']}"]
+                [
+                    'checked' => $moderatorData[ModeratorPermissions::CanEditEntries],
+                    'id' => "modedit{$moderatorData['mid']}"
+                ]
             ),
             ['class' => 'align_center']
         );
@@ -1074,7 +1115,10 @@ if ($mybb->get_input('action') === 'new') {
                 "permissions[{$moderatorData['mid']}][canmoddelete]",
                 1,
                 '',
-                ['checked' => $moderatorData['canmoddelete'], 'id' => "moddelete{$moderatorData['mid']}"]
+                [
+                    'checked' => $moderatorData[ModeratorPermissions::CanDeleteEntries],
+                    'id' => "moddelete{$moderatorData['mid']}"
+                ]
             ),
             ['class' => 'align_center']
         );
@@ -1084,7 +1128,10 @@ if ($mybb->get_input('action') === 'new') {
                 "permissions[{$moderatorData['mid']}][canmoddelcomment]",
                 1,
                 '',
-                ['checked' => $moderatorData['canmoddelcomment'], 'id' => "moddelcomment{$moderatorData['mid']}"]
+                [
+                    'checked' => $moderatorData[ModeratorPermissions::CanDeleteComments],
+                    'id' => "moddelcomment{$moderatorData['mid']}"
+                ]
             ),
             ['class' => 'align_center']
         );
@@ -1529,7 +1576,7 @@ if ($mybb->get_input('action') === 'new') {
 
         hooksRun('admin_summary_delete_post');
 
-        commentDelete(["id='{$showcaseID}'"]);
+        commentsDelete(["id='{$showcaseID}'"]);
 
         attachmentDelete(["id='{$showcaseID}'"]);
 

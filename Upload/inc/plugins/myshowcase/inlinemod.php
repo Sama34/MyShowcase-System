@@ -13,13 +13,15 @@
 
 declare(strict_types=1);
 
+use MyShowcase\System\ModeratorPermissions;
+
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\showcaseDataUpdate;
 
 global $mybb, $lang, $db, $templates, $plugins;
 global $me;
 
-global $showcaseInputOrder, $currentUserID, $showcaseInputSortBy, $currentPage;
+global $showcaseInputOrder, $showcaseInputSortBy, $currentPage;
 
 switch ($mybb->get_input('action')) {
     case 'multiapprove';
@@ -28,14 +30,16 @@ switch ($mybb->get_input('action')) {
     case 'multiunapprove';
     {
         //verify if moderator and coming in from a click
-        if (!$me->userperms['canmodapprove'] && $mybb->get_input('modtype') != 'inlineshowcase') {
+        if (!$me->userPermissions[ModeratorPermissions::CanApproveEntries] && $mybb->get_input(
+                'modtype'
+            ) != 'inlineshowcase') {
             error($lang->myshowcase_not_authorized);
         }
 
         // Verify incoming POST request
         verify_post_check($mybb->get_input('my_post_key'));
 
-        $gids = $me->getids('all', 'showcase');
+        $gids = $me->inlineGetIDs();
         array_map('intval', $gids);
 
         if (count($gids) < 1) {
@@ -47,7 +51,7 @@ switch ($mybb->get_input('action')) {
         foreach ($gids as $entryID) {
             showcaseDataUpdate($me->id, $entryID, [
                 'approved' => $mybb->get_input('action') === 'multiapprove' ? 1 : 0,
-                'approved_by' => $currentUserID,
+                'approved_by' => $me->currentUserID,
             ]);
         }
 
@@ -62,7 +66,7 @@ switch ($mybb->get_input('action')) {
             ) == 'multiapprove' ? $lang->myshowcase_mod_approve : $lang->myshowcase_mod_unapprove)
         );
 
-        $me->clearinline(-1, 'showcase');
+        $me->inlineClear();
 
         //build URL to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
@@ -93,14 +97,16 @@ switch ($mybb->get_input('action')) {
     {
         add_breadcrumb($lang->myshowcase_nav_multidelete);
 
-        if (!$me->userperms['canmoddelete'] && $mybb->get_input('modtype') != 'inlineshowcase') {
+        if (!$me->userPermissions[ModeratorPermissions::CanDeleteEntries] && $mybb->get_input(
+                'modtype'
+            ) != 'inlineshowcase') {
             error($lang->myshowcase_not_authorized);
         }
 
         // Verify incoming POST request
         verify_post_check($mybb->get_input('my_post_key'));
 
-        $gids = $me->getids('all', 'showcase');
+        $gids = $me->inlineGetIDs();
 
         if (count($gids) < 1) {
             error($lang->myshowcase_no_myshowcaseselected);
@@ -108,7 +114,7 @@ switch ($mybb->get_input('action')) {
 
         $inlineids = implode('|', $gids);
 
-        $me->clearinline(-1, 'showcase');
+        $me->inlineClear();
 
         //build URl to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);
@@ -133,7 +139,7 @@ switch ($mybb->get_input('action')) {
     }
     case 'do_multidelete';
     {
-        if (!$me->userperms['canmoddelete']) {
+        if (!$me->userPermissions[ModeratorPermissions::CanDeleteEntries]) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -144,13 +150,13 @@ switch ($mybb->get_input('action')) {
 
         foreach ($gids as $gid) {
             $gid = intval($gid);
-            $me->delete($gid);
+            $me->entryDelete($gid);
             $glist[] = $gid;
         }
 
         //log_moderator_action($modlogdata, $lang->multi_deleted_threads);
 
-        $me->clearinline(-1, 'showcase');
+        $me->inlineClear();
 
         //build URl to get back to where mod action happened
         $showcaseInputSortBy = $db->escape_string($showcaseInputSortBy);

@@ -15,260 +15,151 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
-use Postparser;
-
+use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
-use function MyShowcase\Core\attachmentRemove;
 use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\commentDelete;
+use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\getSetting;
-use function MyShowcase\Core\showcaseDataDelete;
+use function MyShowcase\Core\hooksRun;
+use function MyShowcase\Core\postParser;
+use function MyShowcase\Core\reportGet;
 use function MyShowcase\Core\showcaseDataTableExists;
-use function MyShowcase\Core\showcasePermissions;
+use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
+use function MyShowcase\Core\showcaseDefaultPermissions;
 
+use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-
-const PERMISSION_USER_CAN_NEW_ENTRY = 'canadd';
-
-const PERMISSION_USER_CAN_EDIT_ENTRY = 'canedit';
-
-const PERMISSION_MODERATOR_CAN_APPROVE = 'canmodapprove';
-
-const PERMISSION_MODERATOR_CAN_DELETE = 'canmoddelete';
+use const MyShowcase\Core\GUEST_GROUP_ID;
 
 class Showcase
 {
-    /**
-     * The ID of the current showcase.
-     * @var int
-     */
-    public int $id;
-
-    /**
-     * The name of the current showcase
-     * @var string
-     */
-    public string $name;
-
-    /**
-     * The description of the current showcase
-     * @var string
-     */
-    public string $description;
-
-    /**
-     * The main PHP file of the current showcase
-     * @var string
-     */
-    public string $mainfile;
-
-    /**
-     * The ID of the fieldset used in the current showcase
-     * @var int
-     */
-    public int $fieldsetid;
-
-    /**
-     * The image folder of the current showcase
-     * @var string
-     */
-    public string $imgfolder;
-
-    /**
-     * The default image for each record in the list view of the current showcase
-     * @var string
-     */
-    public string $defaultimage;
-
-    /**
-     * The watermark image to use as a watermark
-     * @var string
-     */
-    public string $watermarkimage;
-
-    /**
-     * The watermark location
-     * @var string
-     */
-    public string $watermarkloc;
-
-    /**
-     * The option to use an attachment in list view or not
-     * @var string
-     */
-    public bool $use_attach;
-
-    /**
-     * The relative path from the forum to the current showcase
-     * @var string
-     */
-    public string $f2gpath;
-
-    /**
-     * The status of the current showcase
-     * @var int
-     */
-    public bool $enabled;
-
-    /**
-     * The number of seconds from last edit to remove entry of the current showcase
-     * @var int
-     */
-    public int $prunetime;
-
-    /**
-     * The moderation status of the current showcase
-     * @var int
-     */
-    public $modnewedit;
-
-    /**
-     * Allow smilies in the current showcase
-     * @var bool
-     */
-    public bool $allowsmilies;
-
-    /**
-     * Allow BBCode the current showcase
-     * @var bool
-     */
-    public bool $allowbbcode;
-
-    /**
-     * Allow HTML the current showcase
-     * @var bool
-     */
-    public bool $allowhtml;
-
-    /**
-     * The maxlength of the 'other' field of the current showcase
-     * @var int
-     */
-    public int $othermaxlength;
-
-    /**
-     * Allow attachments in the current showcase
-     * @var bool
-     */
-    public bool $allow_attachments;
-
-    /**
-     * Allow comments in the current showcase
-     * @var int
-     */
-    public bool $allow_comments;
-
-    /**
-     * The thumbnail width of the current showcase
-     * @var int
-     */
-    public int $thumb_width;
-
-    /**
-     * The thumbnail height of the current showcase
-     * @var int
-     */
-    public int $thumb_height;
-
-    /**
-     * The max comment length of the current showcase
-     * @var int
-     */
-    public int $comment_length;
-
-    /**
-     * The number of comments to display initially of the current showcase
-     * @var int
-     */
-    public int $comment_dispinit;
-
-    /**
-     * The number of columns of attachments to disaply in the current showcase
-     * @var int
-     */
-    public int $disp_attachcols;
-
-    /**
-     * Dispaly empty fields in the current showcase
-     * @var int
-     */
-    public bool $disp_empty;
-
-    /**
-     * Try to display and entry with attachment in this showcase on the portal
-     * @var int
-     */
-    public bool $portal_random;
-
-    /**
-     * Table name of the showcase data
-     * @var string
-     */
-    public string $table_name;
-
-    /**
-     * Basename of the calling file
-     * @var string
-     */
-    public string $prefix;
-
-    /**
-     * Clean name for URL/SEO
-     * @var string
-     */
-    public string $clean_name;
-
-    /**
-     * User permissions array for this showcase
-     * @var Array
-     */
-    public array $userperms;
-
-    /**
-     * Mod permissions array for this showcase
-     * @var Array
-     */
-    public array $modperms;
-
-    public bool $seo_support;
-
-    public array $parser_options;
-
     /**
      * Constructor of class.
      *
      * @return Showcase
      */
-    public function __construct(string $filename = THIS_SCRIPT)
-    {
+    public function __construct(
+        public string $fileName = THIS_SCRIPT,
+        public string $dataTableName = '',
+        public string $prefix = '',
+        public string $cleanName = '',
+        public int $currentUserID = 0,
+        public array $userPermissions = [],
+        public bool $friendlyUrlsEnabled = false,
+        public array $parserOptions = [
+            'filter_badwords' => true,
+            'highlight' => '',
+            'nl2br' => true
+        ],
+        public array &$userData = [],
+        public int $errorType = 0,
+        #Config
+        public int $id = 0,
+        public string $name = '',
+        public string $description = '',
+        public string $mainFile = '',
+        public int $fieldSetID = 0,
+        public string $imageFolder = '',
+        public string $defaultImage = '',
+        public string $waterMarkImage = '',
+        public string $waterMarkLocation = '',
+        public bool $userEntryAttachmentAsImage = false,
+        public string $relativePath = '',
+        public bool $enabled = false,
+        public bool $parserAllowSmiles = false,
+        public bool $parserAllowMyCode = false,
+        public bool $parserAllowHTML = false,
+        public int $pruneTime = 0,
+        public bool $moderateEdits = false,
+        public int $maximumLengthForTextFields = 0,
+        public bool $allowAttachments = false,
+        public bool $allowComments = false,
+        public int $attachmentThumbWidth = 0,
+        public int $attachmentThumbHeight = 0,
+        public int $commentsMaximumLength = 0,
+        public int $commentsPerPageLimit = 0,
+        public int $commentsAttachmentsPerRowLimit = 0,
+        public bool $displayEmptyFields = false,
+        public bool $linkInPosts = false,
+        public bool $portalShowRandomAttachmentWidget = false
+    ) {
         global $db, $mybb, $cache;
 
-        if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && isset($_SERVER['SEO_SUPPORT']) && $_SERVER['SEO_SUPPORT'] == 1)) {
-            $this->seo_support = true;
-        } else {
-            $this->seo_support = false;
-        }
+        $this->friendlyUrlsEnabled = $mybb->settings['seourls'] === 'yes' ||
+            ($mybb->settings['seourls'] === 'auto' && isset($_SERVER['SEO_SUPPORT']) && (int)$_SERVER['SEO_SUPPORT'] === 1);
 
         //make sure plugin is installed and active
         $plugin_cache = $cache->read('plugins');
-        if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $plugin_cache['active'])) {
-            error('The MyShowcase System has not been installed and activated yet.');
-        }
-
-        //get this showcase's config info
-        $showcases = cacheGet(CACHE_TYPE_CONFIG);
 
         //check if the requesting file is in the cache
-        foreach ($showcases as $showcase) {
-            if ($showcase['mainfile'] === $filename)//THIS_SCRIPT)
-            {
-                foreach ($showcase as $key => $value) {
-                    $this->$key = $value;
-                }
-                continue;
+        foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcase) {
+            if ($showcase['mainfile'] === $this->fileName) {
+                $this->id = (int)$showcase['id'];
+
+                $this->name = (string)$showcase['name'];
+
+                $this->description = (string)$showcase['description'];
+
+                $this->mainFile = (string)$showcase['mainfile'];
+
+                $this->fieldSetID = (int)$showcase['fieldsetid'];
+
+                $this->imageFolder = (string)$showcase['imgfolder'];
+
+                $this->defaultImage = (string)$showcase['defaultimage'];
+
+                $this->waterMarkImage = (string)$showcase['watermarkimage'];
+
+                $this->waterMarkLocation = (string)$showcase['watermarkloc'];
+
+                $this->userEntryAttachmentAsImage = (bool)$showcase['use_attach'];
+
+                $this->relativePath = (string)$showcase['f2gpath'];
+
+                $this->enabled = (bool)$showcase['enabled'];
+
+                $this->parserAllowSmiles = (bool)$showcase['allowsmilies'];
+
+                $this->parserAllowMyCode = (bool)$showcase['allowbbcode'];
+
+                $this->parserAllowHTML = (bool)$showcase['allowhtml'];
+
+                $this->pruneTime = (int)$showcase['prunetime'];
+
+                $this->moderateEdits = (bool)$showcase['modnewedit'];
+
+                $this->maximumLengthForTextFields = (int)$showcase['othermaxlength'];
+
+                $this->allowAttachments = (bool)$showcase['allow_attachments'];
+
+                $this->allowComments = (bool)$showcase['allow_comments'];
+
+                $this->attachmentThumbWidth = (int)$showcase['thumb_width'];
+
+                $this->attachmentThumbHeight = (int)$showcase['thumb_height'];
+
+                $this->commentsMaximumLength = (int)$showcase['comment_length'];
+
+                $this->commentsPerPageLimit = (int)$showcase['comment_dispinit'];
+
+                $this->commentsAttachmentsPerRowLimit = (int)$showcase['disp_attachcols'];
+
+                $this->displayEmptyFields = (bool)$showcase['disp_empty'];
+
+                $this->linkInPosts = (bool)$showcase['allow_attachments'];
+
+                $this->portalShowRandomAttachmentWidget = (bool)$showcase['portal_random'];
+
+                break;
             }
+        }
+
+        if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $plugin_cache['active'])) {
+            $this->enabled = false;
+
+            $this->errorType = \MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
         }
 
         //clean the name and make it suitable for SEO
@@ -281,46 +172,47 @@ class Showcase
         );
 
         // Cut off punctuation at beginning and end.
-        $this->clean_name = preg_replace(
+        $this->cleanName = preg_replace(
             "/^[$pattern]+|[$pattern]+$/u",
             '',
             strtolower($this->name)
         );
 
         // Replace middle punctuation with one separator.
-        $this->clean_name = preg_replace(
+        $this->cleanName = preg_replace(
             "/[$pattern]+/u",
             '-',
-            $this->clean_name
+            $this->cleanName
         );
 
         //make sure data table exists and assign table name var if it does
         if (showcaseDataTableExists($this->id)) {
-            $this->table_name = 'myshowcase_data' . $this->id;
-        } else {
-            $this->table_name = '';
+            $this->dataTableName = 'myshowcase_data' . $this->id;
         }
 
-        if (!$this->id || !$this->table_name || $this->fieldsetid == 0) {
-            error('This file is not properly configured in the MyShowcase Admin section of the ACP');
+        if (!$this->id || !$this->dataTableName || !$this->fieldSetID) {
+            $this->enabled = false;
+
+            $this->errorType = \MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
         }
 
         //get basename of the calling file. This is used later for SEO support
-        $temp = explode('.', $this->mainfile);
-        $this->prefix = $temp[0];
+        $this->prefix = explode('.', $this->mainFile)[0];
 
-        //get group permissions now
-        $this->userperms = $this->get_user_permissions((int)$mybb->user['uid']);
+        if (isset($userData['uid'])) {
+            $this->currentUserID = (int)$userData['uid'];
+        }
 
-        $this->parser_options = [
-            'filter_badwords' => true,
-            'allow_html' => $this->allowhtml,
-            'allow_mycode' => $this->allowbbcode,
-            'me_username' => '',
-            'highlight' => '',
-            'allow_smilies' => $this->allowsmilies,
-            'nl2br' => true
-        ];
+        $this->userPermissions = $this->userPermissionsGet($this->currentUserID);
+
+        $this->parserOptions = array_merge($this->parserOptions, [
+            'allow_html' => $this->parserAllowHTML,
+            'allow_mycode' => $this->parserAllowMyCode,
+            'me_username' => $userData['username'] ?? '',
+            'allow_smilies' => $this->parserAllowSmiles
+        ]);
+
+        return $this;
     }
 
     /**
@@ -328,217 +220,184 @@ class Showcase
      *
      * @return array group permissions for the specific showcase
      */
-    public function get_group_permissions(): array
+    public function groupPermissionsGet(int $groupID = GUEST_GROUP_ID): array
     {
-        global $db, $cache, $config;
+        static $showcaseGroupPermissions = null;
 
-        require_once(MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php');
-        $showcase_group_perms = [];
+        if ($showcaseGroupPermissions === null) {
+            global $cache, $config;
 
-        $usergroups = $cache->read('usergroups');
+            //require_once MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php';
+            $defaultShowcasePermissions = showcaseDefaultPermissions();
 
-        $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
+            $showcaseGroupPermissions = [];
 
-        foreach ($permcache[$this->id] as $id => $showperms) {
-            $showcase_group_perms[$showperms['gid']]['id'] = $showperms['gid'];
-            $showcase_group_perms[$showperms['gid']]['name'] = $usergroups[$showperms['gid']]['title'];
-            $showcase_group_perms[$showperms['gid']]['canview'] = $showperms['canview'];
-            $showcase_group_perms[$showperms['gid']]['canadd'] = $showperms['canadd'];
-            $showcase_group_perms[$showperms['gid']]['canedit'] = $showperms['canedit'];
-            $showcase_group_perms[$showperms['gid']]['cancomment'] = $showperms['cancomment'];
-            $showcase_group_perms[$showperms['gid']]['canattach'] = $showperms['canattach'];
-            $showcase_group_perms[$showperms['gid']]['candelowncomment'] = $showperms['candelowncomment'];
-            $showcase_group_perms[$showperms['gid']]['candelauthcomment'] = $showperms['candelauthcomment'];
-            $showcase_group_perms[$showperms['gid']]['canviewcomment'] = $showperms['canviewcomment'];
-            $showcase_group_perms[$showperms['gid']]['canviewattach'] = $showperms['canviewattach'];
-            $showcase_group_perms[$showperms['gid']]['cansearch'] = $showperms['cansearch'];
-            $showcase_group_perms[$showperms['gid']]['canwatermark'] = $showperms['canwatermark'];
-            $showcase_group_perms[$showperms['gid']]['attachlimit'] = $showperms['attachlimit'];
-            $showcase_group_perms[$showperms['gid']]['intable'] = 1;
-        }
+            $groupsCache = (array)$cache->read('usergroups');
 
-        //load defaults if group not already in cache (e.g. group added since myshowcase created)
-        foreach ($usergroups as $group) {
-            if (!array_key_exists($group['gid'], $showcase_group_perms)) {
-                $showcase_group_perms[$group['gid']]['id'] = $group['gid'];
-                $showcase_group_perms[$group['gid']]['name'] = $group['title'];
-                $showcase_group_perms[$group['gid']]['canview'] = showcasePermissions()['canview'];
-                $showcase_group_perms[$group['gid']]['canadd'] = showcasePermissions()['canadd'];
-                $showcase_group_perms[$group['gid']]['canedit'] = showcasePermissions()['canedit'];
-                $showcase_group_perms[$group['gid']]['cancomment'] = showcasePermissions()['cancomment'];
-                $showcase_group_perms[$group['gid']]['canattach'] = showcasePermissions()['canattach'];
-                $showcase_group_perms[$group['gid']]['candelowncomment'] = showcasePermissions()['candelowncomment'];
-                $showcase_group_perms[$group['gid']]['candelauthcomment'] = showcasePermissions()['candelauthcomment'];
-                $showcase_group_perms[$group['gid']]['canviewcomment'] = showcasePermissions()['canviewcomment'];
-                $showcase_group_perms[$group['gid']]['canviewattach'] = showcasePermissions()['canviewattach'];
-                $showcase_group_perms[$group['gid']]['cansearch'] = showcasePermissions()['cansearch'];
-                $showcase_group_perms[$group['gid']]['canwatermark'] = showcasePermissions()['canwatermark'];
-                $showcase_group_perms[$group['gid']]['attachlimit'] = showcasePermissions()['attachlimit'];
-                $showcase_group_perms[$group['gid']]['intable'] = 0;
+            foreach (cacheGet(CACHE_TYPE_PERMISSIONS)[$this->id] as $showcasePermissions) {
+                $groupID = (int)$showcasePermissions['gid'];
+
+                $showcaseGroupPermissions[$groupID]['id'] = $groupID;
+                $showcaseGroupPermissions[$groupID]['name'] = $groupsCache[$groupID]['title'] ?? '';
+                //$showcaseGroupPermissions[$groupID]['intable'] = 1;
+
+                foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
+                    $showcaseGroupPermissions[$groupID][$permissionKey] = $permissionValue;
+                    $showcaseGroupPermissions[$groupID][$permissionKey] = $showcasePermissions[$permissionKey];
+                }
+            }
+
+            //load defaults if group not already in cache (e.g. group added since myshowcase created)
+            foreach ($groupsCache as $groupData) {
+                $groupID = (int)$groupData['gid'];
+
+                if (!array_key_exists($groupID, $showcaseGroupPermissions)) {
+                    $showcaseGroupPermissions[$groupID]['id'] = $groupID;
+                    $showcaseGroupPermissions[$groupID]['name'] = $groupData['title'] ?? '';
+                    //$showcaseGroupPermissions[$groupID]['intable'] = 0;
+
+                    foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
+                        $showcaseGroupPermissions[$groupID][$permissionKey] = $permissionValue;
+                    }
+                }
             }
         }
 
-        return $showcase_group_perms;
+        if ($groupID) {
+            return $showcaseGroupPermissions[$groupID] ?? [];
+        } else {
+            return $showcaseGroupPermissions;
+        }
     }
 
     /**
      * get user permissions for a specific showcase
      *
-     * @param int The User array for the user to build permissions for
+     * @param int $userID The User identifier for the user to build permissions for
      * @return array user permissions for the specific showcase
      */
-    public function get_user_permissions(int $userID): array
+    public function userPermissionsGet(int $userID): array
     {
-        global $cache, $mybb, $currentUserID;
+        $userData = get_user($userID);
 
-        //basic user permissions
+        $guestGroupPermissions = $this->groupPermissionsGet();
 
-        $user = get_user($userID);
+        $userPermissions = [];
 
-        $showcase_group_perms = $this->get_group_permissions();
+        foreach (showcaseDefaultPermissions() as $permissionKey => $permissionValue) {
+            $userPermissions[$permissionKey] = $guestGroupPermissions[$permissionKey];
+        }
 
-        //init to guest permissions
-        $showcase_user_perms['canview'] = $showcase_group_perms[1]['canview'];
-        $showcase_user_perms['canadd'] = $showcase_group_perms[1]['canadd'];
-        $showcase_user_perms['canedit'] = $showcase_group_perms[1]['canedit'];
-        $showcase_user_perms['cancomment'] = $showcase_group_perms[1]['cancomment'];
-        $showcase_user_perms['canattach'] = $showcase_group_perms[1]['canattach'];
-        $showcase_user_perms['candelowncomment'] = $showcase_group_perms[1]['candelowncomment'];
-        $showcase_user_perms['candelauthcomment'] = $showcase_group_perms[1]['candelauthcomment'];
-        $showcase_user_perms['canviewcomment'] = $showcase_group_perms[1]['canviewcomment'];
-        $showcase_user_perms['canviewattach'] = $showcase_group_perms[1]['canviewattach'];
-        $showcase_user_perms['cansearch'] = $showcase_group_perms[1]['cansearch'];
-        $showcase_user_perms['canwatermark'] = $showcase_group_perms[1]['canwatermark'];
-        $showcase_user_perms['attachlimit'] = $showcase_group_perms[1]['attachlimit'];
+        if (!empty($userData['uid'])) {
+            $userGroupsIDs = array_filter(
+                array_map(
+                    'intval',
+                    explode(',', "{$userData['usergroup']},{$userData['additionalgroups']}")
+                )
+            );
 
-        //set default mod perms
-        $modperms = [
-            'canmodapprove' => 0,
-            'canmodedit' => 0,
-            'canmoddelete' => 0,
-            'canmoddelcomment' => 0
-        ];
+            foreach (array_keys($userPermissions) as $permissionKey) {
+                foreach ($userGroupsIDs as $groupID) {
+                    $groupPermissions = $this->groupPermissionsGet($groupID);
 
-        //if not a guest, keep going....
-        if ($user['uid'] > 0) {
-            //user permissions for user's groups
-            $groups_csv = $user['usergroup'] . ($user['additionalgroups'] ? ',' . $user['additionalgroups'] : '');
-            $groups = explode(',', $groups_csv);
-
-            foreach ($showcase_user_perms as $field => $value) {
-                foreach ($groups as $gid) {
-                    $showcase_user_perms[$field] = ($showcase_group_perms[$gid][$field] == -1 ? -1 : max(
-                        $showcase_user_perms[$field],
-                        $showcase_group_perms[$gid][$field]
-                    ));
-                }
-            }
-
-            //check moderator perms
-
-            //assign full mod perms as default for supermod, admin groups if user in those groups
-            if (is_member(getSetting('moderatorGroups'), $user)) {
-                $modperms = [
-                    'canmodapprove' => 1,
-                    'canmodedit' => 1,
-                    'canmoddelete' => 1,
-                    'canmoddelcomment' => 1
-                ];
-            }
-
-            //get showcase moderator cache to handle additional mods/modgroups
-            $modcache = cacheGet(CACHE_TYPE_MODERATORS);
-            if (!empty($modcache[$this->id])) {
-                //get moderators specific to this myshowcase
-                $mods = $modcache[$this->id];
-
-                $modperms2 = [];
-
-                //check if user in additional moderator usergroup and use those perms instead (in case admin sets lower than full perms for  mod/super/admin groups)
-                foreach ($mods as $mid => $moddata) {
-                    if ($moddata['isgroup'] && in_array($moddata['uid'], $groups)) {
-                        $modperms2['canmodapprove'] = max($modperms2['canmodapprove'], $moddata['canmodapprove']);
-                        $modperms2['canmodedit'] = max($modperms2['canmodedit'], $moddata['canmodedit']);
-                        $modperms2['canmoddelete'] = max($modperms2['canmoddelete'], $moddata['canmoddelete']);
-                        $modperms2['canmoddelcomment'] = max(
-                            $modperms2['canmoddelcomment'],
-                            $moddata['canmoddelcomment']
-                        );
-                    }
-
-                    //check for specific user and use those permissions regardless of group perms
-                    if (!$moddata['isgroup'] && $moddata['uid'] == $currentUserID) {
-                        $modperms3 = [
-                            'canmodapprove' => $moddata['canmodapprove'],
-                            'canmodedit' => $moddata['canmodedit'],
-                            'canmoddelete' => $moddata['canmoddelete'],
-                            'canmoddelcomment' => $moddata['canmoddelcomment']
-                        ];
-
-                        //since we want user specific perms first, might as well continue here and skip the rest of the checks
-                        continue;
-                    }
-                }
-
-                //if user is in assigned moderator group, $modperms2 is an array so use those permissions
-                if (!empty($modperms2)) {
-                    $modperms = $modperms2;
-                }
-
-                //if user is in assigned as moderator , $modperms3 is an array so use those permissions
-                if (is_array($modperms3)) {
-                    $modperms = $modperms3;
+                    $userPermissions[$permissionKey] = ((int)$groupPermissions[$permissionKey] === ALL_UNLIMITED_VALUE ? -1 :
+                        max($userPermissions[$permissionKey], $groupPermissions[$permissionKey]));
                 }
             }
         }
 
-        //insert mod perms into user perms
-        $showcase_user_perms = array_merge($showcase_user_perms, $modperms);
+        return array_merge($userPermissions, $this->moderatorPermissionsGet($userID));
+    }
 
-        return $showcase_user_perms;
+    public function moderatorPermissionsGet(int $userID): array
+    {
+        $userData = get_user($userID);
+
+        $userModeratorPermissions = showcaseDefaultModeratorPermissions();
+
+        if (!empty($userData['uid'])) {
+            $userGroupsIDs = array_filter(
+                array_map(
+                    'intval',
+                    explode(',', "{$userData['usergroup']},{$userData['additionalgroups']}")
+                )
+            );
+
+            if (is_member(getSetting('superModeratorGroups'), $userData)) {
+                foreach ($userModeratorPermissions as $permissionKey => $permissionValue) {
+                    $userModeratorPermissions[$permissionKey] = true;
+                }
+            }
+
+            //get showcase moderator cache to handle additional mods/modgroups
+            $moderatorsCache = cacheGet(CACHE_TYPE_MODERATORS);
+
+            if (!empty($moderatorsCache[$this->id])) {
+                foreach ($moderatorsCache[$this->id] as $moderatorPermissions) {
+                    if ($moderatorPermissions['isgroup'] && in_array($moderatorPermissions['uid'], $userGroupsIDs) ||
+                        !$moderatorPermissions['isgroup'] && (int)$moderatorPermissions['uid'] === $this->currentUserID) {
+                        foreach ($userModeratorPermissions as $permissionKey => &$permissionValue) {
+                            $userModeratorPermissions[$permissionKey] = !empty($moderatorPermissions[$permissionKey]) ||
+                                !empty($permissionValue);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $userModeratorPermissions;
     }
 
     /**
      * get ids from cookie inline moderation
      */
-    public function getids(int $id, string $type): array
+    public function inlineGetIDs(int $id = ALL_UNLIMITED_VALUE, string $type = 'showcase'): array
     {
+        if ($id === ALL_UNLIMITED_VALUE) {
+            $id = 'all';
+        }
+
         global $mybb;
-        $cookie = 'inlinemod_' . $type . $id;
-        $ids = explode('|', $mybb->cookies[$cookie]);
-        foreach ($ids as $id) {
-            if ($id != '') {
-                $newids[] = intval($id);
+
+        $newIDs = [];
+
+        if (!empty($id)) {
+            foreach (explode('|', $mybb->cookies['inlinemod_' . $type . $id]) as $id) {
+                $newIDs[] = (int)$id;
             }
         }
-        return $newids;
+
+        return $newIDs;
     }
 
     /**
      * delete a showcase entry
      */
-    public function delete(int $gid): bool
+    public function entryDelete(int $entryID): bool
+    {
+        $this->attachmentsDelete($entryID);
+
+        $this->commentsDelete($entryID);
+
+        $this->showcaseDataDelete(["gid='{$entryID}'"]);
+
+        return true;
+    }
+
+    public function showcaseDataDelete(array $whereClauses = []): void
     {
         global $db;
 
-        $this->delete_attachments($gid, $this->id);
-
-        $this->delete_comments($gid, $this->id);
-
-        showcaseDataDelete($this->id, ["gid='{$gid}'"]);
-
-        return true;
+        $db->delete_query($this->dataTableName, implode(' AND ', $whereClauses));
     }
 
     /**
      * delete attachments from a showcase
      */
-    public function delete_attachments(int $entryID, int $id): bool
+    public function attachmentsDelete(int $entryID): bool
     {
-        foreach (
-            attachmentGet(["gid='{$entryID}'", "id='{$id}'"]) as $attachmentID => $attachmentData
-        ) {
-            attachmentRemove($this, '', (int)$attachmentID);
+        foreach (attachmentGet(["gid='{$entryID}'", "id='{$this->id}'"]) as $attachmentID => $attachmentData) {
+            attachmentDelete(["aid='{$attachmentID}'"]);
         }
 
         return true;
@@ -547,21 +406,17 @@ class Showcase
     /**
      * delete a comment
      */
-    public function delete_comments(int $gid, int $id): bool
+    public function commentsDelete(int $entryID): void
     {
-        global $db;
-
-        commentDelete(["gid='{$gid}'", "id='{$id}'"]);
-
-        return true;
+        commentsDelete(["gid='{$entryID}'", "id='{$this->id}'"]);
     }
 
     /**
      * clear cookie inline moderation
      */
-    public function clearinline(int $id, string $type): bool
+    public function inlineClear(int $id = ALL_UNLIMITED_VALUE, string $type = 'showcase'): bool
     {
-        if ($id === -1) {
+        if ($id === ALL_UNLIMITED_VALUE) {
             $id = 'all';
         }
 
@@ -573,35 +428,88 @@ class Showcase
     /**
      * add to cookie inline moderation
      */
-    public function extendinline(int $id, string $type): bool
+    public function inlineExtend(int $id, string $type): bool
     {
-        global $mybb;
-
         my_setcookie("inlinemod_$type.$id", '', TIME_NOW + 3600);
 
         return true;
     }
 
-    public function permissionCheck(string $permissionType): bool
+    public function permissionCheck(string $permissionKey): bool|int
     {
-        return !empty($this->userperms[$permissionType]);
+        return $this->userPermissions[$permissionKey];
     }
 
-    public function parser(): postParser
+    public function parseMessage(string $message, array $parserOptions = []): string
     {
-        global $parser;
+        return postParser()->parse_message(
+            $message,
+            array_merge($this->parserOptions, $parserOptions)
+        );
+    }
 
-        if (!($parser instanceof postParser)) {
-            require_once MYBB_ROOT . 'inc/class_parser.php';
+    public function attachmentsRemove(array $whereClauses): void
+    {
+        $whereClauses[] = "id='{$this->id}'";
 
-            $parser = new Postparser();
+        $attachmentObjects = attachmentGet($whereClauses, ['attachname', 'thumbnail', 'visible']);
+
+        $attachmentObjects = hooksRun('remove_attachment_do_delete', $attachmentObjects);
+
+        foreach ($attachmentObjects as $attachmentID => $attachmentData) {
+            attachmentDelete(["aid='{$attachmentID}'"]);
+
+            if (file_exists($this->imageFolder . '/' . $attachmentData['attachname'])) {
+                unlink($this->imageFolder . '/' . $attachmentData['attachname']);
+            }
+
+            if (!empty($attachmentData['thumbnail'])) {
+                if (file_exists($this->imageFolder . '/' . $attachmentData['thumbnail'])) {
+                    unlink($this->imageFolder . '/' . $attachmentData['thumbnail']);
+                }
+            }
+
+            $dateDirectory = explode('/', $attachmentData['attachname']);
+
+            if (!empty($dateDirectory[0]) && is_dir($this->imageFolder . '/' . $dateDirectory[0])) {
+                rmdir($this->imageFolder . '/' . $dateDirectory[0]);
+            }
         }
-
-        return $parser;
     }
 
-    public function parse_message(string $message, array $parserOptions = []): string
+    public function urlGet(): string
     {
-        return $this->parser()->parse_message($message, array_merge($this->parser_options, $parserOptions));
+        global $mybb;
+
+        return $mybb->settings['bburl'] . '/' . $this->relativePath . $this->mainFile;
+    }
+
+    public function entriesGetUnapprovedCount(): int
+    {
+        global $db;
+
+        $entryStatusUnapproved = \MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
+
+        $query = $db->simple_select(
+            $this->dataTableName,
+            'COUNT(gid) AS totalUnapprovedEntries',
+            "approved='{$entryStatusUnapproved}'",
+            [
+                'group_by' => 'gid, approved'
+            ]
+        );
+
+        return (int)$db->fetch_field($query, 'totalUnapprovedEntries');
+    }
+
+    public function entriesGetReportedCount(): int
+    {
+        $reportStatusPending = \MyShowcase\Core\REPORT_STATUS_PENDING;
+
+        return (int)(reportGet(
+            ["id='{$this->id}'", "status='{$reportStatusPending}'"],
+            ['COUNT(rid) AS totalReportedEntries'],
+            ['group_by' => 'id, rid, status']
+        )['totalReportedEntries'] ?? 0);
     }
 }

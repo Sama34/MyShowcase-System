@@ -13,15 +13,14 @@
 
 declare(strict_types=1);
 
+use MyShowcase\System\ModeratorPermissions;
+
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
-
 use function MyShowcase\Core\reportGet;
-
 use function MyShowcase\Core\reportInsert;
 use function MyShowcase\Core\reportUpdate;
-
 use function MyShowcase\Core\showcaseDataGet;
 
 use const MyShowcase\Core\CACHE_TYPE_REPORTS;
@@ -29,7 +28,7 @@ use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 global $mybb, $lang, $db, $templates, $plugins;
 global $me, $forumdir;
 
-global $currentUserID, $entryID;
+global $entryID;
 
 switch ($mybb->get_input('action')) {
     case 'report':
@@ -85,7 +84,7 @@ switch ($mybb->get_input('action')) {
         $insert_array = [
             'id' => $me->id,
             'gid' => $showcaseUserData['gid'],
-            'reporteruid' => $currentUserID,
+            'reporteruid' => $me->currentUserID,
             'authoruid' => $showcaseUserData['uid'],
             'status' => 0,
             'reason' => $db->escape_string($mybb->get_input('reason')),
@@ -117,7 +116,7 @@ switch ($mybb->get_input('action')) {
     {
         add_breadcrumb($lang->myshowcase_reports, SHOWCASE_URL);
 
-        if (!$me->userperms['canmodedit'] && !$me->userperms['canmoddelete'] && !$me->userperms['canmoddelcomment']) {
+        if (!$me->userPermissions[ModeratorPermissions::CanEditEntries] && !$me->userPermissions[ModeratorPermissions::CanDeleteEntries] && !$me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
             error_no_permission();
         }
 
@@ -176,7 +175,7 @@ switch ($mybb->get_input('action')) {
         }
         $upper = $start + $reportsPerPage;
 
-        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainfile . '?action=reports');
+        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainFile . '?action=reports');
         if ($postcount > $reportsPerPage) {
             $reportspages = eval(getTemplate('reports_multipage'));
         }
@@ -264,7 +263,7 @@ switch ($mybb->get_input('action')) {
     {
         add_breadcrumb($lang->myshowcase_reports, SHOWCASE_URL);
 
-        if (!$me->userperms['canmodedit'] && !$me->userperms['canmoddelete'] && !$me->userperms['canmoddelcomment']) {
+        if (!$me->userPermissions[ModeratorPermissions::CanEditEntries] && !$me->userPermissions[ModeratorPermissions::CanDeleteEntries] && !$me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
             error_no_permission();
         }
 
@@ -321,7 +320,7 @@ switch ($mybb->get_input('action')) {
         }
         $upper = $start + $reportsPerPage;
 
-        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainfile . '?action=allreports');
+        $pagination = multipage($postcount, $reportsPerPage, $page, $me->mainFile . '?action=allreports');
         if ($postcount > $reportsPerPage) {
             $reportspages = eval(getTemplate('reports_multipage'));
         }

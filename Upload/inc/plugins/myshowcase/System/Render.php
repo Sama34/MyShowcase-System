@@ -15,11 +15,6 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
-use MyShowcase\System\Showcase;
-
-use function MyShowcase\Core\getTemplate;
-use function MyShowcase\Core\urlHandlerBuild;
-
 class Render
 {
     protected Showcase $showcase;

@@ -58,7 +58,7 @@ $l['myshowcase_save'] = 'Save';
 $l['myshowcase_delete'] = 'Delete';
 $l['myshowcase_delete_multi'] = 'Delete Entries';
 $l['confirm_delete_myshowcases'] = 'Are you sure you wish to delete the selected entry? Once an entry has been deleted it cannot be restored and any attachments and comment within that entry are also deleted.';
-$l['myshowcase_unapproved_count'] = 'The {name} Showcase has {num} unapproved entries.';
+$l['myshowcase_unapproved_count'] = 'The {1} Showcase has {2} unapproved entries.';
 $l['myshowcase_unapproved_exist_title'] = 'Unapproved Entries';
 $l['myshowcase_unapproved_link'] = 'Click to view unapproved.';
 
@@ -109,7 +109,7 @@ $l['myshowcase_report_warning'] = 'The report system is only for reporting spam,
 $l['myshowcase_report_success'] = 'Thank you, Your report has been recieved.';
 $l['myshowcase_report_error'] = 'There was an error submitting your report. Please go back and try again';
 $l['myshowcase_report_reason'] = 'Your reason for reporting this entry:';
-$l['myshowcase_report_count'] = 'The {name} Showcase has {num} reported entries.';
+$l['myshowcase_report_count'] = 'The {1} Showcase has {2} reported entries.';
 $l['myshowcase_report_exist_title'] = 'Reported Entries';
 $l['myshowcase_report_link'] = 'Click to view reported entries.';
 $l['myshowcase_reports'] = 'Reports';

@@ -16,17 +16,15 @@ declare(strict_types=1);
 namespace inc\datahandlers;
 
 use DataHandler;
-
+use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
 
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
-
 use function MyShowcase\Core\showcaseDataInsert;
 use function MyShowcase\Core\showcaseDataUpdate;
 
-use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 
@@ -107,7 +105,7 @@ class MyShowcaseDataHandler extends DataHandler
         }
 
         // Don't have a user ID at all - not good or guest is posting which usually is not allowed but check anyway.
-        if (!isset($myshowcase_data['uid']) || ($myshowcase_data['uid'] == 0 && ((!$permcache[1]['canadd'] && $this->action = 'new') || (!$permcache[1]['canedit'] && $this->action = 'edit')))) {
+        if (!isset($myshowcase_data['uid']) || ($myshowcase_data['uid'] == 0 && ((!$permcache[1][UserPermissions::CanAddEntries] && $this->action = 'new') || (!$permcache[1][UserPermissions::CanEditEntries] && $this->action = 'edit')))) {
             $this->set_error('invalid_user_id');
         } // If we have a user id but no username then fetch the username.
         elseif (!get_user($myshowcase_data['uid'])) {
@@ -115,7 +113,7 @@ class MyShowcaseDataHandler extends DataHandler
         }
 
         //run through all fields checking defined requirements
-        foreach ($fieldcache[$me->fieldsetid] as $field) {
+        foreach ($fieldcache[$me->fieldSetID] as $field) {
             $fname = $field['name'];
             $temp = 'myshowcase_field_' . $fname;
             $field_header = $lang->$temp;
@@ -161,10 +159,12 @@ class MyShowcaseDataHandler extends DataHandler
 
                     //text all on its own since its for text areas
                     case 'text':
-                        if (my_strlen($myshowcase_data[$fname]) > $me->othermaxlength && $me->othermaxlength > 0) {
+                        if (my_strlen(
+                                $myshowcase_data[$fname]
+                            ) > $me->maximumLengthForTextFields && $me->maximumLengthForTextFields > 0) {
                             $this->set_error(
                                 'message_too_long',
-                                [$field_header, my_strlen($myshowcase_data[$fname]), $me->othermaxlength]
+                                [$field_header, my_strlen($myshowcase_data[$fname]), $me->maximumLengthForTextFields]
                             );
                         }
 

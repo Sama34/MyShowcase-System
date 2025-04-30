@@ -114,7 +114,7 @@ function pluginActivation(): bool
     find_replace_templatesets(
         'header',
         '#' . preg_quote('{$pm_notice}') . '#',
-        '{$pm_notice}{$myshowcase_unapproved}{$myshowcase_reported}'
+        '{$pm_notice}{$myShowcaseGlobalMessagesUnapprovedEntries}{$myShowcaseGlobalMessagesReportedEntries}'
     );
 
     /*~*~* RUN UPDATES START *~*~*/
@@ -136,9 +136,9 @@ function pluginDeactivation(): bool
 {
     include MYBB_ROOT . '/inc/adminfunctions_templates.php';
 
-    find_replace_templatesets('header', '#' . preg_quote('{$myshowcase_unapproved}') . '#', '');
+    find_replace_templatesets('header', '#' . preg_quote('{$myShowcaseGlobalMessagesUnapprovedEntries}') . '#', '');
 
-    find_replace_templatesets('header', '#' . preg_quote('{$myshowcase_reported}') . '#', '');
+    find_replace_templatesets('header', '#' . preg_quote('{$myShowcaseGlobalMessagesReportedEntries}') . '#', '');
 
     _deactivate_task();
 
@@ -168,17 +168,17 @@ function pluginUninstallation(): bool
     //drop tables but only if setting specific to allow uninstall is enabled
     if (!empty($mybb->settings['myshowcase_delete_tables_on_uninstall'])) {
         foreach (showcaseGet() as $showcaseID => $showcaseData) {
-            if (showcaseDataTableExists($showcaseData['id'])) {
-                showcaseDataTableDrop((int)$showcaseData['id']);
+            if (showcaseDataTableExists($showcaseID)) {
+                showcaseDataTableDrop($showcaseID);
             }
         }
 
-        foreach (dbTables() as $tableName => $tableData) {
+        foreach (dbTables() as $tableName => $tableColumns) {
             $db->drop_table($tableName);
         }
 
-        foreach (dbColumns() as $tableName => $tableData) {
-            foreach ($tableData as $fieldName => $fieldDefinition) {
+        foreach (FIELDS_DATA as $tableName => $tableColumns) {
+            foreach ($tableColumns as $fieldName => $fieldDefinition) {
                 !$db->field_exists($fieldName, $tableName) || $db->drop_column($tableName, $fieldName);
             }
         }
@@ -357,7 +357,6 @@ function dbVerifyTables(array $tableObjects = TABLES_DATA): bool
                 if ($db->field_exists($fieldName, $tableName)) {
                     $db->modify_column($tableName, "`{$fieldName}`", $fieldData);
                 } else {
-                    var_dump($tableName, $fieldName, $fieldData);
                     $db->add_column($tableName, $fieldName, $fieldData);
                 }
             }
