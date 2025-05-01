@@ -1,13 +1,13 @@
 <script type="text/javascript" src="{$mybb->settings['bburl']}/jscripts/myshowcase_inline.js?ver=2502"></script>
-<form action="{$me->mainFile}" method="post">
+<form action="{$showcaseObject->mainFile}" method="post">
     <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
     <input type="hidden" name="modtype" value="inlineshowcase"/>
     <input type="hidden" name="sort_by" value="{$showcaseInputSortBy}"/>
     <input type="hidden" name="order" value="{$showcaseInputOrder}"/>
     <input type="hidden" name="page" value="{$currentPage}"/>
     <input type="hidden" name="search_field" value="{$showcaseInputSearchField}"/>
-    <input type="hidden" name="keywords" value="{$showcaseInputSearchKeywords}"/>
-    <input type="hidden" name="exact" value="{$showcaseInputSearchExactMatch}"/>
+    <input type="hidden" name="keywords" value="{$renderObject->searchKeyWords}"/>
+    <input type="hidden" name="exact" value="{$renderObject->searchExactMatch}"/>
     <span class="smalltext"><strong>{$lang->myshowcase_inline_moderation}</strong></span>
     <select name="action">
         <optgroup label="{$lang->standard_mod_tools}">

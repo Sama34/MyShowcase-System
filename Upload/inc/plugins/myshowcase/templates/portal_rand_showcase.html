@@ -1,17 +1,18 @@
-<table border=\"0\" cellspacing=\"{\$theme['borderwidth']}\" cellpadding=\"{\$theme['tablespace']}\" class=\"tborder\">
-    \r\n
-    <tr>\r\n
-        <td class=\"thead\"><strong>Random {\$rand_showcase['name']}</strong></td>
-        \r\n
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+    <tr>
+        <td class="thead"><strong>Random {$rand_showcase['name']}</strong></td>
     </tr>
-    \r\n
-    <tr>\r\n
-        <td class=\"trow1\">\r\n<strong><a href=\"{\$entryUrl}\">{\$entry['description']}</a><br/></strong>\r\n<span
-                class=\"smalltext\">\r\n<strong>&raquo; </strong>{\$entryUsername}<br/>\r\n<strong>&raquo; </strong>Views: {\$entry['views']}<br/>\r\n<strong>&raquo; </strong>Comments: {\$entry['comments']}<br/>\r\n</span>\r\n
-            <div style=\"float:right\"><a href=\"{\$entryUrl}\"><img src=\"{\$rand_img}\" border=\"0\"></a></div>
-            \r\n
+    <tr>
+        <td class="trow1">
+            <strong><a href="{$entryUrl}">{$entry['description']}</a><br/></strong>
+            <span
+                    class="smalltext">
+    <strong>&raquo; </strong>{$entryUsername}<br/>
+    <strong>&raquo; </strong>Views: {$entry['views']}<br/>
+    <strong>&raquo; </strong>Comments: {$entry['comments']}<br/>
+    </span>
+
+            <div style="float:right"><a href="{$entryUrl}"><img src="{$rand_img}" border="0"></a></div>
         </td>
-        \r\n
     </tr>
-    \r\n
 </table>

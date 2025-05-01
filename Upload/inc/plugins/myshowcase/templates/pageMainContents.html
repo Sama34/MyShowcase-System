@@ -43,7 +43,7 @@
     {$showcaseEntriesList}
     <tr>
         <td class="tfoot" align="right" colspan="{$showcaseColumnsCount}">
-            <form action="{$urlBase}/{$urlShowcase}" method="get">
+            <form action="{$urlBase}/{$this->showcaseObject->showcaseUrl}" method="get">
                 <input type="hidden" name="page" value="{$currentPage}"/>
                 {$selectFieldCode}
                 <select name="order">
@@ -61,9 +61,11 @@
                     {$selectOptionsSearchField}
                 </select>
                 {$lang->myShowcaseMainSearchFor}
-                <input type="text" class="textbox" name="keywords" value="{$showcaseInputSearchKeywords}" size="20"/>
+                <input type="text" class="textbox" name="keywords" value="{$this->renderObject->searchKeyWords}"
+                       size="20"/>
                 {$lang->myShowcaseMainSearchMatch}
-                <input type="checkbox" name="exact_match" {$showcaseInputSearchExactMatchCheckElement }>
+                <input type="checkbox" name="exact_match" value="{$this->renderObject->searchExactMatch}"
+                       {$inputElementExactMatch}/>
                 {$buttonGo}
             </form>
         </td>

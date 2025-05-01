@@ -37,8 +37,8 @@ define('MyShowcase\Core\SETTINGS', [
     //'key' => '',
     'superModeratorGroups' => '3,4',
 ]);
- 
 define('MyShowcase\Core\DEBUG', false);
+
 
 define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
 
@@ -60,6 +60,10 @@ if (defined('IN_ADMINCP')) {
 
     addHooks('MyShowcase\Hooks\Forum');
 }
+
+require_once ROOT . '/Hooks/Shared.php';
+
+addHooks('MyShowcase\Hooks\Shared');
 
 function myshowcase_info(): array
 {
@@ -132,3 +136,7 @@ function update_myshowcase_reports(): bool
 
     return true;
 }
+
+global $mybb;
+
+$mybb->binary_fields['myshowcase_comments']['ipaddress'] = true;

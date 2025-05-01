@@ -15,17 +15,14 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
+use MyShowcase\System\Output;
+use MyShowcase\System\Render;
 use Postparser;
 use DirectoryIterator;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
 
-use const MyShowcase\Admin\FIELD_TYPE_BIGINT;
-use const MyShowcase\Admin\FIELD_TYPE_INT;
-use const MyShowcase\Admin\FIELD_TYPE_TEXT;
-use const MyShowcase\Admin\FIELD_TYPE_TIMESTAMP;
-use const MyShowcase\Admin\FIELD_TYPE_VARCHAR;
 use const MyShowcase\ROOT;
 
 const VERSION = '3.0.0';
@@ -126,6 +123,34 @@ const ERROR_TYPE_NOT_INSTALLED = 1;
 
 const ERROR_TYPE_NOT_CONFIGURED = 1;
 
+const FORMAT_TYPE_NONE = 0;
+
+const FORMAT_TYPE_MY_NUMBER_FORMAT = 1;
+
+const FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS = 2;
+
+const FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS = 3;
+
+define('MyShowcase\Core\FORMAT_TYPES', [
+    //'no' => '',
+    //'decimal0' => '#,###',
+    //'decimal1' => '#,###.#',
+    //'decimal2' => '#,###.##',
+    //0 => 'htmlspecialchars_uni',
+    FORMAT_TYPE_NONE => '',
+    FORMAT_TYPE_MY_NUMBER_FORMAT => function (string &$value): void {
+        $value = my_number_format((int)$value);
+    },
+    FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => function (string &$value): void {
+        $value = my_number_format(round((float)$value, 1));
+    },
+    FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => function (string &$value): void {
+        $value = my_number_format(round((float)$value, 2));
+    }
+]);
+
+const GUEST_GROUP_ID = 1;
+
 const TABLES_DATA = [
     'myshowcase_attachments' => [
         'aid' => [
@@ -217,9 +242,10 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        // todo, update old data from varchar to varbinary
         'ipaddress' => [
-            'type' => 'VARCHAR',
-            'size' => 30,
+            'type' => 'VARBINARY',
+            'size' => 16,
             'default' => ''
         ],
         'comment' => [
@@ -587,7 +613,7 @@ const TABLES_DATA = [
         'field_type' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => 'varchar'
+            'default' => FIELD_TYPE_STORAGE_VARCHAR
         ],
         'min_length' => [
             'type' => 'SMALLINT',
@@ -623,10 +649,11 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        // todo, remove this legacy updating the database and updating the format field to TINYINT
         'format' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => 'no'
+            'default' => FORMAT_TYPE_NONE
         ],
         'unique_key' => ['setid_fid' => 'setid,fid']
         // todo, add view permission
@@ -732,20 +759,6 @@ const DATA_TABLE_STRUCTURE = [
         ],
     ],
 ];
-
-const FORMAT_TYPES = [
-    //'no' => 'None',
-    //'decimal0' => '#,###',
-    //'decimal1' => '#,###.#',
-    //'decimal2' => '#,###.##',
-    //0 => 'htmlspecialchars_uni',
-    0 => '',
-    1 => 'number_format',
-    2 => '#,###.#',
-    3 => '#,###.##',
-];
-
-const GUEST_GROUP_ID = 1;
 
 function loadLanguage(
     string $languageFileName = 'myshowcase',
@@ -865,14 +878,18 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true,
 {
     global $templates;
 
-    if (DEBUG) {
-        $filePath = ROOT . "/templates/{$templateName}.html";
-
+    if (DEBUG && file_exists($filePath = ROOT . "/templates/{$templateName}.html")) {
         $templateContents = file_get_contents($filePath);
 
         $templates->cache[getTemplateName($templateName)] = $templateContents;
     } elseif (my_strpos($templateName, '/') !== false) {
         $templateName = substr($templateName, my_strpos($templateName, '/') + 1);
+    }
+
+    if ($showcaseID && isset($templates->cache[getTemplateName($templateName, $showcaseID)])) {
+        return $templates->render(getTemplateName($templateName, $showcaseID), true, $enableHTMLComments);
+    } elseif ($showcaseID) {
+        return getTemplate($templateName, $enableHTMLComments);
     }
 
     return $templates->render(getTemplateName($templateName, $showcaseID), true, $enableHTMLComments);
@@ -1325,9 +1342,14 @@ function showcaseDataUpdate(int $showcaseID, int $entryID, array $entryData): in
     return showcaseDataInsert($showcaseID, $entryData, true, $entryID);
 }
 
-function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryFields = [], array $queryOptions = []): array
-{
+function showcaseDataGet(
+    int $showcaseID,
+    array $whereClauses,
+    array $queryFields = [],
+    array $queryOptions = []
+): array {
     global $db;
+
 
     $query = $db->simple_select(
         'myshowcase_data' . $showcaseID,
@@ -1336,19 +1358,23 @@ function showcaseDataGet(int $showcaseID, array $whereClauses, array $queryField
         $queryOptions
     );
 
-    $fieldData = [];
+    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+        return (array)$db->fetch_array($query);
+    }
+
+    $entriesObjects = [];
 
     while ($fieldValueData = $db->fetch_array($query)) {
-        $fieldData[(int)$fieldValueData['gid']] = $fieldValueData;
+        $entriesObjects[(int)$fieldValueData['gid']] = $fieldValueData;
 
         foreach (DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
-            if (isset($fieldData[(int)$fieldValueData['gid']][$defaultFieldKey])) {
-                //$fieldData[(int)$fieldValueData['gid']][$defaultFieldKey] = 123;
+            if (isset($entriesObjects[(int)$fieldValueData['gid']][$defaultFieldKey])) {
+                //$entriesObjects[(int)$fieldValueData['gid']][$defaultFieldKey] = 123;
             }
         }
     }
 
-    return $fieldData;
+    return $entriesObjects;
 }
 
 function permissionsInsert(array $permissionData): int
@@ -1681,26 +1707,48 @@ function attachmentDelete(array $whereClauses = []): bool
     return true;
 }
 
-function commentInsert(array $commentData): int
+function commentInsert(array $commentData, bool $isUpdate = false, int $commentID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_comments', $commentData);
+    $insertData = [];
 
-    return (int)$db->insert_id();
+    if (isset($commentData['id'])) {
+        $insertData['id'] = (int)$commentData['id'];
+    }
+
+    if (isset($commentData['gid'])) {
+        $insertData['gid'] = (int)$commentData['gid'];
+    }
+
+    if (isset($commentData['uid'])) {
+        $insertData['uid'] = (int)$commentData['uid'];
+    }
+
+    if (isset($commentData['ipaddress'])) {
+        $insertData['ipaddress'] = $db->escape_string($commentData['ipaddress']);
+    }
+
+    if (isset($commentData['comment'])) {
+        $insertData['comment'] = $db->escape_string($commentData['comment']);
+    }
+
+    if (isset($commentData['dateline'])) {
+        $insertData['dateline'] = (int)$commentData['dateline'];
+    }
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_comments', $insertData, "cid='{$commentID}'");
+    } else {
+        $commentID = (int)$db->insert_query('myshowcase_comments', $insertData);
+    }
+
+    return $commentID;
 }
 
-function commentUpdate(array $whereClauses, array $commentData): bool
+function commentUpdate(array $commentData, int $commentID = 0): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_comments',
-        $commentData,
-        implode(' AND ', $whereClauses)
-    );
-
-    return true;
+    return commentInsert($commentData, true, $commentID);
 }
 
 function commentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -2342,7 +2390,7 @@ function entryGetRandom(): string
         $addon_fields = '';
         reset($fields_for_search);
         foreach ($fields_for_search as $id => $field) {
-            if ($field['type'] == 'db' || $field['type'] == 'radio') {
+            if ($field['type'] == FIELD_TYPE_HTML_DB || $field['type'] == FIELD_TYPE_HTML_RADIO) {
                 $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['name'] . ' ON (tbl_' . $field['name'] . '.valueid = g.' . $field['name'] . ' AND tbl_' . $field['name'] . ".name = '" . $field['name'] . "') ";
                 $addon_fields .= ', tbl_' . $field['name'] . '.value AS ' . $field['name'];
             } else {
@@ -2432,7 +2480,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
             $field = &$dataTableStructure[$fieldData['name']];
 
             switch ($fieldData['field_type']) {
-                case FIELD_TYPE_VARCHAR:
+                case FIELD_TYPE_STORAGE_VARCHAR:
                     $field['type'] = 'VARCHAR';
 
                     $field['size'] = (int)$fieldData['max_length'];
@@ -2441,15 +2489,15 @@ function dataTableStructureGet(int $showcaseID = 0): array
                         $field['default'] = '';
                     }
                     break;
-                case FIELD_TYPE_TEXT:
+                case FIELD_TYPE_STORAGE_TEXT:
                     $field['type'] = 'TEXT';
 
                     if (empty($fieldData['requiredField'])) {
                         $field['null'] = true;
                     }
                     break;
-                case FIELD_TYPE_INT:
-                case FIELD_TYPE_BIGINT:
+                case FIELD_TYPE_STORAGE_INT:
+                case FIELD_TYPE_STORAGE_BIGINT:
                     $field['type'] = my_strtoupper($fieldData['field_type']);
 
                     $field['size'] = (int)$fieldData['max_length'];
@@ -2458,7 +2506,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
                         $field['default'] = 0;
                     }
                     break;
-                case FIELD_TYPE_TIMESTAMP:
+                case FIELD_TYPE_STORAGE_TIMESTAMP:
                     $field['type'] = 'TIMESTAMP';
                     break;
             }
@@ -2466,7 +2514,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
             if (!empty($fieldData['requiredField'])) {
                 global $mybb;
 
-                if ($fieldData['field_type'] === FIELD_TYPE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
+                if ($fieldData['field_type'] === FIELD_TYPE_STORAGE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
                     $create_index = ', FULLTEXT KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
                 } else {
                     $create_index = ', KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
@@ -2494,21 +2542,41 @@ function postParser(): postParser
     return $parser;
 }
 
-function showcaseGetObject(string $mainFile, bool $loadCurrentUser = false): \MyShowcase\System\Showcase
+function showcaseGetObject(string $mainFile): Showcase
 {
     require_once ROOT . '/System/Showcase.php';
 
     static $showcaseObjects = [];
 
     if (!isset($showcaseObjects[$mainFile])) {
-        if ($loadCurrentUser) {
-            global $mybb;
-
-            $showcaseObjects[$mainFile] = new Showcase($mainFile, userData: $mybb->user);
-        } else {
-            $showcaseObjects[$mainFile] = new Showcase($mainFile);
-        }
+        $showcaseObjects[$mainFile] = new Showcase($mainFile);
     }
 
     return $showcaseObjects[$mainFile];
+}
+
+function renderGetObject(Showcase $showcaseObject): Render
+{
+    require_once ROOT . '/System/Render.php';
+
+    static $renderObjects = [];
+
+    if (!isset($renderObjects[$showcaseObject->id])) {
+        $renderObjects[$showcaseObject->id] = new Render($showcaseObject);
+    }
+
+    return $renderObjects[$showcaseObject->id];
+}
+
+function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
+{
+    require_once ROOT . '/System/Output.php';
+
+    static $outputObjects = [];
+
+    if (!isset($outputObjects[$showcaseObject->id])) {
+        $outputObjects[$showcaseObject->id] = new Output($showcaseObject, $renderObject);
+    }
+
+    return $outputObjects[$showcaseObject->id];
 }

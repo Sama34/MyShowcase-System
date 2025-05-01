@@ -27,6 +27,11 @@ use function MyShowcase\Core\showcaseDataUpdate;
 
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -122,7 +127,7 @@ class MyShowcaseDataHandler extends DataHandler
             if ($field['requiredField'] == 1) {
                 if (my_strlen($myshowcase_data[$fname]) == 0 || !isset($myshowcase_data[$fname])) {
                     $this->set_error('missing_field', [$field_header]);
-                } elseif ($field['html_type'] == 'db' && $myshowcase_data[$fname] == 0) {
+                } elseif ($field['html_type'] == FIELD_TYPE_HTML_DB && $myshowcase_data[$fname] == 0) {
                     $this->set_error('missing_field', [$field_header]);
                 }
             }
@@ -132,16 +137,16 @@ class MyShowcaseDataHandler extends DataHandler
                 //verify type and lengths
                 switch ($field['field_type']) {
                     //numbers lumped together
-                    case 'int':
+                    case FIELD_TYPE_STORAGE_INT:
                     case 'timestamp':
                         if (!is_numeric($myshowcase_data[$fname]) && $myshowcase_data[$fname] != '') {
                             $this->set_error('invalid_type', [$field_header]);
                         }
 
                     //numbers and simple text need length checked so no break
-                    case 'varchar':
+                    case FIELD_TYPE_STORAGE_VARCHAR:
                         //date fields do not have length limitations since the min/max are settings for the year
-                        if ($field['html_type'] != 'date') {
+                        if ($field['html_type'] != FIELD_TYPE_HTML_DATE) {
                             if (my_strlen(strval($myshowcase_data[$fname])) > $field['max_length'] || my_strlen(
                                     strval($myshowcase_data[$fname])
                                 ) < $field['min_length']) {
@@ -158,7 +163,7 @@ class MyShowcaseDataHandler extends DataHandler
                         break;
 
                     //text all on its own since its for text areas
-                    case 'text':
+                    case FIELD_TYPE_STORAGE_TEXT:
                         if (my_strlen(
                                 $myshowcase_data[$fname]
                             ) > $me->maximumLengthForTextFields && $me->maximumLengthForTextFields > 0) {

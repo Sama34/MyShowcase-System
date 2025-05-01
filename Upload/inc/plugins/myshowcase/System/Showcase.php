@@ -20,6 +20,7 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\getSetting;
+use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\reportGet;
@@ -31,10 +32,16 @@ use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
+use const MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
+use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
+use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
 use const MyShowcase\Core\GUEST_GROUP_ID;
+use const MyShowcase\Core\REPORT_STATUS_PENDING;
 
 class Showcase
 {
+
     /**
      * Constructor of class.
      *
@@ -45,7 +52,6 @@ class Showcase
         public string $dataTableName = '',
         public string $prefix = '',
         public string $cleanName = '',
-        public int $currentUserID = 0,
         public array $userPermissions = [],
         public bool $friendlyUrlsEnabled = false,
         public array $parserOptions = [
@@ -53,8 +59,11 @@ class Showcase
             'highlight' => '',
             'nl2br' => true
         ],
-        public array &$userData = [],
         public int $errorType = 0,
+        public string $showcaseUrl = '',
+        public array $entryData = [],
+        public int $entryID = 0,
+        public int $entryUserID = 0,
         #Config
         public int $id = 0,
         public string $name = '',
@@ -83,7 +92,7 @@ class Showcase
         public int $commentsAttachmentsPerRowLimit = 0,
         public bool $displayEmptyFields = false,
         public bool $linkInPosts = false,
-        public bool $portalShowRandomAttachmentWidget = false
+        public bool $portalShowRandomAttachmentWidget = false,
     ) {
         global $db, $mybb, $cache;
 
@@ -159,7 +168,7 @@ class Showcase
         if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $plugin_cache['active'])) {
             $this->enabled = false;
 
-            $this->errorType = \MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
+            $this->errorType = ERROR_TYPE_NOT_INSTALLED;
         }
 
         //clean the name and make it suitable for SEO
@@ -193,24 +202,30 @@ class Showcase
         if (!$this->id || !$this->dataTableName || !$this->fieldSetID) {
             $this->enabled = false;
 
-            $this->errorType = \MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
+            $this->errorType = ERROR_TYPE_NOT_CONFIGURED;
         }
 
         //get basename of the calling file. This is used later for SEO support
         $this->prefix = explode('.', $this->mainFile)[0];
 
-        if (isset($userData['uid'])) {
-            $this->currentUserID = (int)$userData['uid'];
-        }
+        $currentUserID = (int)$mybb->user['uid'];
 
-        $this->userPermissions = $this->userPermissionsGet($this->currentUserID);
+        $this->userPermissions = $this->userPermissionsGet($currentUserID);
 
         $this->parserOptions = array_merge($this->parserOptions, [
             'allow_html' => $this->parserAllowHTML,
             'allow_mycode' => $this->parserAllowMyCode,
-            'me_username' => $userData['username'] ?? '',
+            'me_username' => $mybb->user['username'] ?? '',
             'allow_smilies' => $this->parserAllowSmiles
         ]);
+
+        $this->entryUserID = $currentUserID;
+
+        // todo, probably unnecessary since entryDataSet() already sets the entryUserID
+        // probably also ignores moderator permissions
+        if (!empty($mybb->input['entryUserID'])) {
+            $this->entryUserID = $mybb->get_input('entryUserID', \MyBB::INPUT_INT);
+        }
 
         return $this;
     }
@@ -335,7 +350,7 @@ class Showcase
             if (!empty($moderatorsCache[$this->id])) {
                 foreach ($moderatorsCache[$this->id] as $moderatorPermissions) {
                     if ($moderatorPermissions['isgroup'] && in_array($moderatorPermissions['uid'], $userGroupsIDs) ||
-                        !$moderatorPermissions['isgroup'] && (int)$moderatorPermissions['uid'] === $this->currentUserID) {
+                        !$moderatorPermissions['isgroup'] && (int)$moderatorPermissions['uid'] === $userID) {
                         foreach ($userModeratorPermissions as $permissionKey => &$permissionValue) {
                             $userModeratorPermissions[$permissionKey] = !empty($moderatorPermissions[$permissionKey]) ||
                                 !empty($permissionValue);
@@ -488,7 +503,7 @@ class Showcase
     {
         global $db;
 
-        $entryStatusUnapproved = \MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
+        $entryStatusUnapproved = ENTRY_STATUS_UNAPPROVED;
 
         $query = $db->simple_select(
             $this->dataTableName,
@@ -504,12 +519,65 @@ class Showcase
 
     public function entriesGetReportedCount(): int
     {
-        $reportStatusPending = \MyShowcase\Core\REPORT_STATUS_PENDING;
+        $reportStatusPending = REPORT_STATUS_PENDING;
 
         return (int)(reportGet(
             ["id='{$this->id}'", "status='{$reportStatusPending}'"],
             ['COUNT(rid) AS totalReportedEntries'],
             ['group_by' => 'id, rid, status']
         )['totalReportedEntries'] ?? 0);
+    }
+
+    public function templateGet(string $templateName = '', bool $enableHTMLComments = true): string
+    {
+        return getTemplate($templateName, $enableHTMLComments, $this->id);
+    }
+
+    public function dataGet(
+        array $whereClauses,
+        array $queryFields = [],
+        array $queryOptions = [],
+        array $queryTables = []
+    ): array {
+        global $db;
+
+        $queryTables = array_merge(["{$this->dataTableName} entryData"], $queryTables);
+
+        $query = $db->simple_select(
+            implode(" LEFT JOIN {$db->table_prefix}", $queryTables),
+            implode(',', array_merge(['gid'], $queryFields)),
+            implode(' AND ', $whereClauses),
+            $queryOptions
+        );
+
+        if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
+            return (array)$db->fetch_array($query);
+        }
+
+        $entriesObjects = [];
+
+        while ($fieldValueData = $db->fetch_array($query)) {
+            $entriesObjects[(int)$fieldValueData['gid']] = $fieldValueData;
+        }
+
+        return $entriesObjects;
+    }
+
+    public function entryDataSet(array $entryData): void
+    {
+        $this->entryData = $entryData;
+
+        if (isset($this->entryData['gid'])) {
+            $this->entryID = (int)$this->entryData['gid'];
+        }
+
+        if (isset($this->entryData['uid'])) {
+            $this->entryUserID = (int)$this->entryData['uid'];
+        }
+    }
+
+    public function urlSet(string $showcaseUrl): void
+    {
+        $this->showcaseUrl = $showcaseUrl;
     }
 }

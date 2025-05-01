@@ -36,6 +36,12 @@ use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerSet;
 
+use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
+use const MyShowcase\Core\FIELD_TYPE_HTML_RADIO;
+use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
+use const MyShowcase\Core\FIELD_TYPE_HTML_URL;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_BINARY;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR;
@@ -239,27 +245,27 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $fieldDefaultOption = 0;
 
         switch ($mybb->get_input('html_type')) {
-            case 'db':
-                $mybb->input['field_type'] = 'int';
+            case FIELD_TYPE_HTML_DB:
+                $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
                 $mybb->input['max_length'] = 3;
 
                 $fieldDefaultOption = 1;
                 break;
-            case 'radio':
-                $mybb->input['field_type'] = 'int';
+            case FIELD_TYPE_HTML_RADIO:
+                $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
                 $mybb->input['max_length'] = 1;
 
                 $fieldDefaultOption = 1;
                 break;
-            case 'checkbox':
-                $mybb->input['field_type'] = 'int';
+            case FIELD_TYPE_HTML_CHECK_BOX:
+                $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
                 $mybb->input['max_length'] = 1;
                 break;
-            case 'date':
-                $mybb->input['field_type'] = 'varchar';
+            case FIELD_TYPE_HTML_DATE:
+                $mybb->input['field_type'] = FIELD_TYPE_STORAGE_VARCHAR;
 
                 $mybb->input['min_length'] = max(
                     $mybb->get_input('min_length', MyBB::INPUT_INT),
@@ -272,8 +278,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 );
 
                 break;
-            case 'url':
-                $mybb->input['field_type'] = 'varchar';
+            case FIELD_TYPE_HTML_URL:
+                $mybb->input['field_type'] = FIELD_TYPE_STORAGE_VARCHAR;
 
                 $mybb->input['max_length'] = 255;
                 break;
@@ -307,7 +313,10 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
                 if ($fieldIsEditable &&
                     isset($fieldData['name']) &&
-                    in_array($fieldData['html_type'], ['db', 'radio'])) {
+                    in_array(
+                        $fieldData['html_type'],
+                        [FIELD_TYPE_HTML_DB, FIELD_TYPE_HTML_RADIO]
+                    )) {
                     fieldDataUpdate(
                         ["fid='{$fieldID}'", "setid='{$fieldsetID}'"],
                         ['name' => $fieldData['name']]
@@ -403,7 +412,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $form->generate_select_box(
             'html_type',
             [
-                'textbox' => 'textbox',
+                FIELD_TYPE_HTML_TEXT_BOX => FIELD_TYPE_HTML_TEXT_BOX,
                 'textarea' => 'textarea',
                 //single select
                 //multiselect
@@ -411,11 +420,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 //files|attachments
                 // todo, implement additional field types
                 // todo, add note field for admins to add a note
-                'db' => 'db',
-                'radio' => 'radio',
-                'checkbox' => 'checkbox',
-                'url' => 'url',
-                'date' => 'date',
+                FIELD_TYPE_HTML_DB => FIELD_TYPE_HTML_DB,
+                FIELD_TYPE_HTML_RADIO => FIELD_TYPE_HTML_RADIO,
+                FIELD_TYPE_HTML_CHECK_BOX => FIELD_TYPE_HTML_CHECK_BOX,
+                FIELD_TYPE_HTML_URL => FIELD_TYPE_HTML_URL,
+                FIELD_TYPE_HTML_DATE => FIELD_TYPE_HTML_DATE,
             ],
             $mybb->get_input('html_type'),
             ['id' => 'html_type', 'size' => $fieldIsEditable ? '' : '" disabled="disabled']
@@ -796,7 +805,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $viewOptionsUrl = '';
 
-            if ($fieldData['html_type'] == 'db' || $fieldData['html_type'] == 'radio') {
+            if ($fieldData['html_type'] == FIELD_TYPE_HTML_DB || $fieldData['html_type'] == FIELD_TYPE_HTML_RADIO) {
                 $viewOptionsUrl = urlHandlerBuild(
                     ['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]
                 );
@@ -888,7 +897,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             );
 
             //add option to edit list items if db type
-            if ($fieldData['html_type'] == 'db' || $fieldData['html_type'] == 'radio') {
+            if ($fieldData['html_type'] == FIELD_TYPE_HTML_DB || $fieldData['html_type'] == FIELD_TYPE_HTML_RADIO) {
                 $popup->add_item(
                     $lang->myshowcase_field_edit_options,
                     urlHandlerBuild(['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]),

@@ -17,7 +17,7 @@ global $showcaseName, $showcase_lower;
 
 //$l['nav_myshowcase'] = $showcaseName; //for breadcrumb
 //$l['myshowcase'] = $showcaseName; //for rest of myshowcase
-$l['myshowcase_specifications'] = 'Specs';
+$l['myshowcase_specifications'] = 'Entry Details';
 $l['latest_myshowcases'] = "Latest {$showcaseName}";
 $l['myshowcase_showcase'] = 'Showcase';
 
@@ -150,7 +150,7 @@ $l['myshowcase_posted_at'] = 'posted the following comment at';
 $l['myshowcase_comment_edit'] = 'Edit';
 $l['myshowcase_comment_delete'] = 'Delete';
 $l['myshowcase_comment_show_all'] = 'Show all {count} comments';
-$l['myshowcase_comment_text_limit'] = '({text_limit} char max. No HTML. MyCodes and smilies allowed.)';
+$l['myshowcase_comment_text_limit'] = '{1} char max. No HTML. MyCodes and smilies allowed.';
 $l['myshowcase_comment_deleted'] = 'The selected comment has been deleted.<br>You will now be redirected back to where you came from.';
 $l['myshowcase_comment_added'] = 'Your comment has been added.<br>You will now be redirected back to where you came from.';
 
@@ -208,4 +208,30 @@ $l = array_merge($l, [
     'myShowcaseNewEditFormButtonPost' => 'Post Entry',
     'myShowcaseNewEditFormButtonUpdate' => 'Update Entry',
     'myShowcaseNewEditFormButtonPreview' => 'Preview Entry',
+
+    'myShowcaseEntryFieldValueEmpty' => '(no value)',
+
+    'myShowcaseEntryCommentOnlineStatusOnline' => 'Online',
+    'myShowcaseEntryCommentOnlineStatusOffline' => 'Offline',
+    'myShowcaseEntryCommentOnlineStatusAway' => 'Away',
+    'myShowcaseEntryCommentDetailsPosts' => 'Posts',
+    'myShowcaseEntryCommentDetailsThreads' => 'Threads',
+    'myShowcaseEntryCommentDetailsJoined' => 'Joined',
+    'myShowcaseEntryCommentDetailsReputation' => 'Reputation:',
+    'myShowcaseEntryCommentDetailsWarningLevel' => 'Warning Level:',
+    'myShowcaseEntryCommentButtonEmail' => 'Email',
+    'myShowcaseEntryCommentButtonEmailDescription' => 'Send this user an email',
+    'myShowcaseEntryCommentButtonPrivateMessage' => 'PM',
+    'myShowcaseEntryCommentButtonPrivateMessageDescription' => 'Send this user a private message',
+    'myShowcaseEntryCommentButtonWebsite' => 'Website',
+    'myShowcaseEntryCommentButtonWebsiteDescription' => "Visit this user's website",
+    'myShowcaseEntryCommentButtonWarn' => 'Warn',
+    'myShowcaseEntryCommentButtonWarnDescription' => 'Warn the author for this post',
+    'myShowcaseEntryCommentButtonPurseSpammer' => 'Purge Spammer',
+    'myShowcaseEntryCommentButtonPurseSpammerDescription' => 'Purge Spammer',
+
+    'myShowcaseEntryNewCommentTitle' => 'Quick Reply',
+    'myShowcaseEntryNewCommentMessage' => 'Message:',
+    'myShowcaseEntryNewCommentMessageNote' => 'Type your reply to this entry here.',
+    'myShowcaseEntryNewCommentButton' => 'Post Comment',
 ]);

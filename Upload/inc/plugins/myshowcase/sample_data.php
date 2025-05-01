@@ -21,6 +21,13 @@ declare(strict_types=1);
 //
 // name - string, lowercase name of fieldset
 //----------------------------------------------------------
+
+use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
+use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
+
 global $custom_fieldsets;
 
 $custom_fieldsets = [];
@@ -50,26 +57,273 @@ global $custom_fields;
 
 $custom_fields = [];
 
-$custom_fields[] = [1, 'year', 'textbox', 1, 'int', 0, 4, 1, 0, 1, 1, 1];
-$custom_fields[] = [1, 'make', 'db', 1, 'int', 0, 2, 1, 0, 2, 2, 1];
-$custom_fields[] = [1, 'model', 'textbox', 1, 'varchar', 0, 30, 1, 0, 3, 3, 1];
-$custom_fields[] = [1, 'engine', 'textbox', 1, 'varchar', 0, 15, 0, 0, 4, 4, 1];
-$custom_fields[] = [1, 'transspeed', 'db', 1, 'int', 0, 2, 0, 0, 5, -1, 0];
-$custom_fields[] = [1, 'transtype', 'db', 1, 'int', 0, 2, 0, 0, 6, -1, 0];
-$custom_fields[] = [1, 'gearratio', 'textbox', 1, 'varchar', 0, 10, 0, 0, 7, -1, 0];
-$custom_fields[] = [1, 'frontdiff', 'textbox', 1, 'varchar', 0, 40, 0, 0, 8, -1, 0];
-$custom_fields[] = [1, 'reardiff', 'textbox', 1, 'varchar', 0, 40, 0, 0, 9, -1, 0];
-$custom_fields[] = [1, 'cabstyle', 'db', 1, 'int', 0, 2, 0, 0, 10, -1, 0];
-$custom_fields[] = [1, 'bedsize', 'db', 1, 'int', 0, 2, 0, 0, 11, -1, 0];
-$custom_fields[] = [1, 'tiresize', 'textbox', 1, 'varchar', 0, 20, 0, 0, 12, -1, 0];
-$custom_fields[] = [1, 'tiremodel', 'textbox', 1, 'varchar', 0, 30, 0, 0, 13, -1, 1];
-$custom_fields[] = [1, 'wheelsize', 'textbox', 1, 'varchar', 0, 10, 0, 0, 14, -1, 0];
-$custom_fields[] = [1, 'wheelmodel', 'textbox', 1, 'varchar', 0, 30, 0, 0, 15, -1, 1];
-$custom_fields[] = [1, 'susplift', 'db', 1, 'int', 0, 2, 0, 0, 16, -1, 0];
-$custom_fields[] = [1, 'suspmodel', 'textbox', 1, 'varchar', 0, 50, 0, 0, 17, -1, 1];
-$custom_fields[] = [1, 'bodylift', 'db', 1, 'int', 0, 2, 0, 0, 18, -1, 0];
-$custom_fields[] = [1, 'bodymodel', 'textbox', 1, 'varchar', 0, 50, 0, 0, 19, -1, 0];
-$custom_fields[] = [1, 'other', 'textarea', 1, 'text', 0, 15, 0, 0, 20, -1, 1];
+$custom_fields[] = [
+    1,
+    'year',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    4,
+    1,
+    0,
+    1,
+    1,
+    1
+];
+$custom_fields[] = [
+    1,
+    'make',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    1,
+    0,
+    2,
+    2,
+    1
+];
+$custom_fields[] = [
+    1,
+    'model',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    30,
+    1,
+    0,
+    3,
+    3,
+    1
+];
+$custom_fields[] = [
+    1,
+    'engine',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    15,
+    0,
+    0,
+    4,
+    4,
+    1
+];
+$custom_fields[] = [
+    1,
+    'transspeed',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    5,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'transtype',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    6,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'gearratio',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    10,
+    0,
+    0,
+    7,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'frontdiff',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    40,
+    0,
+    0,
+    8,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'reardiff',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    40,
+    0,
+    0,
+    9,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'cabstyle',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    10,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'bedsize',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    11,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'tiresize',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    20,
+    0,
+    0,
+    12,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'tiremodel',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    30,
+    0,
+    0,
+    13,
+    -1,
+    1
+];
+$custom_fields[] = [
+    1,
+    'wheelsize',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    10,
+    0,
+    0,
+    14,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'wheelmodel',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    30,
+    0,
+    0,
+    15,
+    -1,
+    1
+];
+$custom_fields[] = [
+    1,
+    'susplift',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    16,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'suspmodel',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    50,
+    0,
+    0,
+    17,
+    -1,
+    1
+];
+$custom_fields[] = [
+    1,
+    'bodylift',
+    FIELD_TYPE_HTML_DB,
+    1,
+    FIELD_TYPE_STORAGE_INT,
+    0,
+    2,
+    0,
+    0,
+    18,
+    -1,
+    0
+];
+$custom_fields[] = [
+    1,
+    'bodymodel',
+    FIELD_TYPE_HTML_TEXT_BOX,
+    1,
+    FIELD_TYPE_STORAGE_VARCHAR,
+    0,
+    50,
+    0,
+    0,
+    19,
+    -1,
+    0
+];
+$custom_fields[] = [1, 'other', 'textarea', 1, FIELD_TYPE_STORAGE_TEXT, 0, 15, 0, 0, 20, -1, 1];
 
 //----------------------------------------------------------
 //

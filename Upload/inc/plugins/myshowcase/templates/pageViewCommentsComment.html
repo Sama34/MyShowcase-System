@@ -1,0 +1,37 @@
+<a name="commentID{$commentID}" id="commentID{$commentID}"></a>
+<div class="post" style="" id="commentBody{$commentID}">
+    <div class="post_author">
+        {$commentUserAvatar}
+        <div class="author_information">
+            <strong><span class="largetext">{$commentUserProfileLink}</span></strong> {$commentUserOnlineStatus}<br/>
+            <span class="smalltext">
+				{$commentUserTitle}<br/>
+				{$commentUserStars}
+				{$commentUserGroupImage}
+			</span>
+        </div>
+        <div class="author_statistics">
+            {$commentUserDetails}
+        </div>
+    </div>
+    <div class="post_content">
+        <div class="post_head">
+            {$commentUrl}
+            <span class="post_date">{$commentPostDate}</span>
+        </div>
+        <div class="post_body scaleimages">
+            {$commentMessage}
+        </div>
+        {$commentUserSignature}
+    </div>
+    <div class="post_controls">
+        <div class="postbit_buttons author_buttons float_left">
+            {$commentButtonEmail}{$commentButtonPrivateMessage}{$commentButtonWebsite}
+        </div>
+        <div class="postbit_buttons post_management_buttons float_right">
+            {$commentButtonDelete}
+            {$commentButtonWarn}
+            {$commentButtonPurgeSpammer}
+        </div>
+    </div>
+</div>

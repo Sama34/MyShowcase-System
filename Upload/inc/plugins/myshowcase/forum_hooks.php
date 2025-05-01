@@ -15,7 +15,6 @@ declare(strict_types=1);
 
 namespace MyShowcase\Hooks\Forum;
 
-use MyShowcase\System\Showcase;
 use MyShowcase\System\ModeratorPermissions;
 
 use function MyShowcase\Core\attachmentGet;
@@ -23,10 +22,12 @@ use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\getTemplate;
-use function MyShowcase\Core\reportGet;
+use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseDataGet;
+use function MyShowcase\Core\showcaseGetObject;
+use function MyShowcase\Core\urlHandlerBuild;
+use function MyShowcase\Core\urlHandlerSet;
 
-use const MyShowcase\ROOT;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 
@@ -53,11 +54,36 @@ function global_start(): bool
         $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
 
         foreach ($showcaseObjects as $showcaseData) {
-            $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile']);
+            $me = showcaseGetObject($showcaseData['mainfile']);
 
             if (THIS_SCRIPT === $me->fileName) {
                 $templateObjects = array_merge($templateObjects, [
-                    'page'
+                    'pageView',
+                    'pageViewCommentsComment',
+                    'pageViewCommentsCommentButtonDelete',
+                    'pageViewCommentsCommentButtonEmail',
+                    'pageViewCommentsCommentButtonPrivateMessage',
+                    'pageViewCommentsCommentButtonPurgeSpammer',
+                    'pageViewCommentsCommentButtonWarn',
+                    'pageViewCommentsCommentButtonWebsite',
+                    'pageViewCommentsCommentUrl',
+                    'pageViewCommentsCommentUserAvatar',
+                    'pageViewCommentsCommentUserDetails',
+                    'pageViewCommentsCommentUserGroupImage',
+                    'pageViewCommentsCommentUserOnlineStatusAway',
+                    'pageViewCommentsCommentUserOnlineStatusOffline',
+                    'pageViewCommentsCommentUserOnlineStatusOnline',
+                    'pageViewCommentsCommentUserReputation',
+                    'pageViewCommentsCommentUserSignature',
+                    'pageViewCommentsCommentUserStar',
+                    'pageViewCommentsCommentUserWarningLevel',
+                    'pageViewCommentsFormGuest',
+                    'pageViewCommentsFormUser',
+                    'pageViewCommentsNone',
+                    'pageViewDataFieldDataBase',
+                    'pageViewDataFieldTextArea',
+                    'pageViewDataFieldTextBox',
+                    'pageViewDataLastApprovedBy'
                 ]);
             }
         }
@@ -77,7 +103,7 @@ function global_start(): bool
         $templatelist .= ', myShowcase_' . implode(', myShowcase_', $templateObjects);
 
         foreach ($showcaseObjects as $showcaseData) {
-            $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile']);
+            $me = showcaseGetObject($showcaseData['mainfile']);
 
             //if showcase is enabled...
             if ($me->enabled) {
@@ -105,58 +131,54 @@ function global_intermediate(): bool
     $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
-        $me = \MyShowcase\Core\showcaseGetObject($showcaseData['mainfile'], true);
+        $showcaseObject = showcaseGetObject($showcaseData['mainfile']);
 
         //if showcase is enabled...
-        if ($me->enabled) {
+        if ($showcaseObject->enabled) {
             //load language if we are going to use it
-            if ($me->userPermissions[ModeratorPermissions::CanApproveEntries] || $me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
+            if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] || $showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) {
                 loadLanguage();
             }
 
-            $showcaseUrl = \MyShowcase\Core\urlHandlerSet($me->mainFile);
+            urlHandlerSet($showcaseObject->mainFile);
+
+            $showcaseObject->urlSet(\MyShowcase\Core\urlHandlerGet());
 
             //awaiting approval
-            if ($me->userPermissions[ModeratorPermissions::CanApproveEntries]) {
-                $showcaseUnapprovedEntriesUrl = \MyShowcase\Core\urlHandlerBuild(['unapproved' => 1]);
+            if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+                $showcaseUnapprovedEntriesUrl = urlHandlerBuild(['unapproved' => 1]);
 
-                $totalUnapprovedEntries = $me->entriesGetUnapprovedCount();
+                $totalUnapprovedEntries = $showcaseObject->entriesGetUnapprovedCount();
 
                 if ($totalUnapprovedEntries > 0) {
                     $unapprovedText = $lang->sprintf(
                         $lang->myshowcase_unapproved_count,
-                        $me->name,
+                        $showcaseObject->name,
                         my_number_format($totalUnapprovedEntries)
                     );
 
-                    $unapprovedEntriesNotices[] = eval(
-                    getTemplate(
-                        'globalMessageUnapprovedEntries',
-                        showcaseID: $me->id
-                    )
-                    );
+                    $renderObjects = renderGetObject($showcaseObject);
+
+                    $unapprovedEntriesNotices[] = eval($renderObjects->templateGet('globalMessageUnapprovedEntries'));
                 }
             }
 
             //report notices
-            if ($me->userPermissions[ModeratorPermissions::CanDeleteComments]) {
-                $showcaseReportedEntriesUrl = \MyShowcase\Core\urlHandlerBuild(['action' => 'reports']);
+            if ($showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) {
+                $showcaseReportedEntriesUrl = urlHandlerBuild(['action' => 'reports']);
 
-                $totalReportedEntries = $me->entriesGetReportedCount();
+                $totalReportedEntries = $showcaseObject->entriesGetReportedCount();
 
                 if ($totalReportedEntries > 0) {
                     $unapprovedText = $lang->sprintf(
                         $lang->myshowcase_report_count,
-                        $me->name,
+                        $showcaseObject->name,
                         my_number_format($totalReportedEntries)
                     );
 
-                    $reportedEntriesNotices[] = eval(
-                    getTemplate(
-                        'globalMessageReportedEntries',
-                        showcaseID: $me->id
-                    )
-                    );
+                    $renderObjects = renderGetObject($showcaseObject);
+
+                    $reportedEntriesNotices[] = eval($renderObjects->templateGet('globalMessageReportedEntries'));
                 }
             }
         }

@@ -22,20 +22,11 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
 
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
 use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\VERSION;
 use const MyShowcase\Core\VERSION_CODE;
-
-const FIELD_TYPE_VARCHAR = 'varchar';
-
-const FIELD_TYPE_TEXT = 'text';
-
-const FIELD_TYPE_INT = 'int';
-
-const FIELD_TYPE_BIGINT = 'bigint';
-
-const FIELD_TYPE_TIMESTAMP = 'timestamp';
 
 function pluginInformation(): array
 {
