@@ -361,12 +361,13 @@ if ($mybb->get_input('action') === 'new') {
                     'disp_empty' => $mybb->get_input('disp_empty', MyBB::INPUT_INT),
                     'link_in_postbit' => $mybb->get_input('link_in_postbit', MyBB::INPUT_INT),
                     'portal_random' => $mybb->get_input('portal_random', MyBB::INPUT_INT),
+                    'display_signatures' => $mybb->get_input('display_signatures', MyBB::INPUT_INT),
                     'prunetime' => $db->escape_string(
                         $mybb->get_input('prunetime', MyBB::INPUT_INT) . '|' . $mybb->get_input('interval')
                     ),
                     'allowsmilies' => $mybb->get_input('allowsmilies', MyBB::INPUT_INT),
                     'allowbbcode' => $mybb->get_input('allowbbcode', MyBB::INPUT_INT),
-                    'allowhtml' => $mybb->get_input('allowhtml', MyBB::INPUT_INT)
+                    'allowhtml' => $mybb->get_input('allowhtml', MyBB::INPUT_INT),
                 ];
 
                 $showcaseData = hooksRun('admin_summary_edit_other', $showcaseData);
@@ -809,7 +810,7 @@ if ($mybb->get_input('action') === 'new') {
             1,
             $lang->myShowcaseAdminSummaryEditParserOptionsAllowHtml,
             ['checked' => $mybb->get_input('allowhtml', MyBB::INPUT_INT)]
-        )
+        ),
     ];
 
     $formContainer->output_row(
@@ -849,7 +850,13 @@ if ($mybb->get_input('action') === 'new') {
             1,
             $lang->myShowcaseAdminSummaryEditDisplaySettingsDisplayRandomEntry,
             ['checked' => $mybb->get_input('portal_random', MyBB::INPUT_INT)]
-        )
+        ),
+        $form->generate_check_box(
+            'display_signatures',
+            1,
+            $lang->myShowcaseAdminSummaryEditParserOptionsAllowSignatures,
+            ['checked' => $mybb->get_input('display_signatures', MyBB::INPUT_INT)]
+        ),
     ];
 
     $formContainer->output_row(

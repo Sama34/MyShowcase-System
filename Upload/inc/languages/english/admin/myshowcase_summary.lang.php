@@ -114,6 +114,7 @@ $l = array_merge([
     'myShowcaseAdminSummaryEditDisplaySettingsDisplayEmptyFields' => 'Show all fields, even if empty, in showcase view.',
     'myShowcaseAdminSummaryEditDisplaySettingsDisplayInPosts' => 'Link this showcase in user details in posts.',
     'myShowcaseAdminSummaryEditDisplaySettingsDisplayRandomEntry' => 'Try to display a random entry in this showcase that has attachments on the portal.',
+    'myShowcaseAdminSummaryEditParserOptionsAllowSignatures' => 'Display user signatures in this showcase?',
     'myShowcaseAdminSummaryEditModeratorPermissions' => 'Moderator Permissions',
     'myShowcaseAdminSummaryEditModeratorPermissionsDescription' => '',
     'myShowcaseAdminSummaryEditPermissionsGroup' => 'Group',

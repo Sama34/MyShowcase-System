@@ -205,7 +205,8 @@ class Render
 
         $commentMessage = $this->showcaseObject->parseMessage($commentData['comment'], $this->parserOptions);
 
-        if (!empty($commentUserData['username']) &&
+        if ($this->showcaseObject->displaySignatures &&
+            !empty($commentUserData['username']) &&
             !empty($commentUserData['signature']) &&
             (!$currentUserID || !empty($mybb->user['showsigs'])) &&
             (empty($commentUserData['suspendsignature']) || !empty($commentUserData['suspendsignature']) && !empty($commentUserData['suspendsigtime']) && $commentUserData['suspendsigtime'] < TIME_NOW) &&

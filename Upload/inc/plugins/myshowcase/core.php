@@ -402,6 +402,11 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        'display_signatures' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
         // todo, trigger notification (user, group), pm, or alert
         // todo, DVZ Stream
         // todo, latest entries helper

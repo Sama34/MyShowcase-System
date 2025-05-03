@@ -32,7 +32,6 @@ use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
@@ -93,6 +92,7 @@ class Showcase
         public bool $displayEmptyFields = false,
         public bool $linkInPosts = false,
         public bool $portalShowRandomAttachmentWidget = false,
+        public bool $displaySignatures = false,
     ) {
         global $db, $mybb, $cache;
 
@@ -160,6 +160,8 @@ class Showcase
                 $this->linkInPosts = (bool)$showcase['allow_attachments'];
 
                 $this->portalShowRandomAttachmentWidget = (bool)$showcase['portal_random'];
+
+                $this->displaySignatures = (bool)$showcase['display_signatures'];
 
                 break;
             }
