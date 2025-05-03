@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
+use MyBB;
+
 use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
@@ -30,6 +32,7 @@ use function MyShowcase\Core\showcaseDefaultPermissions;
 
 use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
@@ -69,6 +72,10 @@ class Showcase
         public string $description = '',
         public string $mainFile = '',
         public int $fieldSetID = 0,
+        public array $fieldSetCache = [],
+        public array $fieldSetEnabledFields = [],
+        public array $fieldSetParseableFields = [],
+        public array $fieldSetFormatableFields = [],
         public string $imageFolder = '',
         public string $defaultImage = '',
         public string $waterMarkImage = '',
@@ -226,7 +233,23 @@ class Showcase
         // todo, probably unnecessary since entryDataSet() already sets the entryUserID
         // probably also ignores moderator permissions
         if (!empty($mybb->input['entryUserID'])) {
-            $this->entryUserID = $mybb->get_input('entryUserID', \MyBB::INPUT_INT);
+            $this->entryUserID = $mybb->get_input('entryUserID', MyBB::INPUT_INT);
+        }
+
+        if ($this->fieldSetID) {
+            $this->fieldSetCache = cacheGet(CACHE_TYPE_FIELDS)[$this->fieldSetID] ?? [];
+
+            foreach ($this->fieldSetCache as $fieldID => $fieldData) {
+                if (!$fieldData['enabled']/* || $fieldData['requiredField']*/) {
+                    continue;
+                }
+
+                $this->fieldSetEnabledFields[$fieldData['name']] = $fieldData['html_type'];
+
+                $this->fieldSetParseableFields[$fieldData['name']] = $fieldData['parse'];
+
+                $this->fieldSetFormatableFields[$fieldData['name']] = $fieldData['format'];
+            }
         }
 
         return $this;

@@ -53,8 +53,6 @@ use const MyShowcase\Core\FORMAT_TYPE_NONE;
 use const MyShowcase\Core\FORMAT_TYPES;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_REPORTS;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS;
 
 class Output
 {
@@ -67,8 +65,7 @@ class Output
     public function entryView(): string
     {
         global $mybb, $plugins, $lang, $db, $theme;
-        global $showcaseFields, $showcaseFieldEnabled, $showcaseFieldsParseable, $showcaseFieldsFormat;
-        global $parser;
+        global $showcaseFields;
 
         $currentUserID = (int)$mybb->user['uid'];
 
@@ -92,8 +89,8 @@ class Output
 
         $queryTables = ['users userData ON (userData.uid=entryData.uid)'];
 
-        foreach ($showcaseFieldEnabled as $fieldName => $fieldType) {
-            if ($fieldType == FIELD_TYPE_HTML_DB || $fieldType == FIELD_TYPE_HTML_RADIO) {
+        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+            if ($htmlType == FIELD_TYPE_HTML_DB || $htmlType == FIELD_TYPE_HTML_RADIO) {
                 $queryTables[] = "myshowcase_field_data table_{$fieldName} ON (table_{$fieldName}.valueid=entryData.{$fieldName} AND table_{$fieldName}.name='{$fieldName}')";
 
                 $queryFields[] = "table_{$fieldName}.value AS {$fieldName}";
@@ -160,182 +157,31 @@ class Output
 
         $showcase_admin_url = SHOWCASE_URL;
 
+        $showcase_view_admin_edit = '';
+
         if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] || ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
             $showcase_view_admin_edit = eval(getTemplate('view_admin_edit'));
         }
+
+        $showcase_view_admin_delete = '';
 
         if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] || ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
             $showcase_view_admin_delete = eval(getTemplate('view_admin_delete'));
         }
 
-        if ($showcase_view_admin_edit != '' || $showcase_view_admin_delete != '') {
+        if ($showcase_view_admin_edit || $showcase_view_admin_delete) {
             $showcase_header_special = eval(getTemplate('view_admin'));
         }
 
         $showcase_data_header = eval(getTemplate('table_header'));
-        $showcase_header_jumpto;
 
         //trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
         //doing this now should not impact anyhting. no issues with gomobile beta4
         define('IN_ARCHIVE', 1);
 
-        reset($showcaseFieldEnabled);
+        reset($this->showcaseObject->fieldSetEnabledFields);
 
-        $alternativeBackground = alt_trow(true);
-
-        $entryFieldsData = [];
-
-        foreach ($showcaseFieldEnabled as $fieldName => $fieldType) {
-            $fieldHeader = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
-
-            //set parser options for current field
-
-            $entryFieldValue = $this->showcaseObject->entryData[$fieldName] ?? '';
-
-            if (empty($entryFieldValue) && $this->showcaseObject->displayEmptyFields) {
-                $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-            }
-
-            switch ($fieldType) {
-                case FIELD_TYPE_HTML_TEXTAREA:
-                    _dump('FIELD_TYPE_HTML_TEXTAREA');
-                    $entryFieldValue = $this->showcaseObject->entryData[$fieldName];
-                    if ($entryFieldValue != '' || $this->showcaseObject->displayEmptyFields == 1) {
-                        if ($showcaseFieldsParseable[$fieldName] || $this->renderObject->highlightTerms) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->renderObject->parserOptions
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                            $entryFieldValue = nl2br($entryFieldValue);
-                        }
-                        $entryFieldsData[] = eval($this->renderObject->templateGet('pageViewDataFieldTextArea'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_TEXT_BOX:
-                    //format values as requested
-                    match ($showcaseFieldsFormat[$fieldName]) {
-                        FORMAT_TYPE_MY_NUMBER_FORMAT => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT](
-                            $entryFieldValue
-                        ),
-                        FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS](
-                            $entryFieldValue
-                        ),
-                        FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS](
-                            $entryFieldValue
-                        ),
-                        default => false
-                    };
-
-                    if (!empty($entryFieldValue)) {
-                        if ($showcaseFieldsParseable[$fieldName] || $this->renderObject->highlightTerms) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->renderObject->parserOptions
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsData[] = eval($this->renderObject->templateGet('pageViewDataFieldTextBox'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_URL:
-                    _dump('FIELD_TYPE_HTML_URL');
-                    $entryFieldValue = $this->showcaseObject->entryData[$fieldName];
-                    if ($entryFieldValue != '' || $this->showcaseObject->displayEmptyFields) {
-                        $entryFieldValue = $parser->mycode_parse_url($this->showcaseObject->entryData[$fieldName]);
-                        $entryFieldsData[] = eval(getTemplate('view_data_2'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_RADIO:
-                    _dump('FIELD_TYPE_HTML_RADIO');
-                    $entryFieldValue = $this->showcaseObject->entryData[$fieldName];
-                    if (($entryFieldValue != '') || $this->showcaseObject->displayEmptyFields) {
-                        $entryFieldsData[] = eval(getTemplate('view_data_1'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_CHECK_BOX:
-                    _dump('FIELD_TYPE_HTML_CHECK_BOX');
-                    if (($this->showcaseObject->entryData[$fieldName] != '') || $this->showcaseObject->displayEmptyFields) {
-                        if ($this->showcaseObject->entryData[$fieldName] == 1) {
-                            $entryFieldValue = '<img src="' . $mybb->settings['bburl'] . '/images/valid.gif" alt="Yes">';
-                        } else {
-                            $entryFieldValue = '<img src="' . $mybb->settings['bburl'] . '/images/invalid.gif" alt="No">';
-                        }
-                        $entryFieldsData[] = eval(getTemplate('view_data_1'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_DB:
-                    if (!empty($entryFieldValue)) {
-                        if (!empty($entryFieldValue) && ($showcaseFieldsParseable[$fieldName] || $this->renderObject->highlightTerms)) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->renderObject->parserOptions
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsData[] = eval($this->renderObject->templateGet('pageViewDataFieldDataBase'));
-                    }
-                    break;
-
-                case FIELD_TYPE_HTML_DATE:
-                    _dump('FIELD_TYPE_HTML_DATE');
-                    $entryFieldValue = $this->showcaseObject->entryData[$fieldName];
-                    if ($entryFieldValue != '') {
-                        $date_bits = explode('|', $this->showcaseObject->entryData[$fieldName]);
-                        $date_bits = array_map('intval', $date_bits);
-
-                        if ($date_bits[0] > 0 && $date_bits[1] > 0 && $date_bits[2] > 0) {
-                            $entryFieldValue = my_date(
-                                $mybb->settings['dateformat'],
-                                mktime(0, 0, 0, $date_bits[0], $date_bits[1], $date_bits[2])
-                            );
-                        } else {
-                            $entryFieldValue = '';
-                            if ($date_bits[0]) {
-                                $entryFieldValue .= $date_bits[0];
-                            }
-                            if ($date_bits[1]) {
-                                $entryFieldValue .= ($entryFieldValue != '' ? '-' : '') . $date_bits[1];
-                            }
-                            if ($date_bits[2]) {
-                                $entryFieldValue .= ($entryFieldValue != '' ? '-' : '') . $date_bits[2];
-                            }
-                        }
-                    } else {
-                        $entryFieldValue = '';
-                    }
-                    if (($entryFieldValue != '') || $this->showcaseObject->displayEmptyFields) {
-                        $entryFieldsData[] = eval(getTemplate('view_data_1'));
-                    }
-                    break;
-            }
-
-            $alternativeBackground = alt_trow();
-        }
-
-        $entryLastApprovedBy = '';
-
-        //for moderators, show who last approved the entry
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $this->showcaseObject->entryData['approved']) {
-            $moderatorUserData = get_user($this->showcaseObject->entryData['approved_by']);
-
-            $moderatorUserProfileLink = build_profile_link(
-                $moderatorUserData['username'],
-                $moderatorUserData['uid']
-            );
-
-            $entryLastApprovedBy = eval($this->renderObject->templateGet('pageViewDataLastApprovedBy'));
-        }
+        $entryPost = $this->renderObject->buildEntry($this->showcaseObject->entryData);
 
         /*
         //output bottom row for report button and future add-ons
@@ -356,15 +202,13 @@ class Output
 
             $commentObjects = commentGet(
                 ["gid='{$this->showcaseObject->entryID}'", "id='{$this->showcaseObject->id}'"],
-                ['uid', 'comment', 'dateline', 'ipaddress'],
+                ['uid', 'comment', 'dateline', 'ipaddress'/*, 'moderator_uid'*/],
                 $queryOptions
             );
 
             // start getting comments
 
             $commentsList = $commentsForm = '';
-
-            $entryFieldsData = implode('', $entryFieldsData);
 
             $entryUrl = urlHandlerBuild(['action' => 'view', 'gid' => $this->showcaseObject->entryID]);
 
@@ -389,7 +233,11 @@ class Output
                     'showall',
                     MyBB::INPUT_INT
                 ) != 1 && $showcase_numcomments > $this->showcaseObject->commentsPerPageLimit) {
-                $showcase_show_all = '(<a href="' . $entryUrl . $amp . 'showall=1#comments">' . str_replace(
+                $showAllEntriesUrl = urlHandlerBuild(
+                    ['action' => 'view', 'gid' => $this->showcaseObject->entryID, 'showall' => 1]
+                );
+
+                $showcase_show_all = '(<a href="' . $showAllEntriesUrl . '#comments">' . str_replace(
                         '{count}',
                         $this->showcaseObject->entryData['comments'],
                         $lang->myshowcase_comment_show_all
@@ -454,10 +302,10 @@ class Output
                 //if mime is image
                 if (stristr($attachmentData['filetype'], 'image/')) {
                     //determine what image to use for thumbnail
-                    if ($gattachments['thumbnail'] != 'SMALL' && file_exists(
-                            $this->showcaseObject->imageFolder . '/' . $gattachments['thumbnail']
+                    if ($attachmentData['thumbnail'] != 'SMALL' && file_exists(
+                            $this->showcaseObject->imageFolder . '/' . $attachmentData['thumbnail']
                         )) {
-                        $item_image = './' . $this->showcaseObject->imageFolder . '/' . $gattachments['thumbnail'];
+                        $item_image = './' . $this->showcaseObject->imageFolder . '/' . $attachmentData['thumbnail'];
                     } else {
                         $item_image = $item_attachurljs;
                     }
@@ -471,7 +319,7 @@ class Output
                 } else //it's any other allowed type, so use this
                 {
                     $item_class = "class=\\\"attachment\\\"";
-                    $attachmentTypes = (array)$cache->read('attachtypes');
+                    $attachmentTypes = (array)$mybb->cache->read('attachtypes');
                     $attachmentExtension = get_extension($attachmentData['filename']);
                     $item_image = $theme['imgdir'] . '/error.gif';
                     if (array_key_exists($attachmentExtension, $attachmentTypes)) {
@@ -481,7 +329,7 @@ class Output
 
                 $item_alt = $lang->sprintf(
                     $lang->myshowcase_attachment_alt,
-                    $gattachments['filename'],
+                    $attachmentData['filename'],
                     $this->showcaseObject->entryData['username']
                 );
 
@@ -883,6 +731,8 @@ class Output
 
     public function commentPost(): void
     {
+        global $mybb, $lang, $plugins;
+
         if (!$currentUserID) {
             error($lang->myshowcase_comments_not_logged_in);
         }
@@ -891,7 +741,6 @@ class Output
             verify_post_check($mybb->get_input('my_post_key'));
 
             $plugins->run_hooks('myshowcase_add_comment_start');
-
 
             if (!$this->showcaseObject->entryID) {
                 error($lang->myshowcase_invalid_id);
@@ -1003,9 +852,9 @@ class Output
         }
     }
 
-    public function entryDelete(): void
+    #[NoReturn] public function entryDelete(): void
     {
-        global $mybb;
+        global $mybb, $lang, $plugins;
 
         if ($mybb->request_method == 'post') {
             verify_post_check($mybb->get_input('my_post_key'));
@@ -1052,6 +901,8 @@ class Output
 
     public function commentDelete(): void
     {
+        global $lang, $plugins;
+
         $plugins->run_hooks('myshowcase_del_comment_start');
 
         if (!$commentID) {
@@ -1111,16 +962,16 @@ class Output
         global $showcaseFieldsOrder, $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
         global $showcaseFieldsShow, $showcaseFields, $unapproved;
         global $urlParams, $urlBase, $showcaseInputSearchField, $showcaseColumnsCount;
-        global $showcaseFieldsFormat, $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
-        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder, $showcaseFieldsParseable;
+        global $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
+        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder;
 
-        global $entryFieldsData, $entryHash, $showcaseFieldEnabled;
+        global $entryHash;
         global $showcaseFieldsMaximumLength, $showcaseFieldsMinimumLength, $showcaseFieldsRequired;
 
         global $mybb, $lang, $db, $templates, $plugins;
-        global $showcaseFieldsMaximumLength, $showcaseFieldsFormat, $showcaseFieldsRequired, $showcaseFieldsMinimumLength, $showcase_url;
+        global $showcaseFieldsMaximumLength, $showcaseFieldsRequired, $showcaseFieldsMinimumLength, $showcase_url;
 
-        global $entryHash, $entryFieldsData;
+        global $entryHash;
 
         $currentUserID = (int)$mybb->user['uid'];
 
@@ -1242,30 +1093,29 @@ class Output
                     }
 
                     //add showcase specific fields
-                    reset($showcaseFieldEnabled);
+                    reset($this->showcaseObject->fieldSetEnabledFields);
+
                     $submitted_data = [];
-                    foreach ($showcaseFieldEnabled as $fname => $ftype) {
-                        if ($ftype == FIELD_TYPE_HTML_DB || $ftype == FIELD_TYPE_HTML_RADIO) {
-                            $submitted_data[$fname] = intval($mybb->get_input('myshowcase_field_' . $fname));
-                        } elseif ($ftype == FIELD_TYPE_HTML_CHECK_BOX) {
-                            $submitted_data[$fname] = (isset($mybb->input['myshowcase_field_' . $fname]) ? 1 : 0);
-                        } elseif ($ftype == FIELD_TYPE_HTML_DATE) {
-                            $m = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_m'));
-                            $d = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_d'));
-                            $y = $db->escape_string($mybb->get_input('myshowcase_field_' . $fname . '_y'));
-                            $submitted_data[$fname] = $m . '|' . $d . '|' . $y;
+
+                    foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+                        if ($htmlType == FIELD_TYPE_HTML_DB || $htmlType == FIELD_TYPE_HTML_RADIO) {
+                            $submitted_data[$fieldName] = intval($mybb->get_input('myshowcase_field_' . $fieldName));
+                        } elseif ($htmlType == FIELD_TYPE_HTML_CHECK_BOX) {
+                            $submitted_data[$fieldName] = (isset($mybb->input['myshowcase_field_' . $fieldName]) ? 1 : 0);
+                        } elseif ($htmlType == FIELD_TYPE_HTML_DATE) {
+                            $m = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_m'));
+                            $d = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_d'));
+                            $y = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_y'));
+                            $submitted_data[$fieldName] = $m . '|' . $d . '|' . $y;
                         } else {
-                            $submitted_data[$fname] = $db->escape_string(
-                                $mybb->get_input('myshowcase_field_' . $fname)
+                            $submitted_data[$fieldName] = $db->escape_string(
+                                $mybb->get_input('myshowcase_field_' . $fieldName)
                             );
                         }
                     }
 
-                    //redefine the showcase_data
-                    $entryFieldsData = array_merge($default_data, $submitted_data);
-
                     //send data to handler
-                    $showcasehandler->set_data($entryFieldsData);
+                    $showcasehandler->set_data(array_merge($default_data, $submitted_data));
 
                     // Now let the showcase handler do all the hard work.
                     $valid_showcase = $showcasehandler->validate_showcase();
@@ -1307,31 +1157,32 @@ class Output
 
                     $pageContents .= eval(getTemplate('new_top'));
 
-                    reset($showcaseFieldEnabled);
-                    foreach ($showcaseFieldEnabled as $fname => $ftype) {
-                        $temp = 'myshowcase_field_' . $fname;
-                        $field_header = !empty($lang->$temp) ? $lang->$temp : $fname;
+                    reset($this->showcaseObject->fieldSetEnabledFields);
+
+                    foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+                        $temp = 'myshowcase_field_' . $fieldName;
+                        $field_header = !empty($lang->$temp) ? $lang->$temp : $fieldName;
 
                         $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
                         if ($mybb->get_input('action') == 'edit') {
-                            $mybb->input['myshowcase_field_' . $fname] = htmlspecialchars_uni(
-                                stripslashes($entryFieldsData[$fname])
+                            $mybb->input['myshowcase_field_' . $fieldName] = htmlspecialchars_uni(
+                                stripslashes($entryFieldsData[$fieldName])
                             );
                         }
 
-                        switch ($ftype) {
+                        switch ($htmlType) {
                             case FIELD_TYPE_HTML_TEXT_BOX:
                                 $showcase_field_width = 50;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = '';
-                                $showcase_field_options = 'maxlength="' . $showcaseFieldsMaximumLength[$fname] . '"';
+                                $showcase_field_options = 'maxlength="' . $showcaseFieldsMaximumLength[$fieldName] . '"';
                                 $showcase_field_input = eval(getTemplate('field_textbox'));
 
-                                if ($showcaseFieldsFormat[$fname] !== FORMAT_TYPE_NONE) {
+                                if ($this->showcaseObject->fieldSetFormatableFields[$fieldName] !== FORMAT_TYPE_NONE) {
                                     $showcase_field_input .= '&nbsp;' . $lang->myshowcase_editing_number;
                                 }
                                 break;
@@ -1339,20 +1190,20 @@ class Output
                             case FIELD_TYPE_HTML_URL:
                                 $showcase_field_width = 150;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = '';
-                                $showcase_field_options = 'maxlength="' . $showcaseFieldsMaximumLength[$fname] . '"';
+                                $showcase_field_options = 'maxlength="' . $showcaseFieldsMaximumLength[$fieldName] . '"';
                                 $showcase_field_input = eval(getTemplate('field_textbox'));
                                 break;
 
                             case 'textarea':
                                 $showcase_field_width = 100;
-                                $showcase_field_rows = $showcaseFieldsMaximumLength[$fname];
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_rows = $showcaseFieldsMaximumLength[$fieldName];
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = '';
                                 $showcase_field_options = '';
                                 $showcase_field_input = eval(getTemplate('field_textarea'));
@@ -1361,12 +1212,16 @@ class Output
                             case FIELD_TYPE_HTML_RADIO:
                                 $showcase_field_width = 50;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_options = '';
 
                                 $fieldDataObjects = fieldDataGet(
-                                    ["setid='{$this->showcaseObject->fieldSetID}'", "name='{$fname}'", "valueid!='0'"],
+                                    [
+                                        "setid='{$this->showcaseObject->fieldSetID}'",
+                                        "name='{$fieldName}'",
+                                        "valueid!='0'"
+                                    ],
                                     ['valueid', 'value'],
                                     ['order_by' => 'disporder']
                                 );
@@ -1379,7 +1234,7 @@ class Output
                                 foreach ($fieldDataObjects as $fieldDataID => $results) {
                                     $showcase_field_value = $results['valueid'];
                                     $showcase_field_checked = ($mybb->get_input(
-                                        'myshowcase_field_' . $fname
+                                        'myshowcase_field_' . $fieldName
                                     ) == $results['valueid'] ? ' checked' : '');
                                     $showcase_field_text = $results['value'];
                                     $showcase_field_input .= eval(getTemplate('field_radio'));
@@ -1389,11 +1244,11 @@ class Output
                             case FIELD_TYPE_HTML_CHECK_BOX:
                                 $showcase_field_width = 50;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
                                 $showcase_field_value = '1';
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = ($mybb->get_input(
-                                    'myshowcase_field_' . $fname
+                                    'myshowcase_field_' . $fieldName
                                 ) == 1 ? ' checked="checked"' : '');
                                 $showcase_field_options = '';
                                 $showcase_field_input = eval(getTemplate('field_checkbox'));
@@ -1402,13 +1257,17 @@ class Output
                             case FIELD_TYPE_HTML_DB:
                                 $showcase_field_width = 50;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = '';
 
                                 $fieldDataObjects = fieldDataGet(
-                                    ["setid='{$this->showcaseObject->fieldSetID}'", "name='{$fname}'", "valueid!='0'"],
+                                    [
+                                        "setid='{$this->showcaseObject->fieldSetID}'",
+                                        "name='{$fieldName}'",
+                                        "valueid!='0'"
+                                    ],
                                     ['valueid', 'value'],
                                     ['order_by' => 'disporder']
                                 );
@@ -1429,20 +1288,20 @@ class Output
                             case FIELD_TYPE_HTML_DATE:
                                 $showcase_field_width = 50;
                                 $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fname;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fname);
-                                $showcase_field_enabled = '';//($showcaseFieldEnabled[$fname] != 1 ? 'disabled' : '');
+                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
+                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
+                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                                 $showcase_field_checked = '';
 
                                 $showcase_field_value_m = ($mybb->get_input(
-                                    'myshowcase_field_' . $fname . '_m'
-                                ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_m'));
+                                    'myshowcase_field_' . $fieldName . '_m'
+                                ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fieldName . '_m'));
                                 $showcase_field_value_d = ($mybb->get_input(
-                                    'myshowcase_field_' . $fname . '_d'
-                                ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fname . '_d'));
+                                    'myshowcase_field_' . $fieldName . '_d'
+                                ) == '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fieldName . '_d'));
                                 $showcase_field_value_y = ($mybb->get_input(
-                                    'myshowcase_field_' . $fname . '_y'
-                                ) == '0000' ? '0000' : $mybb->get_input('myshowcase_field_' . $fname . '_y'));
+                                    'myshowcase_field_' . $fieldName . '_y'
+                                ) == '0000' ? '0000' : $mybb->get_input('myshowcase_field_' . $fieldName . '_y'));
 
                                 $showcase_field_options_m = '<option value=0' . ($showcase_field_value_m == '00' ? ' selected' : '') . '>&nbsp;</option>';
                                 $showcase_field_options_d = '<option value=0' . ($showcase_field_value_d == '00' ? ' selected' : '') . '>&nbsp;</option>';
@@ -1465,14 +1324,14 @@ class Output
                                             -2
                                         ) ? ' selected' : '') . '>' . substr('0' . $i, -2) . '</option>';
                                 }
-                                for ($i = $showcaseFieldsMaximumLength[$fname]; $i >= $showcaseFieldsMinimumLength[$fname]; $i--) {
+                                for ($i = $showcaseFieldsMaximumLength[$fieldName]; $i >= $showcaseFieldsMinimumLength[$fieldName]; $i--) {
                                     $showcase_field_options_y .= '<option value="' . $i . '" ' . ($showcase_field_value_y == $i ? ' selected' : '') . '>' . $i . '</option>';
                                 }
                                 $showcase_field_input = eval(getTemplate('field_date'));
                                 break;
                         }
 
-                        $field_header = ($showcaseFieldsRequired[$fname] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
+                        $field_header = ($showcaseFieldsRequired[$fieldName] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
                         $pageContents .= eval(getTemplate('new_fields'));
                     }
 
@@ -1559,13 +1418,13 @@ class Output
 
         $alternativeBackground = 'trow2';
 
-        reset($showcaseFieldEnabled);
+        reset($this->showcaseObject->fieldSetEnabledFields);
 
         $showcaseFields = '';
 
         $fieldTabIndex = 1;
 
-        foreach ($showcaseFieldEnabled as $fieldName => $fieldType) {
+        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
             $fieldKey = "myshowcase_field_{$fieldName}";
 
             $fieldTitle = $fieldName;
@@ -1577,7 +1436,6 @@ class Output
             $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
             if ($mybb->get_input('action') == 'edit') {
-                _dump(147, $entryFieldsData);
                 $mybb->input[$fieldKey] = htmlspecialchars_uni(
                     stripslashes($entryFieldsData[$fieldName])
                 );
@@ -1593,7 +1451,7 @@ class Output
 
             $maximumLength = $showcaseFieldsMaximumLength[$fieldName] ?? '';
 
-            switch ($fieldType) {
+            switch ($htmlType) {
                 case FIELD_TYPE_HTML_TEXT_BOX:
                     $fieldValue = $mybb->get_input($fieldKey);
 
@@ -1612,7 +1470,7 @@ class Output
                 case FIELD_TYPE_HTML_RADIO:
                     $showcase_field_width = 50;
                     $showcase_field_rows = '';
-                    $showcase_field_enabled = '';// ($showcaseFieldEnabled[$fieldName] != 1 ? 'disabled' : '');
+                    $showcase_field_enabled = '';// ($this->showcaseObject->fieldSetEnabledFields[$fieldName] != 1 ? 'disabled' : '');
                     $showcase_field_options = '';
 
                     $fieldObjects = fieldDataGet(
@@ -1953,8 +1811,8 @@ class Output
         global $showcaseFieldsOrder, $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
         global $showcaseFieldsShow, $showcaseFields, $unapproved;
         global $urlParams, $urlBase, $showcaseInputSearchField, $showcaseColumnsCount;
-        global $showcaseFieldsFormat, $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
-        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder, $showcaseFieldsParseable;
+        global $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
+        global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder;
 
         $hookArguments = [];
 
@@ -2094,8 +1952,8 @@ class Output
 
         $whereClauses = [];
 
-        foreach ($showcaseSearchFields as $fieldName => $fieldType) {
-            if ($fieldType == FIELD_TYPE_HTML_DB || $fieldType == FIELD_TYPE_HTML_RADIO) {
+        foreach ($showcaseSearchFields as $fieldName => $htmlType) {
+            if ($htmlType == FIELD_TYPE_HTML_DB || $htmlType == FIELD_TYPE_HTML_RADIO) {
                 $queryTables[] = "myshowcase_field_data tbl_{$fieldName} ON (tbl_{$fieldName}.valueid = g.{$fieldName} AND tbl_{$fieldName}.name = '{$fieldName}')";
 
                 $queryFields[] = "tbl_{$fieldName}.value AS `{$fieldName}`";
@@ -2365,22 +2223,26 @@ class Output
                         $entryFieldText = '';
                     }
 
-                    if (empty($showcaseFieldsParseable[$fieldName])) {
+                    if (empty($this->showcaseObject->fieldSetParseableFields[$fieldName])) {
                         // todo, remove this legacy updating the database and updating the format field to TINYINT
-                        match ($showcaseFieldsFormat[$fieldName]) {
-                            FORMAT_TYPE_MY_NUMBER_FORMAT => $showcaseFieldsFormat[$fieldName] = FORMAT_TYPE_MY_NUMBER_FORMAT,
-                            'decimal1' => $showcaseFieldsFormat[$fieldName] = 2,
-                            'decimal2' => $showcaseFieldsFormat[$fieldName] = 3,
-                            default => $showcaseFieldsFormat[$fieldName] = 0
+                        match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
+                            FORMAT_TYPE_MY_NUMBER_FORMAT => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = FORMAT_TYPE_MY_NUMBER_FORMAT,
+                            'decimal1' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 2,
+                            'decimal2' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 3,
+                            default => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 0
                         };
 
                         $formatTypes = FORMAT_TYPES;
 
-                        if (!empty($formatTypes[$showcaseFieldsFormat[$fieldName]]) &&
-                            function_exists($formatTypes[$showcaseFieldsFormat[$fieldName]])) {
-                            $entryFieldText = $formatTypes[$showcaseFieldsFormat[$fieldName]]($entryFieldText);
+                        if (!empty($formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]) &&
+                            function_exists(
+                                $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]
+                            )) {
+                            $entryFieldText = $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]](
+                                $entryFieldText
+                            );
                         } else {
-                            $entryFieldText = match ((int)$showcaseFieldsFormat[$fieldName]) {
+                            $entryFieldText = match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
                                 2 => number_format((float)$entryFieldText, 1),
                                 3 => number_format((float)$entryFieldText, 2),
                                 default => htmlspecialchars_uni($entryFieldText),

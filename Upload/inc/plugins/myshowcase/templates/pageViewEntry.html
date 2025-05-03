@@ -1,5 +1,5 @@
-<a name="commentID{$commentID}" id="commentID{$commentID}"></a>
-<div class="post" style="" id="commentBody{$commentID}">
+<a name="entryID{$entryID}" id="entryID{$entryID}"></a>
+<div class="post" style="" id="entryBody{$entryID}">
     <div class="post_author">
         {$serAvatar}
         <div class="author_information">
@@ -16,12 +16,11 @@
     </div>
     <div class="post_content">
         <div class="post_head">
-            {$commentUrl}
             <span class="post_date">{$date}</span>
             {$approvedByMessage}
         </div>
         <div class="post_body scaleimages">
-            {$commentMessage}
+            {$entryFields}
         </div>
         {$userSignature}
     </div>

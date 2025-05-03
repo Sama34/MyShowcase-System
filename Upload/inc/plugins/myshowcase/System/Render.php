@@ -16,11 +16,28 @@ declare(strict_types=1);
 namespace MyShowcase\System;
 
 use function MyShowcase\Core\getTemplate;
+use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\urlHandlerBuild;
-use function MyShowcase\Core\urlHandlerGet;
+
+use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
+use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
+use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
+use const MyShowcase\Core\FIELD_TYPE_HTML_RADIO;
+use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
+use const MyShowcase\Core\FIELD_TYPE_HTML_TEXTAREA;
+use const MyShowcase\Core\FIELD_TYPE_HTML_URL;
+use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT;
+use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS;
+use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS;
+use const MyShowcase\Core\FORMAT_TYPES;
 
 class Render
 {
+    public const POST_TYPE_ENTRY = 1;
+
+    public const POST_TYPE_COMMENT = 2;
+
     public function __construct(
         public Showcase &$showcaseObject,
         public string $highlightTerms = '',
@@ -50,60 +67,94 @@ class Render
         return getTemplate($templateName, $enableHTMLComments, $this->showcaseObject->id);
     }
 
-    public function buildComment(int $commentsCounter, array $commentData, string $alternativeBackground): string
-    {
+    private function buildPost(
+        int $commentsCounter,
+        array $postData,
+        string $alternativeBackground,
+        int $postType = self::POST_TYPE_COMMENT
+    ): string {
         global $mybb, $lang, $theme;
 
-        $commentID = (int)$commentData['cid'];
+        $entryID = $this->showcaseObject->entryID;
+
+        if ($postType === self::POST_TYPE_COMMENT) {
+            $templatePrefix = 'pageViewCommentsComment';
+        } else {
+            $templatePrefix = 'pageViewEntry';
+        }
+
+        if ($postType === self::POST_TYPE_COMMENT) {
+            $commentMessage = $this->showcaseObject->parseMessage($postData['message'], $this->parserOptions);
+
+            $commentID = (int)$postData['comment_id'];
+
+            $commentNumber = my_number_format($commentsCounter);
+
+            $commentUrl = urlHandlerBuild(
+                ['action' => 'view', 'gid' => $entryID, 'commentID' => $commentID]
+            );
+
+            $commentUrl = eval($this->templateGet($templatePrefix . 'Url'));
+        } else {
+            $entryFields = $this->buildEntryFields();
+
+            $entryUrl = urlHandlerBuild(
+                ['action' => 'view', 'gid' => $entryID]
+            );
+        }
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $commentUserID = (int)$commentData['uid'];
+        $userID = (int)$postData['user_id'];
 
-        $commentUserData = get_user($commentUserID);
+        $userData = get_user($userID);
 
         // todo, this should probably account for additional groups, but I just took it from post bit logic for now
-        if ($commentUserData['usergroup']) {
-            $groupPermissions = usergroup_permissions($commentUserData['usergroup']);
+        if ($userData['usergroup']) {
+            $groupPermissions = usergroup_permissions($userData['usergroup']);
         } else {
             $groupPermissions = usergroup_permissions(1);
         }
 
-        if (!empty($commentUserData['username'])) {
-            $commentUserData['username'] = $lang->guest;
+        if (!empty($userData['username'])) {
+            $userData['username'] = $lang->guest;
         }
 
-        $commentUserProfileLinkPlain = get_profile_link($commentUserID);
+        $userProfileLinkPlain = get_profile_link($userID);
 
-        $commentUserName = htmlspecialchars_uni($commentUserData['username']);
+        $commentUserName = htmlspecialchars_uni($userData['username']);
 
         $commentUserNameFormatted = format_name(
             $commentUserName,
-            $commentUserData['usergroup'],
-            $commentUserData['displaygroup']
+            $userData['usergroup'],
+            $userData['displaygroup']
         );
 
-        $commentUserProfileLink = build_profile_link($commentUserNameFormatted, $commentUserID);
+        $userProfileLink = build_profile_link($commentUserNameFormatted, $userID);
 
         if (isset($mybb->user['showavatars']) && !empty($mybb->user['showavatars']) || !$currentUserID) {
-            $commentUserAvatar = format_avatar(
-                $commentUserData['avatar'],
-                $commentUserData['avatardimensions'],
+            $userAvatar = format_avatar(
+                $userData['avatar'],
+                $userData['avatardimensions'],
                 $mybb->settings['postmaxavatarsize']
             );
 
-            $commentUserAvatar = eval($this->templateGet('pageViewCommentsCommentUserAvatar'));
+            $userAvatarImage = $userAvatar['image'] ?? '';
+
+            $userAvatarWidthHeight = $userAvatar['width_height'] ?? '';
+
+            $serAvatar = eval($this->templateGet($templatePrefix . 'UserAvatar'));
         }
 
-        if (!empty($groupPermissions['usertitle']) && empty($commentUserData['usertitle'])) {
-            $commentUserData['usertitle'] = $groupPermissions['usertitle'];
+        if (!empty($groupPermissions['usertitle']) && empty($userData['usertitle'])) {
+            $userData['usertitle'] = $groupPermissions['usertitle'];
         } elseif (empty($groupPermissions['usertitle']) && ($userTitlesCache = $this->cacheGetUserTitles())) {
             reset($userTitlesCache);
 
             foreach ($userTitlesCache as $postNumber => $titleinfo) {
-                if ($commentUserData['postnum'] >= $postNumber) {
-                    if (empty($commentUserData['usertitle'])) {
-                        $commentUserData['usertitle'] = $titleinfo['title'];
+                if ($userData['postnum'] >= $postNumber) {
+                    if (empty($userData['usertitle'])) {
+                        $userData['usertitle'] = $titleinfo['title'];
                     }
 
                     $groupPermissions['stars'] = $titleinfo['stars'];
@@ -115,21 +166,21 @@ class Render
             }
         }
 
-        $commentUserTitle = htmlspecialchars_uni($commentUserData['usertitle']);
+        $userTitle = htmlspecialchars_uni($userData['usertitle']);
 
-        $commentUserStars = '';
+        $userStars = '';
 
         if (!empty($groupPermissions['starimage']) && isset($groupPermissions['stars'])) {
             $groupStarImage = str_replace('{theme}', $theme['imgdir'], $groupPermissions['starimage']);
 
             for ($i = 0; $i < $groupPermissions['stars']; ++$i) {
-                $commentUserStars .= eval($this->templateGet('pageViewCommentsCommentUserStar', false));
+                $userStars .= eval($this->templateGet($templatePrefix . 'UserStar', false));
             }
 
-            $commentUserStars .= '<br />';
+            $userStars .= '<br />';
         }
 
-        $commentUserGroupImage = '';
+        $userGroupImage = '';
 
         if (!empty($groupPermissions['image'])) {
             $groupImage = str_replace(['{lang}', '{theme}'],
@@ -138,47 +189,43 @@ class Render
 
             $groupTitle = $groupPermissions['title'];
 
-            $commentUserGroupImage = eval($this->templateGet('pageViewCommentsCommentUserGroupImage'));
+            $userGroupImage = eval($this->templateGet($templatePrefix . 'UserGroupImage'));
         }
 
         // Determine the status to show for the user (Online/Offline/Away)
-        if ($commentUserData['lastactive'] > TIME_NOW - $mybb->settings['wolcutoff'] &&
-            (empty($commentUserData['invisible']) || !empty($mybb->usergroup['canviewwolinvis'])) &&
-            (int)$commentUserData['lastvisit'] !== (int)$commentUserData['lastactive']) {
-            $commentUserOnlineStatus = eval($this->templateGet('pageViewCommentsCommentUserOnlineStatusOnline'));
-        } elseif (!empty($commentUserData['away']) && !empty($mybb->settings['allowaway'])) {
-            $commentUserOnlineStatus = eval($this->templateGet('pageViewCommentsCommentUserOnlineStatusAway'));
+        if ($userData['lastactive'] > TIME_NOW - $mybb->settings['wolcutoff'] &&
+            (empty($userData['invisible']) || !empty($mybb->usergroup['canviewwolinvis'])) &&
+            (int)$userData['lastvisit'] !== (int)$userData['lastactive']) {
+            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOnline'));
+        } elseif (!empty($userData['away']) && !empty($mybb->settings['allowaway'])) {
+            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusAway'));
         } else {
-            $commentUserOnlineStatus = eval($this->templateGet('pageViewCommentsCommentUserOnlineStatusOffline'));
+            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOffline'));
         }
 
-        $commentUserPostNumber = my_number_format($commentUserData['postnum']);
+        $userPostNumber = my_number_format($userData['postnum']);
 
-        $commentUserThreadNumber = my_number_format($commentUserData['threadnum']);
+        $userThreadNumber = my_number_format($userData['threadnum']);
 
-        $commentUserRegistrationDate = my_date($mybb->settings['regdateformat'], $commentUserData['regdate']);
+        $userRegistrationDate = my_date($mybb->settings['regdateformat'], $userData['regdate']);
 
         if (!empty($groupPermissions['usereputationsystem']) && !empty($mybb->settings['enablereputation'])) {
-            $commentUserReputation = get_reputation($commentUserData['reputation'], $commentUserID);
+            $userReputation = get_reputation($userData['reputation'], $userID);
 
-            $commentUserDetailsReputationLink = eval($this->templateGet('pageViewCommentsCommentUserReputation'));
+            $userDetailsReputationLink = eval($this->templateGet($templatePrefix . 'UserReputation'));
         }
 
-        $commentButtonEmail = $commentButtonPrivateMessage = $commentButtonWebsite = '';
-        $commentButtonDelete = $commentButtonPurgeSpammer = $commentButtonWarn = '';
-        $commentUserSignature = '';
-
-        $commentUserDetailsWarningLevel = '';
+        $buttonWarn = $userDetailsWarningLevel = '';
 
         if (!empty($mybb->settings['enablewarningsystem']) &&
             !empty($groupPermissions['canreceivewarnings']) &&
-            (!empty($mybb->usergroup['canwarnusers']) || ($currentUserID === $commentUserID && !empty($mybb->settings['canviewownwarning'])))) {
+            (!empty($mybb->usergroup['canwarnusers']) || ($currentUserID === $userID && !empty($mybb->settings['canviewownwarning'])))) {
             if ($mybb->settings['maxwarningpoints'] < 1) {
                 $mybb->settings['maxwarningpoints'] = 10;
             }
 
             $warningLevel = round(
-                $commentUserData['warningpoints'] / $mybb->settings['maxwarningpoints'] * 100
+                $userData['warningpoints'] / $mybb->settings['maxwarningpoints'] * 100
             );
 
             if ($warningLevel > 100) {
@@ -188,37 +235,49 @@ class Render
             $warningLevel = get_colored_warning_level($warningLevel);
 
             // If we can warn them, it's not the same person, and we're in a PM or a post.
-            if (!empty($mybb->usergroup['canwarnusers']) && $commentUserID !== $currentUserID) {
-                $commentButtonWarn = eval($this->templateGet('pageViewCommentsCommentButtonWarn'));
+            if (!empty($mybb->usergroup['canwarnusers']) && $userID !== $currentUserID) {
+                $buttonWarn = eval($this->templateGet($templatePrefix . 'ButtonWarn'));
 
-                $warningUrl = "warnings.php?uid={$commentUserID}";
+                $warningUrl = "warnings.php?uid={$userID}";
             } else {
                 $warningUrl = 'usercp.php';
             }
 
-            $commentUserDetailsWarningLevel = eval($this->templateGet('pageViewCommentsCommentUserWarningLevel'));
+            $userDetailsWarningLevel = eval($this->templateGet($templatePrefix . 'UserWarningLevel'));
         }
 
-        $commentUserDetails = eval($this->templateGet('pageViewCommentsCommentUserDetails'));
+        $date = my_date('relative', $postData['dateline']);
 
-        $commentPostDate = my_date('relative', $commentData['dateline']);
+        $approvedByMessage = '';
 
-        $commentMessage = $this->showcaseObject->parseMessage($commentData['comment'], $this->parserOptions);
+        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] &&
+            !empty($postData['moderator_uid'])) {
+            $moderatorUserData = get_user($postData['moderator_uid']);
+
+            $moderatorUserProfileLink = build_profile_link(
+                $moderatorUserData['username'],
+                $moderatorUserData['uid']
+            );
+
+            $approvedByMessage = eval($this->templateGet($templatePrefix . 'ModeratedBy'));
+        }
+
+        $userSignature = '';
 
         if ($this->showcaseObject->displaySignatures &&
-            !empty($commentUserData['username']) &&
-            !empty($commentUserData['signature']) &&
+            !empty($userData['username']) &&
+            !empty($userData['signature']) &&
             (!$currentUserID || !empty($mybb->user['showsigs'])) &&
-            (empty($commentUserData['suspendsignature']) || !empty($commentUserData['suspendsignature']) && !empty($commentUserData['suspendsigtime']) && $commentUserData['suspendsigtime'] < TIME_NOW) &&
+            (empty($userData['suspendsignature']) || !empty($userData['suspendsignature']) && !empty($userData['suspendsigtime']) && $userData['suspendsigtime'] < TIME_NOW) &&
             !empty($groupPermissions['canusesig']) &&
-            (empty($groupPermissions['canusesigxposts']) || $groupPermissions['canusesigxposts'] > 0 && $commentUserData['postnum'] > $groupPermissions['canusesigxposts']) &&
+            (empty($groupPermissions['canusesigxposts']) || $groupPermissions['canusesigxposts'] > 0 && $userData['postnum'] > $groupPermissions['canusesigxposts']) &&
             !is_member($mybb->settings['hidesignatures'])) {
             $signatureParserOptions = [
                 'allow_html' => !empty($mybb->settings['sightml']),
                 'allow_mycode' => !empty($mybb->settings['sigmycode']),
                 'allow_smilies' => !empty($mybb->settings['sigsmilies']),
                 'allow_imgcode' => !empty($mybb->settings['sigimgcode']),
-                'me_username' => $commentUserData['username']
+                'me_username' => $userData['username']
             ];
 
             if ($groupPermissions['signofollow']) {
@@ -229,64 +288,268 @@ class Render
                 $signatureParserOptions['allow_imgcode'] = false;
             }
 
-            $commentUserSignature = $this->showcaseObject->parseMessage(
-                $commentUserData['signature'],
+            $userSignature = $this->showcaseObject->parseMessage(
+                $userData['signature'],
                 $signatureParserOptions
             );
 
-            $commentUserSignature = eval($this->templateGet('pageViewCommentsCommentUserSignature'));
+            $userSignature = eval($this->templateGet($templatePrefix . 'UserSignature'));
         }
 
-        if (empty($commentUserData['hideemail']) && $commentUserID !== $currentUserID && !empty($mybb->usergroup['cansendemail'])) {
-            $commentButtonEmail = eval($this->templateGet('pageViewCommentsCommentButtonDelete'));
+        $buttonEmail = '';
+
+        if (empty($userData['hideemail']) && $userID !== $currentUserID && !empty($mybb->usergroup['cansendemail'])) {
+            $buttonEmail = eval($this->templateGet($templatePrefix . 'ButtonEmail'));
         }
+
+        $buttonPrivateMessage = '';
 
         if (!empty($mybb->settings['enablepms']) &&
-            $commentUserID !== $currentUserID &&
-            ((!empty($commentUserData['receivepms']) &&
+            $userID !== $currentUserID &&
+            ((!empty($userData['receivepms']) &&
                     !empty($groupPermissions['canusepms']) &&
                     !empty($mybb->usergroup['cansendpms']) &&
                     my_strpos(
-                        ',' . $commentUserData['ignorelist'] . ',',
+                        ',' . $userData['ignorelist'] . ',',
                         ',' . $currentUserID . ','
                     ) === false) ||
                 !empty($mybb->usergroup['canoverridepm']))) {
-            $commentButtonPrivateMessage = eval(
+            $buttonPrivateMessage = eval(
             $this->templateGet(
-                'pageViewCommentsCommentButtonPrivateMessage'
+                $templatePrefix . 'ButtonPrivateMessage'
             )
             );
         }
 
-        if (!empty($commentUserData['website']) &&
+        $buttonWebsite = '';
+
+        if (!empty($userData['website']) &&
             !is_member($mybb->settings['hidewebsite']) &&
             !empty($groupPermissions['canchangewebsite'])) {
-            $commentUserWebsite = htmlspecialchars_uni($commentUserData['website']);
+            $userWebsite = htmlspecialchars_uni($userData['website']);
 
-            $commentButtonWebsite = eval($this->templateGet('pageViewCommentsCommentButtonWebsite'));
+            $buttonWebsite = eval($this->templateGet($templatePrefix . 'ButtonWebsite'));
         }
+
+        $buttonDelete = '';
 
         //setup comment admin options
         //only mods, original author (if allowed) or owner (if allowed) can delete comments
-        if (
-            ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) ||
-            ((int)$commentData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-            ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
-        ) {
-            $commentButtonDelete = eval($this->templateGet('pageViewCommentsCommentButtonDelete'));
 
-            $commentButtonPurgeSpammer = eval($this->templateGet('pageViewCommentsCommentButtonPurgeSpammer'));
+        if ($postType === self::POST_TYPE_COMMENT) {
+            if (
+                ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) ||
+                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
+                ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+            ) {
+                $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
+            }
         }
 
-        $commentUrl = urlHandlerBuild(
-            ['action' => 'view', 'gid' => $this->showcaseObject->entryID, 'commentID' => $commentID]
-        );
+        $buttonPurgeSpammer = '';
 
-        $commentNumber = my_number_format($commentsCounter);
+        if (
+            ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) ||
+            ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
+            ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+        ) {
+            $buttonPurgeSpammer = eval($this->templateGet($templatePrefix . 'ButtonPurgeSpammer'));
+        }
 
-        $commentUrl = eval($this->templateGet('pageViewCommentsCommentUrl'));
+        $serDetails = eval($this->templateGet($templatePrefix . 'UserDetails'));
 
-        return eval($this->templateGet('pageViewCommentsComment'));
+        return eval($this->templateGet($templatePrefix));
+    }
+
+    public function buildEntry(array $entryData): string
+    {
+        return $this->buildPost(0, [
+            'user_id' => $this->showcaseObject->entryUserID,
+            'dateline' => $this->showcaseObject->entryData['dateline'],
+            //'ipaddress' => $this->showcaseObject->entryData['ipaddress'],
+            'moderator_uid' => $this->showcaseObject->entryData['approved_by'],
+        ], alt_trow(true), self::POST_TYPE_ENTRY);
+    }
+
+    public function buildComment(int $commentsCounter, array $commentData, string $alternativeBackground): string
+    {
+        return $this->buildPost($commentsCounter, [
+            'comment_id' => $commentData['cid'],
+            'user_id' => $commentData['uid'],
+            'message' => $commentData['comment'],
+            'dateline' => $commentData['dateline'],
+            'ipaddress' => $commentData['ipaddress'],
+            //'moderator_uid' => $commentData['moderator_uid'],
+        ], $alternativeBackground);
+    }
+
+    public function buildEntryFields(): string
+    {
+        global $mybb, $lang;
+
+        $entryFieldsList = [];
+
+        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+            $fieldHeader = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
+
+            //set parser options for current field
+
+            $entryFieldValue = $this->showcaseObject->entryData[$fieldName] ?? '';
+
+            switch ($htmlType) {
+                case FIELD_TYPE_HTML_TEXTAREA:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                            $entryFieldValue = $this->showcaseObject->parseMessage(
+                                $entryFieldValue,
+                                $this->parserOptions
+                            );
+                        } else {
+                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+
+                            $entryFieldValue = nl2br($entryFieldValue);
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldTextArea'));
+                    }
+
+                    break;
+                case FIELD_TYPE_HTML_TEXT_BOX:
+                    //format values as requested
+                    match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
+                        FORMAT_TYPE_MY_NUMBER_FORMAT => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT](
+                            $entryFieldValue
+                        ),
+                        FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS](
+                            $entryFieldValue
+                        ),
+                        FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS](
+                            $entryFieldValue
+                        ),
+                        default => false
+                    };
+
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                            $entryFieldValue = $this->showcaseObject->parseMessage(
+                                $entryFieldValue,
+                                $this->parserOptions
+                            );
+                        } else {
+                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldTextBox'));
+                    }
+                    break;
+                case FIELD_TYPE_HTML_URL:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName]) {
+                            $entryFieldValue = postParser()->mycode_parse_url(
+                                $entryFieldValue
+                            );
+                        } else {
+                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldUrl'));
+                    }
+                    break;
+                case FIELD_TYPE_HTML_RADIO:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } else {
+                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldRadio'));
+                    }
+                    break;
+                case FIELD_TYPE_HTML_CHECK_BOX:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $entryFieldValueImage = $lang->myShowcaseEntryFieldValueEmpty;
+                        } else {
+                            if ((int)$entryFieldValue === CHECK_BOX_IS_CHECKED) {
+                                $imageName = 'valid';
+
+                                $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxYes;
+                            } else {
+                                $imageName = 'invalid';
+
+                                $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxNo;
+                            }
+
+                            $entryFieldValueImage = eval($this->templateGet('pageViewDataFieldCheckBoxImage'));
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldCheckBox'));
+                    }
+                    break;
+                case FIELD_TYPE_HTML_DB:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                            $entryFieldValue = $this->showcaseObject->parseMessage(
+                                $entryFieldValue,
+                                $this->parserOptions
+                            );
+                        } else {
+                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                        }
+
+                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldDataBase'));
+                    }
+                    break;
+                case FIELD_TYPE_HTML_DATE:
+                    if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
+                        if (empty($entryFieldValue)) {
+                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                        } else {
+                            $entryFieldValue = '';
+
+                            list($month, $day, $year) = array_pad(
+                                array_map('intval', explode('|', $entryFieldValue)),
+                                3,
+                                0
+                            );
+
+                            if ($month > 0 && $day > 0 && $year > 0) {
+                                $entryFieldValue = my_date(
+                                    $mybb->settings['dateformat'],
+                                    mktime(0, 0, 0, $month, $day, $year)
+                                );
+                            } else {
+                                if ($month) {
+                                    $entryFieldValue .= $month;
+                                }
+
+                                if ($day) {
+                                    $entryFieldValue .= ($entryFieldValue ? '-' : '') . $day;
+                                }
+
+                                if ($year) {
+                                    $entryFieldValue .= ($entryFieldValue ? '-' : '') . $year;
+                                }
+                            }
+                        }
+
+                        $entryFieldsList[] = eval(getTemplate('pageViewDataFieldDate'));
+                    }
+
+                    break;
+            }
+        }
+
+        return implode('', $entryFieldsList);
     }
 
     public function cacheGetUserTitles(): array

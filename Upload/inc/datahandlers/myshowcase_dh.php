@@ -100,7 +100,7 @@ class MyShowcaseDataHandler extends DataHandler
         $myshowcase_data = &$this->data;
 
         //get this myshowcase's field info
-        $fieldcache = cacheGet(CACHE_TYPE_FIELDS);
+        $showcaseFieldsCache = cacheGet(CACHE_TYPE_FIELDS);
 
         //get this myshowcase's permissions
         $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
@@ -118,7 +118,7 @@ class MyShowcaseDataHandler extends DataHandler
         }
 
         //run through all fields checking defined requirements
-        foreach ($fieldcache[$me->fieldSetID] as $field) {
+        foreach ($showcaseFieldsCache[$me->fieldSetID] as $field) {
             $fname = $field['name'];
             $temp = 'myshowcase_field_' . $fname;
             $field_header = $lang->$temp;
@@ -232,7 +232,6 @@ class MyShowcaseDataHandler extends DataHandler
             attachmentUpdate(["posthash='{$myshowcase_data['posthash']}'"], ['gid' => $this->gid]);
         }
 
-        // Return the post's pid and whether or not it is visible.
         return [
             'gid' => $this->gid
         ];
@@ -278,7 +277,6 @@ class MyShowcaseDataHandler extends DataHandler
             );
         }
 
-        // Return the post's pid and whether or not it is visible.
         return [
             'gid' => $this->gid
         ];

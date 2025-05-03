@@ -26,6 +26,7 @@ use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseDataGet;
 use function MyShowcase\Core\showcaseGetObject;
 use function MyShowcase\Core\urlHandlerBuild;
+use function MyShowcase\Core\urlHandlerGet;
 use function MyShowcase\Core\urlHandlerSet;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
@@ -66,6 +67,7 @@ function global_start(): bool
                     'pageViewCommentsCommentButtonPurgeSpammer',
                     'pageViewCommentsCommentButtonWarn',
                     'pageViewCommentsCommentButtonWebsite',
+                    'pageViewCommentsCommentModeratedBy',
                     'pageViewCommentsCommentUrl',
                     'pageViewCommentsCommentUserAvatar',
                     'pageViewCommentsCommentUserDetails',
@@ -80,10 +82,32 @@ function global_start(): bool
                     'pageViewCommentsFormGuest',
                     'pageViewCommentsFormUser',
                     'pageViewCommentsNone',
+                    'pageViewDataFieldCheckBox',
+                    'pageViewDataFieldCheckBoxImage',
                     'pageViewDataFieldDataBase',
+                    'pageViewDataFieldDate',
+                    'pageViewDataFieldRadio',
                     'pageViewDataFieldTextArea',
                     'pageViewDataFieldTextBox',
-                    'pageViewDataLastApprovedBy'
+                    'pageViewDataFieldUrl',
+                    'pageViewEntry',
+                    'pageViewEntryButtonDelete',
+                    'pageViewEntryButtonEmail',
+                    'pageViewEntryButtonPrivateMessage',
+                    'pageViewEntryButtonPurgeSpammer',
+                    'pageViewEntryButtonWarn',
+                    'pageViewEntryButtonWebsite',
+                    'pageViewEntryModeratedBy',
+                    'pageViewEntryUserAvatar',
+                    'pageViewEntryUserDetails',
+                    'pageViewEntryUserGroupImage',
+                    'pageViewEntryUserOnlineStatusAway',
+                    'pageViewEntryUserOnlineStatusOffline',
+                    'pageViewEntryUserOnlineStatusOnline',
+                    'pageViewEntryUserReputation',
+                    'pageViewEntryUserSignature',
+                    'pageViewEntryUserStar',
+                    'pageViewEntryUserWarningLevel'
                 ]);
             }
         }
@@ -142,7 +166,7 @@ function global_intermediate(): bool
 
             urlHandlerSet($showcaseObject->mainFile);
 
-            $showcaseObject->urlSet(\MyShowcase\Core\urlHandlerGet());
+            $showcaseObject->urlSet(urlHandlerGet());
 
             //awaiting approval
             if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
@@ -208,6 +232,8 @@ function fetch_wol_activity_end(array &$user_activity): array
         $filename = my_substr($split_loc[0], -my_strpos(strrev($split_loc[0]), '/'));
     }
 
+    $parameters = [];
+
     //get query params
     if ($split_loc[1]) {
         $temp = explode('&', my_substr($split_loc[1], 1));
@@ -219,44 +245,40 @@ function fetch_wol_activity_end(array &$user_activity): array
     }
 
     //get cache of configured myshowcases
-    $myshowcase_config = cacheGet(CACHE_TYPE_CONFIG);
-
     //check cache for matching filename
     //have to do it this way since the filename can vary for each myshowcase
-    if (is_array($myshowcase_config)) {
-        foreach ($myshowcase_config as $id => $myshowcase) {
-            $split_mainfile = explode('.php', $myshowcase['mainfile']);
-            if ($split_mainfile[0] == $filename) {
-                //preload here so we don't need to get it in next function
-                $user_activity['myshowcase_filename'] = $filename;
-                $user_activity['myshowcase_name'] = $myshowcase['name'];
-                $user_activity['myshowcase_id'] = $myshowcase['id'];
-                $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
+    foreach (cacheGet(CACHE_TYPE_CONFIG) as $id => $myshowcase) {
+        $split_mainfile = explode('.php', $myshowcase['mainfile']);
+        if ($split_mainfile[0] == $filename) {
+            //preload here so we don't need to get it in next function
+            $user_activity['myshowcase_filename'] = $filename;
+            $user_activity['myshowcase_name'] = $myshowcase['name'];
+            $user_activity['myshowcase_id'] = $myshowcase['id'];
+            $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
 
-                if ($parameters['action'] == 'view') {
-                    $user_activity['activity'] = 'myShowcaseMainTableTheadView';
-                    if (is_numeric($parameters['gid'])) {
-                        $user_activity['gid'] = $parameters['gid'];
-                    }
-                } elseif ($parameters['action'] == 'new') {
-                    $user_activity['activity'] = 'myShowcaseLocationNewEntry';
-                } elseif ($parameters['action'] == 'attachment') {
-                    $user_activity['activity'] = 'myshowcase_view_attach';
-                    if (is_numeric($parameters['aid'])) {
-                        $user_activity['aid'] = $parameters['aid'];
-                    }
-                } elseif ($parameters['action'] == 'edit') {
-                    $user_activity['activity'] = 'myshowcase_edit';
-                    if (is_numeric($parameters['gid'])) {
-                        $user_activity['gid'] = $parameters['gid'];
-                    }
-                } else {
-                    $user_activity['activity'] = 'myshowcase_list';
+            if ($parameters['action'] == 'view') {
+                $user_activity['activity'] = 'myShowcaseMainTableTheadView';
+                if (is_numeric($parameters['gid'])) {
+                    $user_activity['gid'] = $parameters['gid'];
                 }
-
-                //if here, we found the lcoation, so exit loop
-                continue;
+            } elseif ($parameters['action'] == 'new') {
+                $user_activity['activity'] = 'myShowcaseLocationNewEntry';
+            } elseif ($parameters['action'] == 'attachment') {
+                $user_activity['activity'] = 'myshowcase_view_attach';
+                if (is_numeric($parameters['aid'])) {
+                    $user_activity['aid'] = $parameters['aid'];
+                }
+            } elseif ($parameters['action'] == 'edit') {
+                $user_activity['activity'] = 'myshowcase_edit';
+                if (is_numeric($parameters['gid'])) {
+                    $user_activity['gid'] = $parameters['gid'];
+                }
+            } else {
+                $user_activity['activity'] = 'myshowcase_list';
             }
+
+            //if here, we found the lcoation, so exit loop
+            continue;
         }
     }
 

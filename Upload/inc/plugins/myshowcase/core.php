@@ -131,6 +131,8 @@ const FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS = 2;
 
 const FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS = 3;
 
+const CHECK_BOX_IS_CHECKED = 1;
+
 define('MyShowcase\Core\FORMAT_TYPES', [
     //'no' => '',
     //'decimal0' => '#,###',
@@ -257,7 +259,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'unique_key' => ['cid_gid' => 'cid,gid']
+        //'unique_key' => ['cid_gid' => 'cid,gid']
     ],
     'myshowcase_config' => [
         'id' => [
@@ -545,6 +547,7 @@ const TABLES_DATA = [
         ],
         'unique_key' => ['id_uid_isgroup' => 'id,uid,isgroup']
     ],
+    // todo, should integrate into the code report system
     'myshowcase_reports' => [
         'rid' => [
             'type' => 'INT',
@@ -709,6 +712,12 @@ const TABLES_DATA = [
 const FIELDS_DATA = [
 ];
 
+// todo, add field setting to order entries by (i.e: sticky)
+// todo, add field setting to block entries by (i.e: closed)
+// todo, add field setting to record changes by (i.e: history)
+// todo, add field setting to search fields data (i.e: searchable)
+// todo, integrate Feedback plugin into entries, per showcase
+// todo, integrate Custom Rates plugin into entries, per showcase
 const DATA_TABLE_STRUCTURE = [
     'myshowcase_data' => [
         'gid' => [
@@ -1003,6 +1012,7 @@ function cacheUpdate(string $cacheKey): array
                     'disp_empty' => (bool)$showcaseData['disp_empty'],
                     'link_in_postbit' => (bool)$showcaseData['link_in_postbit'],
                     'portal_random' => (bool)$showcaseData['portal_random'],
+                    'display_signatures' => (bool)$showcaseData['display_signatures'],
                 ];
             }
 
@@ -1302,7 +1312,7 @@ function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = 
                 FIELD_TYPE_STORAGE_INT,
                 FIELD_TYPE_STORAGE_BIGINT
             ])) {
-                $showcaseInsertData[$fieldData['name']] = (int)$entryData[$fieldData['name']];
+                $showcaseInsertData[$fieldData['name']] = (string)$entryData[$fieldData['name']];
             } elseif (in_array($fieldData['field_type'], [
                 FIELD_TYPE_STORAGE_DECIMAL,
                 FIELD_TYPE_STORAGE_FLOAT,
@@ -2430,9 +2440,11 @@ function entryGetRandom(): string
                 if ($db->num_rows($query) == 0) {
                     $rand_entry = 0;
                 }
-            } else {
-                return '';
             }
+        }
+
+        if (!$rand_entry || !isset($query)) {
+            return '';
         }
 
         $alternativeBackground = 'trow2';

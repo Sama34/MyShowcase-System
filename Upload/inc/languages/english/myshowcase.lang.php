@@ -44,7 +44,6 @@ $l['myshowcase_feature_disabled'] = 'This feature is disabled.';
 $l['myshowcase_comment_empty'] = 'The data submitted contains no text.';
 
 //moderation words
-$l['myshowcase_last_approved'] = 'Last Approved By';
 $l['myshowcase_inline_moderation'] = 'Inline Moderation';
 $l['myshowcase_mod_approve'] = 'Approve Entry';
 $l['myshowcase_mod_unapprove'] = 'Unapprove Entry';
@@ -210,6 +209,10 @@ $l = array_merge($l, [
     'myShowcaseNewEditFormButtonPreview' => 'Preview Entry',
 
     'myShowcaseEntryFieldValueEmpty' => '(no value)',
+    'myShowcaseEntryFieldValueCheckBoxYes' => 'Yes',
+    'myShowcaseEntryFieldValueCheckBoxNo' => 'No',
+
+    'myShowcaseEntryPostModeratedBy' => 'Moderated by',
 
     'myShowcaseEntryCommentOnlineStatusOnline' => 'Online',
     'myShowcaseEntryCommentOnlineStatusOffline' => 'Offline',
