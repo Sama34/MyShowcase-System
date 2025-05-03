@@ -10,6 +10,7 @@ class UserPermissions
     public const CanView = 'canview';
     public const CanViewComments = 'canviewcomment';
     public const CanViewAttachments = 'canviewattach';
+    public const CanDownloadAttachments = 'canviewattach';
     public const CanAddComments = 'cancomment';
     public const CanDeleteComments = 'candelowncomment';
     public const CanDeleteAuthorComments = 'candelauthcomment';

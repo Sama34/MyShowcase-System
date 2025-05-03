@@ -1667,26 +1667,88 @@ function fieldDataDelete(array $whereClauses = []): bool
     return true;
 }
 
-function attachmentInsert(array $attachmentData): int
+function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $attachmentID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_attachments', $attachmentData);
+    $insertData = [];
 
-    return (int)$db->insert_id();
+    if (isset($attachmentData['id'])) {
+        $insertData['id'] = (int)$attachmentData['id'];
+    }
+
+    if (isset($attachmentData['gid'])) {
+        $insertData['gid'] = (int)$attachmentData['gid'];
+    }
+
+    if (isset($attachmentData['posthash'])) {
+        $insertData['posthash'] = $db->escape_string($attachmentData['posthash']);
+    }
+
+    if (isset($attachmentData['uid'])) {
+        $insertData['uid'] = (int)$attachmentData['uid'];
+    }
+
+    if (isset($attachmentData['filename'])) {
+        $insertData['filename'] = $db->escape_string($attachmentData['filename']);
+    }
+
+    if (isset($attachmentData['filetype'])) {
+        $insertData['filetype'] = $db->escape_string($attachmentData['filetype']);
+    }
+
+    if (isset($attachmentData['filesize'])) {
+        $insertData['filesize'] = (int)$attachmentData['filesize'];
+    }
+
+    if (isset($attachmentData['attachname'])) {
+        $insertData['attachname'] = $db->escape_string($attachmentData['attachname']);
+    }
+
+    if (isset($attachmentData['downloads'])) {
+        $insertData['downloads'] = (int)$attachmentData['downloads'];
+    }
+
+    if (isset($attachmentData['dateuploaded'])) {
+        $insertData['dateuploaded'] = (int)$attachmentData['dateuploaded'];
+    }
+
+    if (isset($attachmentData['thumbnail'])) {
+        $insertData['thumbnail'] = $db->escape_string($attachmentData['thumbnail']);
+    }
+
+    /*if (isset($attachmentData['dimensions'])) {
+        $insertData['dimensions'] = $db->escape_string($attachmentData['dimensions']);
+    }
+
+    if (isset($attachmentData['md5hash'])) {
+        $insertData['md5hash'] = $db->escape_string($attachmentData['md5hash']);
+    }
+
+    if (isset($attachmentData['uploaddate'])) {
+        $insertData['uploaddate'] = (int)$attachmentData['uploaddate'];
+    }*/
+
+    if (isset($attachmentData['visible'])) {
+        $insertData['visible'] = (int)$attachmentData['visible'];
+    }
+
+    /*if (isset($attachmentData['cdn_file'])) {
+        $insertData['cdn_file'] = (int)$attachmentData['cdn_file'];
+    }*/
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_attachments', $insertData, "attachmentID='{$attachmentID}'");
+    } else {
+        $attachmentID = (int)$db->insert_query('myshowcase_attachments', $insertData);
+    }
+
+    return $attachmentID;
 }
 
-function attachmentUpdate(array $whereClauses, array $attachmentData): bool
+function attachmentUpdate(array $attachmentData, int $attachmentID): bool
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_attachments',
-        $attachmentData,
-        implode(' AND ', $whereClauses)
-    );
-
-    return true;
+    return attachmentInsert($attachmentData, true, $attachmentID);
 }
 
 function attachmentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -2282,10 +2344,7 @@ function attachmentUpload(
     if ($attachmentID && $isUpdate) {
         unset($insertData['downloads']); // Keep our download count if we're updating an attachment
 
-        attachmentUpdate(
-            ["aid='{$attachmentID}'"],
-            $insertData
-        );
+        attachmentUpdate($insertData, $attachmentID);
     } else {
         $attachmentID = attachmentInsert($insertData);
     }
@@ -2484,14 +2543,14 @@ function dataTableStructureGet(int $showcaseID = 0): array
     if ($showcaseID && ($showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]))) {
         $fieldsetID = (int)$showcaseData['fieldsetid'];
 
-        $showcaseFields = fieldsGet(
-            ["setid='{$fieldsetID}'"],
-            ['name', 'field_type', 'max_length', 'requiredField']
-        );
-
         hooksRun('admin_summary_table_create_rebuild_start');
 
-        foreach ($showcaseFields as $fieldID => $fieldData) {
+        foreach (
+            fieldsGet(
+                ["setid='{$fieldsetID}'"],
+                ['name', 'field_type', 'max_length', 'requiredField']
+            ) as $fieldID => $fieldData
+        ) {
             $dataTableStructure[$fieldData['name']] = [];
 
             $field = &$dataTableStructure[$fieldData['name']];

@@ -204,7 +204,7 @@ $l = array_merge($l, [
     'myShowcaseNewEditFormField' => 'Field',
     'myShowcaseNewEditFormValue' => 'Value',
 
-    'myShowcaseNewEditFormButtonPost' => 'Post Entry',
+    'myShowcaseNewEditFormButtonCreateEntry' => 'Post Entry',
     'myShowcaseNewEditFormButtonUpdate' => 'Update Entry',
     'myShowcaseNewEditFormButtonPreview' => 'Preview Entry',
 
@@ -212,7 +212,11 @@ $l = array_merge($l, [
     'myShowcaseEntryFieldValueCheckBoxYes' => 'Yes',
     'myShowcaseEntryFieldValueCheckBoxNo' => 'No',
 
-    'myShowcaseEntryPostModeratedBy' => 'Moderated by',
+    'myShowcaseEntryModeratedBy' => 'Moderated by',
+
+    'myShowcaseEntryAttachmentsFiles' => 'Attached Files',
+    'myShowcaseEntryAttachmentsImages' => 'Image(s)',
+    'myShowcaseEntryAttachmentsThumbnail' => 'Thumbnail(s)',
 
     'myShowcaseEntryCommentOnlineStatusOnline' => 'Online',
     'myShowcaseEntryCommentOnlineStatusOffline' => 'Offline',

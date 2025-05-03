@@ -43,7 +43,6 @@ use const MyShowcase\Core\REPORT_STATUS_PENDING;
 
 class Showcase
 {
-
     /**
      * Constructor of class.
      *
@@ -76,6 +75,8 @@ class Showcase
         public array $fieldSetEnabledFields = [],
         public array $fieldSetParseableFields = [],
         public array $fieldSetFormatableFields = [],
+        public array $fieldSetSearchableFields = [],
+        public array $fieldSetFieldsOrder = [],
         public string $imageFolder = '',
         public string $defaultImage = '',
         public string $waterMarkImage = '',
@@ -95,11 +96,14 @@ class Showcase
         public int $attachmentThumbHeight = 0,
         public int $commentsMaximumLength = 0,
         public int $commentsPerPageLimit = 0,
-        public int $commentsAttachmentsPerRowLimit = 0,
+        public int $attachmentsPerRowLimit = 0,
+        public bool $attachmentsDisplayThumbnails = true,
+        public bool $attachmentsDisplayFullSizeImage = false,
         public bool $displayEmptyFields = false,
         public bool $linkInPosts = false,
         public bool $portalShowRandomAttachmentWidget = false,
         public bool $displaySignatures = false,
+        public string $maximumAvatarSize = '55x55',
     ) {
         global $db, $mybb, $cache;
 
@@ -160,7 +164,7 @@ class Showcase
 
                 $this->commentsPerPageLimit = (int)$showcase['comment_dispinit'];
 
-                $this->commentsAttachmentsPerRowLimit = (int)$showcase['disp_attachcols'];
+                $this->attachmentsPerRowLimit = (int)$showcase['disp_attachcols'];
 
                 $this->displayEmptyFields = (bool)$showcase['disp_empty'];
 
@@ -246,10 +250,20 @@ class Showcase
 
                 $this->fieldSetEnabledFields[$fieldData['name']] = $fieldData['html_type'];
 
-                $this->fieldSetParseableFields[$fieldData['name']] = $fieldData['parse'];
+                if ($fieldData['parse']) {
+                    $this->fieldSetParseableFields[$fieldData['name']] = $fieldData['parse'];
+                }
 
                 $this->fieldSetFormatableFields[$fieldData['name']] = $fieldData['format'];
+
+                if ($fieldData['searchable']) {
+                    $this->fieldSetSearchableFields[$fieldData['name']] = $fieldData['html_type'];
+                }
+
+                $this->fieldSetFieldsOrder[$fieldData['list_table_order']] = $fieldData['name'];
             }
+
+            ksort($this->fieldSetFieldsOrder);
         }
 
         return $this;
@@ -265,7 +279,7 @@ class Showcase
         static $showcaseGroupPermissions = null;
 
         if ($showcaseGroupPermissions === null) {
-            global $cache, $config;
+            global $cache;
 
             //require_once MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php';
             $defaultShowcasePermissions = showcaseDefaultPermissions();

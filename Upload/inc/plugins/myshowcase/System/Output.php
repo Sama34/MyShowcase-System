@@ -65,13 +65,12 @@ class Output
     public function entryView(): string
     {
         global $mybb, $plugins, $lang, $db, $theme;
-        global $showcaseFields;
 
         $currentUserID = (int)$mybb->user['uid'];
 
         $plugins->run_hooks('myshowcase_view_start');
 
-        reset($showcaseFields);
+        reset($this->showcaseObject->fieldSetEnabledFields);
 
         $whereClauses = ["entryData.gid='{$mybb->get_input('gid', MyBB::INPUT_INT)}'"];
 
@@ -286,81 +285,6 @@ class Output
             }
         }
 
-        if ($this->showcaseObject->allowAttachments && $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
-            $attachmentObjects = attachmentGet(
-                ["gid='{$this->showcaseObject->entryID}'", "id='{$this->showcaseObject->id}'"],
-                ['filename', 'filetype']
-            );
-
-            $attach_count = 0;
-            $showcase_attachment_data = '';
-            foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                //setup default and non-JS enabled URLs
-                $item_attachurljs = str_replace('{aid}', $attachmentData['aid'], SHOWCASE_URL_ITEM);
-                $item_attachurl = str_replace('{aid}', $attachmentData['aid'], SHOWCASE_URL_VIEW_ATTACH);
-
-                //if mime is image
-                if (stristr($attachmentData['filetype'], 'image/')) {
-                    //determine what image to use for thumbnail
-                    if ($attachmentData['thumbnail'] != 'SMALL' && file_exists(
-                            $this->showcaseObject->imageFolder . '/' . $attachmentData['thumbnail']
-                        )) {
-                        $item_image = './' . $this->showcaseObject->imageFolder . '/' . $attachmentData['thumbnail'];
-                    } else {
-                        $item_image = $item_attachurljs;
-                    }
-
-                    //see if the Fancybox code is being used and if not go back to the actual attachment for the link url
-                    if (stripos($showcase_top, '[rel=showcase_images]')) {
-                        $item_class = "rel=\\\"showcase_images\\\"";
-                    } else {
-                        $item_attachurljs = $item_attachurl;
-                    }
-                } else //it's any other allowed type, so use this
-                {
-                    $item_class = "class=\\\"attachment\\\"";
-                    $attachmentTypes = (array)$mybb->cache->read('attachtypes');
-                    $attachmentExtension = get_extension($attachmentData['filename']);
-                    $item_image = $theme['imgdir'] . '/error.gif';
-                    if (array_key_exists($attachmentExtension, $attachmentTypes)) {
-                        $item_image = $mybb->settings['bburl'] . '/' . $attachmentTypes[$attachmentExtension]['icon'];
-                    }
-                }
-
-                $item_alt = $lang->sprintf(
-                    $lang->myshowcase_attachment_alt,
-                    $attachmentData['filename'],
-                    $this->showcaseObject->entryData['username']
-                );
-
-                $showcase_attachment_data .= eval(getTemplate('view_attachments_image'));
-
-                $attach_count++;
-                if ($attach_count == $this->showcaseObject->commentsAttachmentsPerRowLimit && $this->showcaseObject->commentsAttachmentsPerRowLimit != 0) {
-                    $showcase_attachment_data .= '<br />';
-                    $attach_count = 0;
-                } else {
-                    $showcase_attachment_data .= '&nbsp;';
-                }
-            }
-
-            if (substr($showcase_attachment_data, -6) == '&nbsp;') {
-                $showcase_attachment_data = substr($showcase_attachment_data, 0, -6);
-            }
-
-            $showcase_header_label = '<a name="images">' . $lang->myshowcase_attachments . '</a>';
-            $showcase_header_jumpto = $jumptop;
-            $showcase_header_special = '';
-            $showcase_attachment_header = eval(getTemplate('table_header'));
-
-
-            if ($showcase_attachment_data != '') {
-                $showcase_attachments = eval(getTemplate('view_attachments'));
-            } else {
-                $showcase_attachments = eval(getTemplate('view_attachments_none'));
-            }
-        }
-
         // Update view count
         $db->shutdown_query(
             'UPDATE ' . TABLE_PREFIX . $this->showcaseObject->dataTableName . ' SET views=views+1 WHERE gid=' . $this->showcaseObject->entryID
@@ -375,8 +299,6 @@ class Output
     {
         global $mybb, $lang, $db, $templates, $plugins;
         global $me, $forumdir;
-
-        global $showcaseObject;
 
         $currentUserID = (int)$mybb->user['uid'];
 
@@ -959,8 +881,8 @@ class Output
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
 
-        global $showcaseFieldsOrder, $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
-        global $showcaseFieldsShow, $showcaseFields, $unapproved;
+        global $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
+        global $unapproved;
         global $urlParams, $urlBase, $showcaseInputSearchField, $showcaseColumnsCount;
         global $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
         global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder;
@@ -1808,8 +1730,8 @@ class Output
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
 
-        global $showcaseFieldsOrder, $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
-        global $showcaseFieldsShow, $showcaseFields, $unapproved;
+        global $showcaseFieldsSearchable, $currentPage, $amp, $urlSort, $showcaseInputSortBy;
+        global $unapproved;
         global $urlParams, $urlBase, $showcaseInputSearchField, $showcaseColumnsCount;
         global $showcaseName, $showcaseTableTheadInlineModeration, $showcase_url;
         global $showcaseInlineModeration, $buttonGo, $orderInput, $showcaseInputOrder;
@@ -1824,16 +1746,6 @@ class Output
             $urlNewEntry = SHOWCASE_URL_NEW;
 
             $buttonNewEntry = eval(getTemplate('buttonNewEntry'));
-        }
-
-        $showcaseFieldsSearch = [
-            'username' => $lang->myShowcaseMainSortUsername
-        ];
-
-        foreach ($showcaseFieldsSearchable as $fieldKey => $fieldName) {
-            $fieldNameUpper = ucfirst($fieldName);
-
-            $showcaseFieldsSearch[$fieldName] = $lang->{"myShowcaseMainSort{$fieldNameUpper}"} ?? $lang->{"myshowcase_field_{$fieldName}"};
         }
 
         if ($currentPage && !my_strpos(SHOWCASE_URL, 'page=')) {
@@ -1862,16 +1774,16 @@ class Output
         //build sort_by option list
         $selectOptions = '';
 
-        reset($showcaseFieldsOrder);
+        reset($this->renderObject->fieldSetFieldsDisplayFields);
 
-        foreach ($showcaseFieldsOrder as $optionName => $optionText) {
-            $optionSelectedElement = '';
+        foreach ($this->renderObject->fieldSetFieldsDisplayFields as $fieldName => $fieldDisplayName) {
+            $selectedElement = '';
 
-            if ($showcaseInputSortBy === $optionName) {
-                $optionSelectedElement = 'selected="selected"';
+            if ($showcaseInputSortBy === $fieldName) {
+                $selectedElement = 'selected="selected"';
             }
 
-            $optionText = $lang->myShowcaseMainSelectSortBy . ' ' . $optionText;
+            $fieldDisplayName = $lang->myShowcaseMainSelectSortBy . ' ' . $fieldDisplayName;
 
             $selectOptions .= eval(getTemplate('pageMainSelectOption'));
         }
@@ -1883,12 +1795,12 @@ class Output
         //build searchfield option list
         $selectOptionsSearchField = '';
 
-        reset($showcaseFieldsSearch);
+        reset($this->renderObject->fieldSetFieldsSearchFields);
 
-        foreach ($showcaseFieldsSearch as $optionName => $optionText) {
+        foreach ($this->renderObject->fieldSetFieldsSearchFields as $fieldName => $fieldDisplayName) {
             $optionSelectedElement = '';
 
-            if ($showcaseInputSearchField === $optionName) {
+            if ($showcaseInputSearchField === $fieldName) {
                 $optionSelectedElement = 'selected="selected"';
             }
 
@@ -1914,7 +1826,7 @@ class Output
         //build custom list header based on field settings
         $showcaseTableTheadExtra = '';
 
-        foreach ($showcaseFieldsShow as $fieldKey => $fieldName) {
+        foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
             $showcaseTableTheadExtraFieldTitle = $lang->{"myshowcase_field_{$fieldName}"};
 
             $showcaseTableTheadExtraFieldOrder = $orderInput[$fieldName];
@@ -1925,7 +1837,6 @@ class Output
         }
 
         //setup joins for query and build where clause based on search_field terms
-        $showcaseSearchFields = $showcaseFields;
 
         $queryTables = ["{$this->showcaseObject->dataTableName} g"];
 
@@ -1948,11 +1859,11 @@ class Output
 
         $searchDone = false;
 
-        reset($showcaseSearchFields);
+        reset($this->showcaseObject->fieldSetSearchableFields);
 
         $whereClauses = [];
 
-        foreach ($showcaseSearchFields as $fieldName => $htmlType) {
+        foreach ($this->showcaseObject->fieldSetSearchableFields as $fieldName => $htmlType) {
             if ($htmlType == FIELD_TYPE_HTML_DB || $htmlType == FIELD_TYPE_HTML_RADIO) {
                 $queryTables[] = "myshowcase_field_data tbl_{$fieldName} ON (tbl_{$fieldName}.valueid = g.{$fieldName} AND tbl_{$fieldName}.name = '{$fieldName}')";
 
@@ -2216,7 +2127,7 @@ class Output
                 //build custom list items based on field settings
                 $showcaseTableRowExtra = '';
 
-                foreach ($showcaseFieldsShow as $fieldKey => $fieldName) {
+                foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
                     $entryFieldText = $entryFieldData[$fieldName];
 
                     if ((string)$entryFieldText === '') {
@@ -2249,46 +2160,44 @@ class Output
                             };
                         }
 
-                        switch ($showcaseFields[$fieldName]) {
-                            case FIELD_TYPE_HTML_DATE:
-                                if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
-                                    $entryFieldText = '';
+                        if ($this->showcaseObject->fieldSetEnabledFields[$fieldName] == FIELD_TYPE_HTML_DATE) {
+                            if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
+                                $entryFieldText = '';
+                            } else {
+                                $entryFieldDateValue = explode('|', $entryFieldText);
+
+                                $entryFieldDateValue = array_map('intval', $entryFieldDateValue);
+
+                                if ($entryFieldDateValue[0] > 0 && $entryFieldDateValue[1] > 0 && $entryFieldDateValue[2] > 0) {
+                                    $entryFieldText = my_date(
+                                        $mybb->settings['dateformat'],
+                                        mktime(
+                                            0,
+                                            0,
+                                            0,
+                                            $entryFieldDateValue[0],
+                                            $entryFieldDateValue[1],
+                                            $entryFieldDateValue[2]
+                                        )
+                                    );
                                 } else {
-                                    $entryFieldDateValue = explode('|', $entryFieldText);
+                                    $entryFieldText = [];
 
-                                    $entryFieldDateValue = array_map('intval', $entryFieldDateValue);
-
-                                    if ($entryFieldDateValue[0] > 0 && $entryFieldDateValue[1] > 0 && $entryFieldDateValue[2] > 0) {
-                                        $entryFieldText = my_date(
-                                            $mybb->settings['dateformat'],
-                                            mktime(
-                                                0,
-                                                0,
-                                                0,
-                                                $entryFieldDateValue[0],
-                                                $entryFieldDateValue[1],
-                                                $entryFieldDateValue[2]
-                                            )
-                                        );
-                                    } else {
-                                        $entryFieldText = [];
-
-                                        if (!empty($entryFieldDateValue[0])) {
-                                            $entryFieldText[] = $entryFieldDateValue[0];
-                                        }
-
-                                        if (!empty($entryFieldDateValue[1])) {
-                                            $entryFieldText[] = $entryFieldDateValue[1];
-                                        }
-
-                                        if (!empty($entryFieldDateValue[2])) {
-                                            $entryFieldText[] = $entryFieldDateValue[2];
-                                        }
-
-                                        $entryFieldText = implode('-', $entryFieldText);
+                                    if (!empty($entryFieldDateValue[0])) {
+                                        $entryFieldText[] = $entryFieldDateValue[0];
                                     }
+
+                                    if (!empty($entryFieldDateValue[1])) {
+                                        $entryFieldText[] = $entryFieldDateValue[1];
+                                    }
+
+                                    if (!empty($entryFieldDateValue[2])) {
+                                        $entryFieldText[] = $entryFieldDateValue[2];
+                                    }
+
+                                    $entryFieldText = implode('-', $entryFieldText);
                                 }
-                                break;
+                            }
                         }
                     } else {
                         $entryFieldText = $this->showcaseObject->parseMessage($entryFieldText);
@@ -2341,7 +2250,7 @@ class Output
                             $report['reason']
                         );
 
-                        $showcaseColumnsCount += count($showcaseFieldsShow);
+                        $showcaseColumnsCount += count($this->showcaseObject->fieldSetFieldsOrder);
 
                         $showcaseEntriesList .= eval(getTemplate('pageMainTableReport'));
                     }
@@ -2357,7 +2266,7 @@ class Output
                 // ++$colcount;
             }
 
-            //$showcaseColumnsCount = $colcount + count($showcaseFieldsShow);
+            //$showcaseColumnsCount = $colcount + count($this->showcaseObject->fieldSetFieldsOrder);
 
             if (!$this->renderObject->searchKeyWords) {
                 $message = $lang->myShowcaseMainTableEmpty;
@@ -2379,5 +2288,70 @@ class Output
         $urlSortByCreateDate = urlHandlerBuild(array_merge($urlParams, ['sort_by' => 'dateline']));
 
         return eval(getTemplate('pageMainContents'));
+    }
+
+    #[NoReturn] public function attachmentDownload(int $attachmentID): void
+    {
+        global $lang, $plugins;
+
+        $attachmentData = attachmentGet(["aid='{$attachmentID}'"],
+            array_keys(TABLES_DATA['myshowcase_attachments']),
+            ['limit' => 1]);
+
+        // Error if attachment is invalid or not visible
+        if (empty($attachmentData['aid']) ||
+            empty($attachmentData['attachname']) ||
+            (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && empty($attachmentData['visible']))) {
+            error($lang->error_invalidattachment);
+        }
+
+        if (!$this->showcaseObject->allowAttachments || !$this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) {
+            error_no_permission();
+        }
+
+        //$attachmentExtension = get_extension($attachmentData['filename']);
+
+        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachname'];
+
+        if (!file_exists($filePath)) {
+            error($lang->error_invalidattachment);
+        }
+
+        switch ($attachmentData['filetype']) {
+            case 'application/pdf':
+            case 'image/bmp':
+            case 'image/gif':
+            case 'image/jpeg':
+            case 'image/pjpeg':
+            case 'image/png':
+            case 'text/plain':
+                header("Content-type: {$attachmentData['filetype']}");
+                $disposition = 'inline';
+                break;
+
+            default:
+                header('Content-type: application/force-download');
+                $disposition = 'attachment';
+        }
+
+        if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie') !== false) {
+            header("Content-disposition: attachment; filename=\"{$attachmentData['filename']}\"");
+        } else {
+            header("Content-disposition: {$disposition}; filename=\"{$attachmentData['filename']}\"");
+        }
+
+        if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0') !== false) {
+            header('Expires: -1');
+        }
+
+        header("Content-length: {$attachmentData['filesize']}");
+
+        header('Content-range: bytes=0-' . ($attachmentData['filesize'] - 1) . '/' . $attachmentData['filesize']);
+
+        $plugins->run_hooks('myshowcase_image');
+
+        echo file_get_contents($filePath);
+
+        exit;
     }
 }

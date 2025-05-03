@@ -15,10 +15,14 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
+use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\attachmentInsert;
+use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\urlHandlerBuild;
 
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
 use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
 use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
@@ -43,7 +47,10 @@ class Render
         public string $highlightTerms = '',
         public string $searchKeyWords = '',
         public int $searchExactMatch = 0,
-        public array $parserOptions = []
+        public array $parserOptions = [],
+        public array $fieldSetFieldsOrder = [],
+        public array $fieldSetFieldsDisplayFields = [],
+        public array $fieldSetFieldsSearchFields = [],
     ) {
         global $mybb;
 
@@ -59,6 +66,32 @@ class Render
 
         if (!empty($mybb->input['exact_match'])) {
             $this->searchExactMatch = 1;
+        }
+
+        global $lang;
+
+        $this->fieldSetFieldsDisplayFields = [
+            'createdate' => $lang->myShowcaseMainSortDateline,
+            //'edit_stamp' => $lang->myShowcaseMainSortEditDate,
+            'username' => $lang->myShowcaseMainSortUsername,
+            'views' => $lang->myShowcaseMainSortViews,
+            'comments' => $lang->myShowcaseMainSortComments
+        ];
+
+        foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
+            $this->fieldSetFieldsDisplayFields[$fieldName] = $lang->{"myshowcase_field_{$fieldName}"} ?? ucfirst(
+                $fieldName
+            );
+        }
+
+        $this->fieldSetFieldsSearchFields = [
+            'username' => $lang->myShowcaseMainSortUsername
+        ];
+
+        foreach ($this->showcaseObject->fieldSetSearchableFields as $fieldName => $htmlType) {
+            $fieldNameUpper = ucfirst($fieldName);
+
+            $this->fieldSetFieldsSearchFields[$fieldName] = $lang->{"myShowcaseMainSort{$fieldNameUpper}"} ?? $lang->{"myshowcase_field_{$fieldName}"} ?? $fieldNameUpper;
         }
     }
 
@@ -101,6 +134,10 @@ class Render
             $entryUrl = urlHandlerBuild(
                 ['action' => 'view', 'gid' => $entryID]
             );
+
+            $entryAttachments = $this->entryBuildAttachments($entryFields);
+
+            $entryFields = implode('', $entryFields);
         }
 
         $currentUserID = (int)$mybb->user['uid'];
@@ -136,7 +173,7 @@ class Render
             $userAvatar = format_avatar(
                 $userData['avatar'],
                 $userData['avatardimensions'],
-                $mybb->settings['postmaxavatarsize']
+                $this->showcaseObject->maximumAvatarSize
             );
 
             $userAvatarImage = $userAvatar['image'] ?? '';
@@ -383,7 +420,7 @@ class Render
         ], $alternativeBackground);
     }
 
-    public function buildEntryFields(): string
+    public function buildEntryFields(): array
     {
         global $mybb, $lang;
 
@@ -412,7 +449,7 @@ class Render
                             $entryFieldValue = nl2br($entryFieldValue);
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldTextArea'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldTextArea'));
                     }
 
                     break;
@@ -443,7 +480,7 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldTextBox'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldTextBox'));
                     }
                     break;
                 case FIELD_TYPE_HTML_URL:
@@ -458,7 +495,7 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldUrl'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldUrl'));
                     }
                     break;
                 case FIELD_TYPE_HTML_RADIO:
@@ -469,7 +506,7 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldRadio'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldRadio'));
                     }
                     break;
                 case FIELD_TYPE_HTML_CHECK_BOX:
@@ -490,7 +527,7 @@ class Render
                             $entryFieldValueImage = eval($this->templateGet('pageViewDataFieldCheckBoxImage'));
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldCheckBox'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldCheckBox'));
                     }
                     break;
                 case FIELD_TYPE_HTML_DB:
@@ -506,7 +543,7 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[] = eval($this->templateGet('pageViewDataFieldDataBase'));
+                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldDataBase'));
                     }
                     break;
                 case FIELD_TYPE_HTML_DATE:
@@ -542,14 +579,168 @@ class Render
                             }
                         }
 
-                        $entryFieldsList[] = eval(getTemplate('pageViewDataFieldDate'));
+                        $entryFieldsList[$fieldName] = eval(getTemplate('pageViewDataFieldDate'));
                     }
 
                     break;
             }
         }
 
-        return implode('', $entryFieldsList);
+        return $entryFieldsList;
+    }
+
+    // todo, add support for fancy box for attachment images
+    public function entryBuildAttachments(array &$entryFields): string
+    {
+        if (!$this->showcaseObject->allowAttachments || !$this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
+            return '';
+        }
+
+        $attachmentObjects = attachmentGet(
+            ["gid='{$this->showcaseObject->entryID}'", "id='{$this->showcaseObject->id}'"],
+            ['visible', 'filename', 'filesize', 'filename', 'downloads', 'dateuploaded', 'thumbnail']
+        );
+
+        if (!$attachmentObjects) {
+            return '';
+        }
+
+        $entryID = $this->showcaseObject->entryID;
+
+        global $mybb, $theme, $templates, $lang;
+
+        $unapprovedCount = 0;
+
+        $thumbnailsCount = 0;
+
+        $attachedFiles = $attachedThumbnails = $attachedImages = '';
+
+        foreach ($attachmentObjects as $attachmentID => $attachmentData) {
+            $attachmentUrl = urlHandlerBuild(['action' => 'item', 'aid' => $attachmentID]);
+
+            $attachmentThumbnailUrl = urlHandlerBuild(['action' => 'item', 'thumbnail' => $attachmentID]);
+
+            if ($attachmentData['visible']) { // There is an attachment thats visible!
+                $attachmentFileName = htmlspecialchars_uni($attachmentData['filename']);
+
+                $attachmentFileSize = get_friendly_size($attachmentData['filesize']);
+
+                $attachmentExtension = get_extension($attachmentData['filename']);
+
+                $isImageAttachment = in_array($attachmentExtension, ['jpeg', 'gif', 'bmp', 'png', 'jpg']);
+
+                $attachmentIcon = get_attachment_icon($attachmentExtension);
+
+                $attachmentDownloads = my_number_format($attachmentData['downloads']);
+
+                if (!$attachmentData['dateuploaded']) {
+                    $attachmentData['dateuploaded'] = $this->showcaseObject->entryData['dateline'];
+                }
+
+                $attachmentDate = my_date('normal', $attachmentData['dateuploaded']);
+
+                // Support for [attachment=id] code
+                $attachmentInField = false;
+
+                foreach ($entryFields as $fieldName => &$fieldValue) {
+                    if (str_contains($fieldValue, '[attachment=' . $attachmentID . ']') !== false) {
+                        $attachmentInField = true;
+
+                        // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
+                        // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
+                        // Show as download for all other cases
+                        if ($attachmentData['thumbnail'] != 'SMALL' &&
+                            $attachmentData['thumbnail'] != '' &&
+                            $this->showcaseObject->attachmentsDisplayThumbnails) {
+                            $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
+                        } elseif ((($attachmentData['thumbnail'] == 'SMALL' &&
+                                    $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
+                                $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
+                            $isImageAttachment) {
+                            $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsImagesItem'));
+                        } else {
+                            $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsFilesItem'));
+                        }
+
+                        $fieldValue = preg_replace(
+                            '#\[attachment=' . $attachmentID . ']#si',
+                            $attachmentBit,
+                            $fieldValue
+                        );
+                    }
+                }
+
+                if (!$attachmentInField &&
+                    $attachmentData['thumbnail'] != 'SMALL' &&
+                    $attachmentData['thumbnail'] != '' &&
+                    $this->showcaseObject->attachmentsDisplayThumbnails) {
+                    // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
+                    // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
+                    // Show as download for all other cases
+                    $attachedThumbnails .= eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
+
+                    if ($thumbnailsCount === $this->showcaseObject->attachmentsPerRowLimit) {
+                        $attachedThumbnails .= '<br />';
+
+                        $thumbnailsCount = 0;
+                    }
+
+                    ++$thumbnailsCount;
+                } elseif (!$attachmentInField && (($attachmentData['thumbnail'] == 'SMALL' &&
+                            $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
+                        $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
+                    $isImageAttachment) {
+                    if ($this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) {
+                        $attachedImages .= eval($this->templateGet('pageViewEntryAttachmentsImagesItem'));
+                    } else {
+                        $attachedThumbnails .= eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
+
+                        if ($thumbnailsCount === $this->showcaseObject->attachmentsPerRowLimit) {
+                            $attachedThumbnails .= '<br />';
+
+                            $thumbnailsCount = 0;
+                        }
+
+                        ++$thumbnailsCount;
+                    }
+                } elseif (!$attachmentInField) {
+                    $attachedFiles .= eval($this->templateGet('pageViewEntryAttachmentsFilesItem'));
+                }
+            } else {
+                ++$unapprovedCount;
+            }
+        }
+
+        if ($unapprovedCount > 0 && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageAttachments]) {
+            if ($unapprovedCount === 1) {
+                $unapprovedMessage = $lang->postbit_unapproved_attachment;
+            } else {
+                $unapprovedMessage = $lang->sprintf(
+                    $lang->postbit_unapproved_attachments,
+                    $unapprovedCount
+                );
+            }
+
+            $attachedFiles .= eval($this->templateGet('pageViewEntryAttachmentsFilesItemUnapproved'));
+        }
+
+        if ($attachedFiles) {
+            $attachedFiles = eval($this->templateGet('pageViewEntryAttachmentsFiles'));
+        }
+
+        if ($attachedThumbnails) {
+            $attachedThumbnails = eval($this->templateGet('pageViewEntryAttachmentsThumbnails'));
+        }
+
+        if ($attachedImages) {
+            $attachedImages = eval($this->templateGet('pageViewEntryAttachmentsImages'));
+        }
+
+        if ($attachedThumbnails || $attachedImages || $attachedFiles) {
+            return eval($this->templateGet('pageViewEntryAttachments'));
+        }
+
+        return '';
     }
 
     public function cacheGetUserTitles(): array

@@ -19,6 +19,7 @@ use DataHandler;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
 
+use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
@@ -229,7 +230,11 @@ class MyShowcaseDataHandler extends DataHandler
         if ($myshowcase_data['posthash']) {
             $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
 
-            attachmentUpdate(["posthash='{$myshowcase_data['posthash']}'"], ['gid' => $this->gid]);
+            $attachmentID = (int)(attachmentGet(["posthash='{$myshowcase_data['posthash']}'"],
+                queryOptions: ['limit' => 1]
+            )['aid'] ?? 0);
+
+            attachmentUpdate(['gid' => $this->gid], $attachmentID);
         }
 
         return [
@@ -271,10 +276,11 @@ class MyShowcaseDataHandler extends DataHandler
                 'gid' => $myshowcase_data['gid']
             ];
 
-            attachmentUpdate(
-                ["id='{$me->id}'", "posthash='{$myshowcase_data['posthash']}'"],
-                $attachmentassign
-            );
+            $attachmentID = (int)(attachmentGet(["id='{$me->id}'", "posthash='{$myshowcase_data['posthash']}'"],
+                queryOptions: ['limit' => 1]
+            )['aid'] ?? 0);
+
+            attachmentUpdate($attachmentassign, $attachmentID);
         }
 
         return [

@@ -68,14 +68,7 @@ if (!chdir($forumdir) && !empty($forumdir)) {
 }
 
 //setup templates
-$templatelist = 'myshowcase_list, myshowcase_list_empty, myshowcase_list_items, myshowcase_list_no_results, myshowcase_orderarrow, ';
-$templatelist .= 'myshowcase_view, myshowcase_view_attachments, myshowcase_view_comments, myshowcase_view_comments_add, myshowcase_view_comments_add_login, ';
-$templatelist .= 'myshowcase_view_comments_admin, myshowcase_view_comments_none, myshowcase_view_data, myshowcase_pageMainTableTheadRowInlineModeration, myshowcase_inlinemod, ';
-$templatelist .= 'myshowcase_orderarrow, myshowcase_pageMainTableTheadRowField, multipage_page_current, multipage_page, multipage_end, ';
-$templatelist .= 'multipage_nextpage, multipage, myshowcase_pageMainTableRowsExtra, myshowcase_inlinemod_item, myshowcase_list_items, myshowcase_list, ';
-$templatelist .= 'myshowcase_top, myshowcase_new_button, myshowcase_field_date, myshowcase_js_header, ';
-$templatelist .= 'myshowcase_view_admin_edit, myshowcase_view_admin_delete, myshowcase_view_admin, myshowcase_table_header, myshowcase_view_data_1, myshowcase_view_data_2, myshowcase_view_data_3, myshowcase_view_attachments_image, ';
-$templatelist .= 'myshowcase_new_attachments_input, myshowcase_new_attachments, myshowcase_new_top, myshowcase_field_textbox, myshowcase_new_fields, myshowcase_field_db, myshowcase_field_textarea, myshowcase_new_bottom, ';
+$templatelist = '';
 
 //get MyBB stuff
 require_once $change_dir . '/global.php';
@@ -159,13 +152,7 @@ $orderInput = [
 ];
 
 //get this showcase's field info
-$fieldcache = cacheGet(CACHE_TYPE_FIELDS);
-
-$showcaseFieldEnabled =
-$showcaseFieldsShow =
-$showcaseFieldsFormat =
-$showcaseFieldsParseable =
-$showcaseFields = [];
+$showcaseFieldsCache = cacheGet(CACHE_TYPE_FIELDS);
 
 $showcaseFieldsSearchable = [
     'username' => 'username',
@@ -174,18 +161,11 @@ $showcaseFieldsSearchable = [
     'dateline' => 'dateline'
 ];
 
-foreach ($fieldcache[$showcaseObject->fieldSetID] as $field) {
-    $showcaseFields[$field['name']] = $field['html_type'];
-
-    $showcaseFieldsFormat[$field['name']] = $field['format'];
-
+foreach ($showcaseFieldsCache[$showcaseObject->fieldSetID] as $field) {
     $showcaseFieldsMaximumLength[$field['name']] = $field['max_length'];
     $showcaseFieldsMinimumLength[$field['name']] = $field['min_length'];
 
     //limit array only to those fields that are required
-    if (!empty($field['enabled']) || !empty($field['requiredField'])) {
-        $showcaseFieldEnabled[$field['name']] = $field['html_type'];
-    }
 
     //limit array only to those fields that are required
     if (!empty($field['requiredField'])) {
@@ -194,23 +174,9 @@ foreach ($fieldcache[$showcaseObject->fieldSetID] as $field) {
         $showcaseFieldsRequired[$field['name']] = 0;
     }
 
-    //limit array to those fields to show in the list of showcases
-    if ((int)$field['list_table_order'] !== ALL_UNLIMITED_VALUE) {
-        //$showcaseFieldsShow[$field['list_table_order']] = $field['name'];
-    }
-
-    $showcaseFieldsShow[$field['list_table_order']] = $field['name'];
-
     //limit array to searchable fields
     if (!empty($field['searchable'])) {
         $showcaseFieldsSearchable[$field['field_order']] = $field['name'];
-    }
-
-    //limit array to searchable fields
-    if (!empty($field['parse'])) {
-        $showcaseFieldsParseable[$field['name']] = 1;
-    } else {
-        $showcaseFieldsParseable[$field['name']] = 0;
     }
 
     $orderInput[$field['name']] = '';
@@ -218,21 +184,6 @@ foreach ($fieldcache[$showcaseObject->fieldSetID] as $field) {
 
 //sort array of searchable fields by their field order
 ksort($showcaseFieldsSearchable);
-
-//sort array of header fields by their list display order
-ksort($showcaseFieldsShow);
-
-$showcaseFieldsOrder = [
-    'dateline' => $lang->myShowcaseMainSortDateline,
-    'dateline' => $lang->myShowcaseMainSortEditDate,
-    'username' => $lang->myShowcaseMainSortUsername,
-    'views' => $lang->myShowcaseMainSortViews,
-    'comments' => $lang->myShowcaseMainSortComments
-];
-
-foreach ($showcaseFieldsShow as $forder => $fieldName) {
-    $showcaseFieldsOrder[$fieldName] = $lang->{"myshowcase_field_{$fieldName}"} ?? ucfirst($fieldName);
-}
 
 $urlParams = [];
 
@@ -244,11 +195,11 @@ if ($unapproved) {
 
 $showcaseInputSortBy = $mybb->get_input('sort_by');
 
-if (!array_key_exists($showcaseInputSortBy, $showcaseFieldsOrder)) {
+if (!array_key_exists($showcaseInputSortBy, $renderObject->fieldSetFieldsDisplayFields)) {
     $showcaseInputSortBy = 'dateline';
 }
 
-if (array_key_exists($showcaseInputSortBy, $showcaseFieldsOrder)) {
+if (array_key_exists($showcaseInputSortBy, $renderObject->fieldSetFieldsDisplayFields)) {
     $urlParams['sort_by'] = $showcaseInputSortBy;
 }
 
@@ -339,72 +290,23 @@ if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
 
     $showcaseInlineModeration = eval(getTemplate('inlinemod'));
 } else {
-    $ismod = false;
     $list_where_clause = '(entryData.approved=1 OR entryData.uid=' . $currentUserID . ')';
 }
 
 //handle image output here for performance reasons since we dont need fields and stuff
 if ($mybb->get_input('action') == 'item') {
-    $aid = intval($attachmentID);
-
-    $attachment = attachmentGet(["aid='{$aid}'"], array_keys(TABLES_DATA['myshowcase_attachments']), ['limit' => 1]);
-
-    // Error if attachment is invalid or not visible
-    if (!$attachment['aid'] || !$attachment['attachname'] || (!$ismod && $attachment['visible'] != 1)) {
-        error($lang->error_invalidattachment);
-    }
-
-    if (!$showcaseObject->allowAttachments || !$showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
-        error_no_permission();
-    }
-
-    $attachmentExtension = get_extension($attachment['filename']);
-
-    switch ($attachment['filetype']) {
-        case 'application/pdf':
-        case 'image/bmp':
-        case 'image/gif':
-        case 'image/jpeg':
-        case 'image/pjpeg':
-        case 'image/png':
-        case 'text/plain':
-            header("Content-type: {$attachment['filetype']}");
-            $disposition = 'inline';
-            break;
-
-        default:
-            header('Content-type: application/force-download');
-            $disposition = 'attachment';
-    }
-
-    if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie') !== false) {
-        header("Content-disposition: attachment; filename=\"{$attachment['filename']}\"");
-    } else {
-        header("Content-disposition: {$disposition}; filename=\"{$attachment['filename']}\"");
-    }
-
-    if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0') !== false) {
-        header('Expires: -1');
-    }
-
-    header("Content-length: {$attachment['filesize']}");
-    header('Content-range: bytes=0-' . ($attachment['filesize'] - 1) . '/' . $attachment['filesize']);
-
-    $plugins->run_hooks('myshowcase_image');
-
-    echo file_get_contents($showcaseObject->imageFolder . '/' . $attachment['attachname']);
-    die();
+    $outputObject->attachmentDownload($attachmentID);
 }
 
 //here for performance since we dont need the fields and other stuff
 //this block is only used if user disables JS or if admin removes FancyBox code
 if ($mybb->get_input('action') == 'attachment') {
-    $aid = intval($attachmentID);
-
-    $attachment = attachmentGet(["aid='{$aid}'"], array_keys(TABLES_DATA['myshowcase_attachments']), ['limit' => 1]);
+    $attachment = attachmentGet(["aid='{$attachmentID}'"],
+        array_keys(TABLES_DATA['myshowcase_attachments']),
+        ['limit' => 1]);
 
     // Error if attachment is invalid or not visible
-    if (!$attachment['aid'] || !$attachment['attachname'] || (!$ismod && $attachment['visible'] != 1)) {
+    if (!$attachment['aid'] || !$attachment['attachname'] || (!$showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $attachment['visible'] != 1)) {
         error($lang->error_invalidattachment);
     }
 
@@ -414,7 +316,7 @@ if ($mybb->get_input('action') == 'attachment') {
 
     $plugins->run_hooks('myshowcase_attachment_start');
 
-    attachmentUpdate(["aid='{$aid}'"], ['downloads' => $attachment['downloads'] + 1]);
+    attachmentUpdate(['downloads' => $attachment['downloads'] + 1], $attachmentID);
 
     if (stristr($attachment['filetype'], 'image/')) {
         $posterdata = get_user($attachment['uid']);
@@ -562,7 +464,7 @@ if (!$mybb->get_input(
                 $entryID
             );
         }
-        if ($attachedfile['error']) {
+        if (!empty($attachedfile['error'])) {
             $attacherror = eval($templates->render('error_attacherror'));
             $mybb->input['action'] = 'new';
         }
@@ -691,10 +593,3 @@ $plugins->run_hooks('myshowcase_end');
 output_page($pageContents);
 
 exit;
-
-
-//query to get templates
-
-/*
-SELECT title, template, -2 as sid , 1600 as version , status, unix_timestamp() as dateline FROM `myforum_templates` WHERE tid in (SELECT distinct max(tid) as tid FROM `myforum_templates` WHERE title like '%showcase%'  group by title order by title, dateline desc)
-*/
