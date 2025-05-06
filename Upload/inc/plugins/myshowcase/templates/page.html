@@ -2,7 +2,8 @@
 <head>
     <title>{$mybb->settings['bbname']} - {$pageTitle}</title>
     {$headerinclude}
-    <script type="text/javascript" src="{$this->showcaseObject->urlBase}/jscripts/myshowcase.js?ver=2502"></script>
+    <script type="text/javascript"
+            src="{$this->showcaseObject->urlBase}/jscripts/myshowcase.js?ver={$version}"></script>
     <script type="text/javascript">
         <!--
         var removeshowcase_confirm = "{$lang->removeshowcase_confirm}";
@@ -11,22 +12,13 @@
         var showcase_url = "{$this->showcaseObject->urlBuild($this->showcaseObject->urlMain)}";
         // -->
     </script>
+    {$metaData}
+    <meta property="og:site_name" content="{$mybb->settings['bbname']}">
 </head>
 <body>
 {$header}
 {$errorMessages}
 {$pageContents}
 {$footer}
-<script>
-    function confirmSubmit( confirmationText,  formID) {
-        if (confirm(confirmationText)) {
-            document.getElementById(formID).submit();
-
-            return true;
-        } else {
-            return false;
-        }
-    }
-</script>
 </body>
 </html>

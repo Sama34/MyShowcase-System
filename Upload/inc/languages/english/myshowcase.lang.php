@@ -101,26 +101,6 @@ $l['myshowcase_editing_user'] = 'Editing entry of &quot;{username}&quot;';
 $l['myshowcase_editing_number'] = "<span class=\"smalltext\">This field is going to be formatted as numeric. Non-numeric content will result in a zero value.</span>";
 $l['myshowcase_watermark'] = 'Watermark?';
 
-//report
-$l['myshowcase_report'] = 'Report Entry';
-$l['myshowcase_report_label'] = 'Report this entry to a moderator';
-$l['myshowcase_report_warning'] = 'The report system is only for reporting spam, abuse, or offensive entries.';
-$l['myshowcase_report_success'] = 'Thank you, Your report has been recieved.';
-$l['myshowcase_report_error'] = 'There was an error submitting your report. Please go back and try again';
-$l['myshowcase_report_reason'] = 'Your reason for reporting this entry:';
-$l['myshowcase_report_count'] = 'The {1} Showcase has {2} reported entries.';
-$l['myshowcase_report_exist_title'] = 'Reported Entries';
-$l['myshowcase_report_link'] = 'Click to view reported entries.';
-$l['myshowcase_reports'] = 'Reports';
-$l['myshowcase_reports_entryid'] = 'Entry ID';
-$l['myshowcase_reports_showcaseid'] = 'Showcase ID';
-$l['myshowcase_reports_showcase_name'] = 'Showcase';
-$l['myshowcase_reports_reason'] = 'Reason';
-$l['myshowcase_reports_reportedby'] = 'Reported By';
-$l['myshowcase_reports_dateline'] = 'Reported At';
-$l['myshowcase_report_item'] = "The above entry was reported {1} by {2} with reason: \"{3}\"";
-$l['myshowcase_reports_note'] = 'Reported Showcases';
-
 //redirects
 $l['redirect_myshowcase_return'] = "<br /><br />Alternatively, <a href=\"{1}\">return to the list</a>.";
 $l['redirect_myshowcase_new'] = 'Thank you, your entry has been successfully built.';
@@ -229,6 +209,8 @@ $l = array_merge($l, [
     'myShowcaseEntryAttachmentsImages' => 'Image(s)',
     'myShowcaseEntryAttachmentsThumbnail' => 'Thumbnail(s)',
 
+    'myShowcaseEntryButtonReport' => 'Report',
+    'myShowcaseEntryButtonReportDescription' => 'Report comment',
     'myShowcaseEntryButtonApprove' => 'Approve',
     'myShowcaseEntryButtonApproveDescription' => 'Approve entry',
     'myShowcaseEntryButtonApproveConfirm' => 'Are you sure you want to approve this entry?',
@@ -261,6 +243,8 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonPurseSpammer' => 'Purge Spammer',
     'myShowcaseEntryCommentButtonPurseSpammerDescription' => 'Purge Spammer',
 
+    'myShowcaseEntryCommentButtonReport' => 'Report',
+    'myShowcaseEntryCommentButtonReportDescription' => 'Report comment',
     'myShowcaseEntryCommentButtonApprove' => 'Approve',
     'myShowcaseEntryCommentButtonApproveDescription' => 'Approve comment',
     'myShowcaseEntryCommentButtonApproveConfirm' => 'Are you sure you want to approve this comment?',
@@ -291,4 +275,10 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentSoftDeleted' => 'The comment has been soft deleted successfully.<br />You will now be returned back to where you came from.',
     'myShowcaseEntryCommentDeleted' => 'The comment has been deleted successfully.<br />You will now be returned back to where you came from.',
 
+    'myShowcaseReportCommentInvalid' => 'This comment either does not exist or is not allowed to be reported.',
+    'myShowcaseReportCommentContent' => '<a href="{1}">Comment</a> from {2}',
+    'myShowcaseReportCommentContentEntryUser' => '<br /><span class="smalltext">On {1}\'s entry</span>',
+
+    'myShowcaseReportEntryInvalid' => 'This entry either does not exist or is not allowed to be reported.',
+    'myShowcaseReportEntryContent' => '<a href="{1}">Entry</a> from {2}',
 ]);

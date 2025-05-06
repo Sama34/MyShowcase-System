@@ -17,6 +17,7 @@ namespace MyShowcase\System;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\getTemplate;
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\postParser;
 
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
@@ -70,6 +71,8 @@ class Render
         }
 
         global $lang;
+
+        loadLanguage();
 
         foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldName => &$fieldDisplayName) {
             $fieldDisplayName = $lang->{"myShowcaseMainSort{$fieldName}"} ?? ucfirst($fieldName);
@@ -145,7 +148,7 @@ class Render
         $userData = get_user($userID);
 
         // todo, this should probably account for additional groups, but I just took it from post bit logic for now
-        if ($userData['usergroup']) {
+        if (!empty($userData['usergroup'])) {
             $groupPermissions = usergroup_permissions($userData['usergroup']);
         } else {
             $groupPermissions = usergroup_permissions(1);
@@ -161,13 +164,15 @@ class Render
 
         $commentUserNameFormatted = format_name(
             $commentUserName,
-            $userData['usergroup'],
-            $userData['displaygroup']
+            $userData['usergroup'] ?? 0,
+            $userData['displaygroup'] ?? 0
         );
 
         $userProfileLink = build_profile_link($commentUserNameFormatted, $userID);
 
-        if (isset($mybb->user['showavatars']) && !empty($mybb->user['showavatars']) || !$currentUserID) {
+        $userAvatar = '';
+
+        if (isset($userData['avatar']) && isset($mybb->user['showavatars']) && !empty($mybb->user['showavatars']) || !$currentUserID) {
             $userAvatar = format_avatar(
                 $userData['avatar'],
                 $userData['avatardimensions'],
@@ -178,7 +183,7 @@ class Render
 
             $userAvatarWidthHeight = $userAvatar['width_height'] ?? '';
 
-            $serAvatar = eval($this->templateGet($templatePrefix . 'UserAvatar'));
+            $userAvatar = eval($this->templateGet($templatePrefix . 'UserAvatar'));
         }
 
         if (!empty($groupPermissions['usertitle']) && empty($userData['usertitle'])) {
@@ -227,22 +232,25 @@ class Render
             $userGroupImage = eval($this->templateGet($templatePrefix . 'UserGroupImage'));
         }
 
-        // Determine the status to show for the user (Online/Offline/Away)
-        if ($userData['lastactive'] > TIME_NOW - $mybb->settings['wolcutoff'] &&
-            (empty($userData['invisible']) || !empty($mybb->usergroup['canviewwolinvis'])) &&
-            (int)$userData['lastvisit'] !== (int)$userData['lastactive']) {
-            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOnline'));
-        } elseif (!empty($userData['away']) && !empty($mybb->settings['allowaway'])) {
-            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusAway'));
-        } else {
-            $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOffline'));
+        $userOnlineStatus = '';
+
+        if (isset($userData['lastactive'])) {
+            if ($userData['lastactive'] > TIME_NOW - $mybb->settings['wolcutoff'] &&
+                (empty($userData['invisible']) || !empty($mybb->usergroup['canviewwolinvis'])) &&
+                (int)$userData['lastvisit'] !== (int)$userData['lastactive']) {
+                $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOnline'));
+            } elseif (!empty($userData['away']) && !empty($mybb->settings['allowaway'])) {
+                $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusAway'));
+            } else {
+                $userOnlineStatus = eval($this->templateGet($templatePrefix . 'UserOnlineStatusOffline'));
+            }
         }
 
-        $userPostNumber = my_number_format($userData['postnum']);
+        $userPostNumber = my_number_format($userData['postnum'] ?? 0);
 
-        $userThreadNumber = my_number_format($userData['threadnum']);
+        $userThreadNumber = my_number_format($userData['threadnum'] ?? 0);
 
-        $userRegistrationDate = my_date($mybb->settings['regdateformat'], $userData['regdate']);
+        $userRegistrationDate = my_date($mybb->settings['regdateformat'], $userData['regdate'] ?? 0);
 
         if (!empty($groupPermissions['usereputationsystem']) && !empty($mybb->settings['enablereputation'])) {
             $userReputation = get_reputation($userData['reputation'], $userID);
@@ -368,8 +376,31 @@ class Render
 
         $buttonPurgeSpammer = '';
 
-        if (purgespammer_show($userData['postnum'], $userData['usergroup'], $userData['uid'])) {
+        if ($userID && purgespammer_show($userData['postnum'], $userData['usergroup'], $userID)) {
             $buttonPurgeSpammer = eval($this->templateGet($templatePrefix . 'ButtonPurgeSpammer'));
+        }
+
+        global $db;
+
+        $query = $db->simple_select(
+            'reportedcontent',
+            'uid'
+        );
+
+        $reportUserIDs = [];
+
+        while ($reportData = $db->fetch_array($query)) {
+            $reportUserIDs[] = (int)$reportData['uid'];
+        }
+
+        $userPermissions = user_permissions($userID);
+
+        $buttonReport = '';
+
+        if ($postType === self::POST_TYPE_ENTRY) {
+            if (!in_array($currentUserID, $reportUserIDs) && !empty($userPermissions['canbereported'])) {
+                $buttonReport = eval($this->templateGet($templatePrefix . 'ButtonReport'));
+            }
         }
 
         $postStatus = (int)$postData['status'];
@@ -413,7 +444,7 @@ class Render
             //only mods, original author (if allowed) or owner (if allowed) can delete comments
             if (
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] ||
-                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries])
+                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries])
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlDeleteEntry,
@@ -465,7 +496,7 @@ class Render
             //only mods, original author (if allowed) or owner (if allowed) can delete comments
             if (
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments] ||
-                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
+                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
                 ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
@@ -478,7 +509,11 @@ class Render
             }
         }
 
-        $serDetails = eval($this->templateGet($templatePrefix . 'UserDetails'));
+        $userDetails = '';
+
+        if ($userID) {
+            $userDetails = eval($this->templateGet($templatePrefix . 'UserDetails'));
+        }
 
         $styleClass = '';
 

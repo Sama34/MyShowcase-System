@@ -38,7 +38,7 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseDelete;
 use function MyShowcase\Core\showcaseGet;
-use function MyShowcase\Core\showcaseDataGet;
+use function MyShowcase\Core\entryDataGet;
 use function MyShowcase\Core\showcaseInsert;
 use function MyShowcase\Core\showcaseDefaultPermissions;
 use function MyShowcase\Core\showcaseUpdate;
@@ -1497,7 +1497,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $showcaseName = $showcaseData['name'];
 
-    if (showcaseDataGet($showcaseID)) {
+    if (entryDataGet($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorTableDrop, 'error');
 
         admin_redirect(urlHandlerBuild());
@@ -1763,7 +1763,7 @@ if ($mybb->get_input('action') === 'new') {
             $showcaseDataTableExists = showcaseDataTableExists($showcaseID);
 
             if ($showcaseDataTableExists) {
-                $showcaseTotalEntries = showcaseDataGet(
+                $showcaseTotalEntries = entryDataGet(
                     $showcaseID,
                     [],
                     ['COUNT(entry_id) AS showcaseTotalEntries'],

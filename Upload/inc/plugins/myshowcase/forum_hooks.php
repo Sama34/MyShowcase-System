@@ -15,15 +15,18 @@ declare(strict_types=1);
 
 namespace MyShowcase\Hooks\Forum;
 
+use MyBB;
 use MyShowcase\System\ModeratorPermissions;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\renderGetObject;
-use function MyShowcase\Core\showcaseDataGet;
+use function MyShowcase\Core\entryDataGet;
 use function MyShowcase\Core\showcaseGetObject;
+use function MyShowcase\Core\showcaseGetObjectBySlug;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerGet;
 use function MyShowcase\Core\urlHandlerSet;
@@ -48,16 +51,16 @@ function global_start(): bool
     if (defined('THIS_SCRIPT')) {
         $templateObjects = [
             'globalMessageUnapprovedEntries',
-            'globalMessageReportedEntries'
         ];
 
         $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
 
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-            $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
+            $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
 
             if (THIS_SCRIPT === 'showcase.php') {
                 $templateObjects = array_merge($templateObjects, [
+                    'pageMetaCanonical',
                     'pageView',
                     'pageViewCommentsComment',
                     'pageViewCommentsCommentButtonApprove',
@@ -65,6 +68,7 @@ function global_start(): bool
                     'pageViewCommentsCommentButtonEmail',
                     'pageViewCommentsCommentButtonPrivateMessage',
                     'pageViewCommentsCommentButtonPurgeSpammer',
+                    'pageViewCommentsCommentButtonReport',
                     'pageViewCommentsCommentButtonRestore',
                     'pageViewCommentsCommentButtonSoftDelete',
                     'pageViewCommentsCommentButtonUnapprove',
@@ -107,6 +111,7 @@ function global_start(): bool
                     'pageViewEntryButtonEmail',
                     'pageViewEntryButtonPrivateMessage',
                     'pageViewEntryButtonPurgeSpammer',
+                    'pageViewEntryButtonReport',
                     'pageViewEntryButtonRestore',
                     'pageViewEntryButtonSoftDelete',
                     'pageViewEntryButtonUnapprove',
@@ -143,7 +148,7 @@ function global_start(): bool
         $templatelist .= ', myShowcase_' . implode(', myShowcase_', $templateObjects);
 
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-            $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
+            $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
 
             //if showcase is enabled...
             if ($showcaseObject->enabled) {
@@ -174,7 +179,7 @@ function global_intermediate(): bool
     $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
-        $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
+        $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
 
         //if showcase is enabled...
         if ($showcaseObject->enabled) {
@@ -203,25 +208,6 @@ function global_intermediate(): bool
                     $renderObjects = renderGetObject($showcaseObject);
 
                     $unapprovedEntriesNotices[] = eval($renderObjects->templateGet('globalMessageUnapprovedEntries'));
-                }
-            }
-
-            //report notices
-            if ($showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) {
-                $showcaseReportedEntriesUrl = urlHandlerBuild(['action' => 'reports']);
-
-                $totalReportedEntries = $showcaseObject->entriesGetReportedCount();
-
-                if ($totalReportedEntries > 0) {
-                    $unapprovedText = $lang->sprintf(
-                        $lang->myshowcase_report_count,
-                        $showcaseObject->name,
-                        my_number_format($totalReportedEntries)
-                    );
-
-                    $renderObjects = renderGetObject($showcaseObject);
-
-                    $reportedEntriesNotices[] = eval($renderObjects->templateGet('globalMessageReportedEntries'));
                 }
             }
         }
@@ -374,7 +360,7 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
                 $entryID = $plugin_array['user_activity']['entry_id'];
 
-                $showcaseObjects = showcaseDataGet($showcaseID, ["entry_id='{$entryID}'"], ['user_id']);
+                $showcaseObjects = entryDataGet($showcaseID, ["entry_id='{$entryID}'"], ['user_id']);
 
                 foreach ($showcaseObjects as $entryID => $entryData) {
                     $uid = $entryData['user_id'];
@@ -479,7 +465,7 @@ function showthread_start(): bool
         //get myshowcase counts for users in thread
         if (count($uids)) {
             foreach ($myshowcase_uids as $gid => $data) {
-                $entryFieldObjects = showcaseDataGet(
+                $entryFieldObjects = entryDataGet(
                     $gid,
                     ["user_id IN ('{$userIDs}')", "approved='1'"],
                     ['user_id', 'COUNT(user_id) AS total'],
@@ -548,4 +534,170 @@ function portal_start(): bool
     }
 
     return true;
+}
+
+function report_type(): void
+{
+    global $mybb;
+
+    if ($mybb->get_input('type') === 'showcase_entries') {
+        global $report_type, $error, $verified, $id, $id2, $id3, $checkid, $report_type_db, $button;
+
+        loadLanguage();
+
+        $report_type = $mybb->get_input('type');
+
+        $entryID = $mybb->get_input('pid', MyBB::INPUT_INT);
+
+        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+
+        $entryData = entryDataGet(
+            $showcaseID,
+            ["entry_id='{$entryID}'"],
+            ['user_id'],
+            ['limit' => 1]
+        );
+
+        if (empty($entryData)) {
+            $error = $lang->myShowcaseReportEntryInvalid;
+
+            return;
+        }
+
+        $verified = true;
+
+        $id = $entryID;
+
+        $id2 = $checkid = (int)$entryData['user_id'];
+
+        $id3 = (int)$entryData['user_id'];
+
+        $report_type_db = "type='{$report_type}'";
+
+        $button = '#commentBody' . $entryID;
+    }
+
+    if ($mybb->get_input('type') === 'showcase_comments') {
+        global $report_type, $error, $verified, $id, $id2, $id3, $checkid, $report_type_db, $button;
+
+        loadLanguage();
+
+        $report_type = $mybb->get_input('type');
+
+        $commentID = $mybb->get_input('pid', MyBB::INPUT_INT);
+
+        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+
+        $commentData = commentsGet(
+            ["comment_id='{$commentID}'"],
+            ['entry_id', 'user_id'],
+            ['limit' => 1]
+        );
+
+        $entryData = entryDataGet(
+            $showcaseID,
+            ["entry_id='{$commentData['entry_id']}'"],
+            ['user_id'],
+            ['limit' => 1]
+        );
+
+        if (empty($commentData) || empty($entryData)) {
+            $error = $lang->myShowcaseReportCommentInvalid;
+
+            return;
+        }
+
+        $verified = true;
+
+        $id = $commentID;
+
+        $id2 = $checkid = (int)$commentData['user_id'];
+
+        $id3 = (int)$entryData['user_id'];
+
+        $report_type_db = "type='{$report_type}'";
+
+        $button = '#commentBody' . $commentID;
+    }
+}
+
+function modcp_reports_report()
+{
+    global $mybb, $lang;
+    global $report, $usercache, $report_data;
+
+    if ($report['type'] === 'showcase_entries') {
+        loadLanguage();
+
+        $entryID = (int)$report['id'];
+
+        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+
+        $entryData = entryDataGet(
+            $showcaseID,
+            ["entry_id='{$entryID}'"],
+            ['user_id'],
+            ['limit' => 1]
+        );
+
+        $showcaseObject = showcaseGetObject($showcaseID);
+
+        $report_data['content'] = $lang->sprintf(
+            $lang->myShowcaseReportEntryContent,
+            $showcaseObject->urlBuild(
+                $showcaseObject->urlViewEntry,
+                $entryID
+            ) . '#entryID' . $entryID,
+            build_profile_link(
+                htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
+                $report['id2'] ?? 0
+            )
+        );
+    }
+
+    if ($report['type'] === 'showcase_comments') {
+        loadLanguage();
+
+        $commentID = (int)$report['id'];
+
+        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+
+        $commentData = commentsGet(
+            ["comment_id='{$commentID}'"],
+            ['showcase_id', 'entry_id', 'user_id'],
+            ['limit' => 1]
+        );
+
+        $entryID = (int)$commentData['entry_id'];
+
+        $entryData = entryDataGet(
+            $showcaseID,
+            ["entry_id='{$entryID}'"],
+            ['user_id'],
+            ['limit' => 1]
+        );
+
+        $showcaseObject = showcaseGetObject($showcaseID);
+
+        $report_data['content'] = $lang->sprintf(
+            $lang->myShowcaseReportCommentContent,
+            $showcaseObject->urlBuild(
+                $showcaseObject->urlViewComment,
+                $entryID,
+                $commentID
+            ) . '#commentID' . $commentID,
+            build_profile_link(
+                htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
+                $report['id2'] ?? 0
+            )
+        );
+
+        $report_data['content'] .= $lang->sprintf(
+            $lang->myShowcaseReportCommentContentEntryUser,
+            build_profile_link(
+                htmlspecialchars_uni(get_user($report['id3'])['username']),
+                $report['id3'] ?? 0
+            )
+        );
+    }
 }

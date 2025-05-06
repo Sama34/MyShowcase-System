@@ -107,7 +107,7 @@ class Entries extends Base
         int $limit = 10,
         int $limitStart = 0,
         string $groupBy = '',
-        string $orderBy = 'uid',
+        string $orderBy = 'user_id',
         string $orderDirection = ORDER_DIRECTION_ASCENDING
     ): void {
         global $lang, $mybb, $db;
@@ -429,14 +429,14 @@ class Entries extends Base
 
                 $entryDateline = my_date('relative', $entryFieldData['dateline']);
 
-                if (!empty($entryFieldData['uid'])) {
+                if (!empty($entryFieldData['user_id'])) {
                     $entryUsernameFormatted = build_profile_link(
                         format_name(
                             $entryFieldData['username'],
                             $entryFieldData['usergroup'],
                             $entryFieldData['displaygroup']
                         ),
-                        $entryFieldData['uid']
+                        $entryFieldData['user_id']
                     );
                 }
 
@@ -635,35 +635,6 @@ class Entries extends Base
 
                 $showcaseEntriesList .= eval($this->renderObject->templateGet('pageMainTableRows'));
 
-                //add row indicating report
-                if (!empty($reports) && is_array($reports[$entryFieldData['entry_id']])) {
-                    foreach ($reports[$entryFieldData['entry_id']] as $rid => $report) {
-                        $entryReportDate = my_date($mybb->settings['dateformat'], $report['dateline']);
-
-                        $entryReportTime = my_date($mybb->settings['timeformat'], $report['dateline']);
-
-                        $entryReportUserData = get_user($report['uid']);
-
-                        $entryReportUserProfileLink = build_profile_link(
-                            $entryReportUserData['username'],
-                            $entryReportUserData['uid'],
-                        );
-
-                        $alternativeBackground .= ' red_alert';
-
-                        $message = $lang->sprintf(
-                            $lang->myshowcase_report_item,
-                            $entryReportDate . ' ' . $entryReportTime,
-                            $entryReportUserProfileLink,
-                            $report['reason']
-                        );
-
-                        $showcaseColumnsCount += count($this->showcaseObject->fieldSetFieldsOrder);
-
-                        $showcaseEntriesList .= eval($this->renderObject->templateGet('pageMainTableReport'));
-                    }
-                }
-
                 $alternativeBackground = alt_trow();
             }
         } else {
@@ -758,7 +729,7 @@ class Entries extends Base
                     $showcase_action = 'new';
 
                     //need to populated a default user value here for new entries
-                    $entryFieldsData['uid'] = $currentUserID;
+                    $entryFieldsData['user_id'] = $currentUserID;
                 } else {
                     $showcase_editing_user = str_replace(
                         '{username}',
@@ -856,7 +827,7 @@ class Entries extends Base
 
                     // Set the post data that came from the input to the $post array.
                     $default_data = [
-                        'uid' => $entryFieldsData['uid'],
+                        'user_id' => $entryFieldsData['user_id'],
                         'dateline' => TIME_NOW,
                         'approved' => $approved,
                         'approved_by' => $approved_by,
@@ -1373,17 +1344,11 @@ class Entries extends Base
             ++$fieldTabIndex;
         }
 
-        $pageTitle = $this->showcaseObject->name;
+        $hookArguments = hooksRun('output_new_end', $hookArguments);
 
         $pageContents = eval($this->renderObject->templateGet('pageNewContents'));
 
-        $pageContents = eval($this->renderObject->templateGet('page'));
-
-        $hookArguments = hooksRun('output_new_end', $hookArguments);
-
-        output_page($pageContents);
-
-        exit;
+        $this->outputSuccess(eval($this->renderObject->templateGet('pageNewContents')));
     }
 
     #[NoReturn] public function viewEntry(
@@ -1438,7 +1403,7 @@ class Entries extends Base
 
         if ($this->showcaseObject->entryData['username'] === '') {
             $this->showcaseObject->entryData['username'] = $lang->guest;
-            $this->showcaseObject->entryData['uid'] = 0;
+            $this->showcaseObject->entryData['user_id'] = 0;
         }
 
         $showcase_viewing_user = str_replace(
@@ -1463,13 +1428,13 @@ class Entries extends Base
 
         $showcase_view_admin_edit = '';
 
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] || ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
+        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] || ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
             $showcase_view_admin_edit = eval($this->renderObject->templateGet('view_admin_edit'));
         }
 
         $showcase_view_admin_delete = '';
 
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] || ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
+        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] || ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanEditEntries])) {
             $showcase_view_admin_delete = eval($this->renderObject->templateGet('view_admin_delete'));
         }
 
@@ -1480,16 +1445,6 @@ class Entries extends Base
         reset($this->showcaseObject->fieldSetEnabledFields);
 
         $entryPost = $this->renderObject->buildEntry($this->showcaseObject->entryData);
-
-        /*
-        //output bottom row for report button and future add-ons
-//		$entry_final_row = '<a href="'.$this->showcaseObject->urlBuild($this->showcaseObject->urlMain).'?action=report&entry_id='.$mybb->get_input('entry_id', \MyBB::INPUT_INT).'"><img src="'.$theme['imglangdir'].'/postbit_report.gif"></a>';
-        $entry_final_row = '<a href="javascript:Showcase.reportShowcase(' . $mybb->get_input(
-                'entry_id',
-                MyBB::INPUT_INT
-            ) . ');"><img src="' . $theme['imglangdir'] . '/postbit_report.gif"></a>';
-        $entryFieldsData[] = eval($this->renderObject->templateGet('view_data_3'));
-        */
 
         if ($this->showcaseObject->allowComments && $this->showcaseObject->userPermissions[UserPermissions::CanViewComments]) {
             $queryOptions = ['order_by' => 'dateline', 'order_dir' => 'DESC'];

@@ -27,7 +27,6 @@ use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 
 defined('IN_MYBB') || die('This file cannot be accessed directly.');
 
@@ -120,13 +119,6 @@ function update_myshowcase_moderators(): bool
 function update_myshowcase_permissions(): bool
 {
     cacheUpdate(CACHE_TYPE_PERMISSIONS);
-
-    return true;
-}
-
-function update_myshowcase_reports(): bool
-{
-    cacheUpdate(CACHE_TYPE_REPORTS);
 
     return true;
 }

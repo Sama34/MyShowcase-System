@@ -17,7 +17,7 @@ declare(strict_types=1);
 use MyShowcase\Showcase;
 
 use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\showcaseDataGet;
+use function MyShowcase\Core\entryDataGet;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\SHOWCASE_STATUS_ENABLED;
@@ -37,7 +37,7 @@ function task_myshowcase(array $taskData): array
 
             $showcase = new Showcase($showcaseData['mainfile']);
 
-            $showcaseObjects = showcaseDataGet($showcaseID, ["dateline<='{$pruneTime}'"]);
+            $showcaseObjects = entryDataGet($showcaseID, ["dateline<='{$pruneTime}'"]);
 
             foreach ($showcaseObjects as $entryID => $entryData) {
                 $showcase->delete((int)$entryID);

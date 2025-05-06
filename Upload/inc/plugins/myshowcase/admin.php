@@ -22,7 +22,7 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
 
-use function MyShowcase\Core\showcaseGetObject;
+use function MyShowcase\Core\showcaseGetObjectBySlug;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
@@ -30,7 +30,6 @@ use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-use const MyShowcase\Core\CACHE_TYPE_REPORTS;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\TABLES_DATA;
@@ -168,10 +167,6 @@ function pluginActivation(): bool
                 'uid' => 'user_id',
                 'isgroup' => 'is_group',
             ],
-            'myshowcase_reports' => [
-                'id' => 'showcase_id',
-                'gid' => 'entry_id',
-            ],
             'myshowcase_fieldsets' => [
                 'setid' => 'set_id',
                 'setname' => 'set_name',
@@ -234,11 +229,19 @@ function pluginActivation(): bool
         }
     }
 
+    if ($db->table_exists('myshowcase_reports')) {
+        $db->drop_table('myshowcase_reports');
+    }
+
     /*~*~* RUN UPDATES END *~*~*/
 
     dbVerifyTables();
 
     dbVerifyColumns();
+
+    $plugins['myshowcase'] = $pluginInformation['versioncode'];
+
+    $cache->update('ougc_plugins', $plugins);
 
     foreach (
         [
@@ -247,19 +250,10 @@ function pluginActivation(): bool
             CACHE_TYPE_FIELD_SETS,
             CACHE_TYPE_FIELDS,
             CACHE_TYPE_FIELD_DATA,
-            CACHE_TYPE_MODERATORS,
-            CACHE_TYPE_REPORTS,
+            CACHE_TYPE_MODERATORS
         ] as $cacheType
     ) {
         cacheUpdate($cacheType);
-    }
-
-    $plugins['myshowcase'] = $pluginInformation['versioncode'];
-
-    $cache->update('ougc_plugins', $plugins);
-
-    foreach (['config', 'field_data', 'fieldsets', 'fields', 'permissions', 'moderators', 'reports'] as $key) {
-        cacheUpdate($key);
     }
 
     return true;

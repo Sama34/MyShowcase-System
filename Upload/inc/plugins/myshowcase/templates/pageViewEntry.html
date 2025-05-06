@@ -1,7 +1,7 @@
 <a name="entryID{$entryID}" id="entryID{$entryID}"></a>
 <div class="post {$styleClass}" style="" id="entryBody{$entryID}">
     <div class="post_author">
-        {$serAvatar}
+        {$userAvatar}
         <div class="author_information">
             <strong><span class="largetext">{$userProfileLink}</span></strong> {$userOnlineStatus}<br/>
             <span class="smalltext">
@@ -11,7 +11,7 @@
 			</span>
         </div>
         <div class="author_statistics">
-            {$serDetails}
+            {$userDetails}
         </div>
     </div>
     <div class="post_content">
@@ -33,6 +33,7 @@
         <div class="postbit_buttons post_management_buttons float_right">
             {$buttonWarn}
             {$buttonPurgeSpammer}
+            {$buttonReport}
             {$buttonApprove}
             {$buttonUnpprove}
             {$buttonRestore}

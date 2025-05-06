@@ -27,7 +27,6 @@ use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\postParser;
-use function MyShowcase\Core\reportGet;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\entryDataUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
@@ -680,17 +679,6 @@ class Showcase
         );
 
         return (int)$db->fetch_field($query, 'totalUnapprovedEntries');
-    }
-
-    public function entriesGetReportedCount(): int
-    {
-        $reportStatusPending = REPORT_STATUS_PENDING;
-
-        return (int)(reportGet(
-            ["showcase_id='{$this->showcase_id}'", "status='{$reportStatusPending}'"],
-            ['COUNT(rid) AS totalReportedEntries'],
-            ['group_by' => 'showcase_id, rid, status']
-        )['totalReportedEntries'] ?? 0);
     }
 
     public function templateGet(string $templateName = '', bool $enableHTMLComments = true): string

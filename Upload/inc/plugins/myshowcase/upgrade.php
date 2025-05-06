@@ -99,23 +99,6 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
         $myshowcase_templates = getTemplatesList();
 
         if (version_compare($need_upgrade['prev'], '2.1.0', '<')) {
-            //create table for reported showcase entries
-            if (!$db->table_exists('myshowcase_reports')) {
-                $db->query(
-                    'CREATE TABLE ' . TABLE_PREFIX . "myshowcase_reports (
-						`rid` INT( 10 ) UNSIGNED NOT NULL AUTO_INCREMENT ,
-						`showcase_id` INT( 3 ) UNSIGNED NOT NULL ,
-						`entry_id` INT( 10 ) UNSIGNED NOT NULL ,
-						`reporteruid` INT( 10 ) UNSIGNED NOT NULL ,
-						`authoruid` INT( 10 ) UNSIGNED NOT NULL ,
-						`status` INT( 1 ) NOT NULL DEFAULT '0',
-						`reason` VARCHAR( 250 ) NOT NULL ,
-						`dateline` BIGINT( 30 ) NOT NULL ,
-						PRIMARY KEY ( `rid` ) 
-						) ENGINE=MyISAM DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 "
-                );
-            }
-
             //add new field for random portal option
             if (!$db->field_exists('build_random_entry_widget', 'myshowcase_config')) {
                 $query = 'ALTER TABLE ' . TABLE_PREFIX . 'myshowcase_config ADD `build_random_entry_widget` INT(1) DEFAULT \'0\'';
@@ -153,79 +136,6 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             $insert_array = [
                 'title' => 'myshowcase_view_data_3',
                 'template' => $db->escape_string($myshowcase_templates['myshowcase_view_data_3']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_report\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_report',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_report']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_reported\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_reported',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_reported']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_reports\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_reports',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_reports']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_reports_allreports\'');
-            $db->delete_query('templates', 'title=\'myshowcase_reports_allreport\'');
-            $insert_array = [
-                'title' => 'myshowcase_reports_allreport',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_reports_allreport']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_reports_multipage\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_reports_multipage',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_reports_multipage']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_reports_report\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_reports_report',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_reports_report']),
                 'sid' => -2,
                 'version' => 1600,
                 'dateline' => TIME_NOW
@@ -450,18 +360,6 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             $insert_array = [
                 'title' => 'myshowcase_view_attachments_image',
                 'template' => $db->escape_string($myshowcase_templates['myshowcase_view_attachments_image']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
-
-            //replace myshowcase_report template
-            $db->delete_query('templates', 'title=\'myshowcase_report\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_report',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_report']),
                 'sid' => -2,
                 'version' => 1600,
                 'dateline' => TIME_NOW

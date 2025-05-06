@@ -40,9 +40,22 @@ var Showcase = {
 		document.admin.showcaseact.value = "edit";
 	},
 
-	reportShowcase: function(entry_id)
-	{
-		MyBB.popupWindow(showcase_url+"?action=report&entry_id="+entry_id, "reportShowcase", 400, 300)
+    confirmSubmit: function(confirmationText,  formID) {
+        if (confirm(confirmationText)) {
+            document.getElementById(formID).submit();
+
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+	reportEntry: function(entryID, showcaseID) {
+		MyBB.popupWindow("/report.php?modal=1&type=showcase_entries&pid=" + entryID + "&showcaseID=" + showcaseID);
+	}
+
+	reportComment: function(commentID, showcaseID) {
+		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentID + "&showcaseID=" + showcaseID);
 	}
 
 };

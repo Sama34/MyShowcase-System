@@ -20,6 +20,7 @@ use MyBB;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\permissionsDelete;
 use function MyShowcase\Core\permissionsInsert;
 
@@ -70,9 +71,9 @@ function admin_user_groups_edit(): bool
     //see if added group is in each enabled myshowcase's permission set
     foreach ($myshowcases as $myshowcase) {
         foreach ($curgroups as $group) {
-            if (!array_key_exists($group['entry_id'], $showgroups[$myshowcase['showcase_id']] ?? [])) {
+            if (!array_key_exists($group['gid'], $showgroups[$myshowcase['showcase_id']] ?? [])) {
                 $myshowcase_defaultperms['showcase_id'] = $myshowcase['showcase_id'];
-                $myshowcase_defaultperms['entry_id'] = $group['entry_id'];
+                $myshowcase_defaultperms['group_id'] = $group['gid'];
 
                 permissionsInsert($myshowcase_defaultperms);
             }
@@ -90,9 +91,21 @@ function admin_user_groups_delete_commit(): bool
 {
     global $usergroup;
 
-    permissionsDelete(["entry_id='{$usergroup['entry_id']}'"]);
+    permissionsDelete(["group_id='{$usergroup['gid']}'"]);
 
     cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
     return true;
+}
+
+function report_content_types(array &$contentTypes): array
+{
+    loadLanguage();
+
+    $contentTypes = array_merge($contentTypes, [
+        'showcase_entries',
+        'showcase_comments',
+    ]);
+
+    return $contentTypes;
 }

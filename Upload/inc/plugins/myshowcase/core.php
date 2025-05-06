@@ -48,8 +48,6 @@ const CACHE_TYPE_MODERATORS = 'moderators';
 
 const CACHE_TYPE_PERMISSIONS = 'permissions';
 
-const CACHE_TYPE_REPORTS = 'reports';
-
 const CACHE_TYPE_FIELD_DATA = 'field_data'; // todo, add cache update method
 
 const MODERATOR_TYPE_USER = 0;
@@ -582,50 +580,6 @@ const TABLES_DATA = [
         ],
         'unique_key' => ['id_uid_isgroup' => 'showcase_id,user_id,is_group']
     ],
-    // todo, should integrate into the code report system
-    'myshowcase_reports' => [
-        'rid' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'auto_increment' => true,
-            'primary_key' => true
-        ],
-        'showcase_id' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'entry_id' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'reporteruid' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'authoruid' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'status' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'reason' => [
-            'type' => 'VARCHAR',
-            'size' => 250,
-            'default' => ''
-        ],
-        'dateline' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-    ],
     'myshowcase_fields' => [
         'field_id' => [
             'type' => 'INT',
@@ -1018,8 +972,7 @@ function cacheUpdate(string $cacheKey): array
     switch ($cacheKey) {
         case CACHE_TYPE_CONFIG:
             $showcaseObjects = showcaseGet(
-                [],
-                array_keys(TABLES_DATA['myshowcase_config'])
+                queryFields: array_keys(TABLES_DATA['myshowcase_config'])
             );
 
             foreach ($showcaseObjects as $showcaseID => $showcaseData) {
@@ -1159,17 +1112,6 @@ function cacheUpdate(string $cacheKey): array
 
             foreach ($moderatorObjects as $moderatorID => $moderatorData) {
                 $cacheData[(int)$moderatorData['showcase_id']][$moderatorID] = $moderatorData;
-            }
-
-            break;
-        case CACHE_TYPE_REPORTS;
-            $reportObjects = reportGet(
-                ["status='0'"],
-                ['rid', 'showcase_id', 'entry_id', 'reporteruid', 'authoruid', 'status', 'reason', 'dateline']
-            );
-
-            foreach ($reportObjects as $reportID => $reportData) {
-                $cacheData[(int)$reportData['showcase_id']][(int)$reportData['entry_id']][$reportID] = $reportData;
             }
 
             break;
@@ -1413,7 +1355,7 @@ function entryDataUpdate(int $showcaseID, int $entryID, array $entryData): int
     return entryDataInsert($showcaseID, $entryData, true, $entryID);
 }
 
-function showcaseDataGet(
+function entryDataGet(
     int $showcaseID,
     array $whereClauses,
     array $queryFields = [],
@@ -1922,61 +1864,6 @@ function commentsDelete(array $whereClauses = []): bool
     $db->delete_query('myshowcase_comments', implode(' AND ', $whereClauses));
 
     return true;
-}
-
-function reportInsert(array $reportData): int
-{
-    global $db;
-
-    $db->insert_query('myshowcase_reports', $reportData);
-
-    return (int)$db->insert_id();
-}
-
-function reportUpdate(array $whereClauses, array $reportData): bool
-{
-    global $db;
-
-    $db->update_query(
-        'myshowcase_reports',
-        $reportData,
-        implode(' AND ', $whereClauses)
-    );
-
-    return true;
-}
-
-function reportDelete(array $whereClauses = []): bool
-{
-    global $db;
-
-    $db->delete_query('myshowcase_reports', implode(' AND ', $whereClauses));
-
-    return true;
-}
-
-function reportGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
-{
-    global $db;
-
-    $query = $db->simple_select(
-        'myshowcase_reports',
-        implode(', ', array_merge(['rid'], $queryFields)),
-        implode(' AND ', $whereClauses),
-        $queryOptions
-    );
-
-    if (isset($queryOptions['limit']) && $queryOptions['limit'] === 1) {
-        return (array)$db->fetch_array($query);
-    }
-
-    $reportObjects = [];
-
-    while ($report = $db->fetch_array($query)) {
-        $reportObjects[(int)$report['rid']] = $report;
-    }
-
-    return $reportObjects;
 }
 
 /**
@@ -2583,7 +2470,7 @@ function entryGetRandom(): string
 
         $item_view_user = str_replace('{username}', $entry['username'], $lang->myshowcase_view_user);
 
-        $entryUrl = str_replace('{gid}', $entry['gid'], $showcase_file);
+        $entryUrl = str_replace('{entry_id}', $entry['entry_id'], $showcase_file);
 
         $entry['description'] = '';
         foreach ($description_list as $order => $name) {
@@ -2593,9 +2480,9 @@ function entryGetRandom(): string
         $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
         if ($rand_entry_thumb == 'SMALL') {
-            $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_img;
+            $rand_img = $rand_showcase['images_directory'] . '/' . $rand_entry_img;
         } else {
-            $rand_img = $rand_showcase['imgfolder'] . '/' . $rand_entry_thumb;
+            $rand_img = $rand_showcase['images_directory'] . '/' . $rand_entry_thumb;
         }
 
         return eval($templates->render('portal_rand_showcase'));
@@ -2606,16 +2493,16 @@ function dataTableStructureGet(int $showcaseID = 0): array
 {
     $dataTableStructure = DATA_TABLE_STRUCTURE['myshowcase_data'];
 
-    if ($showcaseID && ($showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]))) {
-        $fieldsetID = (int)$showcaseData['fieldsetid'];
+    if ($showcaseID &&
+        ($showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], ['field_set_id'], ['limit' => 1]))) {
         $fieldsetID = (int)$showcaseData['field_set_id'];
 
         hooksRun('admin_summary_table_create_rebuild_start');
 
         foreach (
             fieldsGet(
-                ["setid='{$fieldsetID}'"],
-                ['name', 'field_type', 'max_length', 'requiredField']
+                ["set_id='{$fieldsetID}'"],
+                ['name', 'field_type', 'maximum_length', 'is_required']
             ) as $fieldID => $fieldData
         ) {
             $dataTableStructure[$fieldData['name']] = [];
@@ -2626,16 +2513,16 @@ function dataTableStructureGet(int $showcaseID = 0): array
                 case FIELD_TYPE_STORAGE_VARCHAR:
                     $field['type'] = 'VARCHAR';
 
-                    $field['size'] = (int)$fieldData['max_length'];
+                    $field['size'] = (int)$fieldData['maximum_length'];
 
-                    if (empty($fieldData['requiredField'])) {
+                    if (empty($fieldData['is_required'])) {
                         $field['default'] = '';
                     }
                     break;
                 case FIELD_TYPE_STORAGE_TEXT:
                     $field['type'] = 'TEXT';
 
-                    if (empty($fieldData['requiredField'])) {
+                    if (empty($fieldData['is_required'])) {
                         $field['null'] = true;
                     }
                     break;
@@ -2643,9 +2530,9 @@ function dataTableStructureGet(int $showcaseID = 0): array
                 case FIELD_TYPE_STORAGE_BIGINT:
                     $field['type'] = my_strtoupper($fieldData['field_type']);
 
-                    $field['size'] = (int)$fieldData['max_length'];
+                    $field['size'] = (int)$fieldData['maximum_length'];
 
-                    if (empty($fieldData['requiredField'])) {
+                    if (empty($fieldData['is_required'])) {
                         $field['default'] = 0;
                     }
                     break;
@@ -2654,7 +2541,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
                     break;
             }
 
-            if (!empty($fieldData['requiredField'])) {
+            if (!empty($fieldData['is_required'])) {
                 global $mybb;
 
                 if ($fieldData['field_type'] === FIELD_TYPE_STORAGE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
@@ -2685,7 +2572,22 @@ function postParser(): postParser
     return $parser;
 }
 
-function showcaseGetObject(string $showcaseSlug): Showcase
+function showcaseGetObject(int $selectedShowcaseID): Showcase
+{
+    $showcaseObjects = showcaseGet(
+        queryFields: array_keys(TABLES_DATA['myshowcase_config'])
+    );
+
+    foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+        if ($selectedShowcaseID === $showcaseID) {
+            $showcaseSlug = $showcaseData['showcase_slug'];
+        }
+    }
+
+    return showcaseGetObjectBySlug($showcaseSlug);
+}
+
+function showcaseGetObjectBySlug(string $showcaseSlug): Showcase
 {
     require_once ROOT . '/System/Showcase.php';
 
@@ -2704,9 +2606,11 @@ function renderGetObject(Showcase $showcaseObject): Render
 
     static $renderObjects = [];
 
+    if (!isset($renderObjects[$showcaseObject->showcase_id])) {
+        $renderObjects[$showcaseObject->showcase_id] = new Render($showcaseObject);
     }
 
-    return $renderObjects[$showcaseObject->id];
+    return $renderObjects[$showcaseObject->showcase_id];
 }
 
 function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HANDLERT_METHOD_INSERT): DataHandler
@@ -2716,9 +2620,11 @@ function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HA
 
     static $dataHandlerObjects = [];
 
+    if (!isset($dataHandlerObjects[$showcaseObject->showcase_id])) {
+        $dataHandlerObjects[$showcaseObject->showcase_id] = new DataHandler($showcaseObject, $method);
     }
 
-    return $dataHandlerObjects[$showcaseObject->id];
+    return $dataHandlerObjects[$showcaseObject->showcase_id];
 }
 
 function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
@@ -2727,7 +2633,9 @@ function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
 
     static $outputObjects = [];
 
+    if (!isset($outputObjects[$showcaseObject->showcase_id])) {
+        $outputObjects[$showcaseObject->showcase_id] = new Output($showcaseObject, $renderObject);
     }
 
-    return $outputObjects[$showcaseObject->id];
+    return $outputObjects[$showcaseObject->showcase_id];
 }

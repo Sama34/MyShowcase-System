@@ -64,11 +64,14 @@ class Comments extends Base
     ) {
         $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
 
-        $queryFields = array_merge(array_map(function (string $columnName): string {
-            return 'entryData.' . $columnName;
-        }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])), [
-            'userData.username',
-        ]);
+        $queryFields = array_merge(
+            array_map(function (string $columnName): string {
+                return 'entryData.' . $columnName;
+            }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])),
+            [
+                'userData.username',
+            ]
+        );
 
         $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
 
@@ -124,7 +127,7 @@ class Comments extends Base
         $dataHandler = dataHandlerGetObject($this->showcaseObject);
 
         $dataHandler->setData([
-            'uid' => $currentUserID,
+            'user_id' => $currentUserID,
             'ipaddress' => $mybb->session->packedip,
             'comment' => $mybb->get_input('comment'),
             'status' => COMMENT_STATUS_VISIBLE
@@ -255,13 +258,13 @@ class Comments extends Base
 
         $this->setEntry($entryID);
 
-        $commentData = $this->commentsModel->getComment($commentID, ['uid']);
+        $commentData = $this->commentsModel->getComment($commentID, ['user_id']);
 
         if (!$this->commentsModel->getComment($commentID) ||
             !(
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments] ||
-                ((int)$commentData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-                ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+                ((int)$commentData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
+                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
             ) ||
             !$this->showcaseObject->entryID) {
             error_no_permission();

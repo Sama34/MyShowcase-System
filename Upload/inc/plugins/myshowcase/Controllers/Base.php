@@ -39,8 +39,9 @@ use MyShowcase\System\Showcase;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\outputGetObject;
 use function MyShowcase\Core\renderGetObject;
-use function MyShowcase\Core\showcaseGetObject;
+use function MyShowcase\Core\showcaseGetObjectBySlug;
 
+use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\VERSION_CODE;
 
 abstract class Base
@@ -71,7 +72,7 @@ abstract class Base
 
         //\MyShowcase\Core\cacheUpdate(\MyShowcase\Core\CACHE_TYPE_CONFIG);
 //start by constructing the showcase
-        $showcaseObject = showcaseGetObject($router->params['showcase_slug'] ?? '');
+        $showcaseObject = showcaseGetObjectBySlug($router->params['showcase_slug'] ?? '');
 
         $renderObject = renderGetObject($showcaseObject);
 
@@ -115,6 +116,23 @@ abstract class Base
         $errorMessages = empty($this->showcaseObject->errorMessages) ? '' : inline_error(
             $this->showcaseObject->errorMessages
         );
+
+        $version = VERSION_CODE;
+
+        if (DEBUG) {
+            $version = TIME_NOW;
+        }
+
+        $metaData = '';
+
+        if ($this->showcaseObject->entryID) {
+            $entryUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewEntry,
+                $this->showcaseObject->entryID
+            );
+
+            $metaData .= eval($this->renderObject->templateGet('pageMetaCanonical'));
+        }
 
         $pageContents = eval($this->renderObject->templateGet('page'));
 

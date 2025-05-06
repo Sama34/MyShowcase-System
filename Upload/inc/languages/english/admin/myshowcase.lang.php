@@ -26,7 +26,9 @@ $l = [
     'myShowcaseAdminButtonSubmitAddModeratorUser' => 'Add User Moderator',
     'myShowcaseAdminButtonReset' => 'Reset',
     'myShowcaseAdminButtonDelete' => 'Delete',
-    
+
     'myShowcaseAdminErrorInvalidPostKey' => 'Invalid post key',
     'myShowcaseAdminErrorMissingRequiredFields' => 'Some required fields are missing.',
+
+    'report_content_showcase_comments' => 'Showcase comments',
 ];
