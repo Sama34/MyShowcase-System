@@ -119,7 +119,7 @@ class Render
 
             $commentUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlViewComment,
-                $entryID,
+                $this->showcaseObject->entryData['entry_slug'],
                 $commentID
             );
 
@@ -131,7 +131,7 @@ class Render
 
             $entryUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlViewEntry,
-                $entryID
+                $this->showcaseObject->entryData['entry_slug']
             );
 
             $entryUrl = eval($this->templateGet($templatePrefix . 'Url'));
@@ -261,11 +261,18 @@ class Render
         $buttonEdit = '';
 
         if ($postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries]) {
-            $editUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateEntry, $entryID);
+            $editUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlUpdateEntry,
+                $this->showcaseObject->entryData['entry_slug']
+            );
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
         } elseif ($postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanEditComments]) {
-            $editUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateComment, $entryID, $commentID);
+            $editUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlUpdateComment,
+                $this->showcaseObject->entryData['entry_slug'],
+                $commentID
+            );
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
         }
@@ -424,14 +431,14 @@ class Render
             if ($postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
                 $approveUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlApproveEntry,
-                    $entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
                 $unapproveUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlUnapproveEntry,
-                    $entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
@@ -440,14 +447,14 @@ class Render
             if ($postStatus === ENTRY_STATUS_SOFT_DELETED) {
                 $restoreUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlRestoreEntry,
-                    $entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
                 $softDeleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlSoftDeleteEntry,
-                    $entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
@@ -460,7 +467,7 @@ class Render
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlDeleteEntry,
-                    $entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
@@ -472,7 +479,7 @@ class Render
             if ($postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
                 $approveUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlApproveComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 );
 
@@ -480,7 +487,7 @@ class Render
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
                 $unapproveUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlUnapproveComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 );
 
@@ -490,7 +497,7 @@ class Render
             if ($postStatus === COMMENT_STATUS_SOFT_DELETED) {
                 $restoreUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlRestoreComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 );
 
@@ -498,7 +505,7 @@ class Render
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
                 $softDeleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlSoftDeleteComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 );
 
@@ -513,7 +520,7 @@ class Render
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlDeleteComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 );
 
@@ -763,13 +770,13 @@ class Render
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
             $attachmentUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlViewAttachment,
-                $entryID,
+                $this->showcaseObject->entryData['entry_slug'],
                 attachmentID: $attachmentID
             );
 
             $attachmentThumbnailUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlViewAttachmentThumbnail,
-                $entryID,
+                $this->showcaseObject->entryData['entry_slug'],
                 attachmentID: $attachmentID
             );
 

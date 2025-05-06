@@ -183,6 +183,7 @@ function pluginActivation(): bool
                 'searchable' => 'enable_search',
             ],
             'myshowcase_field_data' => [
+                //'value_id' => 'field_data_id',
                 'fieldDataID' => 'field_data_id',
                 'valueid' => 'value_id',
                 'disporder' => 'display_order',

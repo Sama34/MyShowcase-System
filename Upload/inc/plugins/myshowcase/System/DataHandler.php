@@ -111,14 +111,14 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid entry identifier');
         }
 
-        if (isset($entryData['slug']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
-            $slugLength = my_strlen($this->data['slug']);
+        if (isset($entryData['entry_slug']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
+            $slugLength = my_strlen($this->data['entry_slug']);
 
             if ($slugLength < 1) {
                 $this->set_error('the slug is too short');
             }
 
-            if ($slugLength > DATA_TABLE_STRUCTURE['myshowcase_data']['slug']['size']) {
+            if ($slugLength > DATA_TABLE_STRUCTURE['myshowcase_data']['entry_slug']['size']) {
                 $this->set_error('the slug is too large');
             }
         }
@@ -282,6 +282,17 @@ class DataHandler extends CoreDataHandler
         $returnData = [
             'entry_id' => $this->entry_id
         ];
+
+        if (isset($this->insertData['entry_slug'])) {
+            $returnData['entry_slug'] = $entryData['entry_slug'];
+        } else {
+            $returnData['entry_slug'] = $this->showcaseObject->dataGet(
+                ["entry_id='{$this->entry_id}'"],
+                ['entry_slug'],
+                ['limit' => 1]
+            )['entry_slug'] ?? '';
+            _dump(123, $returnData['entry_slug']);
+        }
 
         if (isset($this->insertData['status'])) {
             $returnData['status'] = $entryData['status'];

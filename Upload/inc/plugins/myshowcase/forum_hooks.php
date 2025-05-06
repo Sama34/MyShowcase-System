@@ -644,14 +644,14 @@ function modcp_reports_report()
 
         $entryID = (int)$report['id'];
 
-        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
-
         $entryData = entryDataGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
-            ['user_id'],
+            ['showcase_id', 'user_id', 'entry_slug'],
             ['limit' => 1]
         );
+
+        $showcaseID = (int)$commentData['showcase_id'];
 
         $showcaseObject = showcaseGetObject($showcaseID);
 
@@ -659,7 +659,7 @@ function modcp_reports_report()
             $lang->myShowcaseReportEntryContent,
             $showcaseObject->urlBuild(
                 $showcaseObject->urlViewEntry,
-                $entryID
+                $entryData['entry_slug']
             ) . '#entryID' . $entryID,
             build_profile_link(
                 htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
@@ -673,20 +673,20 @@ function modcp_reports_report()
 
         $commentID = (int)$report['id'];
 
-        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
-
         $commentData = commentsGet(
             ["comment_id='{$commentID}'"],
             ['showcase_id', 'entry_id', 'user_id'],
             ['limit' => 1]
         );
 
+        $showcaseID = (int)$commentData['showcase_id'];
+
         $entryID = (int)$commentData['entry_id'];
 
         $entryData = entryDataGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
-            ['user_id'],
+            ['user_id', 'entry_slug'],
             ['limit' => 1]
         );
 
@@ -696,7 +696,7 @@ function modcp_reports_report()
             $lang->myShowcaseReportCommentContent,
             $showcaseObject->urlBuild(
                 $showcaseObject->urlViewComment,
-                $entryID,
+                $entryData['entry_slug'],
                 $commentID
             ) . '#commentID' . $commentID,
             build_profile_link(

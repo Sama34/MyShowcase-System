@@ -82,6 +82,7 @@ class Showcase
         public string $mainFile = '',
         public int $fieldSetID = 0,
         public array $fieldSetCache = [],
+        public array $fieldSetFieldsIDs = [],
         public array $fieldSetEnabledFields = [],
         public array $fieldSetParseableFields = [],
         public array $fieldSetFormatableFields = [],
@@ -282,8 +283,12 @@ class Showcase
 
             foreach ($this->fieldSetCache as $fieldID => $fieldData) {
                 if (!$fieldData['enabled']/* || $fieldData['is_required']*/) {
+                    unset($this->fieldSetCache[$fieldID]);
+
                     continue;
                 }
+
+                $this->fieldSetFieldsIDs[$fieldData['name']] = $fieldID;
 
                 $this->fieldSetEnabledFields[$fieldData['name']] = $fieldData['html_type'];
 
@@ -305,6 +310,10 @@ class Showcase
                 $this->fieldSetFieldsMinimumLenght[$fieldData['name']] = (int)$fieldData['minimum_length'];
 
                 $this->fieldSetFieldsRequired[$fieldData['name']] = !empty($field['is_required']);
+
+                if ($fieldData['enable_slug']) {
+                    $this->fieldSetParseableFields[$fieldID] = $fieldData['name'];
+                }
             }
 
             ksort($this->fieldSetFieldsOrder);
@@ -360,41 +369,41 @@ class Showcase
 
             $this->urlPaged = $this->prefix . '.php?page={page}';
 
-            $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_id}';
+            $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_slug}';
 
-            $this->urlViewComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}';
+            $this->urlViewComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}';
 
             $this->urlCreateEntry = $this->showcaseSlug . '/create';
 
-            $this->urlUpdateEntry = $this->showcaseSlug . '/view/{entry_id}/update';
+            $this->urlUpdateEntry = $this->showcaseSlug . '/view/{entry_slug}/update';
 
-            $this->urlApproveEntry = $this->showcaseSlug . '/view/{entry_id}/approve';
+            $this->urlApproveEntry = $this->showcaseSlug . '/view/{entry_slug}/approve';
 
-            $this->urlUnapproveEntry = $this->showcaseSlug . '/view/{entry_id}/unapprove';
+            $this->urlUnapproveEntry = $this->showcaseSlug . '/view/{entry_slug}/unapprove';
 
-            $this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_id}/restore';
+            //$this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_slug}/restore';
 
-            $this->urlSoftDeleteEntry = $this->showcaseSlug . '/view/{entry_id}/soft_delete';
+            $this->urlSoftDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/soft_delete';
 
-            $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_id}/delete';
+            $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/delete';
 
-            $this->urlCreateComment = $this->showcaseSlug . '/view/{entry_id}/comment/create';
+            $this->urlCreateComment = $this->showcaseSlug . '/view/{entry_slug}/comment/create';
 
-            $this->urlUpdateComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/update';
+            $this->urlUpdateComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/update';
 
-            $this->urlApproveComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/approve';
+            $this->urlApproveComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/approve';
 
-            $this->urlUnapproveComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/unapprove';
+            $this->urlUnapproveComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/unapprove';
 
-            $this->urlRestoreComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/restore';
+            $this->urlRestoreComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/restore';
 
-            $this->urlSoftDeleteComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/soft_delete';
+            $this->urlSoftDeleteComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/soft_delete';
 
-            $this->urlDeleteComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/delete';
+            $this->urlDeleteComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/delete';
 
-            $this->urlViewAttachment = $this->showcaseSlug . '/view/{entry_id}/attachment/{attachment_id}';
+            $this->urlViewAttachment = $this->showcaseSlug . '/view/{entry_slug}/attachment/{attachment_id}';
 
-            $this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_id}/attachment/{thumbnail_id}/thumbnail';
+            //$this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_slug}/attachment/{thumbnail_id}/thumbnail';
 
             $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&attachment_id={attachment_id}';
         }
@@ -402,11 +411,11 @@ class Showcase
         return $this;
     }
 
-    public function urlBuild(string $url, int $entryID = 0, int $commentID = 0, int $attachmentID = 0): string
+    public function urlBuild(string $url, $entrySlug = 0, int $commentID = 0, int $attachmentID = 0): string
     {
         return 'showcase.php?route=/' . str_replace(
-                ['{entry_id}', '{comment_id}'],
-                [(string)$entryID, (string)$commentID],
+                ['{entry_slug}', '{comment_id}'],
+                [$entrySlug, (string)$commentID],
                 $url
             );
     }

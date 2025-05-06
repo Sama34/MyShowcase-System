@@ -85,13 +85,14 @@ class Entries extends Base
     }
 
     public function setEntry(
-        int $entryID,
+        string $entrySlug,
         bool $loadFields = false
     ): void {
+        global $db;
+
         $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
 
-
-        $whereClauses = ["entryData.entry_id='{$entryID}'"];
+        $whereClauses = ["entryData.entry_slug='{$db->escape_string($entrySlug)}'"];
 
         $queryFields = array_merge(array_map(function (string $columnName): string {
             return 'entryData.' . $columnName;
@@ -110,7 +111,7 @@ class Entries extends Base
 
                     // todo, I don't understand the purpose of this now
                     // the condition after OR seems to fix it for now
-                    $whereClauses[] = "(table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldName}=0)";
+                    //$whereClauses[] = "(table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldName}=0)";
                 } else {
                     $queryFields[] = $fieldName;
                 }
@@ -461,7 +462,10 @@ class Entries extends Base
 
                 $viewLastCommenter = $entryUsernameFormatted; // todo, show last commenter in the list view
 
-                $entryUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlViewEntry, $entryID);
+                $entryUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlViewEntry,
+                    $this->showcaseObject->entryData['entry_slug']
+                );
 
                 $viewLastCommentID = 0; // todo, show last comment ID in the list view
 
@@ -730,7 +734,7 @@ class Entries extends Base
     #[NoReturn] public function createEntry(
         string $showcaseSlug,
         bool $isEditPage = false,
-        int $entryID = 0,
+        string $entrySlug = '',
     ): void {
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
@@ -770,7 +774,7 @@ class Entries extends Base
         }
 
         if ($isEditPage) {
-            $this->setEntry($entryID, true);
+            $this->setEntry($entrySlug, true);
         }
 
         if ($mybb->request_method === 'post') {
@@ -829,87 +833,120 @@ class Entries extends Base
                 $showcase_attachments = eval($this->renderObject->templateGet('new_attachments'));
             }
 
-            if ($mybb->request_method === 'post') {
-                $insertData = [
-                    'user_id' => $currentUserID,
-                    'dateline' => TIME_NOW
-                ];
+            $insertData = [
+                'user_id' => $currentUserID,
+                'dateline' => TIME_NOW
+            ];
 
-                if ($this->showcaseObject->moderateEdits &&
-                    !$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
-                    $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
-                }
+            if ($this->showcaseObject->moderateEdits &&
+                !$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
+            }
 
-                if ($entryHash) {
-                    $insertData['entry_hash'] = $entryHash;
-                }
+            if ($entryHash) {
+                $insertData['entry_hash'] = $entryHash;
+            }
 
-                $plugins->run_hooks('myshowcase_do_newedit_start');
+            $plugins->run_hooks('myshowcase_do_newedit_start');
 
-                // Set up showcase handler.
-                //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
+            // Set up showcase handler.
+            //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
 
-                if ($isEditPage) {
-                    $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
-                } else {
-                    $dataHandler = dataHandlerGetObject($this->showcaseObject);
-                }
+            if ($isEditPage) {
+                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+            } else {
+                $dataHandler = dataHandlerGetObject($this->showcaseObject);
+            }
 
-                reset($this->showcaseObject->fieldSetEnabledFields);
+            reset($this->showcaseObject->fieldSetEnabledFields);
 
-                foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-                    if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
+            $entrySlug = [];
+
+            foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+                $fieldName = $fieldData['name'];
+
+                switch ($fieldData['html_type']) {
+                    case FIELD_TYPE_HTML_DB;
+                    case FIELD_TYPE_HTML_RADIO;
+                    case FIELD_TYPE_HTML_CHECK_BOX;
                         $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
-                    } elseif ($htmlType === FIELD_TYPE_HTML_CHECK_BOX) {
-                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
-                    } elseif ($htmlType === FIELD_TYPE_HTML_DATE) {
+                        break;
+                    case FIELD_TYPE_HTML_DATE;
                         $insertData[$fieldName] = $mybb->get_input($fieldName . '_month', MyBB::INPUT_INT) . '|' .
                             $mybb->get_input($fieldName . '_day', MyBB::INPUT_INT) . '|' .
                             $mybb->get_input($fieldName . '_year', MyBB::INPUT_INT);
-                    } else {
+                        break;
+                    default:
                         $insertData[$fieldName] = $mybb->get_input($fieldName);
-                    }
+                        break;
                 }
 
-                $dataHandler->setData($insertData);
+                if ($fieldData['enable_slug']) {
+                    $entrySlug[] = $insertData[$fieldName];
+                }
+            }
 
-                if (!$dataHandler->entryValidateData()) {
-                    $this->showcaseObject->errorMessages = array_merge(
-                        $this->showcaseObject->errorMessages,
-                        $dataHandler->get_friendly_errors()
+            $entrySlug = str_replace(['---', '--'],
+                '-',
+                preg_replace(
+                    '/[^\da-z]/i',
+                    '-',
+                    my_strtolower(implode('-', $entrySlug))
+                ));
+
+            $i = 1;
+
+            while ($foundEntry = $this->showcaseObject->dataGet(
+                ["entry_slug='{$db->escape_string($entrySlug)}'", "entry_id!='{$this->showcaseObject->entryID}'"],
+                queryOptions: ['limit' => 1]
+            )) {
+                $entrySlug .= '-' . $i;
+
+                ++$i;
+            }
+
+            if (!$isEditPage) {
+                $insertData['entry_slug'] = $entrySlug;
+            }
+
+            $dataHandler->setData($insertData);
+
+            if (!$dataHandler->entryValidateData()) {
+                $this->showcaseObject->errorMessages = array_merge(
+                    $this->showcaseObject->errorMessages,
+                    $dataHandler->get_friendly_errors()
+                );
+            }
+
+            if (!$this->showcaseObject->errorMessages) {
+                if ($isEditPage) {
+                    $insertResult = $dataHandler->updateEntry();
+                } else {
+                    $insertResult = $dataHandler->entryInsert();
+                }
+
+                $plugins->run_hooks('myshowcase_do_newedit_end');
+
+                if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
+                    $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
+
+                    redirect(
+                        $mainUrl,
+                        $isEditPage ? $lang->myShowcaseEntryEntryUpdatedStatus : $lang->myShowcaseEntryEntryCreatedStatus
+                    );
+                } else {
+                    $entryUrl = $this->showcaseObject->urlBuild(
+                        $this->showcaseObject->urlViewEntry,
+                        $insertResult['entry_slug']
+                    );
+
+                    redirect(
+                        $entryUrl,
+                        $isEditPage ? $lang->myShowcaseEntryEntryUpdated : $lang->myShowcaseEntryEntryCreated
                     );
                 }
 
-                if (!$this->showcaseObject->errorMessages) {
-                    if ($isEditPage) {
-                        $insertResult = $dataHandler->updateEntry();
-                    } else {
-                        $insertResult = $dataHandler->entryInsert();
-                    }
-
-                    $plugins->run_hooks('myshowcase_do_newedit_end');
-
-                    if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
-                        $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
-
-                        redirect(
-                            $mainUrl,
-                            $isEditPage ? $lang->myShowcaseEntryEntryUpdatedStatus : $lang->myShowcaseEntryEntryCreatedStatus
-                        );
-                    } else {
-                        $entryUrl = $this->showcaseObject->urlBuild(
-                            $this->showcaseObject->urlViewEntry,
-                            $insertResult['entry_id']
-                        );
-
-                        redirect(
-                            $entryUrl,
-                            $isEditPage ? $lang->myShowcaseEntryEntryUpdated : $lang->myShowcaseEntryEntryCreated
-                        );
-                    }
-
-                    exit;
-                }
+                exit;
             }
         } elseif ($isEditPage) {
             $mybb->input = array_merge($this->showcaseObject->entryData, $mybb->input);
@@ -985,6 +1022,8 @@ class Entries extends Base
         $fieldTabIndex = 1;
 
         foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+            $fieldID = $this->showcaseObject->fieldSetFieldsIDs[$fieldName] ?? 0;
+
             $fieldNameEscaped = $db->escape_string($fieldName);
 
             $fieldTitle = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
@@ -1064,8 +1103,12 @@ class Entries extends Base
                     break;
                 case FIELD_TYPE_HTML_DB:
                     $fieldDataObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldNameEscaped}'"],
-                        ['value_id', 'value'],
+                        [
+                            "set_id='{$this->showcaseObject->fieldSetID}'",
+                            "name='{$fieldNameEscaped}'",
+                            "field_id='{$fieldID}'"
+                        ],
+                        ['field_data_id', 'value_id', 'value'],
                         ['order_by' => 'display_order']
                     );
 
@@ -1073,7 +1116,7 @@ class Entries extends Base
                         $fieldOptions = [];
 
                         foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
-                            $valueID = (int)$fieldData['value_id'];
+                            $valueID = (int)$fieldData['field_data_id'];
 
                             $valueName = htmlspecialchars_uni($fieldData['value']);
 
@@ -1256,7 +1299,7 @@ class Entries extends Base
         if ($isEditPage) {
             $createUpdateUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlUpdateEntry,
-                $this->showcaseObject->entryID
+                $this->showcaseObject->entryData['entry_slug']
             );
         } else {
             $createUpdateUrl = $this->showcaseObject->urlBuild(
@@ -1269,14 +1312,14 @@ class Entries extends Base
 
     #[NoReturn] public function updateEntry(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
     ): void {
-        $this->createEntry($showcaseSlug, true, $entryID);
+        $this->createEntry($showcaseSlug, true, $entrySlug);
     }
 
     #[NoReturn] public function viewEntry(
         string $showcaseSlug,
-        int $entryID
+        string $entrySlug
     ): void {
         global $mybb, $plugins, $lang, $db, $theme;
 
@@ -1286,7 +1329,7 @@ class Entries extends Base
 
         reset($this->showcaseObject->fieldSetEnabledFields);
 
-        $this->setEntry($entryID, true);
+        $this->setEntry($entrySlug, true);
 
         if (!$this->showcaseObject->entryID || empty($this->showcaseObject->entryData)) {
             error($lang->myshowcase_invalid_id);
@@ -1412,7 +1455,7 @@ class Entries extends Base
 
                 $urlCommentCreate = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlCreateComment,
-                    $this->showcaseObject->entryID
+                    $this->showcaseObject->entryData['entry_slug']
                 );
 
                 $commentMessage = htmlspecialchars_uni($mybb->get_input('comment'));
@@ -1433,12 +1476,12 @@ class Entries extends Base
 
     #[NoReturn] public function approveEntry(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $status = ENTRY_STATUS_VISIBLE
     ): void {
         global $mybb, $lang, $plugins;
 
-        $this->setEntry($entryID);
+        $this->setEntry($entrySlug);
 
         if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] ||
             !$this->showcaseObject->entryID) {
@@ -1454,8 +1497,8 @@ class Entries extends Base
 
             $entryUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlViewEntry,
-                    $entryID
-                ) . '#entryID' . $entryID;
+                    $this->showcaseObject->entryData['entry_slug']
+                ) . '#entryID' . $this->showcaseObject->entryID;
 
             switch ($status) {
                 case ENTRY_STATUS_PENDING_APPROVAL:
@@ -1475,45 +1518,45 @@ class Entries extends Base
 
     #[NoReturn] public function unapproveEntry(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
     ): void {
         $this->approveEntry(
             $showcaseSlug,
-            $entryID,
+            $entrySlug,
             ENTRY_STATUS_PENDING_APPROVAL
         );
     }
 
     #[NoReturn] public function softDeleteEntry(
         string $showcaseSlug,
-        int $entryID
+        string $entrySlug
     ): void {
         $this->approveEntry(
             $showcaseSlug,
-            $entryID,
+            $entrySlug,
             ENTRY_STATUS_SOFT_DELETED
         );
     }
 
     #[NoReturn] public function restoreEntry(
         string $showcaseSlug,
-        int $entryID
+        string $entrySlug
     ): void {
         $this->approveEntry(
             $showcaseSlug,
-            $entryID
+            $entrySlug
         );
     }
 
     #[NoReturn] public function deleteEntry(
         string $showcaseSlug,
-        int $entryID
+        string $entrySlug
     ): void {
         global $mybb, $lang, $plugins;
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $this->setEntry($entryID);
+        $this->setEntry($entrySlug);
 
         if (!$this->showcaseObject->entryID ||
             !(

@@ -658,6 +658,11 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        'enable_slug' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
         // todo, remove this legacy updating the database and updating the format field to TINYINT
         'format' => [
             'type' => 'VARCHAR',
@@ -1090,6 +1095,7 @@ function cacheUpdate(string $cacheKey): array
                     'display_order' => (int)$fieldData['display_order'],
                     'render_order' => (int)$fieldData['render_order'],
                     'enable_search' => (bool)$fieldData['enable_search'],
+                    'enable_slug' => (bool)$fieldData['enable_slug'],
                     'format' => (string)$fieldData['format'],
                 ];
             }
@@ -1260,8 +1266,8 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
 
     $showcaseInsertData = [];
 
-    if (isset($entryData['slug'])) {
-        $showcaseInsertData['slug'] = $db->escape_string($entryData['slug']);
+    if (isset($entryData['entry_slug'])) {
+        $showcaseInsertData['entry_slug'] = $db->escape_string($entryData['entry_slug']);
     }
 
     if (isset($entryData['user_id'])) {
@@ -1369,7 +1375,7 @@ function entryDataUpdate(int $showcaseID, int $entryID, array $entryData): int
 
 function entryDataGet(
     int $showcaseID,
-    array $whereClauses,
+    array $whereClauses = [],
     array $queryFields = [],
     array $queryOptions = []
 ): array {

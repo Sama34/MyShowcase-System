@@ -72,18 +72,18 @@ abstract class Base
 
         //\MyShowcase\Core\cacheUpdate(\MyShowcase\Core\CACHE_TYPE_CONFIG);
 //start by constructing the showcase
-        $showcaseObject = showcaseGetObjectBySlug($router->params['showcase_slug'] ?? '');
+        $this->showcaseObject = showcaseGetObjectBySlug($router->params['showcase_slug'] ?? '');
 
-        $renderObject = renderGetObject($showcaseObject);
+        $this->renderObject = renderGetObject($this->showcaseObject);
 
-        $outputObject = outputGetObject($showcaseObject, $renderObject);
+        $this->outputObject = outputGetObject($this->showcaseObject, $this->renderObject);
 
-        if (!$showcaseObject->enabled) {
-            match ($this->errorType) {
-                ERROR_TYPE_NOT_INSTALLED => error(
+        if (!$this->showcaseObject->enabled) {
+            match ($this->showcaseObject->errorType) {
+                \MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED => error(
                     'The MyShowcase System has not been installed and activated yet.'
                 ),
-                ERROR_TYPE_NOT_CONFIGURED => error(
+                \MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED => error(
                     'This file is not properly configured in the MyShowcase Admin section of the ACP'
                 ),
                 default => error_no_permission()
@@ -128,7 +128,7 @@ abstract class Base
         if ($this->showcaseObject->entryID) {
             $entryUrl = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlViewEntry,
-                $this->showcaseObject->entryID
+                $this->showcaseObject->entryData['entry_slug']
             );
 
             $metaData .= eval($this->renderObject->templateGet('pageMetaCanonical'));

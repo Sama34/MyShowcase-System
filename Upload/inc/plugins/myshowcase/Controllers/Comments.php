@@ -60,7 +60,7 @@ class Comments extends Base
     }
 
     public function setEntry(
-        int $entryID
+        string $entrySlug
     ) {
         $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
 
@@ -76,7 +76,7 @@ class Comments extends Base
         $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
 
         $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet(["entry_id='{$entryID}'"], $queryFields, ['limit' => 1], $queryTables)
+            $this->showcaseObject->dataGet(["entry_slug='{$entrySlug}'"], $queryFields, ['limit' => 1], $queryTables)
         );
     }
 
@@ -95,17 +95,17 @@ class Comments extends Base
 
     public function viewComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
         require_once ROOT . '/Controllers/Entries.php';
 
-        (new Entries($this->router))->viewEntry($showcaseSlug, $entryID);
+        (new Entries($this->router))->viewEntry($showcaseSlug, $entrySlug);
     }
 
     #[NoReturn] public function createComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         bool $isEditPage = false,
         int $commentID = 0
     ): void {
@@ -113,7 +113,7 @@ class Comments extends Base
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $this->setEntry($entryID);
+        $this->setEntry($entrySlug);
 
         if (!$this->showcaseObject->allowComments ||
             !$this->showcaseObject->userPermissions[UserPermissions::CanCreateComments] ||
@@ -166,7 +166,7 @@ class Comments extends Base
 
                 $commentUrl = $this->showcaseObject->urlBuild(
                         $this->showcaseObject->urlViewComment,
-                        $entryID,
+                        $this->showcaseObject->entryData['entry_slug'],
                         $commentID
                     ) . '#commentID' . $commentID;
 
@@ -191,12 +191,19 @@ class Comments extends Base
         if ($isEditPage) {
             add_breadcrumb(
                 $lang->myShowcaseButtonCommentUpdate,
-                $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateComment, $entryID, $commentID)
+                $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlUpdateComment,
+                    $this->showcaseObject->entryData['entry_slug'],
+                    $commentID
+                )
             );
         } else {
             add_breadcrumb(
                 $lang->myShowcaseButtonCommentCreate,
-                $this->showcaseObject->urlBuild($this->showcaseObject->urlCreateComment, $entryID)
+                $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlCreateComment,
+                    $this->showcaseObject->entryData['entry_slug']
+                )
             );
         }
 
@@ -227,15 +234,15 @@ class Comments extends Base
 
     #[NoReturn] public function updateComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
-        $this->createComment($showcaseSlug, $entryID, true, $commentID);
+        $this->createComment($showcaseSlug, $entrySlug, true, $commentID);
     }
 
     #[NoReturn] public function approveComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID,
         int $status = COMMENT_STATUS_VISIBLE
     ): void {
@@ -243,7 +250,7 @@ class Comments extends Base
 
         verify_post_check($mybb->get_input('my_post_key'));
 
-        $this->setEntry($entryID);
+        $this->setEntry($entrySlug);
 
         if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveComments] ||
             !$this->showcaseObject->entryID) {
@@ -261,7 +268,7 @@ class Comments extends Base
 
             $commentUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlViewComment,
-                    $entryID,
+                    $this->showcaseObject->entryData['entry_slug'],
                     $commentID
                 ) . '#commentID' . $commentID;
 
@@ -283,12 +290,12 @@ class Comments extends Base
 
     #[NoReturn] public function unapproveComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
             $showcaseSlug,
-            $entryID,
+            $entrySlug,
             $commentID,
             COMMENT_STATUS_PENDING_APPROVAL
         );
@@ -296,12 +303,12 @@ class Comments extends Base
 
     #[NoReturn] public function softDeleteComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
             $showcaseSlug,
-            $entryID,
+            $entrySlug,
             $commentID,
             COMMENT_STATUS_SOFT_DELETED
         );
@@ -309,26 +316,26 @@ class Comments extends Base
 
     #[NoReturn] public function restoreComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
             $showcaseSlug,
-            $entryID,
+            $entrySlug,
             $commentID
         );
     }
 
     #[NoReturn] public function deleteComment(
         string $showcaseSlug,
-        int $entryID,
+        string $entrySlug,
         int $commentID
     ): void {
         global $mybb, $lang, $plugins;
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $this->setEntry($entryID);
+        $this->setEntry($entrySlug);
 
         $commentData = $this->commentsModel->getComment($commentID, ['user_id']);
 
@@ -348,7 +355,10 @@ class Comments extends Base
 
         $this->updateEntryCommentsCount();
 
-        $entryUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlViewEntry, $entryID);
+        $entryUrl = $this->showcaseObject->urlBuild(
+            $this->showcaseObject->urlViewEntry,
+            $this->showcaseObject->entryData['entry_slug']
+        );
 
         redirect($entryUrl, $lang->myShowcaseEntryCommentDeleted);
     }

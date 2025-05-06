@@ -81,6 +81,7 @@ $l['myshowcase_field_required'] = 'Required';
 $l['myshowcase_field_field_order'] = 'View Order';
 $l['myshowcase_field_list_table_order'] = 'List Order';
 $l['myshowcase_field_searchable'] = 'Searchable';
+$l['myshowcase_field_enable_slug'] = 'Add to Slug';
 $l['myshowcase_field_parse'] = 'Parse';
 $l['myshowcase_field_format'] = 'Format?';
 
