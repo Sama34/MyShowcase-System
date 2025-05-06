@@ -1,5 +1,5 @@
 <a name="commentID{$commentID}" id="commentID{$commentID}"></a>
-<div class="post" style="" id="commentBody{$commentID}">
+<div class="post {$styleClass}" style="" id="commentBody{$commentID}">
     <div class="post_author">
         {$serAvatar}
         <div class="author_information">
@@ -30,9 +30,13 @@
             {$buttonEmail}{$buttonPrivateMessage}{$buttonWebsite}
         </div>
         <div class="postbit_buttons post_management_buttons float_right">
-            {$buttonDelete}
             {$buttonWarn}
             {$buttonPurgeSpammer}
+            {$buttonApprove}
+            {$buttonUnpprove}
+            {$buttonRestore}
+            {$buttonSoftDelete}
+            {$buttonDelete}
         </div>
     </div>
 </div>

@@ -20,13 +20,16 @@ use MyBB;
 use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
+use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\commentsDelete;
+use function MyShowcase\Core\entryDataInsert;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\reportGet;
 use function MyShowcase\Core\showcaseDataTableExists;
+use function MyShowcase\Core\entryDataUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
 use function MyShowcase\Core\showcaseDefaultPermissions;
 
@@ -35,10 +38,12 @@ use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
-use const MyShowcase\Core\ENTRY_STATUS_UNAPPROVED;
+use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
 use const MyShowcase\Core\GUEST_GROUP_ID;
+use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
+use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 use const MyShowcase\Core\REPORT_STATUS_PENDING;
 
 class Showcase
@@ -49,7 +54,7 @@ class Showcase
      * @return Showcase
      */
     public function __construct(
-        public string $fileName = THIS_SCRIPT,
+        public string $showcaseSlug,
         public string $dataTableName = '',
         public string $prefix = '',
         public string $cleanName = '',
@@ -65,9 +70,15 @@ class Showcase
         public array $entryData = [],
         public int $entryID = 0,
         public int $entryUserID = 0,
+        public array $fieldSetFieldsDisplayFields = [],
+        public string $searchField = '',
+        public string $sortByField = '',
+        public string $orderBy = '',
+        public array $errorMessages = [],
         #Config
         public int $id = 0,
         public string $name = '',
+        public string $nameFriendly = '',
         public string $description = '',
         public string $mainFile = '',
         public int $fieldSetID = 0,
@@ -77,6 +88,9 @@ class Showcase
         public array $fieldSetFormatableFields = [],
         public array $fieldSetSearchableFields = [],
         public array $fieldSetFieldsOrder = [],
+        public array $fieldSetFieldsMaximumLenght = [],
+        public array $fieldSetFieldsMinimumLenght = [],
+        public array $fieldSetFieldsRequired = ['uid' => 1], // todo, unsure if uid is necessary
         public string $imageFolder = '',
         public string $defaultImage = '',
         public string $waterMarkImage = '',
@@ -104,6 +118,25 @@ class Showcase
         public bool $portalShowRandomAttachmentWidget = false,
         public bool $displaySignatures = false,
         public string $maximumAvatarSize = '55x55',
+        #urls
+        public string $urlBase = '',
+        public string $urlMain = '',
+        public string $urlPaged = '',
+        public string $urlViewEntry = '',
+        public string $urlViewComment = '',
+        public string $urlCreateEntry = '',
+        public string $urlApproveEntry = '',
+        public string $urlUnapproveEntry = '',
+        public string $urlSoftDeleteEntry = '',
+        public string $urlDeleteEntry = '',
+        public string $urlCreateComment = '',
+        public string $urlApproveComment = '',
+        public string $urlUnapproveComment = '',
+        public string $urlRestoreComment = '',
+        public string $urlSoftDeleteComment = '',
+        public string $urlDeleteComment = '',
+        public string $urlViewAttachment = '',
+        public string $urlViewAttachmentItem = '',
     ) {
         global $db, $mybb, $cache;
 
@@ -114,65 +147,67 @@ class Showcase
         $plugin_cache = $cache->read('plugins');
 
         //check if the requesting file is in the cache
-        foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcase) {
-            if ($showcase['mainfile'] === $this->fileName) {
-                $this->id = (int)$showcase['id'];
+        foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
+            if ($showcaseData['showcase_slug'] === $this->showcaseSlug) {
+                $this->id = (int)$showcaseData['id'];
 
-                $this->name = (string)$showcase['name'];
+                $this->name = (string)$showcaseData['name'];
 
-                $this->description = (string)$showcase['description'];
+                $this->nameFriendly = ucwords(strtolower($this->name));
 
-                $this->mainFile = (string)$showcase['mainfile'];
+                $this->description = (string)$showcaseData['description'];
 
-                $this->fieldSetID = (int)$showcase['fieldsetid'];
+                $this->mainFile = (string)$showcaseData['mainfile'];
 
-                $this->imageFolder = (string)$showcase['imgfolder'];
+                $this->fieldSetID = (int)$showcaseData['fieldsetid'];
 
-                $this->defaultImage = (string)$showcase['defaultimage'];
+                $this->imageFolder = (string)$showcaseData['imgfolder'];
 
-                $this->waterMarkImage = (string)$showcase['watermarkimage'];
+                $this->defaultImage = (string)$showcaseData['defaultimage'];
 
-                $this->waterMarkLocation = (string)$showcase['watermarkloc'];
+                $this->waterMarkImage = (string)$showcaseData['watermarkimage'];
 
-                $this->userEntryAttachmentAsImage = (bool)$showcase['use_attach'];
+                $this->waterMarkLocation = (string)$showcaseData['watermarkloc'];
 
-                $this->relativePath = (string)$showcase['f2gpath'];
+                $this->userEntryAttachmentAsImage = (bool)$showcaseData['use_attach'];
 
-                $this->enabled = (bool)$showcase['enabled'];
+                $this->relativePath = (string)$showcaseData['f2gpath'];
 
-                $this->parserAllowSmiles = (bool)$showcase['allowsmilies'];
+                $this->enabled = (bool)$showcaseData['enabled'];
 
-                $this->parserAllowMyCode = (bool)$showcase['allowbbcode'];
+                $this->parserAllowSmiles = (bool)$showcaseData['allowsmilies'];
 
-                $this->parserAllowHTML = (bool)$showcase['allowhtml'];
+                $this->parserAllowMyCode = (bool)$showcaseData['allowbbcode'];
 
-                $this->pruneTime = (int)$showcase['prunetime'];
+                $this->parserAllowHTML = (bool)$showcaseData['allowhtml'];
 
-                $this->moderateEdits = (bool)$showcase['modnewedit'];
+                $this->pruneTime = (int)$showcaseData['prunetime'];
 
-                $this->maximumLengthForTextFields = (int)$showcase['othermaxlength'];
+                $this->moderateEdits = (bool)$showcaseData['modnewedit'];
 
-                $this->allowAttachments = (bool)$showcase['allow_attachments'];
+                $this->maximumLengthForTextFields = (int)$showcaseData['othermaxlength'];
 
-                $this->allowComments = (bool)$showcase['allow_comments'];
+                $this->allowAttachments = (bool)$showcaseData['allow_attachments'];
 
-                $this->attachmentThumbWidth = (int)$showcase['thumb_width'];
+                $this->allowComments = (bool)$showcaseData['allow_comments'];
 
-                $this->attachmentThumbHeight = (int)$showcase['thumb_height'];
+                $this->attachmentThumbWidth = (int)$showcaseData['thumb_width'];
 
-                $this->commentsMaximumLength = (int)$showcase['comment_length'];
+                $this->attachmentThumbHeight = (int)$showcaseData['thumb_height'];
 
-                $this->commentsPerPageLimit = (int)$showcase['comment_dispinit'];
+                $this->commentsMaximumLength = (int)$showcaseData['comment_length'];
 
-                $this->attachmentsPerRowLimit = (int)$showcase['disp_attachcols'];
+                $this->commentsPerPageLimit = (int)$showcaseData['comment_dispinit'];
 
-                $this->displayEmptyFields = (bool)$showcase['disp_empty'];
+                $this->attachmentsPerRowLimit = (int)$showcaseData['disp_attachcols'];
 
-                $this->linkInPosts = (bool)$showcase['allow_attachments'];
+                $this->displayEmptyFields = (bool)$showcaseData['disp_empty'];
 
-                $this->portalShowRandomAttachmentWidget = (bool)$showcase['portal_random'];
+                $this->linkInPosts = (bool)$showcaseData['allow_attachments'];
 
-                $this->displaySignatures = (bool)$showcase['display_signatures'];
+                $this->portalShowRandomAttachmentWidget = (bool)$showcaseData['portal_random'];
+
+                $this->displaySignatures = (bool)$showcaseData['display_signatures'];
 
                 break;
             }
@@ -261,12 +296,111 @@ class Showcase
                 }
 
                 $this->fieldSetFieldsOrder[$fieldData['list_table_order']] = $fieldData['name'];
+                //$this->fieldSetFieldsOrder[$fieldData['field_order']] = $fieldData['name'];
+
+                $this->fieldSetFieldsMaximumLenght[$fieldData['name']] = (int)$fieldData['max_length'];
+
+                $this->fieldSetFieldsMinimumLenght[$fieldData['name']] = (int)$fieldData['min_length'];
+
+                $this->fieldSetFieldsRequired[$fieldData['name']] = !empty($field['requiredField']);
             }
 
             ksort($this->fieldSetFieldsOrder);
         }
 
+        $this->fieldSetFieldsDisplayFields = [
+            'createdate' => '',
+            //'edit_stamp' => '',
+            'username' => '',
+            'views' => '',
+            'comments' => ''
+        ];
+
+        foreach ($this->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
+            $this->fieldSetFieldsDisplayFields[$fieldName] = '';
+        }
+
+        $this->searchField = $mybb->get_input('search_field');
+
+        $this->sortByField = $mybb->get_input('sort_by');
+
+        if ($mybb->get_input('order_by') === ORDER_DIRECTION_ASCENDING) {
+            $this->orderBy = ORDER_DIRECTION_ASCENDING;
+        } elseif ($mybb->get_input('order_by') === ORDER_DIRECTION_DESCENDING) {
+            $this->orderBy = ORDER_DIRECTION_DESCENDING;
+        }
+
+        if (!array_key_exists($this->sortByField, $this->fieldSetFieldsDisplayFields)) {
+            $this->sortByField = 'dateline';
+        }
+
+        $this->urlBase = $mybb->settings['bburl'];
+
+        if ($this->friendlyUrlsEnabled) {
+            //$showcase_name = strtolower($showcaseObject->name);
+            $this->urlMain = $this->cleanName . '.html';
+
+            $this->urlPaged = $this->cleanName . '-page-{page}.html';
+
+            $this->urlViewEntry = $this->cleanName . '-view-{gid}.html';
+
+            $this->urlViewComment = $this->cleanName . '-view-{gid}-last-comment.html';
+
+            $this->urlCreateEntry = $this->cleanName . '-new.html';
+
+            $this->urlViewAttachment = $this->cleanName . '-attachment-{aid}.html';
+
+            $this->urlViewAttachmentItem = $this->cleanName . '-item-{aid}.php';
+        } else {
+            $this->urlMain = $this->showcaseSlug;
+
+            $this->urlPaged = $this->prefix . '.php?page={page}';
+
+            $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_id}';
+
+            $this->urlViewComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}';
+
+            $this->urlCreateEntry = $this->showcaseSlug . '/create';
+
+            $this->urlApproveEntry = $this->showcaseSlug . '/view/{entry_id}/approve';
+
+            $this->urlUnapproveEntry = $this->showcaseSlug . '/view/{entry_id}/unapprove';
+
+            $this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_id}/restore';
+
+            $this->urlSoftDeleteEntry = $this->showcaseSlug . '/view/{entry_id}/soft_delete';
+
+            $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_id}/delete';
+
+            $this->urlCreateComment = $this->showcaseSlug . '/view/{entry_id}/comment/create';
+
+            $this->urlApproveComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/approve';
+
+            $this->urlUnapproveComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/unapprove';
+
+            $this->urlRestoreComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/restore';
+
+            $this->urlSoftDeleteComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/soft_delete';
+
+            $this->urlDeleteComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/delete';
+
+            $this->urlViewAttachment = $this->showcaseSlug . '/view/{entry_id}/attachment/{attachment_id}';
+
+            $this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_id}/attachment/{thumbnail_id}/thumbnail';
+
+            $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&aid={aid}';
+        }
+
         return $this;
+    }
+
+    public function urlBuild(string $url, int $entryID = 0, int $commentID = 0, int $attachmentID = 0): string
+    {
+        return 'showcase.php?route=/' . str_replace(
+                ['{entry_id}', '{comment_id}'],
+                [(string)$entryID, (string)$commentID],
+                $url
+            );
     }
 
     /**
@@ -424,20 +558,6 @@ class Showcase
         return $newIDs;
     }
 
-    /**
-     * delete a showcase entry
-     */
-    public function entryDelete(int $entryID): bool
-    {
-        $this->attachmentsDelete($entryID);
-
-        $this->commentsDelete($entryID);
-
-        $this->showcaseDataDelete(["gid='{$entryID}'"]);
-
-        return true;
-    }
-
     public function showcaseDataDelete(array $whereClauses = []): void
     {
         global $db;
@@ -542,7 +662,7 @@ class Showcase
     {
         global $db;
 
-        $entryStatusUnapproved = ENTRY_STATUS_UNAPPROVED;
+        $entryStatusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
 
         $query = $db->simple_select(
             $this->dataTableName,
@@ -600,6 +720,36 @@ class Showcase
         }
 
         return $entriesObjects;
+    }
+
+    public function dataInsert(
+        array $insertData
+    ): int {
+        return entryDataInsert($this->id, $insertData);
+    }
+
+    public function dataUpdate(
+        array $updateData
+    ): int {
+        return entryDataUpdate(
+            $this->id,
+            $this->entryID,
+            $updateData
+        );
+    }
+
+    public function commentGet(
+        array $whereClauses,
+        array $queryFields = [],
+        array $queryOptions = [],
+    ): array {
+        $whereClauses[] = "id='{$this->id}'";
+
+        return commentsGet(
+            $whereClauses,
+            $queryFields,
+            $queryOptions
+        );
     }
 
     public function entryDataSet(array $entryData): void

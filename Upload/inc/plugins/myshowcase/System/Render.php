@@ -16,14 +16,16 @@ declare(strict_types=1);
 namespace MyShowcase\System;
 
 use function MyShowcase\Core\attachmentGet;
-use function MyShowcase\Core\attachmentInsert;
-use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\postParser;
-use function MyShowcase\Core\urlHandlerBuild;
 
-use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
+use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
+use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
+use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
+use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
+use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
+use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
 use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
 use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
@@ -49,7 +51,6 @@ class Render
         public int $searchExactMatch = 0,
         public array $parserOptions = [],
         public array $fieldSetFieldsOrder = [],
-        public array $fieldSetFieldsDisplayFields = [],
         public array $fieldSetFieldsSearchFields = [],
     ) {
         global $mybb;
@@ -70,18 +71,8 @@ class Render
 
         global $lang;
 
-        $this->fieldSetFieldsDisplayFields = [
-            'createdate' => $lang->myShowcaseMainSortDateline,
-            //'edit_stamp' => $lang->myShowcaseMainSortEditDate,
-            'username' => $lang->myShowcaseMainSortUsername,
-            'views' => $lang->myShowcaseMainSortViews,
-            'comments' => $lang->myShowcaseMainSortComments
-        ];
-
-        foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
-            $this->fieldSetFieldsDisplayFields[$fieldName] = $lang->{"myshowcase_field_{$fieldName}"} ?? ucfirst(
-                $fieldName
-            );
+        foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldName => &$fieldDisplayName) {
+            $fieldDisplayName = $lang->{"myShowcaseMainSort{$fieldName}"} ?? ucfirst($fieldName);
         }
 
         $this->fieldSetFieldsSearchFields = [
@@ -123,17 +114,24 @@ class Render
 
             $commentNumber = my_number_format($commentsCounter);
 
-            $commentUrl = urlHandlerBuild(
-                ['action' => 'view', 'gid' => $entryID, 'commentID' => $commentID]
+            $commentUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewComment,
+                $entryID,
+                $commentID
             );
 
             $commentUrl = eval($this->templateGet($templatePrefix . 'Url'));
         } else {
             $entryFields = $this->buildEntryFields();
 
-            $entryUrl = urlHandlerBuild(
-                ['action' => 'view', 'gid' => $entryID]
+            $commentsNumber = my_number_format($this->showcaseObject->entryData['comments']);
+
+            $entryUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewEntry,
+                $entryID
             );
+
+            $entryUrl = eval($this->templateGet($templatePrefix . 'Url'));
 
             $entryAttachments = $this->entryBuildAttachments($entryFields);
 
@@ -153,7 +151,7 @@ class Render
             $groupPermissions = usergroup_permissions(1);
         }
 
-        if (!empty($userData['username'])) {
+        if (empty($userData['username'])) {
             $userData['username'] = $lang->guest;
         }
 
@@ -368,32 +366,130 @@ class Render
             $buttonWebsite = eval($this->templateGet($templatePrefix . 'ButtonWebsite'));
         }
 
-        $buttonDelete = '';
+        $buttonPurgeSpammer = '';
 
-        //setup comment admin options
-        //only mods, original author (if allowed) or owner (if allowed) can delete comments
+        if (purgespammer_show($userData['postnum'], $userData['usergroup'], $userData['uid'])) {
+            $buttonPurgeSpammer = eval($this->templateGet($templatePrefix . 'ButtonPurgeSpammer'));
+        }
 
-        if ($postType === self::POST_TYPE_COMMENT) {
+        $postStatus = (int)$postData['status'];
+
+        $buttonApprove = $buttonUnpprove = $buttonRestore = $buttonSoftDelete = $buttonDelete = '';
+
+        if ($postType === self::POST_TYPE_ENTRY &&
+            $this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+            if ($postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
+                $approveUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlApproveEntry,
+                    $entryID
+                );
+
+                $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
+            } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
+                $unapproveUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlUnapproveEntry,
+                    $entryID
+                );
+
+                $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
+            }
+
+            if ($postStatus === ENTRY_STATUS_SOFT_DELETED) {
+                $restoreUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlRestoreEntry,
+                    $entryID
+                );
+
+                $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
+            } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
+                $softDeteleUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlSoftDeleteEntry,
+                    $entryID
+                );
+
+                $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
+            }
+
+            //only mods, original author (if allowed) or owner (if allowed) can delete comments
             if (
-                ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) ||
-                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-                ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+                $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] ||
+                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries])
             ) {
+                $deleteUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlDeleteEntry,
+                    $entryID
+                );
+
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
             }
         }
 
-        $buttonPurgeSpammer = '';
+        if ($postType === self::POST_TYPE_COMMENT &&
+            $this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveComments]) {
+            if ($postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
+                $approveUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlApproveComment,
+                    $entryID,
+                    $commentID
+                );
 
-        if (
-            ($this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) ||
-            ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-            ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
-        ) {
-            $buttonPurgeSpammer = eval($this->templateGet($templatePrefix . 'ButtonPurgeSpammer'));
+                $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
+            } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
+                $unapproveUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlUnapproveComment,
+                    $entryID,
+                    $commentID
+                );
+
+                $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
+            }
+
+            if ($postStatus === COMMENT_STATUS_SOFT_DELETED) {
+                $restoreUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlRestoreComment,
+                    $entryID,
+                    $commentID
+                );
+
+                $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
+            } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
+                $softDeteleUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlSoftDeleteComment,
+                    $entryID,
+                    $commentID
+                );
+
+                $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
+            }
+
+            //only mods, original author (if allowed) or owner (if allowed) can delete comments
+            if (
+                $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments] ||
+                ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
+                ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+            ) {
+                $deleteUrl = $this->showcaseObject->urlBuild(
+                    $this->showcaseObject->urlDeleteComment,
+                    $entryID,
+                    $commentID
+                );
+
+                $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
+            }
         }
 
         $serDetails = eval($this->templateGet($templatePrefix . 'UserDetails'));
+
+        $styleClass = '';
+
+        switch ($postStatus) {
+            case COMMENT_STATUS_PENDING_APPROVAL:
+                $styleClass = 'unapproved_post';
+                break;
+            case COMMENT_STATUS_SOFT_DELETED:
+                $styleClass = 'unapproved_post deleted_post';
+                break;
+        }
 
         return eval($this->templateGet($templatePrefix));
     }
@@ -404,6 +500,7 @@ class Render
             'user_id' => $this->showcaseObject->entryUserID,
             'dateline' => $this->showcaseObject->entryData['dateline'],
             //'ipaddress' => $this->showcaseObject->entryData['ipaddress'],
+            'status' => $this->showcaseObject->entryData['status'],
             'moderator_uid' => $this->showcaseObject->entryData['approved_by'],
         ], alt_trow(true), self::POST_TYPE_ENTRY);
     }
@@ -416,7 +513,8 @@ class Render
             'message' => $commentData['comment'],
             'dateline' => $commentData['dateline'],
             'ipaddress' => $commentData['ipaddress'],
-            //'moderator_uid' => $commentData['moderator_uid'],
+            'status' => $commentData['status'],
+            'moderator_uid' => $commentData['moderator_uid'],
         ], $alternativeBackground);
     }
 
@@ -616,9 +714,17 @@ class Render
         $attachedFiles = $attachedThumbnails = $attachedImages = '';
 
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-            $attachmentUrl = urlHandlerBuild(['action' => 'item', 'aid' => $attachmentID]);
+            $attachmentUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewAttachment,
+                $entryID,
+                attachmentID: $attachmentID
+            );
 
-            $attachmentThumbnailUrl = urlHandlerBuild(['action' => 'item', 'thumbnail' => $attachmentID]);
+            $attachmentThumbnailUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewAttachmentThumbnail,
+                $entryID,
+                attachmentID: $attachmentID
+            );
 
             if ($attachmentData['visible']) { // There is an attachment thats visible!
                 $attachmentFileName = htmlspecialchars_uni($attachmentData['filename']);
@@ -649,11 +755,11 @@ class Render
                         // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
                         // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
                         // Show as download for all other cases
-                        if ($attachmentData['thumbnail'] != 'SMALL' &&
-                            $attachmentData['thumbnail'] != '' &&
+                        if ($attachmentData['thumbnail'] !== 'SMALL' &&
+                            $attachmentData['thumbnail'] !== '' &&
                             $this->showcaseObject->attachmentsDisplayThumbnails) {
                             $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
-                        } elseif ((($attachmentData['thumbnail'] == 'SMALL' &&
+                        } elseif ((($attachmentData['thumbnail'] === 'SMALL' &&
                                     $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
                                 $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
                             $isImageAttachment) {
@@ -671,8 +777,8 @@ class Render
                 }
 
                 if (!$attachmentInField &&
-                    $attachmentData['thumbnail'] != 'SMALL' &&
-                    $attachmentData['thumbnail'] != '' &&
+                    $attachmentData['thumbnail'] !== 'SMALL' &&
+                    $attachmentData['thumbnail'] !== '' &&
                     $this->showcaseObject->attachmentsDisplayThumbnails) {
                     // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
                     // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
@@ -686,7 +792,7 @@ class Render
                     }
 
                     ++$thumbnailsCount;
-                } elseif (!$attachmentInField && (($attachmentData['thumbnail'] == 'SMALL' &&
+                } elseif (!$attachmentInField && (($attachmentData['thumbnail'] === 'SMALL' &&
                             $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
                         $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
                     $isImageAttachment) {

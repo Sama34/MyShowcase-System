@@ -15,10 +15,11 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
-use MyShowcase\System\Output;
-use MyShowcase\System\Render;
 use Postparser;
 use DirectoryIterator;
+use MyShowcase\System\DataHandler;
+use MyShowcase\System\Output;
+use MyShowcase\System\Render;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
@@ -115,8 +116,6 @@ const URL = 'index.php?module=myshowcase-summary';
 
 const ALL_UNLIMITED_VALUE = -1;
 
-const ENTRY_STATUS_UNAPPROVED = 0;
-
 const REPORT_STATUS_PENDING = 0;
 
 const ERROR_TYPE_NOT_INSTALLED = 1;
@@ -132,6 +131,26 @@ const FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS = 2;
 const FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS = 3;
 
 const CHECK_BOX_IS_CHECKED = 1;
+
+const ORDER_DIRECTION_ASCENDING = 'asc';
+
+const ORDER_DIRECTION_DESCENDING = 'desc';
+
+const COMMENT_STATUS_PENDING_APPROVAL = 0;
+
+const COMMENT_STATUS_VISIBLE = 1;
+
+const COMMENT_STATUS_SOFT_DELETED = 2;
+
+const ENTRY_STATUS_PENDING_APPROVAL = 0;
+
+const ENTRY_STATUS_VISIBLE = 1;
+
+const ENTRY_STATUS_SOFT_DELETED = 2;
+
+const DATA_HANDLERT_METHOD_INSERT = 'insert';
+
+const DATA_HANDLERT_METHOD_UPDATE = 'update';
 
 define('MyShowcase\Core\FORMAT_TYPES', [
     //'no' => '',
@@ -259,6 +278,16 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        'status' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'moderator_uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
         //'unique_key' => ['cid_gid' => 'cid,gid']
     ],
     'myshowcase_config' => [
@@ -269,6 +298,12 @@ const TABLES_DATA = [
             'primary_key' => true
         ],
         'name' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+            'unique_key' => true
+        ],
+        'showcase_slug' => [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
@@ -473,7 +508,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        UserPermissions::CanAddComments => [
+        UserPermissions::CanCreateComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -752,6 +787,22 @@ const DATA_TABLE_STRUCTURE = [
             'default' => 0
         ],
         'createdate' => [
+        'status' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'moderator_uid' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'edit_stamp' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -921,7 +972,7 @@ function showcaseDefaultPermissions(): array
         UserPermissions::CanView => true,
         UserPermissions::CanViewComments => true,
         UserPermissions::CanViewAttachments => true,
-        UserPermissions::CanAddComments => false,
+        UserPermissions::CanCreateComments => false,
         UserPermissions::CanDeleteComments => false,
         UserPermissions::CanDeleteAuthorComments => false,
         UserPermissions::CanSearch => true,
@@ -986,6 +1037,7 @@ function cacheUpdate(string $cacheKey): array
                 $cacheData[$showcaseID] = [
                     'id' => $showcaseID,
                     'name' => (string)$showcaseData['name'],
+                    'showcase_slug' => (string)$showcaseData['showcase_slug'],
                     'description' => (string)$showcaseData['description'],
                     'mainfile' => (string)$showcaseData['mainfile'],
                     'fieldsetid' => (int)$showcaseData['fieldsetid'],
@@ -1034,7 +1086,7 @@ function cacheUpdate(string $cacheKey): array
                     UserPermissions::CanView => !empty($permissionData[UserPermissions::CanView]),
                     UserPermissions::CanViewComments => !empty($permissionData[UserPermissions::CanViewComments]),
                     UserPermissions::CanViewAttachments => !empty($permissionData[UserPermissions::CanViewAttachments]),
-                    UserPermissions::CanAddComments => !empty($permissionData[UserPermissions::CanAddComments]),
+                    UserPermissions::CanCreateComments => !empty($permissionData[UserPermissions::CanCreateComments]),
                     UserPermissions::CanDeleteComments => !empty($permissionData[UserPermissions::CanDeleteComments]),
                     UserPermissions::CanDeleteAuthorComments => !empty($permissionData[UserPermissions::CanDeleteAuthorComments]),
                     UserPermissions::CanSearch => !empty($permissionData[UserPermissions::CanSearch]),
@@ -1247,7 +1299,7 @@ function showcaseDataTableFieldDrop(int $showcaseID, string $fieldName): bool
     return true;
 }
 
-function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = false, int $entryID = 0): int
+function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = false, int $entryID = 0): int
 {
     global $db;
 
@@ -1263,6 +1315,10 @@ function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = 
     );
 
     $showcaseInsertData = [];
+
+    if (isset($entryData['slug'])) {
+        $showcaseInsertData['slug'] = $db->escape_string($entryData['slug']);
+    }
 
     if (isset($entryData['uid'])) {
         $showcaseInsertData['uid'] = (int)$entryData['uid'];
@@ -1286,8 +1342,20 @@ function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = 
         $showcaseInsertData['dateline'] = TIME_NOW;
     }
 
-    if (isset($entryData['createdate'])) {
-        $showcaseInsertData['createdate'] = (int)$entryData['createdate'];
+    if (isset($entryData['status'])) {
+        $showcaseInsertData['status'] = (int)$entryData['status'];
+    }
+
+    if (isset($entryData['moderator_uid'])) {
+        $showcaseInsertData['moderator_uid'] = (int)$entryData['moderator_uid'];
+    }
+
+    if (isset($entryData['dateline'])) {
+        $showcaseInsertData['dateline'] = (int)$entryData['dateline'];
+    }
+
+    if (isset($entryData['edit_stamp'])) {
+        $showcaseInsertData['edit_stamp'] = (int)$entryData['edit_stamp'];
     }
 
     if (isset($entryData['approved'])) {
@@ -1350,11 +1418,9 @@ function showcaseDataInsert(int $showcaseID, array $entryData, bool $isUpdate = 
     return $entryID;
 }
 
-function showcaseDataUpdate(int $showcaseID, int $entryID, array $entryData): int
+function entryDataUpdate(int $showcaseID, int $entryID, array $entryData): int
 {
-    global $db;
-
-    return showcaseDataInsert($showcaseID, $entryData, true, $entryID);
+    return entryDataInsert($showcaseID, $entryData, true, $entryID);
 }
 
 function showcaseDataGet(
@@ -1364,7 +1430,6 @@ function showcaseDataGet(
     array $queryOptions = []
 ): array {
     global $db;
-
 
     $query = $db->simple_select(
         'myshowcase_data' . $showcaseID,
@@ -1738,7 +1803,7 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
     }*/
 
     if ($isUpdate) {
-        $db->update_query('myshowcase_attachments', $insertData, "attachmentID='{$attachmentID}'");
+        $db->update_query('myshowcase_attachments', $insertData, "aid='{$attachmentID}'");
     } else {
         $attachmentID = (int)$db->insert_query('myshowcase_attachments', $insertData);
     }
@@ -1746,7 +1811,7 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
     return $attachmentID;
 }
 
-function attachmentUpdate(array $attachmentData, int $attachmentID): bool
+function attachmentUpdate(array $attachmentData, int $attachmentID): int
 {
     return attachmentInsert($attachmentData, true, $attachmentID);
 }
@@ -1814,6 +1879,14 @@ function commentInsert(array $commentData, bool $isUpdate = false, int $commentI
         $insertData['dateline'] = (int)$commentData['dateline'];
     }
 
+    if (isset($commentData['status'])) {
+        $insertData['status'] = (int)$commentData['status'];
+    }
+
+    if (isset($commentData['moderator_uid'])) {
+        $insertData['moderator_uid'] = (int)$commentData['moderator_uid'];
+    }
+
     if ($isUpdate) {
         $db->update_query('myshowcase_comments', $insertData, "cid='{$commentID}'");
     } else {
@@ -1828,7 +1901,7 @@ function commentUpdate(array $commentData, int $commentID = 0): int
     return commentInsert($commentData, true, $commentID);
 }
 
-function commentGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
+function commentsGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
 {
     global $db;
 
@@ -2513,7 +2586,10 @@ function entryGetRandom(): string
         $lastedittime = my_date($mybb->settings['timeformat'], $entry['dateline']);
         $item_lastedit = $lasteditdate . '<br>' . $lastedittime;
 
-        $item_member = build_profile_link($entry['username'], $entry['uid'], '', '', $mybb->settings['bburl'] . '/');
+        $item_member = build_profile_link(
+            $entry['username'],
+            $entry['uid'],
+        );
 
         $item_view_user = str_replace('{username}', $entry['username'], $lang->myshowcase_view_user);
 
@@ -2618,17 +2694,17 @@ function postParser(): postParser
     return $parser;
 }
 
-function showcaseGetObject(string $mainFile): Showcase
+function showcaseGetObject(string $showcaseSlug): Showcase
 {
     require_once ROOT . '/System/Showcase.php';
 
     static $showcaseObjects = [];
 
-    if (!isset($showcaseObjects[$mainFile])) {
-        $showcaseObjects[$mainFile] = new Showcase($mainFile);
+    if (!isset($showcaseObjects[$showcaseSlug])) {
+        $showcaseObjects[$showcaseSlug] = new Showcase($showcaseSlug);
     }
 
-    return $showcaseObjects[$mainFile];
+    return $showcaseObjects[$showcaseSlug];
 }
 
 function renderGetObject(Showcase $showcaseObject): Render
@@ -2642,6 +2718,20 @@ function renderGetObject(Showcase $showcaseObject): Render
     }
 
     return $renderObjects[$showcaseObject->id];
+}
+
+function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HANDLERT_METHOD_INSERT): DataHandler
+{
+    require_once MYBB_ROOT . 'inc/datahandler.php';
+    require_once ROOT . '/System/DataHandler.php';
+
+    static $dataHandlerObjects = [];
+
+    if (!isset($dataHandlerObjects[$showcaseObject->id])) {
+        $dataHandlerObjects[$showcaseObject->id] = new DataHandler($showcaseObject, $method);
+    }
+
+    return $dataHandlerObjects[$showcaseObject->id];
 }
 
 function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output

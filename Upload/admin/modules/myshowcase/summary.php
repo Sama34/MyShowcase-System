@@ -22,7 +22,7 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\commentsDelete;
-use function MyShowcase\Core\commentGet;
+use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldsetGet;
 use function MyShowcase\Core\hooksRun;
@@ -123,6 +123,7 @@ if ($mybb->get_input('action') === 'new') {
         $errorMessages = [];
 
         if (!$mybb->get_input('name') ||
+            !$mybb->get_input('showcase_slug') ||
             !$mybb->get_input('mainfile') ||
             !$mybb->get_input('imgfolder')) {
             $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
@@ -134,12 +135,17 @@ if ($mybb->get_input('action') === 'new') {
             $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
         }
 
+        if (in_array($mybb->get_input('showcase_slug'), array_column($existingShowcases, 'showcase_slug'))) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedShowcaseSlug;
+        }
+
         if (in_array($mybb->get_input('mainfile'), array_column($existingShowcases, 'mainfile'))) {
             $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedMainFile;
         }
 
         $showcaseData = [
             'name' => $db->escape_string($mybb->get_input('name')),
+            'showcase_slug' => $db->escape_string($mybb->get_input('showcase_slug')),
             'description' => $db->escape_string($mybb->get_input('description')),
             'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
             'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
@@ -187,6 +193,13 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryNewFormNameDescription,
         $form->generate_text_box('name', $mybb->get_input('name'), ['id' => 'name']),
         'name'
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminSummaryNewFormMShowcaseSlug . '<em>*</em>',
+        $lang->myShowcaseAdminSummaryNewFormMShowcaseSlugDescription,
+        $form->generate_text_box('showcase_slug', $mybb->get_input('showcase_slug'), ['id' => 'showcase_slug']),
+        'showcase_slug'
     );
 
     $formContainer->output_row(
@@ -260,11 +273,18 @@ if ($mybb->get_input('action') === 'new') {
     $page->output_nav_tabs($pageTabs, 'myShowcaseAdminSummaryEdit');
 
     if ($mybb->request_method == 'post') {
+        $mybb->input['showcase_slug'] = preg_replace(
+            '/[^\da-z]/i',
+            '-',
+            my_strtolower($mybb->get_input('showcase_slug'))
+        );
+
         switch ($mybb->get_input('type')) {
             case 'main':
                 $errorMessages = [];
 
                 if (!$mybb->get_input('name') ||
+                    !$mybb->get_input('showcase_slug') ||
                     !$mybb->get_input('mainfile') ||
                     !$mybb->get_input('imgfolder')) {
                     $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
@@ -288,6 +308,27 @@ if ($mybb->get_input('action') === 'new') {
                         $mybb->get_input('name')
                     )) {
                     $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
+                }
+
+                if (in_array(
+                        $mybb->get_input('showcase_slug'),
+                        array_column($existingShowcases, 'showcase_slug')
+                    ) && (function (
+                        string $showcaseName
+                    ) use ($showcaseID, $existingShowcases): bool {
+                        $duplicatedName = false;
+
+                        foreach ($existingShowcases as $showcaseData) {
+                            if ($showcaseData['showcase_slug'] === $showcaseName && $showcaseData['id'] !== $showcaseID) {
+                                $duplicatedName = true;
+                            }
+                        }
+
+                        return $duplicatedName;
+                    })(
+                        $mybb->get_input('showcase_slug')
+                    )) {
+                    $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedMainFile;
                 }
 
                 if (in_array($mybb->get_input('mainfile'), array_column($existingShowcases, 'mainfile')) && (function (
@@ -314,6 +355,7 @@ if ($mybb->get_input('action') === 'new') {
                 } else {
                     $showcaseData = [
                         'name' => $db->escape_string($mybb->get_input('name')),
+                        'showcase_slug' => $db->escape_string($mybb->get_input('showcase_slug')),
                         'description' => $db->escape_string($mybb->get_input('description')),
                         'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
                         'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
@@ -574,6 +616,16 @@ if ($mybb->get_input('action') === 'new') {
             'name',
             $mybb->get_input('name'),
             ['id' => 'name'],
+        )
+    );
+
+    $formContainer->output_row(
+        $lang->myShowcaseAdminSummaryNewFormMShowcaseSlug,
+        $lang->myShowcaseAdminSummaryNewFormMShowcaseSlugDescription,
+        $form->generate_text_box(
+            'showcase_slug',
+            $mybb->get_input('showcase_slug'),
+            ['id' => 'showcase_slug'],
         )
     );
 
@@ -1473,7 +1525,7 @@ if ($mybb->get_input('action') === 'new') {
         $lang->sprintf($lang->myShowcaseAdminConfirmTableDrop, $showcaseName)
     );
 } elseif ($mybb->get_input('action') === 'viewRewrites') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name', 'mainfile'], ['limit' => 1]);
+    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name', 'showcase_slug', 'mainfile'], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1523,7 +1575,7 @@ if ($mybb->get_input('action') === 'new') {
     echo $lang->sprintf(
         $lang->myShowcaseAdminSummaryViewRewritesMain,
         $showcaseName,
-        $showcaseData['mainfile']
+        $showcaseData['showcase_slug']
     );
 
     echo $lang->sprintf(
@@ -1633,6 +1685,11 @@ if ($mybb->get_input('action') === 'new') {
     );
 
     $formContainer->output_row_header(
+        $lang->myshowcase_summary_slug,
+        ['width' => '10%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
         $lang->myshowcase_summary_description,
         ['width' => '17%', 'class' => 'align_center']
     );
@@ -1718,7 +1775,7 @@ if ($mybb->get_input('action') === 'new') {
                     ['group_by' => 'id, aid, filesize']
                 )['showcaseTotalFilesSize'] ?? 0;
 
-                $showcaseTotalComments = commentGet(
+                $showcaseTotalComments = commentsGet(
                     ["id='{$showcaseID}'"],
                     ['COUNT(cid) AS showcaseTotalComments'],
                     ['group_by' => 'id, cid']
@@ -1796,6 +1853,8 @@ if ($mybb->get_input('action') === 'new') {
             $formContainer->output_cell($showcaseID, ['class' => 'align_center']);
 
             $formContainer->output_cell($showcaseData['name']);
+
+            $formContainer->output_cell($showcaseData['showcase_slug']);
 
             $formContainer->output_cell($showcaseData['description']);
 

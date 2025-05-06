@@ -19,21 +19,6 @@ var Showcase = {
 		}
 	},
 
-	removeComment: function(cid)
-	{
-		if(confirm(removeshowcasecomment_confirm) == true)
-		{
-			document.comment.commentcid.value = cid;
-			document.comment.commentact.value = "remove";
-		}
-		else
-		{
-			document.comment.commentcid.value = 0;
-			document.comment.commentact.value = "";
-			return false;
-		}
-	},
-
 	removeShowcase: function(gid)
 	{
 		if(confirm(removeshowcase_confirm) == true)

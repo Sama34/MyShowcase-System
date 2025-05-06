@@ -1,5 +1,6 @@
 {$errorsAttachments}
-<form action="{$this->showcaseObject->showcaseUrl}" method="post" enctype="multipart/form-data" name="input">
+<form action="{$this->showcaseObject->urlBase}/{$this->showcaseObject->showcaseUrl}" method="post"
+      enctype="multipart/form-data" name="input">
     <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
     <input type="hidden" name="action" value="{$mybb->input['action']}"/>
     <input type="hidden" name="posthash" value="{$entryHash}"/>

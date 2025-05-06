@@ -1,5 +1,5 @@
 <tr class="inline_row">
-    <td class="{$alternativeBackground}">
+    <td class="{$alternativeBackground} {$styleClass}">
         {$viewAttachmentsCount}
         <div>
             <span>
@@ -13,14 +13,14 @@
         </div>
     </td>
     {$showcaseTableRowExtra}
-    <td align="center" class="{$alternativeBackground}">
+    <td align="center" class="{$alternativeBackground} {$styleClass}">
         {$entryComments}
     </td>
-    <td align="center" class="{$alternativeBackground}">
+    <td align="center" class="{$alternativeBackground} {$styleClass}">
         {$entryViews}
         {$entryUnapproved}
     </td>
-    <td class="{$alternativeBackground}" style="white-space: nowrap; text-align: right;">
+    <td class="{$alternativeBackground} {$styleClass}" style="white-space: nowrap; text-align: right;">
 		<span class="lastpost smalltext">{$entryDateline}<br/>
 		<a href="{$entryUrlLastComment}">{$lang->myShowcaseMainTableRowLastComment}</a>: {$viewLastCommenter}</span>
     </td>

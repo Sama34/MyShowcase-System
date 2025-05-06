@@ -141,6 +141,9 @@ $l['myshowcase_attachment_alt'] = 'Attachment {1} of {2}';
 $l['myshowcase_attachment_uploaded'] = '<strong>Date Uploaded:</strong> ';
 $l['myshowcase_attachment_filename'] = '<strong>Filename:</strong> ';
 
+$l['myshowcase_entry_approved'] = 'The entry has been approved.<br>You will now be redirected back to where you came from.';
+$l['myshowcase_entry_unapproved'] = 'The entry has been unapproved.<br>You will now be redirected back to where you came from.';
+
 //comment language
 $l['myshowcase_comments_add'] = 'Add a comment';
 $l['myshowcase_comments_not_logged_in'] = 'You must be logged in to add a comment';
@@ -148,10 +151,18 @@ $l['myshowcase_comments_none'] = 'There are no comments at this time.';
 $l['myshowcase_posted_at'] = 'posted the following comment at';
 $l['myshowcase_comment_edit'] = 'Edit';
 $l['myshowcase_comment_delete'] = 'Delete';
+$l['myshowcase_comment_soft_delete'] = 'Soft Delete';
+$l['myshowcase_comment_restore'] = 'Restore';
+$l['myshowcase_comment_approve'] = 'Approve';
+$l['myshowcase_comment_unapprove'] = 'Unapprove';
 $l['myshowcase_comment_show_all'] = 'Show all {count} comments';
 $l['myshowcase_comment_text_limit'] = '{1} char max. No HTML. MyCodes and smilies allowed.';
 $l['myshowcase_comment_deleted'] = 'The selected comment has been deleted.<br>You will now be redirected back to where you came from.';
 $l['myshowcase_comment_added'] = 'Your comment has been added.<br>You will now be redirected back to where you came from.';
+$l['myshowcase_comment_approved'] = 'The comment has been approved.<br>You will now be redirected back to where you came from.';
+$l['myshowcase_comment_unapproved'] = 'The comment has been unapproved.<br>You will now be redirected back to where you came from.';
+$l['myshowcase_comment_soft_deleted'] = 'The comment has been soft deleted.<br>You will now be redirected back to where you came from.';
+$l['myshowcase_comment_deleted'] = 'The comment has been deleted.<br>You will now be redirected back to where you came from.';
 
 $l['myshowcase_comment_more'] = '... (visit the entry to read more..)';
 

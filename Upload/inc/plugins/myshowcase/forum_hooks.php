@@ -21,7 +21,6 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseDataGet;
 use function MyShowcase\Core\showcaseGetObject;
@@ -54,10 +53,10 @@ function global_start(): bool
 
         $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
 
-        foreach ($showcaseObjects as $showcaseData) {
-            $me = showcaseGetObject($showcaseData['mainfile']);
+        foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+            $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
 
-            if (THIS_SCRIPT === $me->fileName) {
+            if (THIS_SCRIPT === 'showcase.php') {
                 $templateObjects = array_merge($templateObjects, [
                     'pageView',
                     'pageViewCommentsComment',
@@ -134,12 +133,15 @@ function global_start(): bool
 
         $templatelist .= ', myShowcase_' . implode(', myShowcase_', $templateObjects);
 
-        foreach ($showcaseObjects as $showcaseData) {
-            $me = showcaseGetObject($showcaseData['mainfile']);
+        foreach ($showcaseObjects as $showcaseID => $showcaseData) {
+            $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
 
             //if showcase is enabled...
-            if ($me->enabled) {
-                $templatelist .= ", myShowcase{$me->id}_" . implode(", myShowcase{$me->id}_", $templateObjects);
+            if ($showcaseObject->enabled) {
+                $templatelist .= ", myShowcase{$showcaseObject->id}_" . implode(
+                        ", myShowcase{$showcaseObject->id}_",
+                        $templateObjects
+                    );
             }
         }
     }
@@ -162,8 +164,8 @@ function global_intermediate(): bool
 
     $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
-    foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
-        $showcaseObject = showcaseGetObject($showcaseData['mainfile']);
+    foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
+        $showcaseObject = showcaseGetObject($showcaseData['showcase_slug'] ?? '');
 
         //if showcase is enabled...
         if ($showcaseObject->enabled) {
@@ -340,14 +342,12 @@ function build_friendly_wol_location_end(array &$plugin_array): array
         $myshowcase_url_view = $myshowcase_name . '-view-{gid}.html';
         $myshowcase_url_new = $myshowcase_name . '-new.html';
         $myshowcase_url_view_attach = $myshowcase_name . '-attachment-{aid}.html';
-        $amp = '?';
     } else {
         $myshowcase_url = $plugin_array['user_activity']['myshowcase_mainfile'];
         $myshowcase_url_paged = $plugin_array['user_activity']['myshowcase_mainfile'] . '?page={page}';
         $myshowcase_url_view = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=view&gid={gid}';
         $myshowcase_url_new = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=new';
         $myshowcase_url_view_attach = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=attachment&aid={aid}';
-        $amp = '&';
     }
 
     switch ($plugin_array['user_activity']['activity']) {

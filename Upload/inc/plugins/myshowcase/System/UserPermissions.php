@@ -6,12 +6,13 @@ class UserPermissions
 {
     public const CanAddEntries = 'canadd';
     public const CanEditEntries = 'canedit';
+    public const CanDeleteEntries = 'canedit';
     public const CanAttachFiles = 'canattach';
     public const CanView = 'canview';
     public const CanViewComments = 'canviewcomment';
     public const CanViewAttachments = 'canviewattach';
     public const CanDownloadAttachments = 'canviewattach';
-    public const CanAddComments = 'cancomment';
+    public const CanCreateComments = 'cancomment';
     public const CanDeleteComments = 'candelowncomment';
     public const CanDeleteAuthorComments = 'candelauthcomment';
     public const CanSearch = 'cansearch';
