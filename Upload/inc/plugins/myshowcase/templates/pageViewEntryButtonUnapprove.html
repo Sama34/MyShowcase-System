@@ -1,3 +1,7 @@
-<a href="{$unapproveUrl}" title="{$lang->myshowcase_comment_unapprove}" class="postbit_qdelete">
-    <span>{$lang->myshowcase_comment_unapprove}</span>
+<form id="unapproveEntry{$entryID}" action="{$unapproveUrl}" method="post" style="display:none;">
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+</form>
+<a href="javascript:void(0)" title="{$lang->myShowcaseEntryButtonUnapproveDescription}" class="postbit_qdelete"
+   onclick="confirmSubmit('{$lang->myShowcaseEntryButtonUnapproveConfirm}', 'unapproveEntry{$entryID}');">
+    <span>{$lang->myShowcaseEntryButtonUnapprove}</span>
 </a>

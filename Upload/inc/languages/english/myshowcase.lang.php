@@ -229,6 +229,19 @@ $l = array_merge($l, [
     'myShowcaseEntryAttachmentsImages' => 'Image(s)',
     'myShowcaseEntryAttachmentsThumbnail' => 'Thumbnail(s)',
 
+    'myShowcaseEntryButtonApprove' => 'Approve',
+    'myShowcaseEntryButtonApproveDescription' => 'Approve entry',
+    'myShowcaseEntryButtonApproveConfirm' => 'Are you sure you want to approve this entry?',
+    'myShowcaseEntryButtonUnapprove' => 'Unapprove',
+    'myShowcaseEntryButtonUnapproveDescription' => 'Unapprove entry',
+    'myShowcaseEntryButtonUnapproveConfirm' => 'Are you sure you want to unapprove this entry?',
+    'myShowcaseEntryButtonSoftDelete' => 'Soft Delete',
+    'myShowcaseEntryButtonSoftDeleteDescription' => 'Soft delete entry',
+    'myShowcaseEntryButtonSoftDeleteConfirm' => 'Are you sure you want to soft delete this entry?',
+    'myShowcaseEntryButtonRestore' => 'Restore',
+    'myShowcaseEntryButtonRestoreDescription' => 'Restore entry',
+    'myShowcaseEntryButtonRestoreConfirm' => 'Are you sure you want to restore this entry?',
+
     'myShowcaseEntryCommentOnlineStatusOnline' => 'Online',
     'myShowcaseEntryCommentOnlineStatusOffline' => 'Offline',
     'myShowcaseEntryCommentOnlineStatusAway' => 'Away',
@@ -248,8 +261,34 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonPurseSpammer' => 'Purge Spammer',
     'myShowcaseEntryCommentButtonPurseSpammerDescription' => 'Purge Spammer',
 
+    'myShowcaseEntryCommentButtonApprove' => 'Approve',
+    'myShowcaseEntryCommentButtonApproveDescription' => 'Approve comment',
+    'myShowcaseEntryCommentButtonApproveConfirm' => 'Are you sure you want to approve this comment?',
+    'myShowcaseEntryCommentButtonUnapprove' => 'Unapprove',
+    'myShowcaseEntryCommentButtonUnapproveDescription' => 'Unapprove comment',
+    'myShowcaseEntryCommentButtonUnapproveConfirm' => 'Are you sure you want to unapprove this comment?',
+    'myShowcaseEntryCommentButtonSoftDelete' => 'Soft Delete',
+    'myShowcaseEntryCommentButtonSoftDeleteDescription' => 'Soft delete comment',
+    'myShowcaseEntryCommentButtonSoftDeleteConfirm' => 'Are you sure you want to soft delete this comment?',
+    'myShowcaseEntryCommentButtonRestore' => 'Restore',
+    'myShowcaseEntryCommentButtonRestoreDescription' => 'Restore comment',
+    'myShowcaseEntryCommentButtonRestoreConfirm' => 'Are you sure you want to restore this comment?',
+
     'myShowcaseEntryNewCommentTitle' => 'Quick Reply',
     'myShowcaseEntryNewCommentMessage' => 'Message:',
     'myShowcaseEntryNewCommentMessageNote' => 'Type your reply to this entry here.',
     'myShowcaseEntryNewCommentButton' => 'Post Comment',
+
+    'myShowcaseEntryCommentCreated' => 'Your comment has been created successfully.<br />You will now be returned back to where you came from.',
+
+    'myShowcaseEntryEntryApproved' => 'Your entry has been approved successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryEntryUnapproved' => 'The entry has been unapproved successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryEntrySoftDeleted' => 'The entry has been soft deleted successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryEntryDeleted' => 'The entry has been deleted successfully.<br />You will now be returned back to where you came from.',
+
+    'myShowcaseEntryCommentApproved' => 'Your comment has been approved successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentUnapproved' => 'The comment has been unapproved successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentSoftDeleted' => 'The comment has been soft deleted successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentDeleted' => 'The comment has been deleted successfully.<br />You will now be returned back to where you came from.',
+
 ]);

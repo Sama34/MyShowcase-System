@@ -402,7 +402,7 @@ class Render
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
-                $softDeteleUrl = $this->showcaseObject->urlBuild(
+                $softDeleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlSoftDeleteEntry,
                     $entryID
                 );
@@ -453,7 +453,7 @@ class Render
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
-                $softDeteleUrl = $this->showcaseObject->urlBuild(
+                $softDeleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlSoftDeleteComment,
                     $entryID,
                     $commentID

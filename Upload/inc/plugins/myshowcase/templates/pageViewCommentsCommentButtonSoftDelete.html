@@ -1,3 +1,7 @@
-<a href="{$softDeteleUrl}" title="{$lang->myshowcase_comment_soft_delete}" class="postbit_qdelete">
-    <span>{$lang->myshowcase_comment_soft_delete}</span>
+<form id="softDeleteCommentForm{$commentID}" action="{$softDeleteUrl}" method="post" style="display:none;">
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+</form>
+<a href="javascript:void(0)" title="{$lang->myShowcaseEntryCommentButtonSoftDeleteDescription}" class="postbit_qdelete"
+   onclick="confirmSubmit('{$lang->myShowcaseEntryCommentButtonSoftDeleteConfirm}', 'softDeleteCommentForm{$commentID}');">
+    <span>{$lang->myShowcaseEntryCommentButtonSoftDelete}</span>
 </a>

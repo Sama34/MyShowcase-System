@@ -17,5 +17,16 @@
 {$errorMessages}
 {$pageContents}
 {$footer}
+<script>
+    function confirmSubmit( confirmationText,  formID) {
+        if (confirm(confirmationText)) {
+            document.getElementById(formID).submit();
+
+            return true;
+        } else {
+            return false;
+        }
+    }
+</script>
 </body>
 </html>

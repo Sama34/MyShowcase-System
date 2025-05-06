@@ -72,31 +72,31 @@ $router->get('/{showcase_slug}/create', 'Entries', 'createEntry');
 
 $router->get('/{showcase_slug}/view/{entry_id}', 'Entries', 'viewEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/approve', 'Entries', 'approveEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/approve', 'Entries', 'approveEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/soft_delete', 'Entries', 'softDeleteEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/soft_delete', 'Entries', 'softDeleteEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/restore', 'Entries', 'restoreEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/restore', 'Entries', 'restoreEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/delete', 'Entries', 'deleteEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/delete', 'Entries', 'deleteEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
 
 $router->post('/{showcase_slug}/view/{entry_id}/comment/create', 'Comments', 'createComment');
 
 $router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}', 'Comments', 'viewComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/approve', 'Comments', 'approveComment');
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/approve', 'Comments', 'approveComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
 
 $router->run();
 

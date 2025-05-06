@@ -150,7 +150,7 @@ class Comments extends Base
                     $commentID
                 ) . '#commentID' . $commentID;
 
-            redirect($commentUrl, $lang->myshowcase_comment_added);
+            redirect($commentUrl, $lang->myShowcaseEntryCommentCreated);
         }
 
         require_once ROOT . '/Controllers/Entries.php';
@@ -164,7 +164,9 @@ class Comments extends Base
         int $commentID,
         int $status = COMMENT_STATUS_VISIBLE
     ): void {
-        global $mybb, $lang, $plugins;
+        global $mybb, $lang;
+
+        verify_post_check($mybb->get_input('my_post_key'));
 
         $this->setEntry($entryID);
 
@@ -190,13 +192,13 @@ class Comments extends Base
 
             switch ($status) {
                 case COMMENT_STATUS_PENDING_APPROVAL:
-                    $redirectMessage = $lang->myshowcase_comment_unapproved;
+                    $redirectMessage = $lang->myShowcaseEntryCommentUnapproved;
                     break;
                 case COMMENT_STATUS_VISIBLE:
-                    $redirectMessage = $lang->myshowcase_comment_approved;
+                    $redirectMessage = $lang->myShowcaseEntryCommentApproved;
                     break;
                 case COMMENT_STATUS_SOFT_DELETED:
-                    $redirectMessage = $lang->myshowcase_comment_soft_deleted;
+                    $redirectMessage = $lang->myShowcaseEntryCommentSoftDeleted;
                     break;
             }
 
@@ -273,6 +275,6 @@ class Comments extends Base
 
         $entryUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlViewEntry, $entryID);
 
-        redirect($entryUrl, $lang->myshowcase_comment_deleted);
+        redirect($entryUrl, $lang->myShowcaseEntryCommentDeleted);
     }
 }

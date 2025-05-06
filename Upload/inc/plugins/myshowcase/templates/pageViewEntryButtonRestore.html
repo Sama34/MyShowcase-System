@@ -1,3 +1,8 @@
-<a href="{$restoreUrl}" title="{$lang->myshowcase_comment_restore}" class="postbit_qrestore">
-    <span>{$lang->myshowcase_comment_restore}</span>
+<form id="restoreEntryForm{$entryID}" action="{$restoreUrl}" method="post" style="display:none;">
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+</form>
+<a href="javascript:void(0)" title="{$lang->myShowcaseEntryButtonRestoreDescription}" class="postbit_qrestore"
+   onclick="confirmSubmit('{$lang->myShowcaseEntryButtonRestoreConfirm}', 'restoreEntryForm{$entryID}');"
+   style="display: inline;">
+    <span>{$lang->myShowcaseEntryButtonRestore}</span>
 </a>

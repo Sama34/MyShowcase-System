@@ -72,7 +72,7 @@ class DataHandler extends CoreDataHandler
          * new = New showcase entry
          * edit = Editing an entry
          */
-        public string $action,
+        public string $action = '',
         /**
          * Array of data inserted in to a showcase.
          *
@@ -437,10 +437,7 @@ class DataHandler extends CoreDataHandler
 
     public function commentUpdate(int $commentID): int
     {
-        return commentUpdate(array_merge($this->data, [
-            'id' => $this->showcaseObject->id,
-            'gid' => $this->showcaseObject->entryID
-        ]), $commentID);
+        return commentUpdate($this->data, $commentID);
     }
 
     public function commentDelete(int $commentID): void

@@ -1,3 +1,8 @@
-<a href="{$approveUrl}" title="{$lang->myshowcase_comment_approve}" class="postbit_qrestore" style="display: inline;">
-    <span>{$lang->myshowcase_comment_approve}</span>
+<form id="approveCommentForm{$commentID}" action="{$approveUrl}" method="post" style="display:none;">
+    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
+</form>
+<a href="javascript:void(0)" title="{$lang->myShowcaseEntryCommentButtonApproveDescription}" class="postbit_qrestore"
+   onclick="confirmSubmit('{$lang->myShowcaseEntryCommentButtonApproveConfirm}', 'approveCommentForm{$commentID}');"
+   style="display: inline;">
+    <span>{$lang->myShowcaseEntryCommentButtonApprove}</span>
 </a>

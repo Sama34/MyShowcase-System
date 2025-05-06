@@ -71,7 +71,7 @@ class Entries extends Base
 {
     public function __construct(
         public Router $router,
-        protected ?EntriesModel $userModel = null,
+        protected ?EntriesModel $entriesModel = null,
     ) {
         require_once ROOT . '/Models/Entries.php';
 
@@ -86,7 +86,7 @@ class Entries extends Base
 
     public function setEntry(
         int $entryID
-    ) {
+    ): void {
         $dataTableStructure = dataTableStructureGet($this->showcaseObject->id);
 
         $queryFields = array_merge(array_map(function (string $columnName): string {
@@ -703,10 +703,10 @@ class Entries extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageMainContents')));
     }
 
-    public function createEntry(
+    #[NoReturn] public function createEntry(
         string $showcaseSlug,
         bool $isEditPage = false,
-    ) {
+    ): void {
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
 
@@ -734,7 +734,7 @@ class Entries extends Base
 
             if ($isEditPage) {
                 if (!$entryUserData) {
-                    error($lang->myshowcase_invalid_id);
+                    error_no_permission();
                 }
             } else {
                 if ($mybb->get_input('action') === 'new') {
@@ -1373,7 +1373,7 @@ class Entries extends Base
     #[NoReturn] public function viewEntry(
         string $showcaseSlug,
         int $entryID
-    ) {
+    ): void {
         global $mybb, $plugins, $lang, $db, $theme;
 
         $currentUserID = (int)$mybb->user['uid'];
@@ -1569,12 +1569,9 @@ class Entries extends Base
 
         $this->setEntry($entryID);
 
-        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] ||
+            !$this->showcaseObject->entryID) {
             error_no_permission();
-        }
-
-        if (!$this->showcaseObject->entryID) {
-            error($lang->myshowcase_invalid_id);
         }
 
         $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
@@ -1591,13 +1588,13 @@ class Entries extends Base
 
             switch ($status) {
                 case ENTRY_STATUS_PENDING_APPROVAL:
-                    $redirectMessage = $lang->myshowcase_entry_unapproved;
+                    $redirectMessage = $lang->myShowcaseEntryEntryUnapproved;
                     break;
                 case ENTRY_STATUS_VISIBLE:
-                    $redirectMessage = $lang->myshowcase_entry_approved;
+                    $redirectMessage = $lang->myShowcaseEntryEntryApproved;
                     break;
-                case \MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED:
-                    $redirectMessage = $lang->myshowcase_entry_approved;
+                case ENTRY_STATUS_SOFT_DELETED:
+                    $redirectMessage = $lang->myShowcaseEntryEntrySoftDeleted;
                     break;
             }
 
@@ -1623,7 +1620,7 @@ class Entries extends Base
         $this->approveEntry(
             $showcaseSlug,
             $entryID,
-            \MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED
+            ENTRY_STATUS_SOFT_DELETED
         );
     }
 
@@ -1661,7 +1658,7 @@ class Entries extends Base
 
         $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain, $entryID);
 
-        redirect($mainUrl, $lang->myshowcase_comment_deleted);
+        redirect($mainUrl, $lang->myShowcaseEntryEntryDeleted);
 
         exit;
     }
