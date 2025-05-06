@@ -168,6 +168,18 @@ define('MyShowcase\Core\FORMAT_TYPES', [
     }
 ]);
 
+define('MyShowcase\Core\FORMAT_TYPES_DISPLAY_NAMES', [
+    //'no' => '',
+    //'decimal0' => '#,###',
+    //'decimal1' => '#,###.#',
+    //'decimal2' => '#,###.##',
+    //0 => 'htmlspecialchars_uni',
+    FORMAT_TYPE_NONE => '',
+    FORMAT_TYPE_MY_NUMBER_FORMAT => 'my_number_format',
+    FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => 'my_number_format(1)',
+    FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => 'my_number_format(2)'
+]);
+
 const GUEST_GROUP_ID = 1;
 
 const TABLES_DATA = [
@@ -613,12 +625,12 @@ const TABLES_DATA = [
             'default' => FIELD_TYPE_STORAGE_VARCHAR
         ],
         'minimum_length' => [
-            'type' => 'SMALLINT',
+            'type' => 'MEDIUMINT',
             'unsigned' => true,
             'default' => 0
         ],
         'maximum_length' => [
-            'type' => 'SMALLINT',
+            'type' => 'MEDIUMINT',
             'unsigned' => true,
             'default' => 0
         ],
@@ -1754,7 +1766,7 @@ function attachmentGet(array $whereClauses = [], array $queryFields = [], array 
 
     $query = $db->simple_select(
         'myshowcase_attachments',
-        implode(', ', array_merge(['attachment_id'], $queryFields)),
+        implode(',', array_merge(['attachment_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );

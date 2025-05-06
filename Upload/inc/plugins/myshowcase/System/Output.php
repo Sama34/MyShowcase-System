@@ -121,7 +121,7 @@ class Output
             } else {
                 if ($mybb->get_input('action') === 'new') {
                     add_breadcrumb(
-                        $lang->myShowcaseButtonNewEntry,
+                        $lang->myShowcaseButtonEntryCreate,
                         $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
                     );
                     $showcase_action = 'new';
@@ -258,7 +258,7 @@ class Output
                     $showcasehandler->set_data(array_merge($default_data, $submitted_data));
 
                     // Now let the showcase handler do all the hard work.
-                    $valid_showcase = $showcasehandler->validate_showcase();
+                    $valid_showcase = $showcasehandler->entryValidateData();
 
                     $showcase_errors = [];
 
@@ -272,11 +272,11 @@ class Output
                     } else {
                         //update showcase
                         if ($mybb->get_input('action') === 'edit') {
-                            $insert_showcase = $showcasehandler->update_showcase();
+                            $insert_showcase = $showcasehandler->updateEntry();
                             $showcaseid = $this->showcaseObject->entryData;
                         } //insert showcase
                         else {
-                            $insert_showcase = $showcasehandler->insert_showcase();
+                            $insert_showcase = $showcasehandler->entryInsert();
                             $showcaseid = $insert_showcase['entry_id'];
                         }
 
@@ -359,8 +359,7 @@ class Output
                                 $fieldDataObjects = fieldDataGet(
                                     [
                                         "set_id='{$this->showcaseObject->fieldSetID}'",
-                                        "name='{$fieldName}'",
-                                        "value_id!='0'"
+                                        "name='{$fieldName}'"
                                     ],
                                     ['value_id', 'value'],
                                     ['order_by' => 'display_order']
@@ -405,8 +404,7 @@ class Output
                                 $fieldDataObjects = fieldDataGet(
                                     [
                                         "set_id='{$this->showcaseObject->fieldSetID}'",
-                                        "name='{$fieldName}'",
-                                        "value_id!='0'"
+                                        "name='{$fieldName}'"
                                     ],
                                     ['value_id', 'value'],
                                     ['order_by' => 'display_order']
@@ -484,7 +482,7 @@ class Output
 
         if ($mybb->get_input('action') === 'new') {
             add_breadcrumb(
-                $lang->myShowcaseButtonNewEntry,
+                $lang->myShowcaseButtonEntryCreate,
                 $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
             );
         } elseif ($mybb->get_input('action') === 'edit') {
@@ -617,7 +615,7 @@ class Output
                     $showcase_field_options = '';
 
                     $fieldObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'"],
                         ['value_id', 'value'],
                         ['order_by' => 'display_order']
                     );
@@ -660,7 +658,7 @@ class Output
                     $showcase_field_checked = '';
 
                     $fieldDataObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'"],
                         ['value_id', 'value'],
                         ['order_by' => 'display_order']
                     );
@@ -728,14 +726,14 @@ class Output
                     break;
             }
 
-            $showcaseFields .= eval(getTemplate('pageNewField'));
+            $showcaseFields .= eval(getTemplate('pageEntryCreateUpdateRow'));
 
             ++$fieldTabIndex;
         }
 
         $pageTitle = $this->showcaseObject->name;
 
-        $pageContents = eval(getTemplate('pageNewContents'));
+        $pageContents = eval(getTemplate('pageEntryCreateUpdateContents'));
 
         $pageContents = eval(getTemplate('page'));
 

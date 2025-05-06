@@ -19,15 +19,10 @@ use DataHandler as CoreDataHandler;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
-use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\commentInsert;
 use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentUpdate;
-use function MyShowcase\Core\entryDataInsert;
-use function MyShowcase\Core\entryDataUpdate;
 
-use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
@@ -38,8 +33,16 @@ use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
 use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT;
+use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
 
 if (!defined('IN_MYBB')) {
@@ -78,221 +81,16 @@ class DataHandler extends CoreDataHandler
          *
          * @var array
          */
-        public array $myshowcase_insert_data = [],
+        public array $insertData = [],
         /**
          * Array of data used to update a showcase.
          *
          * @var array
          */
-        public array $myshowcase_update_data = [],
+        public array $updateData = [],
+        public int $entry_id = 0,
     ) {
         parent::__construct($method);
-    }
-
-
-    /**
-     * Validate a showcase.
-     *
-     * @return bool True when valid, false when invalid.
-     */
-    public function validate_showcase(): bool
-    {
-        global $lang;
-
-        $myshowcase_data = &$this->data;
-
-        //get this myshowcase's permissions
-        $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
-        if (!is_array($permcache[1])) {
-            cacheUpdate(CACHE_TYPE_PERMISSIONS);
-            $permcache = cacheGet(CACHE_TYPE_PERMISSIONS);
-        }
-
-        // Don't have a user ID at all - not good or guest is posting which usually is not allowed but check anyway.
-        if (!isset($myshowcase_data['user_id']) || ($myshowcase_data['user_id'] == 0 && ((!$permcache[1][UserPermissions::CanAddEntries] && $this->action = 'new') || (!$permcache[1][UserPermissions::CanEditEntries] && $this->action = 'edit')))) {
-            $this->set_error('invalid_user_id');
-        } // If we have a user id but no username then fetch the username.
-        elseif (!get_user($myshowcase_data['user_id'])) {
-            $this->set_error('invalid_user_id');
-        }
-
-        //run through all fields checking defined requirements
-        foreach ($this->fieldSetCache as $fieldID => $fieldData) {
-            $fname = $fieldData['name'];
-            $temp = 'myshowcase_field_' . $fname;
-            $field_header = $lang->$temp;
-
-            //verify required
-            if ($fieldData['is_required'] == 1) {
-                if (my_strlen($myshowcase_data[$fname]) == 0 || !isset($myshowcase_data[$fname])) {
-                    $this->set_error('missing_field', [$field_header]);
-                } elseif ($fieldData['html_type'] == FIELD_TYPE_HTML_DB && $myshowcase_data[$fname] == 0) {
-                    $this->set_error('missing_field', [$field_header]);
-                }
-            }
-
-            if ($fieldData['enabled'] == 1 || $fieldData['is_required'] == 1) //added require check in case admin sets require but not enable
-            {
-                //verify type and lengths
-                switch ($fieldData['field_type']) {
-                    //numbers lumped together
-                    case FIELD_TYPE_STORAGE_INT:
-                    case 'timestamp':
-                        if (!is_numeric($myshowcase_data[$fname]) && $myshowcase_data[$fname] != '') {
-                            $this->set_error('invalid_type', [$field_header]);
-                        }
-
-                    //numbers and simple text need length checked so no break
-                    case FIELD_TYPE_STORAGE_VARCHAR:
-                        //date fields do not have length limitations since the min/max are settings for the year
-                        if ($fieldData['html_type'] != FIELD_TYPE_HTML_DATE) {
-                            if (my_strlen(strval($myshowcase_data[$fname])) > $fieldData['maximum_length'] || my_strlen(
-                                    strval($myshowcase_data[$fname])
-                                ) < $fieldData['minimum_length']) {
-                                $this->set_error(
-                                    'invalid_length',
-                                    [
-                                        $field_header,
-                                        my_strlen(strval($myshowcase_data[$fname])),
-                                        $fieldData['minimum_length'] . '-' . $fieldData['maximum_length']
-                                    ]
-                                );
-                            }
-                        }
-                        break;
-
-                    //text all on its own since its for text areas
-                    case FIELD_TYPE_STORAGE_TEXT:
-                        if (my_strlen(
-                                $myshowcase_data[$fname]
-                            ) > $this->showcaseObject->maximumLengthForTextFields && $this->showcaseObject->maximumLengthForTextFields > 0) {
-                            $this->set_error(
-                                'message_too_long',
-                                [
-                                    $field_header,
-                                    my_strlen($myshowcase_data[$fname]),
-                                    $this->showcaseObject->maximumLengthForTextFields
-                                ]
-                            );
-                        }
-
-                        if (my_strlen(strval($myshowcase_data[$fname])) < $fieldData['minimum_length']) {
-                            $this->set_error(
-                                'invalid_length_min',
-                                [
-                                    $field_header,
-                                    my_strlen(strval($myshowcase_data[$fname])),
-                                    $fieldData['minimum_length']
-                                ]
-                            );
-                        }
-                        break;
-                }
-            }
-
-            //escape the input (since validation above already checked for forced numeric, we can escape everything)
-            //$myshowcase_data[$fname] = $db->escape_string($myshowcase_data[$fname]);
-        }
-
-        //$plugins->run_hooks('datahandler_post_validate_post', $this);
-
-        // We are done validating, return.
-        $this->set_validated(true);
-        if (count($this->get_errors()) > 0) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-
-    /**
-     * Insert a showcase into the database.
-     *
-     * @return array Array of new showcase details, entry_id and visibility.
-     */
-    public function insert_showcase(): array
-    {
-        global $db, $mybb, $plugins, $cache, $lang;
-
-        $myshowcase_data = &$this->data;
-
-        // Yes, validating is required.
-        if (!$this->get_validated()) {
-            die('The myshowcase needs to be validated before inserting it into the DB.');
-        }
-        if (count($this->get_errors()) > 0) {
-            die('The myshowcase is not valid.');
-        }
-
-        foreach ($myshowcase_data as $key => $value) {
-            $this->myshowcase_insert_data[$key] = $value;
-        }
-        $plugins->run_hooks('datahandler_myshowcase_insert', $this);
-
-        $this->entry_id = entryDataInsert($this->showcaseObject->showcase_id, $this->myshowcase_insert_data);
-
-        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
-        if ($myshowcase_data['entry_hash']) {
-            $myshowcase_data['entry_hash'] = $db->escape_string($myshowcase_data['entry_hash']);
-
-            $attachmentID = (int)(attachmentGet(["entry_hash='{$myshowcase_data['entry_hash']}'"],
-                queryOptions: ['limit' => 1]
-            )['attachment_id'] ?? 0);
-
-            attachmentUpdate(['entry_id' => $this->entry_id], $attachmentID);
-        }
-
-        return [
-            'entry_id' => $this->entry_id
-        ];
-    }
-
-
-    /**
-     * Updates a showcase that is already in the database.
-     *
-     */
-    public function update_showcase(): array
-    {
-        global $db, $mybb, $plugins, $cache, $lang;
-
-        $myshowcase_data = &$this->data;
-
-        // Yes, validating is required.
-        if (!$this->get_validated()) {
-            die('The myshowcase needs to be validated before updating it in the DB.');
-        }
-        if (count($this->get_errors()) > 0) {
-            die('The myshowcase is not valid.');
-        }
-
-        foreach ($myshowcase_data as $key => $value) {
-            $this->myshowcase_update_data[$key] = $value;
-        }
-
-        $plugins->run_hooks('datahandler_myshowcase_update', $this);
-
-        entryDataUpdate($this->showcase_id, $entryID, $this->myshowcase_update_data);
-
-        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
-        if ($myshowcase_data['entry_hash']) {
-            $myshowcase_data['entry_hash'] = $db->escape_string($myshowcase_data['entry_hash']);
-            $attachmentassign = [
-                'entry_id' => $myshowcase_data['entry_id']
-            ];
-
-            $attachmentID = (int)(attachmentGet(
-                ["showcase_id='{$this->showcaseObject->showcase_id}'", "entry_hash='{$myshowcase_data['entry_hash']}'"],
-                queryOptions: ['limit' => 1]
-            )['attachment_id'] ?? 0);
-
-            attachmentUpdate($attachmentassign, $attachmentID);
-        }
-
-        return [
-            'entry_id' => $this->entry_id
-        ];
     }
 
     public function setData(array $entryCommentData): void
@@ -300,15 +98,20 @@ class DataHandler extends CoreDataHandler
         $this->set_data($entryCommentData);
     }
 
+    /**
+     * Validate a showcase.
+     *
+     * @return bool True when valid, false when invalid.
+     */
     public function entryValidateData(): bool
     {
-        $commentData = $this->data;
+        $entryData = $this->data;
 
-        if (isset($commentData['entry_id']) && (int)$commentData['entry_id'] !== $this->showcaseObject->entryID) {
+        if (isset($entryData['entry_id']) && (int)$entryData['entry_id'] !== $this->showcaseObject->entryID) {
             $this->set_error('invalid entry identifier');
         }
 
-        if (isset($commentData['slug']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
+        if (isset($entryData['slug']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
             $slugLength = my_strlen($this->data['slug']);
 
             if ($slugLength < 1) {
@@ -320,19 +123,19 @@ class DataHandler extends CoreDataHandler
             }
         }
 
-        if (!empty($commentData['user_id']) && empty(get_user($this->data['user_id'])['uid'])) {
+        if (!empty($entryData['user_id']) && empty(get_user($this->data['user_id'])['uid'])) {
             $this->set_error('invalid user identifier');
         }
 
-        if (isset($commentData['views']) && $commentData['views'] < 0) {
+        if (isset($entryData['views']) && $entryData['views'] < 0) {
             $this->set_error('invalid views count');
         }
 
-        if (isset($commentData['comments']) && $commentData['comments'] < 0) {
+        if (isset($entryData['comments']) && $entryData['comments'] < 0) {
             $this->set_error('invalid comments count');
         }
 
-        if (isset($commentData['status']) && !in_array(
+        if (isset($entryData['status']) && !in_array(
                 $this->data['status'],
                 [
                     ENTRY_STATUS_PENDING_APPROVAL,
@@ -343,17 +146,89 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid status');
         }
 
-        if (!empty($commentData['moderator_user_id']) && empty(get_user($this->data['moderator_user_id'])['uid'])) {
+        if (!empty($entryData['moderator_user_id']) && empty(get_user($this->data['moderator_user_id'])['uid'])) {
             $this->set_error('invalid moderator identifier');
         }
 
-        if (isset($commentData['dateline']) && $commentData['dateline'] < 0) {
+        if (isset($entryData['dateline']) && $entryData['dateline'] < 0) {
             $this->set_error('invalid create stamp');
         }
 
-        if (isset($commentData['edit_stamp']) && $commentData['edit_stamp'] < 0) {
+        if (isset($entryData['edit_stamp']) && $entryData['edit_stamp'] < 0) {
             $this->set_error('invalid edit stamp');
         }
+
+        global $lang;
+
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldName = $fieldData['name'];
+
+            if (!$fieldData['enabled'] || !isset($entryData[$fieldName])) {
+                continue;
+            }
+
+            if ($fieldData['is_required']) {
+                if (empty($entryData[$fieldName])) {
+                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
+                } elseif ($fieldData['html_type'] === FIELD_TYPE_HTML_DB && empty($entryData[$fieldName])) {
+                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
+                }
+            }
+
+            $fieldValueLenght = my_strlen($entryData[$fieldName]);
+
+            switch ($fieldData['field_type']) {
+                case FIELD_TYPE_STORAGE_TINYINT:
+                case FIELD_TYPE_STORAGE_SMALLINT:
+                case FIELD_TYPE_STORAGE_MEDIUMINT:
+                case FIELD_TYPE_STORAGE_INT:
+                case FIELD_TYPE_STORAGE_BIGINT:
+                case FIELD_TYPE_STORAGE_TIMESTAMP:
+                    if (isset($entryData[$fieldName]) && !is_numeric($entryData[$fieldName])) {
+                        $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
+                    }
+
+                    break;
+                case FIELD_TYPE_STORAGE_CHAR:
+                case FIELD_TYPE_STORAGE_VARCHAR:
+                case FIELD_TYPE_STORAGE_TINYTEXT:
+                case FIELD_TYPE_STORAGE_TEXT:
+                case FIELD_TYPE_STORAGE_MEDIUMTEXT:
+                    if (isset($entryData[$fieldName]) && !is_scalar($entryData[$fieldName])) {
+                        $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
+                    }
+
+                    //date fields do not have length limitations since the min/max are settings for the year
+                    if ($fieldData['html_type'] !== FIELD_TYPE_HTML_DATE) {
+                        if ($fieldValueLenght > $fieldData['maximum_length'] ||
+                            $fieldValueLenght < $fieldData['minimum_length']) {
+                            $this->set_error(
+                                'invalid_length',
+                                [
+                                    $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName,
+                                    $fieldValueLenght,
+                                    $fieldData['minimum_length'] . '-' . $fieldData['maximum_length']
+                                ]
+                            );
+
+                            if ($fieldValueLenght > $this->showcaseObject->maximumLengthForTextFields &&
+                                $this->showcaseObject->maximumLengthForTextFields > 0) {
+                                $this->set_error(
+                                    'message_too_long',
+                                    [
+                                        $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName,
+                                        $fieldValueLenght,
+                                        $this->showcaseObject->maximumLengthForTextFields
+                                    ]
+                                );
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        $this->set_validated(true);
 
         if ($this->get_errors()) {
             return false;
@@ -362,9 +237,66 @@ class DataHandler extends CoreDataHandler
         return true;
     }
 
-    public function entryInsert(): int
+    /**
+     * Insert a showcase into the database.
+     *
+     * @return array Array of new showcase details, entry_id and visibility.
+     */
+    public function entryInsert(bool $isUpdate = false): array
     {
-        return $this->showcaseObject->dataInsert($this->data);
+        global $db, $plugins;
+
+        $entryData = &$this->data;
+
+        if (!$this->get_validated()) {
+            die('The entry needs to be validated before inserting it into the DB.');
+        }
+
+        if (count($this->get_errors()) > 0) {
+            die('The entry is not valid.');
+        }
+
+        foreach ($entryData as $key => $value) {
+            $this->insertData[$key] = $db->escape_string($value);
+        }
+
+        $plugins->run_hooks('datahandler_myshowcase_insert', $this);
+
+        if ($isUpdate) {
+            $this->entry_id = $this->showcaseObject->dataUpdate($this->insertData);
+        } else {
+            $this->entry_id = $this->showcaseObject->dataInsert($this->insertData);
+        }
+
+        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
+        if (isset($entryData['entry_hash'])) {
+            foreach (
+                attachmentGet(
+                    ["entry_hash='{$db->escape_string($entryData['entry_hash'])}'"]
+                ) as $attachmentID => $attachmentData
+            ) {
+                attachmentUpdate(['entry_id' => $this->entry_id], $attachmentID);
+            }
+        }
+
+        $returnData = [
+            'entry_id' => $this->entry_id
+        ];
+
+        if (isset($this->insertData['status'])) {
+            $returnData['status'] = $entryData['status'];
+        }
+
+        return $returnData;
+    }
+
+    /**
+     * Updates a showcase that is already in the database.
+     *
+     */
+    public function updateEntry()
+    {
+        return $this->entryInsert(true);
     }
 
     public function entryUpdate(): int
@@ -424,6 +356,8 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid moderator identifier');
         }
 
+        $this->set_validated(true);
+
         if ($this->get_errors()) {
             return false;
         }
@@ -433,10 +367,12 @@ class DataHandler extends CoreDataHandler
 
     public function commentInsert(): int
     {
-        return commentInsert(array_merge($this->data, [
-            'showcase_id' => $this->showcaseObject->showcase_id,
-            'entry_id' => $this->showcaseObject->entryID
-        ]));
+        return commentInsert(
+            array_merge($this->data, [
+                'showcase_id' => $this->showcaseObject->showcase_id,
+                'entry_id' => $this->showcaseObject->entryID
+            ])
+        );
     }
 
     public function commentUpdate(int $commentID): int

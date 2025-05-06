@@ -61,7 +61,7 @@ use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARBINARY;
 use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
-use const MyShowcase\Core\FORMAT_TYPES;
+use const MyShowcase\Core\FORMAT_TYPES_DISPLAY_NAMES;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
@@ -525,13 +525,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             (function (): array {
                 $selectOptions = [];
 
-                $formatTypes = FORMAT_TYPES;
-
-                $formatTypes = array_flip($formatTypes);
-
-                ksort($formatTypes);
-
-                foreach ($formatTypes as $formatTypeName => $formatTypeKey) {
+                foreach (FORMAT_TYPES_DISPLAY_NAMES as $formatTypeKey => $formatTypeName) {
                     $selectOptions[$formatTypeKey] = $formatTypeName;
                 }
 

@@ -4,21 +4,6 @@ var Showcase = {
 		return true;
 	},
 
-	removeAttachment: function(attachment_id)
-	{
-		if(confirm(removeshowcaseattach_confirm) == true)
-		{
-			document.input.attachmentaid.value = attachment_id;
-			document.input.attachmentact.value = "remove";
-		}
-		else
-		{
-			document.input.attachmentaid.value = 0;
-			document.input.attachmentact.value = "";
-			return false;
-		}
-	},
-
 	removeShowcase: function(entry_id)
 	{
 		if(confirm(removeshowcase_confirm) == true)
@@ -52,7 +37,7 @@ var Showcase = {
 
 	reportEntry: function(entryID, showcaseID) {
 		MyBB.popupWindow("/report.php?modal=1&type=showcase_entries&pid=" + entryID + "&showcaseID=" + showcaseID);
-	}
+	},
 
 	reportComment: function(commentID, showcaseID) {
 		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentID + "&showcaseID=" + showcaseID);

@@ -161,6 +161,7 @@ $l = array_merge([
     'myShowcaseAdminErrorFieldsetDelete' => 'The fieldset was not deleted.',
     'myShowcaseAdminErrorInvalidField' => 'Invalid field',
     'myShowcaseAdminErrorFieldDelete' => 'The field deletion failed.',
+    'myShowcaseAdminErrorInvalidMinMax' => 'Invalid minimum/maximum values.',
 
     'myShowcaseAdminSuccessNewFieldset' => 'The fieldset was successfully added.',
     'myShowcaseAdminSuccessEditFieldset' => 'The fieldset was successfully updated.',

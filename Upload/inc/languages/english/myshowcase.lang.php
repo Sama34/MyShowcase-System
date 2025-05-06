@@ -94,10 +94,13 @@ $l['myshowcase_viewing_user'] = 'Viewing entry for &quot;{username}&quot;';
 $l['myshowcase_viewing_attachment'] = 'Viewing Attachment of &quot;{username}&quot;';
 
 //new/edit myshowcase
-$l['myShowcaseButtonNewEntry'] = 'New Entry';
+$l['myShowcaseButtonEntryCreate'] = 'Create Entry';
+$l['myShowcaseButtonEntryUpdate'] = 'Update Entry';
+$l['myShowcaseButtonCommentCreate'] = 'Create Comment';
+$l['myShowcaseButtonCommentUpdate'] = 'Update Comment';
 $l['myshowcase_post'] = 'Post';
 $l['myshowcase_edit_user'] = 'Edit entry of &quot;{username}&quot;';
-$l['myshowcase_editing_user'] = 'Editing entry of &quot;{username}&quot;';
+$l['myshowcase_editing_user'] = 'Editing entry';
 $l['myshowcase_editing_number'] = "<span class=\"smalltext\">This field is going to be formatted as numeric. Non-numeric content will result in a zero value.</span>";
 $l['myshowcase_watermark'] = 'Watermark?';
 
@@ -177,9 +180,9 @@ $l['myshowcase_jumpto'] = 'Jump to:';
 $l['myshowcase_top'] = 'Goto Top';
 $l['myshowcase_cancel'] = 'Cancel';
 
-$l['myshowcase_month'] = 'M:';
-$l['myshowcase_day'] = 'D:';
-$l['myshowcase_year'] = 'Y:';
+$l['myshowcase_day'] = 'Day';
+$l['myshowcase_month'] = 'Month';
+$l['myshowcase_year'] = 'Year';
 
 //who's onine and portal
 $l['latest_myshowcases'] = 'Latest Showcases';
@@ -209,6 +212,12 @@ $l = array_merge($l, [
     'myShowcaseEntryAttachmentsImages' => 'Image(s)',
     'myShowcaseEntryAttachmentsThumbnail' => 'Thumbnail(s)',
 
+    'myShowcaseEntryButtonEdit' => 'Edit',
+    'myShowcaseEntryButtonEditDescription' => 'Edit this entry',
+    'myShowcaseEntryButtonWarn' => 'Warn',
+    'myShowcaseEntryButtonWarnDescription' => 'Warn the author for this entry',
+    'myShowcaseEntryButtonPurseSpammer' => 'Purge Spammer',
+    'myShowcaseEntryButtonPurseSpammerDescription' => 'Purge spammer',
     'myShowcaseEntryButtonReport' => 'Report',
     'myShowcaseEntryButtonReportDescription' => 'Report comment',
     'myShowcaseEntryButtonApprove' => 'Approve',
@@ -238,11 +247,13 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonPrivateMessageDescription' => 'Send this user a private message',
     'myShowcaseEntryCommentButtonWebsite' => 'Website',
     'myShowcaseEntryCommentButtonWebsiteDescription' => "Visit this user's website",
-    'myShowcaseEntryCommentButtonWarn' => 'Warn',
-    'myShowcaseEntryCommentButtonWarnDescription' => 'Warn the author for this post',
-    'myShowcaseEntryCommentButtonPurseSpammer' => 'Purge Spammer',
-    'myShowcaseEntryCommentButtonPurseSpammerDescription' => 'Purge Spammer',
 
+    'myShowcaseEntryCommentButtonEdit' => 'Edit',
+    'myShowcaseEntryCommentButtonEditDescription' => 'Edit this comment',
+    'myShowcaseEntryCommentButtonWarn' => 'Warn',
+    'myShowcaseEntryCommentButtonWarnDescription' => 'Warn the author for this comment',
+    'myShowcaseEntryCommentButtonPurseSpammer' => 'Purge Spammer',
+    'myShowcaseEntryCommentButtonPurseSpammerDescription' => 'Purge spammer',
     'myShowcaseEntryCommentButtonReport' => 'Report',
     'myShowcaseEntryCommentButtonReportDescription' => 'Report comment',
     'myShowcaseEntryCommentButtonApprove' => 'Approve',
@@ -258,13 +269,18 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonRestoreDescription' => 'Restore comment',
     'myShowcaseEntryCommentButtonRestoreConfirm' => 'Are you sure you want to restore this comment?',
 
-    'myShowcaseEntryNewCommentTitle' => 'Quick Reply',
-    'myShowcaseEntryNewCommentMessage' => 'Message:',
-    'myShowcaseEntryNewCommentMessageNote' => 'Type your reply to this entry here.',
-    'myShowcaseEntryNewCommentButton' => 'Post Comment',
+    'myShowcaseEntryCommentCreateTitle' => 'Entry Comment',
+    'myShowcaseEntryCommentCreateMessage' => 'Message:',
+    'myShowcaseEntryCommentCreateMessageNote' => 'Type your comment to this entry here.',
+    'myShowcaseEntryCommentCreateButton' => 'Post Comment',
 
     'myShowcaseEntryCommentCreated' => 'Your comment has been created successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentUpdated' => 'Your comment has been updated successfully.<br />You will now be returned back to where you came from.',
 
+    'myShowcaseEntryEntryCreated' => 'Your entry has been created successfully.<br />You will now be redirected to the entry.',
+    'myShowcaseEntryEntryCreatedStatus' => 'Your entry has been created successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryEntryUpdated' => 'Your entry has been updated successfully.<br />You will now be redirected to the entry.',
+    'myShowcaseEntryEntryUpdatedStatus' => 'Your entry has been updated successfully.<br />You will now be returned back to where you came from.',
     'myShowcaseEntryEntryApproved' => 'Your entry has been approved successfully.<br />You will now be returned back to where you came from.',
     'myShowcaseEntryEntryUnapproved' => 'The entry has been unapproved successfully.<br />You will now be returned back to where you came from.',
     'myShowcaseEntryEntrySoftDeleted' => 'The entry has been soft deleted successfully.<br />You will now be returned back to where you came from.',

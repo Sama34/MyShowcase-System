@@ -26,16 +26,24 @@ class Router
         }
     }
 
-    public function post($path, $controller, $method): void
+    public function post(array|string $paths, $controller, $method): void
     {
-        $this->addRoute('post', $path, $controller, $method);
+        if (!is_array($paths)) {
+            $paths = [$paths];
+        }
+
+        foreach ($paths as $path) {
+            $this->addRoute('post', $path, $controller, $method);
+        }
     }
 
-    protected function addRoute($httpMethod, $path, $controller, $method): void
+    protected function addRoute(string $httpMethod, string $path, string $controller, string $method): void
     {
         $result = $this->convertPathToRegex($path);
 
-        $this->routes[$path] = [
+        isset($this->routes[$httpMethod]) || $this->routes[$httpMethod] = [];
+
+        $this->routes[$httpMethod][$path] = [
             'method' => $httpMethod,
             'regex' => '#^' . preg_replace('/\{(\w+)\}/', '([^/]+)', $path) . '$#',
             'controller' => $controller,
@@ -65,7 +73,7 @@ class Router
 
         $routePath = $this->getRoutePath();
 
-        foreach ($this->routes as $pattern => $route) {
+        foreach ($this->routes[$mybb->request_method] as $pattern => $route) {
             if ($route['method'] !== $mybb->request_method) {
                 continue;
             }

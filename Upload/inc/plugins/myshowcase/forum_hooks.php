@@ -60,11 +60,23 @@ function global_start(): bool
 
             if (THIS_SCRIPT === 'showcase.php') {
                 $templateObjects = array_merge($templateObjects, [
+                    'pageEntryCommentCreateUpdateContents',
+                    'pageEntryCreateUpdateContents',
+                    'pageEntryCreateUpdateDataFieldCheckBox',
+                    'pageEntryCreateUpdateDataFieldDataBase',
+                    'pageEntryCreateUpdateDataFieldDataBaseOption',
+                    'pageEntryCreateUpdateDataFieldDate',
+                    'pageEntryCreateUpdateDataFieldRadio',
+                    'pageEntryCreateUpdateDataTextArea',
+                    'pageEntryCreateUpdateDataTextBox',
+                    'pageEntryCreateUpdateDataTextUrl',
+                    'pageEntryCreateUpdateRow',
                     'pageMetaCanonical',
                     'pageView',
                     'pageViewCommentsComment',
                     'pageViewCommentsCommentButtonApprove',
                     'pageViewCommentsCommentButtonDelete',
+                    'pageViewCommentsCommentButtonEdit',
                     'pageViewCommentsCommentButtonEmail',
                     'pageViewCommentsCommentButtonPrivateMessage',
                     'pageViewCommentsCommentButtonPurgeSpammer',
@@ -108,6 +120,7 @@ function global_start(): bool
                     'pageViewEntryAttachmentsThumbnailsItem',
                     'pageViewEntryButtonApprove',
                     'pageViewEntryButtonDelete',
+                    'pageViewEntryButtonEdit',
                     'pageViewEntryButtonEmail',
                     'pageViewEntryButtonPrivateMessage',
                     'pageViewEntryButtonPurgeSpammer',
@@ -194,7 +207,7 @@ function global_intermediate(): bool
 
             //awaiting approval
             if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
-                $showcaseUnapprovedEntriesUrl = urlHandlerBuild(['unapproved' => 1]);
+                $unapprovedEntriesUrl = $showcaseObject->urlBuild($showcaseObject->urlMainUnapproved);
 
                 $totalUnapprovedEntries = $showcaseObject->entriesGetUnapprovedCount();
 
@@ -549,7 +562,7 @@ function report_type(): void
 
         $entryID = $mybb->get_input('pid', MyBB::INPUT_INT);
 
-        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
         $entryData = entryDataGet(
             $showcaseID,
@@ -586,7 +599,7 @@ function report_type(): void
 
         $commentID = $mybb->get_input('pid', MyBB::INPUT_INT);
 
-        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
         $commentData = commentsGet(
             ["comment_id='{$commentID}'"],
@@ -631,7 +644,7 @@ function modcp_reports_report()
 
         $entryID = (int)$report['id'];
 
-        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
         $entryData = entryDataGet(
             $showcaseID,
@@ -660,7 +673,7 @@ function modcp_reports_report()
 
         $commentID = (int)$report['id'];
 
-        $showcaseID = $mybb->get_input('showcaseID', \MyBB::INPUT_INT);
+        $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
         $commentData = commentsGet(
             ["comment_id='{$commentID}'"],

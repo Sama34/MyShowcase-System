@@ -105,7 +105,9 @@ class Comments extends Base
 
     #[NoReturn] public function createComment(
         string $showcaseSlug,
-        int $entryID
+        int $entryID,
+        bool $isEditPage = false,
+        int $commentID = 0
     ): void {
         global $mybb, $lang, $plugins;
 
@@ -120,45 +122,115 @@ class Comments extends Base
             error_no_permission();
         }
 
-        verify_post_check($mybb->get_input('my_post_key'));
-
         $plugins->run_hooks('myshowcase_add_comment_start');
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject);
+        if ($mybb->request_method === 'post') {
+            verify_post_check($mybb->get_input('my_post_key'));
 
-        $dataHandler->setData([
-            'user_id' => $currentUserID,
-            'ipaddress' => $mybb->session->packedip,
-            'comment' => $mybb->get_input('comment'),
-            'status' => COMMENT_STATUS_VISIBLE
-        ]);
+            if ($isEditPage) {
+                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+            } else {
+                $dataHandler = dataHandlerGetObject($this->showcaseObject);
+            }
 
-        if (!$dataHandler->commentValidateData()) {
-            $this->showcaseObject->errorMessages = array_merge(
-                $this->showcaseObject->errorMessages,
-                $dataHandler->get_friendly_errors()
+            $insertData = [
+                'comment' => $mybb->get_input('comment'),
+                'status' => COMMENT_STATUS_VISIBLE
+            ];
+
+            if (!$isEditPage) {
+                $insertData['user_id'] = $currentUserID;
+
+                $insertData['ipaddress'] = $mybb->session->packedip;
+            }
+
+            $dataHandler->setData($insertData);
+
+            if (!$dataHandler->commentValidateData()) {
+                $this->showcaseObject->errorMessages = array_merge(
+                    $this->showcaseObject->errorMessages,
+                    $dataHandler->get_friendly_errors()
+                );
+            }
+
+            if (!$this->showcaseObject->errorMessages) {
+                $plugins->run_hooks('myshowcase_add_comment_commit');
+
+                if ($isEditPage) {
+                    $dataHandler->commentUpdate($commentID);
+                } else {
+                    $commentID = $dataHandler->commentInsert();
+                }
+
+                $this->updateEntryCommentsCount();
+
+                $commentUrl = $this->showcaseObject->urlBuild(
+                        $this->showcaseObject->urlViewComment,
+                        $entryID,
+                        $commentID
+                    ) . '#commentID' . $commentID;
+
+                redirect(
+                    $commentUrl,
+                    $isEditPage ? $lang->myShowcaseEntryCommentUpdated : $lang->myShowcaseEntryCommentCreated
+                );
+            }
+        } elseif ($isEditPage) {
+            $commentData = $this->commentsModel->getComment($commentID, ['comment']);
+
+            $mybb->input = array_merge($commentData, $mybb->input);
+        }
+
+        global $theme;
+
+        add_breadcrumb(
+            $this->showcaseObject->nameFriendly,
+            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+        );
+
+        if ($isEditPage) {
+            add_breadcrumb(
+                $lang->myShowcaseButtonCommentUpdate,
+                $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateComment, $entryID, $commentID)
+            );
+        } else {
+            add_breadcrumb(
+                $lang->myShowcaseButtonCommentCreate,
+                $this->showcaseObject->urlBuild($this->showcaseObject->urlCreateComment, $entryID)
             );
         }
 
-        if (!$this->showcaseObject->errorMessages) {
-            $plugins->run_hooks('myshowcase_add_comment_commit');
+        $commentLengthLimitNote = $lang->sprintf(
+            $lang->myshowcase_comment_text_limit,
+            my_number_format($this->showcaseObject->commentsMaximumLength)
+        );
 
-            $commentID = $dataHandler->commentInsert();
+        $alternativeBackground = alt_trow(true);
 
-            $this->updateEntryCommentsCount();
-
-            $commentUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlViewComment,
-                    $entryID,
-                    $commentID
-                ) . '#commentID' . $commentID;
-
-            redirect($commentUrl, $lang->myShowcaseEntryCommentCreated);
+        if ($isEditPage) {
+            $urlCommentCreate = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlUpdateComment,
+                $this->showcaseObject->entryID,
+                $commentID
+            );
+        } else {
+            $urlCommentCreate = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlCreateComment,
+                $this->showcaseObject->entryID
+            );
         }
 
-        require_once ROOT . '/Controllers/Entries.php';
+        $commentMessage = htmlspecialchars_uni($mybb->get_input('comment'));
 
-        (new Entries($this->router))->viewEntry($showcaseSlug, $entryID);
+        $this->outputSuccess(eval($this->renderObject->templateGet('pageEntryCommentCreateUpdateContents')));
+    }
+
+    #[NoReturn] public function updateComment(
+        string $showcaseSlug,
+        int $entryID,
+        int $commentID
+    ): void {
+        $this->createComment($showcaseSlug, $entryID, true, $commentID);
     }
 
     #[NoReturn] public function approveComment(

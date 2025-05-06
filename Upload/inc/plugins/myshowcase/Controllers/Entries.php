@@ -85,9 +85,13 @@ class Entries extends Base
     }
 
     public function setEntry(
-        int $entryID
+        int $entryID,
+        bool $loadFields = false
     ): void {
         $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
+
+
+        $whereClauses = ["entryData.entry_id='{$entryID}'"];
 
         $queryFields = array_merge(array_map(function (string $columnName): string {
             return 'entryData.' . $columnName;
@@ -97,8 +101,24 @@ class Entries extends Base
 
         $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
 
+        if ($loadFields) {
+            foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+                if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
+                    $queryTables[] = "myshowcase_field_data table_{$fieldName} ON (table_{$fieldName}.value_id=entryData.{$fieldName} AND table_{$fieldName}.name='{$fieldName}')";
+
+                    $queryFields[] = "table_{$fieldName}.value AS {$fieldName}";
+
+                    // todo, I don't understand the purpose of this now
+                    // the condition after OR seems to fix it for now
+                    $whereClauses[] = "(table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldName}=0)";
+                } else {
+                    $queryFields[] = $fieldName;
+                }
+            }
+        }
+
         $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet(["entry_id='{$entryID}'"], $queryFields, ['limit' => 1], $queryTables)
+            $this->showcaseObject->dataGet($whereClauses, $queryFields, ['limit' => 1], $queryTables)
         );
     }
 
@@ -108,7 +128,8 @@ class Entries extends Base
         int $limitStart = 0,
         string $groupBy = '',
         string $orderBy = 'user_id',
-        string $orderDirection = ORDER_DIRECTION_ASCENDING
+        string $orderDirection = ORDER_DIRECTION_ASCENDING,
+        array $whereClauses = []
     ): void {
         global $lang, $mybb, $db;
         global $theme;
@@ -239,8 +260,6 @@ class Entries extends Base
         $searchDone = false;
 
         reset($this->showcaseObject->fieldSetSearchableFields);
-
-        $whereClauses = [];
 
         foreach ($this->showcaseObject->fieldSetSearchableFields as $fieldName => $htmlType) {
             if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
@@ -687,9 +706,31 @@ class Entries extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageMainContents')));
     }
 
+    #[NoReturn] public function listEntriesUnapproved(
+        string $showcaseSlug,
+        int $limit = 10,
+        int $limitStart = 0,
+        string $groupBy = '',
+        string $orderBy = 'user_id',
+        string $orderDirection = ORDER_DIRECTION_ASCENDING
+    ): void {
+        $statusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
+
+        $this->listEntries(
+            $showcaseSlug,
+            $limit,
+            $limitStart,
+            $groupBy,
+            $orderBy,
+            $orderDirection,
+            ["status='{$statusUnapproved}'"]
+        );
+    }
+
     #[NoReturn] public function createEntry(
         string $showcaseSlug,
         bool $isEditPage = false,
+        int $entryID = 0,
     ): void {
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
@@ -697,13 +738,11 @@ class Entries extends Base
         global $showcaseName;
         global $buttonGo;
 
-        global $entryHash;
-
         global $templates, $plugins;
 
-        global $entryHash;
-
         $currentUserID = (int)$mybb->user['uid'];
+
+        $entryHash = $mybb->get_input('entryHash');
 
         $hookArguments = [];
 
@@ -713,405 +752,173 @@ class Entries extends Base
 
         $showcase_watermark = '';
 
-        if ($mybb->request_method === 'post') {
-            verify_post_check($mybb->get_input('my_post_key'));
+        add_breadcrumb(
+            $this->showcaseObject->nameFriendly,
+            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+        );
 
-            if ($isEditPage) {
-                if (!$entryUserData) {
-                    error_no_permission();
-                }
-            } else {
-                if ($mybb->get_input('action') === 'new') {
-                    add_breadcrumb(
-                        $lang->myShowcaseButtonNewEntry,
-                        $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                    );
-                    $showcase_action = 'new';
-
-                    //need to populated a default user value here for new entries
-                    $entryFieldsData['user_id'] = $currentUserID;
-                } else {
-                    $showcase_editing_user = str_replace(
-                        '{username}',
-                        $entryUserData['username'],
-                        $lang->myshowcase_editing_user
-                    );
-                    add_breadcrumb(
-                        $showcase_editing_user,
-                        $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                    );
-                    $showcase_action = 'edit';
-                }
-
-                // Get a listing of the current attachments.
-                if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
-                    $attachcount = 0;
-
-                    $attachments = '';
-
-                    $attachmentObjects = attachmentGet(
-                        [
-                            "entry_hash='{$db->escape_string($entryHash)}'",
-                            "showcase_id={$this->showcaseObject->showcase_id}"
-                        ],
-                        array_keys(TABLES_DATA['myshowcase_attachments'])
-                    );
-
-                    foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                        $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
-                        $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
-                        $attachmentData['icon'] = str_replace(
-                            '<img src="',
-                            '<img src="' . $this->showcaseObject->urlBase . '/',
-                            $attachmentData['icon']
-                        );
-
-
-                        $attach_mod_options = '';
-                        if ($attachmentData['status'] !== 1) {
-                            $attachments .= eval(
-                            $this->renderObject->templateGet(
-                                'new_attachments_attachment_unapproved'
-                            )
-                            );
-                        } else {
-                            $attachments .= eval($this->renderObject->templateGet('new_attachments_attachment'));
-                        }
-                        $attachcount++;
-                    }
-                    $lang->myshowcase_attach_quota = $lang->sprintf(
-                            $lang->myshowcase_attach_quota,
-                            $attachcount,
-                            ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
-                        ) . '<br>';
-                    if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit]))) {
-                        if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments]) {
-                            $showcase_watermark = eval($this->renderObject->templateGet('watermark'));
-                        }
-                        $showcase_new_attachments_input = eval(
-                        $this->renderObject->templateGet(
-                            'new_attachments_input'
-                        )
-                        );
-                    }
-                    $showcase_attachments = eval($this->renderObject->templateGet('new_attachments'));
-                }
-
-                if ($mybb->request_method === 'post' && $mybb->get_input('submit')) {
-                    // Decide on the visibility of this post.
-                    if ($this->showcaseObject->moderateEdits && !$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
-                        $approved = 0;
-                        $approved_by = 0;
-                    } else {
-                        $approved = 1;
-                        $approved_by = $currentUserID;
-                    }
-
-                    $plugins->run_hooks('myshowcase_do_newedit_start');
-
-                    // Set up showcase handler.
-                    //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
-
-                    if ($mybb->get_input('action') === 'edit') {
-                        $showcasehandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
-                        $showcasehandler->action = 'edit';
-                    } else {
-                        $showcasehandler = dataHandlerGetObject($this->showcaseObject);
-                        $showcasehandler->action = 'new';
-                    }
-
-                    //This is where the work is done
-
-                    // Verify incoming POST request
-                    verify_post_check($mybb->get_input('my_post_key'));
-
-                    // Set the post data that came from the input to the $post array.
-                    $default_data = [
-                        'user_id' => $entryFieldsData['user_id'],
-                        'dateline' => TIME_NOW,
-                        'approved' => $approved,
-                        'approved_by' => $approved_by,
-                        'entry_hash' => $entryHash
-                    ];
-
-                    //add showcase id if editing so we know what to update
-                    if ($mybb->get_input('action') === 'edit') {
-                        $default_data = array_merge(
-                            $default_data,
-                            ['entry_id' => $this->showcaseObject->entryData]
-                        );
-                    }
-
-                    //add showcase specific fields
-                    reset($this->showcaseObject->fieldSetEnabledFields);
-
-                    $submitted_data = [];
-
-                    foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-                        if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
-                            $submitted_data[$fieldName] = intval($mybb->get_input('myshowcase_field_' . $fieldName));
-                        } elseif ($htmlType === FIELD_TYPE_HTML_CHECK_BOX) {
-                            $submitted_data[$fieldName] = (isset($mybb->input['myshowcase_field_' . $fieldName]) ? 1 : 0);
-                        } elseif ($htmlType === FIELD_TYPE_HTML_DATE) {
-                            $m = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_m'));
-                            $d = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_d'));
-                            $y = $db->escape_string($mybb->get_input('myshowcase_field_' . $fieldName . '_y'));
-                            $submitted_data[$fieldName] = $m . '|' . $d . '|' . $y;
-                        } else {
-                            $submitted_data[$fieldName] = $db->escape_string(
-                                $mybb->get_input('myshowcase_field_' . $fieldName)
-                            );
-                        }
-                    }
-
-                    //send data to handler
-                    $showcasehandler->set_data(array_merge($default_data, $submitted_data));
-
-                    // Now let the showcase handler do all the hard work.
-                    $valid_showcase = $showcasehandler->validate_showcase();
-
-                    $showcase_errors = [];
-
-                    // Fetch friendly error messages if this is an invalid showcase
-                    if (!$valid_showcase) {
-                        $showcase_errors = $showcasehandler->get_friendly_errors();
-                    }
-                    if (count($showcase_errors) > 0) {
-                        $error = inline_error($showcase_errors);
-                        $pageContents = eval($templates->render('error'));
-                    } else {
-                        //update showcase
-                        if ($mybb->get_input('action') === 'edit') {
-                            $insert_showcase = $showcasehandler->update_showcase();
-                            $showcaseid = $this->showcaseObject->entryData;
-                        } //insert showcase
-                        else {
-                            $insert_showcase = $showcasehandler->insert_showcase();
-                            $showcaseid = $insert_showcase['entry_id'];
-                        }
-
-                        $plugins->run_hooks('myshowcase_do_newedit_end');
-
-                        //fix url insert variable to update results
-                        $entryUrl = str_replace('{entry_id}', (string)$showcaseid, $this->showcaseObject->urlViewEntry);
-
-                        $redirect_newshowcase = $lang->redirect_myshowcase_new . '' . $lang->redirect_myshowcase . '' . $lang->sprintf(
-                                $lang->redirect_myshowcase_return,
-                                $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                            );
-                        redirect($entryUrl, $redirect_newshowcase);
-                        exit;
-                    }
-                } else {
-                    $plugins->run_hooks('myshowcase_newedit_start');
-
-                    $pageContents .= eval($this->renderObject->templateGet('new_top'));
-
-                    reset($this->showcaseObject->fieldSetEnabledFields);
-
-                    foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-                        $temp = 'myshowcase_field_' . $fieldName;
-                        $field_header = !empty($lang->$temp) ? $lang->$temp : $fieldName;
-
-                        $alternativeBackground = ($alternativeBackground === 'trow1' ? 'trow2' : 'trow1');
-
-                        if ($mybb->get_input('action') === 'edit') {
-                            $mybb->input['myshowcase_field_' . $fieldName] = htmlspecialchars_uni(
-                                stripslashes($entryFieldsData[$fieldName])
-                            );
-                        }
-
-                        switch ($htmlType) {
-                            case FIELD_TYPE_HTML_TEXT_BOX:
-                                $showcase_field_width = 50;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = '';
-                                $showcase_field_options = 'maxlength="' . $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName] . '"';
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_textbox'));
-
-                                if ($this->showcaseObject->fieldSetFormatableFields[$fieldName] !== FORMAT_TYPE_NONE) {
-                                    $showcase_field_input .= '&nbsp;' . $lang->myshowcase_editing_number;
-                                }
-                                break;
-
-                            case FIELD_TYPE_HTML_URL:
-                                $showcase_field_width = 150;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = '';
-                                $showcase_field_options = 'maxlength="' . $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName] . '"';
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_textbox'));
-                                break;
-
-                            case 'textarea':
-                                $showcase_field_width = 100;
-                                $showcase_field_rows = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName];
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = '';
-                                $showcase_field_options = '';
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_textarea'));
-                                break;
-
-                            case FIELD_TYPE_HTML_RADIO:
-                                $showcase_field_width = 50;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_options = '';
-
-                                $fieldDataObjects = fieldDataGet(
-                                    [
-                                        "set_id='{$this->showcaseObject->fieldSetID}'",
-                                        "name='{$fieldName}'",
-                                        "value_id!='0'"
-                                    ],
-                                    ['value_id', 'value'],
-                                    ['order_by' => 'display_order']
-                                );
-
-                                if (!$fieldDataObjects) {
-                                    error($lang->myshowcase_db_no_data);
-                                }
-
-                                $showcase_field_input = '';
-                                foreach ($fieldDataObjects as $fieldDataID => $results) {
-                                    $showcase_field_value = $results['value_id'];
-                                    $showcase_field_checked = ($mybb->get_input(
-                                        'myshowcase_field_' . $fieldName
-                                    ) === $results['value_id'] ? ' checked' : '');
-                                    $showcase_field_text = $results['value'];
-                                    $showcase_field_input .= eval($this->renderObject->templateGet('field_radio'));
-                                }
-                                break;
-
-                            case FIELD_TYPE_HTML_CHECK_BOX:
-                                $showcase_field_width = 50;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = '1';
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = ($mybb->get_input(
-                                    'myshowcase_field_' . $fieldName
-                                ) === 1 ? ' checked="checked"' : '');
-                                $showcase_field_options = '';
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_checkbox'));
-                                break;
-
-                            case FIELD_TYPE_HTML_DB:
-                                $showcase_field_width = 50;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = '';
-
-                                $fieldDataObjects = fieldDataGet(
-                                    [
-                                        "set_id='{$this->showcaseObject->fieldSetID}'",
-                                        "name='{$fieldName}'",
-                                        "value_id!='0'"
-                                    ],
-                                    ['value_id', 'value'],
-                                    ['order_by' => 'display_order']
-                                );
-
-                                if (!$fieldDataObjects) {
-                                    error($lang->myshowcase_db_no_data);
-                                }
-
-                                $showcase_field_options = ($mybb->get_input(
-                                    'action'
-                                ) === 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
-                                foreach ($fieldDataObjects as $fieldDataID => $results) {
-                                    $showcase_field_options .= '<option value="' . $results['value_id'] . '" ' . ($showcase_field_value === $results['value_id'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
-                                }
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_db'));
-                                break;
-
-                            case FIELD_TYPE_HTML_DATE:
-                                $showcase_field_width = 50;
-                                $showcase_field_rows = '';
-                                $showcase_field_name = 'myshowcase_field_' . $fieldName;
-                                $showcase_field_value = $mybb->get_input('myshowcase_field_' . $fieldName);
-                                $showcase_field_enabled = '';//($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                                $showcase_field_checked = '';
-
-                                $showcase_field_value_m = ($mybb->get_input(
-                                    'myshowcase_field_' . $fieldName . '_m'
-                                ) === '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fieldName . '_m'));
-                                $showcase_field_value_d = ($mybb->get_input(
-                                    'myshowcase_field_' . $fieldName . '_d'
-                                ) === '00' ? '00' : $mybb->get_input('myshowcase_field_' . $fieldName . '_d'));
-                                $showcase_field_value_y = ($mybb->get_input(
-                                    'myshowcase_field_' . $fieldName . '_y'
-                                ) === '0000' ? '0000' : $mybb->get_input('myshowcase_field_' . $fieldName . '_y'));
-
-                                $showcase_field_options_m = '<option value=0' . ($showcase_field_value_m === '00' ? ' selected' : '') . '>&nbsp;</option>';
-                                $showcase_field_options_d = '<option value=0' . ($showcase_field_value_d === '00' ? ' selected' : '') . '>&nbsp;</option>';
-                                $showcase_field_options_y = '<option value=0' . ($showcase_field_value_y === '0000' ? ' selected' : '') . '>&nbsp;</option>';
-                                for ($i = 1; $i <= 12; $i++) {
-                                    $showcase_field_options_m .= '<option value="' . substr(
-                                            '0' . $i,
-                                            -2
-                                        ) . '" ' . ($showcase_field_value_m === substr(
-                                            '0' . $i,
-                                            -2
-                                        ) ? ' selected' : '') . '>' . substr('0' . $i, -2) . '</option>';
-                                }
-                                for ($i = 1; $i <= 31; $i++) {
-                                    $showcase_field_options_d .= '<option value="' . substr(
-                                            '0' . $i,
-                                            -2
-                                        ) . '" ' . ($showcase_field_value_d === substr(
-                                            '0' . $i,
-                                            -2
-                                        ) ? ' selected' : '') . '>' . substr('0' . $i, -2) . '</option>';
-                                }
-                                for ($i = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName]; $i >= $this->showcaseObject->fieldSetFieldsMinimumLenght[$fieldName]; $i--) {
-                                    $showcase_field_options_y .= '<option value="' . $i . '" ' . ($showcase_field_value_y === $i ? ' selected' : '') . '>' . $i . '</option>';
-                                }
-                                $showcase_field_input = eval($this->renderObject->templateGet('field_date'));
-                                break;
-                        }
-
-                        $field_header = ($this->showcaseObject->fieldSetFieldsRequired[$fieldName] ? '<strong>' . $field_header . ' *</strong>' : $field_header);
-                        $pageContents .= eval($this->renderObject->templateGet('new_fields'));
-                    }
-
-                    $plugins->run_hooks('myshowcase_newedit_end');
-
-                    $pageContents .= eval($this->renderObject->templateGet('new_bottom'));
-                }
-            }
-        }
-
-        if ($mybb->get_input('action') === 'new') {
+        if ($isEditPage) {
             add_breadcrumb(
-                $lang->myShowcaseButtonNewEntry,
-                $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+                $lang->myShowcaseButtonEntryUpdate,
+                $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateEntry)
             );
-        } elseif ($mybb->get_input('action') === 'edit') {
-            $showcase_editing_user = str_replace(
-                '{username}',
-                $entryUserData['username'],
-                $lang->myshowcase_editing_user
+        } else {
+            add_breadcrumb(
+                $lang->myShowcaseButtonEntryCreate,
+                $this->showcaseObject->urlBuild($this->showcaseObject->urlCreateEntry)
             );
-            add_breadcrumb($showcase_editing_user, $this->showcaseObject->urlBuild($this->showcaseObject->urlMain));
         }
 
         if ($isEditPage) {
-            if (!$this->showcaseObject->userPermissions[UserPermissions::CanEditEntries]) {
-                error($lang->myshowcase_not_authorized);
+            $this->setEntry($entryID, true);
+        }
+
+        if ($mybb->request_method === 'post') {
+            verify_post_check($mybb->get_input('my_post_key'));
+
+            if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
+                $attachcount = 0;
+
+                $attachments = '';
+
+                $attachmentObjects = attachmentGet(
+                    [
+                        "entry_hash='{$db->escape_string($entryHash)}'",
+                        "showcase_id={$this->showcaseObject->showcase_id}"
+                    ],
+                    array_keys(TABLES_DATA['myshowcase_attachments'])
+                );
+
+                foreach ($attachmentObjects as $attachmentID => $attachmentData) {
+                    $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
+                    $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
+                    $attachmentData['icon'] = str_replace(
+                        '<img src="',
+                        '<img src="' . $this->showcaseObject->urlBase . '/',
+                        $attachmentData['icon']
+                    );
+
+
+                    $attach_mod_options = '';
+                    if ($attachmentData['status'] !== 1) {
+                        $attachments .= eval(
+                        $this->renderObject->templateGet(
+                            'new_attachments_attachment_unapproved'
+                        )
+                        );
+                    } else {
+                        $attachments .= eval($this->renderObject->templateGet('new_attachments_attachment'));
+                    }
+                    $attachcount++;
+                }
+                $lang->myshowcase_attach_quota = $lang->sprintf(
+                        $lang->myshowcase_attach_quota,
+                        $attachcount,
+                        ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
+                    ) . '<br>';
+                if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit]))) {
+                    if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments]) {
+                        $showcase_watermark = eval($this->renderObject->templateGet('watermark'));
+                    }
+                    $showcase_new_attachments_input = eval(
+                    $this->renderObject->templateGet(
+                        'new_attachments_input'
+                    )
+                    );
+                }
+                $showcase_attachments = eval($this->renderObject->templateGet('new_attachments'));
             }
-        } elseif (!$this->showcaseObject->userPermissions[UserPermissions::CanAddEntries]) {
-            error($lang->myshowcase_not_authorized);
+
+            if ($mybb->request_method === 'post') {
+                $insertData = [
+                    'user_id' => $currentUserID,
+                    'dateline' => TIME_NOW
+                ];
+
+                if ($this->showcaseObject->moderateEdits &&
+                    !$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+                    $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
+                }
+
+                if ($entryHash) {
+                    $insertData['entry_hash'] = $entryHash;
+                }
+
+                $plugins->run_hooks('myshowcase_do_newedit_start');
+
+                // Set up showcase handler.
+                //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
+
+                if ($isEditPage) {
+                    $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+                } else {
+                    $dataHandler = dataHandlerGetObject($this->showcaseObject);
+                }
+
+                reset($this->showcaseObject->fieldSetEnabledFields);
+
+                foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
+                    if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
+                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+                    } elseif ($htmlType === FIELD_TYPE_HTML_CHECK_BOX) {
+                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+                    } elseif ($htmlType === FIELD_TYPE_HTML_DATE) {
+                        $insertData[$fieldName] = $mybb->get_input($fieldName . '_month', MyBB::INPUT_INT) . '|' .
+                            $mybb->get_input($fieldName . '_day', MyBB::INPUT_INT) . '|' .
+                            $mybb->get_input($fieldName . '_year', MyBB::INPUT_INT);
+                    } else {
+                        $insertData[$fieldName] = $mybb->get_input($fieldName);
+                    }
+                }
+
+                $dataHandler->setData($insertData);
+
+                if (!$dataHandler->entryValidateData()) {
+                    $this->showcaseObject->errorMessages = array_merge(
+                        $this->showcaseObject->errorMessages,
+                        $dataHandler->get_friendly_errors()
+                    );
+                }
+
+                if (!$this->showcaseObject->errorMessages) {
+                    if ($isEditPage) {
+                        $insertResult = $dataHandler->updateEntry();
+                    } else {
+                        $insertResult = $dataHandler->entryInsert();
+                    }
+
+                    $plugins->run_hooks('myshowcase_do_newedit_end');
+
+                    if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
+                        $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
+
+                        redirect(
+                            $mainUrl,
+                            $isEditPage ? $lang->myShowcaseEntryEntryUpdatedStatus : $lang->myShowcaseEntryEntryCreatedStatus
+                        );
+                    } else {
+                        $entryUrl = $this->showcaseObject->urlBuild(
+                            $this->showcaseObject->urlViewEntry,
+                            $insertResult['entry_id']
+                        );
+
+                        redirect(
+                            $entryUrl,
+                            $isEditPage ? $lang->myShowcaseEntryEntryUpdated : $lang->myShowcaseEntryEntryCreated
+                        );
+                    }
+
+                    exit;
+                }
+            }
+        } elseif ($isEditPage) {
+            $mybb->input = array_merge($this->showcaseObject->entryData, $mybb->input);
+        }
+
+        if ($isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanEditEntries]) {
+            error_no_permission();
+        } elseif (!$isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanAddEntries]) {
+            error_no_permission();
         }
 
         $hookArguments = hooksRun('output_new_start', $hookArguments);
@@ -1169,7 +976,7 @@ class Entries extends Base
             }
         }
 
-        $alternativeBackground = 'trow2';
+        $alternativeBackground = alt_trow(true);
 
         reset($this->showcaseObject->fieldSetEnabledFields);
 
@@ -1178,21 +985,9 @@ class Entries extends Base
         $fieldTabIndex = 1;
 
         foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-            $fieldKey = "myshowcase_field_{$fieldName}";
+            $fieldNameEscaped = $db->escape_string($fieldName);
 
-            $fieldTitle = $fieldName;
-
-            if (isset($lang->{$fieldKey})) {
-                $fieldTitle = $lang->{$fieldKey};
-            }
-
-            $alternativeBackground = ($alternativeBackground === 'trow1' ? 'trow2' : 'trow1');
-
-            if ($mybb->get_input('action') === 'edit') {
-                $mybb->input[$fieldKey] = htmlspecialchars_uni(
-                    stripslashes($entryFieldsData[$fieldName])
-                );
-            }
+            $fieldTitle = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
 
             $fieldElementRequired = '';
 
@@ -1200,155 +995,283 @@ class Entries extends Base
                 $fieldElementRequired = 'required="required"';
             }
 
-            $minimumLength = $this->showcaseObject->fieldSetFieldsMinimumLenght[$fieldName] ?? '';
+            $fieldMinimumLength = $this->showcaseObject->fieldSetFieldsMinimumLenght[$fieldName] ?? 0;
 
-            $maximumLength = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName] ?? '';
+            $fieldMaximumLength = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName] ?? 0;
+
+            $fieldInput = '';
 
             switch ($htmlType) {
                 case FIELD_TYPE_HTML_TEXT_BOX:
-                    $fieldValue = $mybb->get_input($fieldKey);
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
 
-                    $fieldInput = eval($this->renderObject->templateGet('pageNewFieldTextBox'));
+                    $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextBox'));
                     break;
                 case FIELD_TYPE_HTML_URL:
-                    $fieldValue = $mybb->get_input($fieldKey);
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
 
-                    $fieldInput = eval($this->renderObject->templateGet('pageNewFieldUrl'));
+                    $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextUrl'));
                     break;
                 case FIELD_TYPE_HTML_TEXTAREA:
-                    $fieldValue = $mybb->get_input($fieldKey);
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
 
-                    $fieldInput = eval($this->renderObject->templateGet('pageNewFieldTextArea'));
+                    $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextArea'));
                     break;
                 case FIELD_TYPE_HTML_RADIO:
-                    $showcase_field_width = 50;
-                    $showcase_field_rows = '';
-                    $showcase_field_enabled = '';// ($this->showcaseObject->fieldSetEnabledFields[$fieldName] !== 1 ? 'disabled' : '');
-                    $showcase_field_options = '';
-
-                    $fieldObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
-                        ['value_id', 'value'],
-                        ['order_by' => 'display_order']
-                    );
-
-                    if (!$fieldObjects) {
-                        break;
-                        //error($lang->myshowcase_db_no_data);
-                    }
-
-                    $fieldInput = '';
-
-                    foreach ($fieldObjects as $fieldDataID => $fieldData) {
-                        $fieldValue = $fieldData['value_id'];
-
-                        $showcase_field_checked = ($mybb->get_input(
-                            $fieldKey
-                        ) === $fieldData['value_id'] ? ' checked' : '');
-
-                        $showcase_field_text = $fieldData['value'];
-
-                        $fieldInput .= eval($this->renderObject->templateGet('field_radio'));
-                    }
-
-                    break;
-
-                case FIELD_TYPE_HTML_CHECK_BOX:
-                    $showcase_field_width = 50;
-                    $showcase_field_rows = '';
-                    $fieldValue = '1';
-
-                    $showcase_field_checked = ($mybb->get_input($fieldKey) === 1 ? ' checked="checked"' : '');
-                    $showcase_field_options = '';
-                    $fieldInput = eval($this->renderObject->templateGet('field_checkbox'));
-                    break;
-
-                case FIELD_TYPE_HTML_DB:
-                    $showcase_field_width = 50;
-                    $showcase_field_rows = '';
-                    $fieldValue = $mybb->get_input($fieldKey);
-
-                    $showcase_field_checked = '';
-
                     $fieldDataObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldNameEscaped}'"],
                         ['value_id', 'value'],
                         ['order_by' => 'display_order']
                     );
 
-                    if (!$fieldDataObjects) {
-                        error($lang->myshowcase_db_no_data);
+                    if ($fieldDataObjects) {
+                        $fieldOptions = [];
+
+                        foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
+                            $valueID = (int)$fieldData['value_id'];
+
+                            $valueName = htmlspecialchars_uni($fieldData['value']);
+
+                            $checkedElement = '';
+
+                            if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === $valueID) {
+                                $checkedElement = 'checked="checked"';
+                            }
+
+                            $fieldOptions[] = eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldRadio'
+                            )
+                            );
+                        }
+
+                        $fieldInput = implode('', $fieldOptions);
                     }
 
-                    $showcase_field_options = ($mybb->get_input(
-                        'action'
-                    ) === 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
-                    foreach ($fieldDataObjects as $fieldDataID => $results) {
-                        $showcase_field_options .= '<option value="' . $results['value_id'] . '" ' . ($fieldValue === $results['value_id'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
+                    break;
+                case FIELD_TYPE_HTML_CHECK_BOX:
+                    $valueID = 1;
+
+                    $valueName = htmlspecialchars_uni($fieldName);
+
+                    $checkedElement = '';
+
+                    if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === 1) {
+                        $checkedElement = 'checked="checked"';
                     }
-                    $fieldInput = eval($this->renderObject->templateGet('field_db'));
+
+                    $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldCheckBox'));
+                    break;
+                case FIELD_TYPE_HTML_DB:
+                    $fieldDataObjects = fieldDataGet(
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldNameEscaped}'"],
+                        ['value_id', 'value'],
+                        ['order_by' => 'display_order']
+                    );
+
+                    if ($fieldDataObjects) {
+                        $fieldOptions = [];
+
+                        foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
+                            $valueID = (int)$fieldData['value_id'];
+
+                            $valueName = htmlspecialchars_uni($fieldData['value']);
+
+                            $selectedElement = '';
+
+                            if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === $valueID) {
+                                $selectedElement = 'selected="selected"';
+                            }
+
+                            $fieldOptions[] = eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            );
+                        }
+
+                        $fieldOptions = implode('', $fieldOptions);
+
+                        $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
+                    }
                     break;
 
                 case FIELD_TYPE_HTML_DATE:
-                    $showcase_field_width = 50;
-                    $showcase_field_rows = '';
-                    $fieldValue = $mybb->get_input($fieldKey);
+                    list($mybb->input[$fieldName . '_month'], $mybb->input[$fieldName . '_day'], $mybb->input[$fieldName . '_year']) = array_pad(
+                        array_map('intval', explode('|', $mybb->get_input($fieldName))),
+                        3,
+                        0
+                    );
 
-                    $showcase_field_checked = '';
+                    $daySelect = (function (string $fieldName) use (
+                        $mybb,
+                        $lang,
+                        $fieldTabIndex,
+                        $fieldElementRequired,
+                    ): string {
+                        $valueID = 0;
 
-                    $date_bits = explode('|', $fieldValue);
-                    $mybb->input[$fieldKey . '_m'] = $date_bits[0];
-                    $mybb->input[$fieldKey . '_d'] = $date_bits[1];
-                    $mybb->input[$fieldKey . '_y'] = $date_bits[2];
+                        $selectedElement = '';
 
-                    $showcase_field_value_m = ($mybb->get_input(
-                        $fieldKey . '_m'
-                    ) === '00' ? '00' : $mybb->get_input($fieldKey . '_m'));
-                    $showcase_field_value_d = ($mybb->get_input(
-                        $fieldKey . '_d'
-                    ) === '00' ? '00' : $mybb->get_input($fieldKey . '_d'));
-                    $showcase_field_value_y = ($mybb->get_input(
-                        $fieldKey . '_y'
-                    ) === '0000' ? '0000' : $mybb->get_input($fieldKey . '_y'));
+                        $valueName = $lang->myshowcase_day;
 
-                    $showcase_field_options_m = '<option value=00' . ($showcase_field_value_m === '00' ? ' selected' : '') . '>&nbsp;</option>';
-                    $showcase_field_options_d = '<option value=00' . ($showcase_field_value_d === '00' ? ' selected' : '') . '>&nbsp;</option>';
-                    $showcase_field_options_y = '<option value=0000' . ($showcase_field_value_y === '0000' ? ' selected' : '') . '>&nbsp;</option>';
-                    for ($i = 1; $i <= 12; $i++) {
-                        $showcase_field_options_m .= '<option value="' . substr(
-                                '0' . $i,
-                                -2
-                            ) . '" ' . ($showcase_field_value_m === substr(
-                                '0' . $i,
-                                -2
-                            ) ? ' selected' : '') . '>' . substr('0' . $i, -2) . '</option>';
-                    }
-                    for ($i = 1; $i <= 31; $i++) {
-                        $showcase_field_options_d .= '<option value="' . substr(
-                                '0' . $i,
-                                -2
-                            ) . '" ' . ($showcase_field_value_d === substr(
-                                '0' . $i,
-                                -2
-                            ) ? ' selected' : '') . '>' . substr('0' . $i, -2) . '</option>';
-                    }
-                    for ($i = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName]; $i >= $this->showcaseObject->fieldSetFieldsMinimumLenght[$fieldName]; $i--) {
-                        $showcase_field_options_y .= '<option value="' . $i . '" ' . ($showcase_field_value_y === $i ? ' selected' : '') . '>' . $i . '</option>';
-                    }
-                    $fieldInput = eval($this->renderObject->templateGet('field_date'));
+                        $fieldOptions = [
+                            eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            )
+                        ];
+
+                        for ($valueID = 1; $valueID <= 31; ++$valueID) {
+                            $valueName = $valueID;
+
+                            $selectedElement = '';
+
+                            if ($mybb->get_input($fieldName . '_day', MyBB::INPUT_INT) === $valueID) {
+                                $selectedElement = 'selected="selected"';
+                            }
+
+                            $fieldOptions[] = eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            );
+                        }
+
+                        $fieldOptions = implode('', $fieldOptions);
+
+                        $fieldName = $fieldName . '_day';
+
+                        return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
+                    })(
+                        $fieldName
+                    );
+
+                    $monthSelect = (function (string $fieldName) use (
+                        $mybb,
+                        $lang,
+                        $fieldTabIndex,
+                        $fieldElementRequired,
+                    ): string {
+                        $valueID = 0;
+
+                        $selectedElement = '';
+
+                        $valueName = $lang->myshowcase_month;
+
+                        $fieldOptions = [
+                            eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            )
+                        ];
+
+                        for ($valueID = 1; $valueID <= 12; ++$valueID) {
+                            $valueName = $valueID;
+
+                            $selectedElement = '';
+
+                            if ($mybb->get_input($fieldName . '_month', MyBB::INPUT_INT) === $valueID) {
+                                $selectedElement = 'selected="selected"';
+                            }
+
+                            $fieldOptions[] = eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            );
+                        }
+
+                        $fieldOptions = implode('', $fieldOptions);
+
+                        $fieldName = $fieldName . '_month';
+
+                        return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
+                    })(
+                        $fieldName
+                    );
+
+                    $yearSelect = (function (string $fieldName) use (
+                        $mybb,
+                        $lang,
+                        $fieldTabIndex,
+                        $fieldElementRequired,
+                        $fieldMinimumLength,
+                        $fieldMaximumLength
+                    ): string {
+                        $valueID = 0;
+
+                        $selectedElement = '';
+
+                        $valueName = $lang->myshowcase_year;
+
+                        $fieldOptions = [
+                            eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            )
+                        ];
+
+                        for ($valueID = $fieldMinimumLength; $valueID <= $fieldMaximumLength; ++$valueID) {
+                            $valueName = $valueID;
+
+                            $selectedElement = '';
+
+                            if ($mybb->get_input($fieldName . '_year', MyBB::INPUT_INT) === $valueID) {
+                                $selectedElement = 'selected="selected"';
+                            }
+
+                            $fieldOptions[] = eval(
+                            $this->renderObject->templateGet(
+                                'pageEntryCreateUpdateDataFieldDataBaseOption'
+                            )
+                            );
+                        }
+
+                        $fieldOptions = implode('', $fieldOptions);
+
+                        $fieldName = $fieldName . '_year';
+
+                        return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
+                    })(
+                        $fieldName
+                    );
+
+                    $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDate'));
                     break;
             }
 
-            $showcaseFields .= eval($this->renderObject->templateGet('pageNewField'));
+            $showcaseFields .= eval($this->renderObject->templateGet('pageEntryCreateUpdateRow'));
 
             ++$fieldTabIndex;
+
+            $alternativeBackground = alt_trow();
         }
 
         $hookArguments = hooksRun('output_new_end', $hookArguments);
 
-        $pageContents = eval($this->renderObject->templateGet('pageNewContents'));
+        if ($isEditPage) {
+            $createUpdateUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlUpdateEntry,
+                $this->showcaseObject->entryID
+            );
+        } else {
+            $createUpdateUrl = $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlCreateEntry
+            );
+        }
 
-        $this->outputSuccess(eval($this->renderObject->templateGet('pageNewContents')));
+        $this->outputSuccess(eval($this->renderObject->templateGet('pageEntryCreateUpdateContents')));
+    }
+
+    #[NoReturn] public function updateEntry(
+        string $showcaseSlug,
+        int $entryID,
+    ): void {
+        $this->createEntry($showcaseSlug, true, $entryID);
     }
 
     #[NoReturn] public function viewEntry(
@@ -1363,34 +1286,7 @@ class Entries extends Base
 
         reset($this->showcaseObject->fieldSetEnabledFields);
 
-        $whereClauses = ["entryData.entry_id='{$entryID}'"];
-
-        $queryFields = array_merge(array_map(function (string $columnName): string {
-            return 'entryData.' . $columnName;
-        }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])), [
-            'userData.username',
-        ]);
-
-        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
-
-        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-            if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
-                $queryTables[] = "myshowcase_field_data table_{$fieldName} ON (table_{$fieldName}.value_id=entryData.{$fieldName} AND table_{$fieldName}.name='{$fieldName}')";
-
-                $queryFields[] = "table_{$fieldName}.value AS {$fieldName}";
-
-                // todo, I don't understand the purpose of this now
-                // the condition after OR seems to fix it for now
-                $whereClauses[] = "(table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldName}=0)";
-            } else {
-                $queryFields[] = $fieldName;
-            }
-        }
-        // start getting showcase base data
-
-        $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet($whereClauses, $queryFields, ['limit' => 1], $queryTables)
-        );
+        $this->setEntry($entryID, true);
 
         if (!$this->showcaseObject->entryID || empty($this->showcaseObject->entryData)) {
             error($lang->myshowcase_invalid_id);
@@ -1419,7 +1315,7 @@ class Entries extends Base
             $this->showcaseObject->urlViewEntry
         );
 
-        $entryHash = $this->showcaseObject->entryData['entry_hash'];
+        //$entryHash = $this->showcaseObject->entryData['entry_hash'];
 
         $showcase_views = $this->showcaseObject->entryData['views'];
         $showcase_numcomments = $this->showcaseObject->entryData['comments'];
@@ -1631,7 +1527,7 @@ class Entries extends Base
 
         $dataHandler->entryDelete();
 
-        $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain, $entryID);
+        $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
 
         redirect($mainUrl, $lang->myShowcaseEntryEntryDeleted);
 

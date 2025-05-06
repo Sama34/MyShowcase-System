@@ -120,15 +120,18 @@ class Showcase
         #urls
         public string $urlBase = '',
         public string $urlMain = '',
+        public string $urlMainUnapproved = '',
         public string $urlPaged = '',
         public string $urlViewEntry = '',
         public string $urlViewComment = '',
         public string $urlCreateEntry = '',
+        public string $urlUpdateEntry = '',
         public string $urlApproveEntry = '',
         public string $urlUnapproveEntry = '',
         public string $urlSoftDeleteEntry = '',
         public string $urlDeleteEntry = '',
         public string $urlCreateComment = '',
+        public string $urlUpdateComment = '',
         public string $urlApproveComment = '',
         public string $urlUnapproveComment = '',
         public string $urlRestoreComment = '',
@@ -353,6 +356,8 @@ class Showcase
         } else {
             $this->urlMain = $this->showcaseSlug;
 
+            $this->urlMainUnapproved = $this->showcaseSlug . '/unapproved';
+
             $this->urlPaged = $this->prefix . '.php?page={page}';
 
             $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_id}';
@@ -360,6 +365,8 @@ class Showcase
             $this->urlViewComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}';
 
             $this->urlCreateEntry = $this->showcaseSlug . '/create';
+
+            $this->urlUpdateEntry = $this->showcaseSlug . '/view/{entry_id}/update';
 
             $this->urlApproveEntry = $this->showcaseSlug . '/view/{entry_id}/approve';
 
@@ -372,6 +379,8 @@ class Showcase
             $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_id}/delete';
 
             $this->urlCreateComment = $this->showcaseSlug . '/view/{entry_id}/comment/create';
+
+            $this->urlUpdateComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/update';
 
             $this->urlApproveComment = $this->showcaseSlug . '/view/{entry_id}/comment/{comment_id}/approve';
 

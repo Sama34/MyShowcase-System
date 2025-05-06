@@ -9,5 +9,6 @@ class ModeratorPermissions
     public const CanEditEntries = 'canmodedit';
     public const CanDeleteEntries = 'canmoddelete';
     public const CanDeleteComments = 'canmoddelcomment';
+    public const CanEditComments = 'canmodedit';
     public const CanApproveComments = 'canmoddelcomment';
 }

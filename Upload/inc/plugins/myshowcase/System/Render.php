@@ -258,6 +258,18 @@ class Render
             $userDetailsReputationLink = eval($this->templateGet($templatePrefix . 'UserReputation'));
         }
 
+        $buttonEdit = '';
+
+        if ($postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries]) {
+            $editUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateEntry, $entryID);
+
+            $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
+        } elseif ($postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanEditComments]) {
+            $editUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlUpdateComment, $entryID, $commentID);
+
+            $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
+        }
+
         $buttonWarn = $userDetailsWarningLevel = '';
 
         if (!empty($mybb->settings['enablewarningsystem']) &&

@@ -68,9 +68,17 @@ $router = new Router();
 
 $router->get('/{showcase_slug}', 'Entries', 'listEntries');
 
+$router->get('/{showcase_slug}/unapproved', 'Entries', 'listEntriesUnapproved');
+
 $router->get('/{showcase_slug}/create', 'Entries', 'createEntry');
 
+$router->post('/{showcase_slug}/create', 'Entries', 'createEntry');
+
 $router->get('/{showcase_slug}/view/{entry_id}', 'Entries', 'viewEntry');
+
+$router->get('/{showcase_slug}/view/{entry_id}/update', 'Entries', 'updateEntry');
+
+$router->post('/{showcase_slug}/view/{entry_id}/update', 'Entries', 'updateEntry');
 
 $router->post('/{showcase_slug}/view/{entry_id}/approve', 'Entries', 'approveEntry');
 
@@ -87,6 +95,10 @@ $router->post('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapprov
 $router->post('/{showcase_slug}/view/{entry_id}/comment/create', 'Comments', 'createComment');
 
 $router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}', 'Comments', 'viewComment');
+
+$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/update', 'Comments', 'updateComment');
+
+$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/update', 'Comments', 'updateComment');
 
 $router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/approve', 'Comments', 'approveComment');
 
