@@ -46,6 +46,7 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\ATTACHMENT_UNLIMITED;
 use const MyShowcase\Core\ATTACHMENT_ZERO;
 use const MyShowcase\Core\DATA_HANDLERT_METHOD_UPDATE;
@@ -1321,6 +1322,10 @@ class Entries extends Base
     ): void {
         global $mybb, $plugins, $lang, $db, $theme;
 
+        $hookArguments = [
+            'this' => &$this
+        ];
+
         $currentUserID = (int)$mybb->user['uid'];
 
         $plugins->run_hooks('myshowcase_view_start');
@@ -1562,6 +1567,14 @@ class Entries extends Base
         );
 
         $plugins->run_hooks('myshowcase_view_end');
+
+        $unpackVariables = [];
+
+        $hookArguments['extractVariables'] = &$unpackVariables;
+
+        $hookArguments = \MyShowcase\Core\hooksRun('entry_view_end', $hookArguments);
+
+        extract($hookArguments['extractVariables']);
 
         $this->outputSuccess(eval($this->renderObject->templateGet('pageView')));
     }
