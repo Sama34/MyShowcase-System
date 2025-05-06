@@ -15,7 +15,7 @@ Installation:
 ============================================================================================
 If you want sample data installed, upload all files. 
 If you do not want sample data installed, upload all files except for 
-<mybb_root>\inc\plugins\myshowcase\sample_data.php
+<mybb_root>\MyShowcase\sample_data.php
 
 Once uploaded, enter ACP > Configuration > Plugins  and Activate & Install MyShowcase System
 
@@ -128,7 +128,7 @@ v2.3.0
 - moved FancyBox code to separate template to avoid loading on all showcase pages
 - added support for "date" fields, with dropdowns for M, D, Y
 - added support for URL fields
-- added search term highlighting
+- added search_field term highlighting
 - updated help page
 
 v2.2.1
