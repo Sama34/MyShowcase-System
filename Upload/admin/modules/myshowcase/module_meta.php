@@ -47,6 +47,7 @@ function myshowcase_meta(): bool
         'link' => 'index.php?module=myshowcase-help'
     ];
 
+    /*
     if (function_exists('MyShowcase\Core\hooksRun')) {
         $sub_menu = hooksRun('admin_module_meta_start', $sub_menu);
 
@@ -54,12 +55,12 @@ function myshowcase_meta(): bool
             $sub_menu[$displayOrder += 10] = [
                 'id' => "showcase{$showcaseID}",
                 'title' => $showcaseData['name'],
-                'link' => urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID], '&')
+                'link' => urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID], '&')
             ];
         }
 
         $sub_menu = hooksRun('admin_module_meta_end', $sub_menu);
-    }
+    }*/
 
     $page->add_menu_item(
         $lang->myshowcase_admin_myshowcase,
@@ -113,5 +114,5 @@ function myshowcase_admin_permissions(): array
 
     $admin_permissions = hooksRun('admin_permissions', $admin_permissions);
 
-    return ['name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'disporder' => 60];
+    return ['name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'display_order' => 60];
 }

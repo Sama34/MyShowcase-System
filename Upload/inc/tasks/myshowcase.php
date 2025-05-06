@@ -30,7 +30,7 @@ function task_myshowcase(array $taskData): array
     require_once ROOT . '/class_showcase.php';
 
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
-        $showcasePruneTime = explode('|', $showcaseData['prunetime']);
+        $showcasePruneTime = explode('|', $showcaseData['prune_time']);
 
         if ($showcasePruneTime[0] > 0 && $showcaseData['enabled'] === SHOWCASE_STATUS_ENABLED) {
             $pruneTime = (int)strtotime('-' . $showcasePruneTime[0] . ' ' . $showcasePruneTime[1], TIME_NOW);

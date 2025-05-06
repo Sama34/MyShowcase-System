@@ -16,7 +16,6 @@ declare(strict_types=1);
 use function MyShowcase\Admin\pluginActivation;
 use function MyShowcase\Admin\pluginDeactivation;
 use function MyShowcase\Admin\pluginInformation;
-use function MyShowcase\Admin\pluginInstallation;
 use function MyShowcase\Admin\pluginIsInstalled;
 use function MyShowcase\Admin\pluginUninstallation;
 use function MyShowcase\Core\addHooks;
@@ -78,11 +77,6 @@ function myshowcase_activate(): bool
 function myshowcase_deactivate(): bool
 {
     return pluginDeactivation();
-}
-
-function myshowcase_install(): bool
-{
-    return pluginInstallation();
 }
 
 function myshowcase_is_installed(): bool

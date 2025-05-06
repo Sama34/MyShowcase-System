@@ -109,10 +109,10 @@ class DataHandler extends CoreDataHandler
         }
 
         // Don't have a user ID at all - not good or guest is posting which usually is not allowed but check anyway.
-        if (!isset($myshowcase_data['uid']) || ($myshowcase_data['uid'] == 0 && ((!$permcache[1][UserPermissions::CanAddEntries] && $this->action = 'new') || (!$permcache[1][UserPermissions::CanEditEntries] && $this->action = 'edit')))) {
+        if (!isset($myshowcase_data['user_id']) || ($myshowcase_data['user_id'] == 0 && ((!$permcache[1][UserPermissions::CanAddEntries] && $this->action = 'new') || (!$permcache[1][UserPermissions::CanEditEntries] && $this->action = 'edit')))) {
             $this->set_error('invalid_user_id');
         } // If we have a user id but no username then fetch the username.
-        elseif (!get_user($myshowcase_data['uid'])) {
+        elseif (!get_user($myshowcase_data['user_id'])) {
             $this->set_error('invalid_user_id');
         }
 
@@ -123,7 +123,7 @@ class DataHandler extends CoreDataHandler
             $field_header = $lang->$temp;
 
             //verify required
-            if ($fieldData['requiredField'] == 1) {
+            if ($fieldData['is_required'] == 1) {
                 if (my_strlen($myshowcase_data[$fname]) == 0 || !isset($myshowcase_data[$fname])) {
                     $this->set_error('missing_field', [$field_header]);
                 } elseif ($fieldData['html_type'] == FIELD_TYPE_HTML_DB && $myshowcase_data[$fname] == 0) {
@@ -131,7 +131,7 @@ class DataHandler extends CoreDataHandler
                 }
             }
 
-            if ($fieldData['enabled'] == 1 || $fieldData['requiredField'] == 1) //added require check in case admin sets require but not enable
+            if ($fieldData['enabled'] == 1 || $fieldData['is_required'] == 1) //added require check in case admin sets require but not enable
             {
                 //verify type and lengths
                 switch ($fieldData['field_type']) {
@@ -146,15 +146,15 @@ class DataHandler extends CoreDataHandler
                     case FIELD_TYPE_STORAGE_VARCHAR:
                         //date fields do not have length limitations since the min/max are settings for the year
                         if ($fieldData['html_type'] != FIELD_TYPE_HTML_DATE) {
-                            if (my_strlen(strval($myshowcase_data[$fname])) > $fieldData['max_length'] || my_strlen(
+                            if (my_strlen(strval($myshowcase_data[$fname])) > $fieldData['maximum_length'] || my_strlen(
                                     strval($myshowcase_data[$fname])
-                                ) < $fieldData['min_length']) {
+                                ) < $fieldData['minimum_length']) {
                                 $this->set_error(
                                     'invalid_length',
                                     [
                                         $field_header,
                                         my_strlen(strval($myshowcase_data[$fname])),
-                                        $fieldData['min_length'] . '-' . $fieldData['max_length']
+                                        $fieldData['minimum_length'] . '-' . $fieldData['maximum_length']
                                     ]
                                 );
                             }
@@ -176,10 +176,14 @@ class DataHandler extends CoreDataHandler
                             );
                         }
 
-                        if (my_strlen(strval($myshowcase_data[$fname])) < $fieldData['min_length']) {
+                        if (my_strlen(strval($myshowcase_data[$fname])) < $fieldData['minimum_length']) {
                             $this->set_error(
                                 'invalid_length_min',
-                                [$field_header, my_strlen(strval($myshowcase_data[$fname])), $fieldData['min_length']]
+                                [
+                                    $field_header,
+                                    my_strlen(strval($myshowcase_data[$fname])),
+                                    $fieldData['minimum_length']
+                                ]
                             );
                         }
                         break;
@@ -205,7 +209,7 @@ class DataHandler extends CoreDataHandler
     /**
      * Insert a showcase into the database.
      *
-     * @return array Array of new showcase details, gid and visibility.
+     * @return array Array of new showcase details, entry_id and visibility.
      */
     public function insert_showcase(): array
     {
@@ -226,21 +230,21 @@ class DataHandler extends CoreDataHandler
         }
         $plugins->run_hooks('datahandler_myshowcase_insert', $this);
 
-        $this->gid = entryDataInsert($this->showcaseObject->id, $this->myshowcase_insert_data);
+        $this->entry_id = entryDataInsert($this->showcaseObject->showcase_id, $this->myshowcase_insert_data);
 
-        // Assign any uploaded attachments with the specific posthash to the newly created post.
-        if ($myshowcase_data['posthash']) {
-            $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
+        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
+        if ($myshowcase_data['entry_hash']) {
+            $myshowcase_data['entry_hash'] = $db->escape_string($myshowcase_data['entry_hash']);
 
-            $attachmentID = (int)(attachmentGet(["posthash='{$myshowcase_data['posthash']}'"],
+            $attachmentID = (int)(attachmentGet(["entry_hash='{$myshowcase_data['entry_hash']}'"],
                 queryOptions: ['limit' => 1]
-            )['aid'] ?? 0);
+            )['attachment_id'] ?? 0);
 
-            attachmentUpdate(['gid' => $this->gid], $attachmentID);
+            attachmentUpdate(['entry_id' => $this->entry_id], $attachmentID);
         }
 
         return [
-            'gid' => $this->gid
+            'entry_id' => $this->entry_id
         ];
     }
 
@@ -269,25 +273,25 @@ class DataHandler extends CoreDataHandler
 
         $plugins->run_hooks('datahandler_myshowcase_update', $this);
 
-        entryDataUpdate($this->id, $entryID, $this->myshowcase_update_data);
+        entryDataUpdate($this->showcase_id, $entryID, $this->myshowcase_update_data);
 
-        // Assign any uploaded attachments with the specific posthash to the newly created post.
-        if ($myshowcase_data['posthash']) {
-            $myshowcase_data['posthash'] = $db->escape_string($myshowcase_data['posthash']);
+        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
+        if ($myshowcase_data['entry_hash']) {
+            $myshowcase_data['entry_hash'] = $db->escape_string($myshowcase_data['entry_hash']);
             $attachmentassign = [
-                'gid' => $myshowcase_data['gid']
+                'entry_id' => $myshowcase_data['entry_id']
             ];
 
             $attachmentID = (int)(attachmentGet(
-                ["id='{$this->showcaseObject->id}'", "posthash='{$myshowcase_data['posthash']}'"],
+                ["showcase_id='{$this->showcaseObject->showcase_id}'", "entry_hash='{$myshowcase_data['entry_hash']}'"],
                 queryOptions: ['limit' => 1]
-            )['aid'] ?? 0);
+            )['attachment_id'] ?? 0);
 
             attachmentUpdate($attachmentassign, $attachmentID);
         }
 
         return [
-            'gid' => $this->gid
+            'entry_id' => $this->entry_id
         ];
     }
 
@@ -300,7 +304,7 @@ class DataHandler extends CoreDataHandler
     {
         $commentData = $this->data;
 
-        if (isset($commentData['gid']) && (int)$commentData['gid'] !== $this->showcaseObject->entryID) {
+        if (isset($commentData['entry_id']) && (int)$commentData['entry_id'] !== $this->showcaseObject->entryID) {
             $this->set_error('invalid entry identifier');
         }
 
@@ -316,7 +320,7 @@ class DataHandler extends CoreDataHandler
             }
         }
 
-        if (!empty($commentData['uid']) && empty(get_user($this->data['uid'])['uid'])) {
+        if (!empty($commentData['user_id']) && empty(get_user($this->data['user_id'])['uid'])) {
             $this->set_error('invalid user identifier');
         }
 
@@ -339,7 +343,7 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid status');
         }
 
-        if (!empty($commentData['moderator_uid']) && empty(get_user($this->data['moderator_uid'])['uid'])) {
+        if (!empty($commentData['moderator_user_id']) && empty(get_user($this->data['moderator_user_id'])['uid'])) {
             $this->set_error('invalid moderator identifier');
         }
 
@@ -374,22 +378,22 @@ class DataHandler extends CoreDataHandler
 
         $this->showcaseObject->commentsDelete($this->showcaseObject->entryID);
 
-        $this->showcaseObject->showcaseDataDelete(["gid='{$this->showcaseObject->entryID}'"]);
+        $this->showcaseObject->showcaseDataDelete(["entry_id='{$this->showcaseObject->entryID}'"]);
     }
 
     public function commentValidateData(): bool
     {
         $commentData = $this->data;
 
-        if (isset($commentData['id']) && (int)$commentData['id'] !== $this->showcaseObject->id) {
+        if (isset($commentData['showcase_id']) && (int)$commentData['showcase_id'] !== $this->showcaseObject->showcase_id) {
             $this->set_error('invalid showcase identifier');
         }
 
-        if (isset($commentData['gid']) && (int)$commentData['gid'] !== $this->showcaseObject->entryID) {
+        if (isset($commentData['entry_id']) && (int)$commentData['entry_id'] !== $this->showcaseObject->entryID) {
             $this->set_error('invalid entry identifier');
         }
 
-        if (!empty($commentData['uid']) && empty(get_user($this->data['uid'])['uid'])) {
+        if (!empty($commentData['user_id']) && empty(get_user($this->data['user_id'])['uid'])) {
             $this->set_error('invalid user identifier');
         }
 
@@ -416,7 +420,7 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid status');
         }
 
-        if (!empty($commentData['moderator_uid']) && empty(get_user($this->data['moderator_uid'])['uid'])) {
+        if (!empty($commentData['moderator_user_id']) && empty(get_user($this->data['moderator_user_id'])['uid'])) {
             $this->set_error('invalid moderator identifier');
         }
 
@@ -430,8 +434,8 @@ class DataHandler extends CoreDataHandler
     public function commentInsert(): int
     {
         return commentInsert(array_merge($this->data, [
-            'id' => $this->showcaseObject->id,
-            'gid' => $this->showcaseObject->entryID
+            'showcase_id' => $this->showcaseObject->showcase_id,
+            'entry_id' => $this->showcaseObject->entryID
         ]));
     }
 
@@ -442,6 +446,6 @@ class DataHandler extends CoreDataHandler
 
     public function commentDelete(int $commentID): void
     {
-        commentsDelete(["cid='{$commentID}'"]);
+        commentsDelete(["comment_id='{$commentID}'"]);
     }
 }

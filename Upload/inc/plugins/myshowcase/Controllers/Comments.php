@@ -62,7 +62,7 @@ class Comments extends Base
     public function setEntry(
         int $entryID
     ) {
-        $dataTableStructure = dataTableStructureGet($this->showcaseObject->id);
+        $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
 
         $queryFields = array_merge(array_map(function (string $columnName): string {
             return 'entryData.' . $columnName;
@@ -70,10 +70,10 @@ class Comments extends Base
             'userData.username',
         ]);
 
-        $queryTables = ['users userData ON (userData.uid=entryData.uid)'];
+        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
 
         $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet(["gid='{$entryID}'"], $queryFields, ['limit' => 1], $queryTables)
+            $this->showcaseObject->dataGet(["entry_id='{$entryID}'"], $queryFields, ['limit' => 1], $queryTables)
         );
     }
 
@@ -82,9 +82,9 @@ class Comments extends Base
         $statusVisible = COMMENT_STATUS_VISIBLE;
 
         $totalComments = $this->showcaseObject->commentGet(
-            ["gid='{$this->showcaseObject->entryID}'", "status='{$statusVisible}'"],
-            ['COUNT(cid) AS total_comments'],
-            ['group_by' => 'gid', 'limit' => 1]
+            ["entry_id='{$this->showcaseObject->entryID}'", "status='{$statusVisible}'"],
+            ['COUNT(comment_id) AS total_comments'],
+            ['group_by' => 'entry_id', 'limit' => 1]
         )['total_comments'] ?? 0;
 
         $this->showcaseObject->dataUpdate(['comments' => $totalComments]);

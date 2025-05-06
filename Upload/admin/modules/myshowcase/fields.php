@@ -86,11 +86,11 @@ $page->add_breadcrumb_item($lang->myShowcaseAdminFieldSets, urlHandlerBuild());
 //get path to non-admin language folder currently in use
 $languagePath = str_replace('admin', '', $lang->path . '/' . $lang->language);
 
-$fieldID = $mybb->get_input('fid', MyBB::INPUT_INT);
+$fieldID = $mybb->get_input('field_id', MyBB::INPUT_INT);
 
-$fieldsetID = $mybb->get_input('setid', MyBB::INPUT_INT);
+$fieldsetID = $mybb->get_input('set_id', MyBB::INPUT_INT);
 
-$fieldOptionValue = $mybb->get_input('valueid', MyBB::INPUT_INT);
+$fieldOptionValue = $mybb->get_input('value_id', MyBB::INPUT_INT);
 
 $pageAction = $mybb->get_input('action');
 
@@ -105,27 +105,27 @@ $pageTabs = [
 if (in_array($pageAction, ['viewFields', 'newField', 'editField', 'editOption'])) {
     $pageTabs['myShowcaseAdminFields'] = [
         'title' => $lang->myShowcaseAdminFields,
-        'link' => urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+        'link' => urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]),
         'description' => $lang->myShowcaseAdminFieldsDescription
     ];
 
     if (in_array($pageAction, ['editOption'])) {
         $pageTabs['myShowcaseAdminFieldsOptions'] = [
             'title' => $lang->myShowcaseAdminFieldsOptions,
-            'link' => urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            'link' => urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
             'description' => $lang->myShowcaseAdminFieldsOptionsDescription
         ];
     } else {
         $pageTabs['myShowcaseAdminFieldsNew'] = [
             'title' => $lang->myShowcaseAdminFieldsNew,
-            'link' => urlHandlerBuild(['action' => 'newField', 'setid' => $fieldsetID]),
+            'link' => urlHandlerBuild(['action' => 'newField', 'set_id' => $fieldsetID]),
             'description' => $lang->myShowcaseAdminFieldsNewDescription
         ];
 
         if ($pageAction == 'editField') {
             $pageTabs['myShowcaseAdminFieldsEdit'] = [
                 'title' => $lang->myShowcaseAdminFieldsEdit,
-                'link' => urlHandlerBuild(['action' => 'editField', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+                'link' => urlHandlerBuild(['action' => 'editField', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
                 'description' => $lang->myShowcaseAdminFieldsEditDescription
             ];
         }
@@ -140,7 +140,7 @@ if (in_array($pageAction, ['viewFields', 'newField', 'editField', 'editOption'])
     if ($pageAction == 'edit') {
         $pageTabs['myShowcaseAdminFieldSetsEdit'] = [
             'title' => $lang->myShowcaseAdminFieldSetsEdit,
-            'link' => urlHandlerBuild(['action' => 'edit', 'setid' => $fieldsetID]),
+            'link' => urlHandlerBuild(['action' => 'edit', 'set_id' => $fieldsetID]),
             'description' => $lang->myShowcaseAdminFieldSetsEditDescription
         ];
     }
@@ -151,7 +151,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     hooksRun('admin_field_new_edit_start');
 
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (!$newPage && empty($fieldsetData)) {
         flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
@@ -163,19 +163,19 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     unset($queryFields['unique_key']);
 
-    $fieldData = fieldsGet(["fid='{$fieldID}'"], array_keys($queryFields), ['limit' => 1]);
+    $fieldData = fieldsGet(["field_id='{$fieldID}'"], array_keys($queryFields), ['limit' => 1]);
 
     if (!$newPage && empty($fieldData)) {
         flash_message($lang->myShowcaseAdminErrorInvalidField, 'error');
 
-        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
     }
 
     $fieldIsEditable = true;
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
+    $showcaseObjects = showcaseGet(["field_set_id='{$fieldsetID}'"], [], ['limit' => 1]);
 
-    if (!$newPage && $showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['id'])) {
+    if (!$newPage && $showcaseObjects && showcaseDataTableExists((int)$showcaseObjects['showcase_id'])) {
         $fieldIsEditable = false;
     }
 
@@ -217,8 +217,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
-        if ($mybb->get_input('min_length', MyBB::INPUT_INT) >
-            $mybb->get_input('max_length', MyBB::INPUT_INT)) {
+        if ($mybb->get_input('minimum_length', MyBB::INPUT_INT) >
+            $mybb->get_input('maximum_length', MyBB::INPUT_INT)) {
             $errorMessages[] = $lang->myShowcaseAdminErrorInvalidMinMax;
         }
 
@@ -230,7 +230,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 $duplicatedName = false;
 
                 foreach ($existingFields as $fieldData) {
-                    if ($fieldData['name'] === $fieldName && $fieldData['setid'] !== $fieldsetID) {
+                    if ($fieldData['name'] === $fieldName && $fieldData['set_id'] !== $fieldsetID) {
                         $duplicatedName = true;
                     }
                 }
@@ -248,32 +248,32 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             case FIELD_TYPE_HTML_DB:
                 $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
-                $mybb->input['max_length'] = 3;
+                $mybb->input['maximum_length'] = 3;
 
                 $fieldDefaultOption = 1;
                 break;
             case FIELD_TYPE_HTML_RADIO:
                 $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
-                $mybb->input['max_length'] = 1;
+                $mybb->input['maximum_length'] = 1;
 
                 $fieldDefaultOption = 1;
                 break;
             case FIELD_TYPE_HTML_CHECK_BOX:
                 $mybb->input['field_type'] = FIELD_TYPE_STORAGE_INT;
 
-                $mybb->input['max_length'] = 1;
+                $mybb->input['maximum_length'] = 1;
                 break;
             case FIELD_TYPE_HTML_DATE:
                 $mybb->input['field_type'] = FIELD_TYPE_STORAGE_VARCHAR;
 
-                $mybb->input['min_length'] = max(
-                    $mybb->get_input('min_length', MyBB::INPUT_INT),
+                $mybb->input['minimum_length'] = max(
+                    $mybb->get_input('minimum_length', MyBB::INPUT_INT),
                     1901
                 );
 
-                $mybb->input['max_length'] = min(
-                    $mybb->get_input('max_length', MyBB::INPUT_INT),
+                $mybb->input['maximum_length'] = min(
+                    $mybb->get_input('maximum_length', MyBB::INPUT_INT),
                     2038
                 );
 
@@ -281,15 +281,15 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             case FIELD_TYPE_HTML_URL:
                 $mybb->input['field_type'] = FIELD_TYPE_STORAGE_VARCHAR;
 
-                $mybb->input['max_length'] = 255;
+                $mybb->input['maximum_length'] = 255;
                 break;
         }
 
         $fieldDataQuery = [
-            'setid' => $fieldsetID,
-            'min_length' => $mybb->get_input('min_length', MyBB::INPUT_INT),
-            'max_length' => $mybb->get_input('max_length', MyBB::INPUT_INT),
-            'list_table_order' => $mybb->get_input('list_table_order', MyBB::INPUT_INT),
+            'set_id' => $fieldsetID,
+            'minimum_length' => $mybb->get_input('minimum_length', MyBB::INPUT_INT),
+            'maximum_length' => $mybb->get_input('maximum_length', MyBB::INPUT_INT),
+            'render_order' => $mybb->get_input('render_order', MyBB::INPUT_INT),
             'format' => $mybb->get_input('format'),
         ];
 
@@ -309,7 +309,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             if ($newPage) {
                 $fieldID = fieldsInsert($fieldDataQuery);
             } else {
-                fieldsUpdate(["fid='{$fieldID}'"], $fieldDataQuery);
+                fieldsUpdate(["field_id='{$fieldID}'"], $fieldDataQuery);
 
                 if ($fieldIsEditable &&
                     isset($fieldData['name']) &&
@@ -318,7 +318,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                         [FIELD_TYPE_HTML_DB, FIELD_TYPE_HTML_RADIO]
                     )) {
                     fieldDataUpdate(
-                        ["fid='{$fieldID}'", "setid='{$fieldsetID}'"],
+                        ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"],
                         ['name' => $fieldData['name']]
                     );
                 }
@@ -328,8 +328,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             if ($fieldDefaultOption) {
                 $fieldOptionData = [
-                    'setid' => $fieldsetID,
-                    'fid' => $fieldID,
+                    'set_id' => $fieldsetID,
+                    'field_id' => $fieldID,
                     'name' => $db->escape_string($mybb->get_input('name')),
                     'value' => 'Not Specified'
                 ];
@@ -360,7 +360,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 flash_message($lang->myShowcaseAdminSuccessEditField, 'success');
             }
 
-            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
         }
     }
 
@@ -488,33 +488,33 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $lang->myShowcaseAdminFieldsNewFormMinimumLength,
         $lang->myShowcaseAdminFieldsNewFormMinimumLengthDescription,
         $form->generate_numeric_field(
-            'min_length',
-            $mybb->get_input('min_length'),
-            ['id' => 'min_length', 'class' => 'field150', 'min' => 0],
+            'minimum_length',
+            $mybb->get_input('minimum_length'),
+            ['id' => 'minimum_length', 'class' => 'field150', 'min' => 0],
         ),
-        'min_length'
+        'minimum_length'
     );
 
     $formContainer->output_row(
         $lang->myShowcaseAdminFieldsNewFormMaximumLength,
         $lang->myShowcaseAdminFieldsNewFormMaximumLengthDescription,
         $form->generate_numeric_field(
-            'max_length',
-            $mybb->get_input('max_length'),
-            ['id' => 'max_length', 'class' => 'field150', 'min' => 0],
+            'maximum_length',
+            $mybb->get_input('maximum_length'),
+            ['id' => 'maximum_length', 'class' => 'field150', 'min' => 0],
         ),
-        'max_length'
+        'maximum_length'
     );
 
     $formContainer->output_row(
         $lang->myShowcaseAdminFieldsNewFormOrderList,
         $lang->myShowcaseAdminFieldsNewFormOrderListDescription,
         $form->generate_numeric_field(
-            'list_table_order',
-            $mybb->get_input('list_table_order'),
-            ['id' => 'list_table_order', 'class' => 'align_center field50', 'min' => 0],
+            'render_order',
+            $mybb->get_input('render_order'),
+            ['id' => 'render_order', 'class' => 'align_center field50', 'min' => 0],
         ),
-        'list_table_order'
+        'render_order'
     );
 
     $formContainer->output_row(
@@ -560,7 +560,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     hooksRun('admin_fieldset_new_edit_start');
 
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (!$newPage && empty($fieldsetData)) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -581,26 +581,26 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         $errorMessages = [];
 
-        if (!$mybb->get_input('setname')) {
+        if (!$mybb->get_input('set_name')) {
             $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
         $existingFieldSets = cacheGet(CACHE_TYPE_FIELD_SETS);
 
-        if (in_array($mybb->get_input('setname'), array_column($existingFieldSets, 'setname')) && (function (
+        if (in_array($mybb->get_input('set_name'), array_column($existingFieldSets, 'set_name')) && (function (
                 string $showcaseName
             ) use ($fieldsetID, $existingFieldSets): bool {
                 $duplicatedName = false;
 
                 foreach ($existingFieldSets as $fieldsetData) {
-                    if ($fieldsetData['setname'] === $showcaseName && $fieldsetData['setid'] !== $fieldsetID) {
+                    if ($fieldsetData['set_name'] === $showcaseName && $fieldsetData['set_id'] !== $fieldsetID) {
                         $duplicatedName = true;
                     }
                 }
 
                 return $duplicatedName;
             })(
-                $mybb->get_input('setname')
+                $mybb->get_input('set_name')
             )) {
             $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
         }
@@ -613,7 +613,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         }
 
         $fieldsetData = [
-            'setname' => $db->escape_string($mybb->get_input('setname')),
+            'set_name' => $db->escape_string($mybb->get_input('set_name')),
         ];
 
         if ($errorMessages) {
@@ -664,8 +664,8 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     $formContainer->output_row(
         $lang->myShowcaseAdminFieldSetsNewFormName . '<em>*</em>',
         $lang->myShowcaseAdminFieldSetsNewFormNameDescription,
-        $form->generate_text_box('setname', $mybb->get_input('setname'), ['id' => 'setname']),
-        'setname'
+        $form->generate_text_box('set_name', $mybb->get_input('set_name'), ['id' => 'set_name']),
+        'set_name'
     );
 
     hooksRun('admin_fieldset_new_edit_end');
@@ -681,7 +681,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $page->output_footer();
 } elseif ($pageAction == 'viewFields') {
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (empty($fieldsetData)) {
         flash_message($lang->myshowcase_fields_invalid_id, 'error');
@@ -690,7 +690,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     }
 
     $page->add_breadcrumb_item(
-        $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $fieldsetData['setname']),
+        $lang->sprintf($lang->myshowcase_admin_edit_fieldset, $fieldsetData['set_name']),
         urlHandlerBuild()
     );
 
@@ -701,27 +701,27 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     hooksRun('admin_view_fields_start');
 
     if ($mybb->request_method === 'post') {
-        foreach (fieldsGet(["setid='{$fieldsetID}'"]) as $fieldID => $fieldData) {
+        foreach (fieldsGet(["set_id='{$fieldsetID}'"]) as $fieldID => $fieldData) {
             $fieldData = [
-                'field_order' => (int)($mybb->get_input('field_order', MyBB::INPUT_ARRAY)[$fieldID] ?? 0),
+                'display_order' => (int)($mybb->get_input('display_order', MyBB::INPUT_ARRAY)[$fieldID] ?? 0),
                 'enabled' => (int)!empty($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$fieldID]),
-                'requiredField' => (int)!empty($mybb->get_input('requiredField', MyBB::INPUT_ARRAY)[$fieldID]),
+                'is_required' => (int)!empty($mybb->get_input('is_required', MyBB::INPUT_ARRAY)[$fieldID]),
                 'parse' => (int)!empty($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$fieldID]),
-                'searchable' => (int)!empty($mybb->get_input('searchable', MyBB::INPUT_ARRAY)[$fieldID]),
+                'enable_search' => (int)!empty($mybb->get_input('enable_search', MyBB::INPUT_ARRAY)[$fieldID]),
             ];
 
             $fieldData = hooksRun('admin_view_fields_update_post', $fieldData);
 
-            fieldsUpdate(["fid='{$fieldID}'", "setid='{$fieldsetID}'"], $fieldData);
+            fieldsUpdate(["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"], $fieldData);
         }
 
         flash_message($lang->myshowcase_field_update_success, 'success');
 
-        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
     }
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+        urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]),
         'post',
         'viewFields'
     );
@@ -786,7 +786,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     unset($queryFields['unique_key']);
 
-    $fieldObjects = fieldsGet(["setid='{$fieldsetID}'"], array_keys($queryFields), ['order_by' => 'field_order']);
+    $fieldObjects = fieldsGet(["set_id='{$fieldsetID}'"], array_keys($queryFields), ['order_by' => 'display_order']);
 
     if (!$fieldObjects) {
         $formContainer->output_cell(
@@ -807,7 +807,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             if ($fieldData['html_type'] == FIELD_TYPE_HTML_DB || $fieldData['html_type'] == FIELD_TYPE_HTML_RADIO) {
                 $viewOptionsUrl = urlHandlerBuild(
-                    ['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]
+                    ['action' => 'editOption', 'field_id' => $fieldID, 'set_id' => $fieldsetID]
                 );
             }
 
@@ -833,9 +833,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $formContainer->output_cell(
                 $form->generate_numeric_field(
-                    "field_order[{$fieldID}]",
-                    $fieldData['field_order'],
-                    ['id' => "field_order[{$fieldID}]", 'class' => 'align_center field50', 'min' => 0],
+                    "display_order[{$fieldID}]",
+                    $fieldData['display_order'],
+                    ['id' => "display_order[{$fieldID}]", 'class' => 'align_center field50', 'min' => 0],
                 ),
                 ['class' => 'align_center']
             );
@@ -853,10 +853,10 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $formContainer->output_cell(
                 $form->generate_check_box(
-                    'requiredField[' . $fieldID . ']',
+                    'is_required[' . $fieldID . ']',
                     'true',
                     '',
-                    ['checked' => $fieldData['requiredField']],
+                    ['checked' => $fieldData['is_required']],
                     ''
                 ),
                 ['class' => 'align_center']
@@ -875,10 +875,10 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $formContainer->output_cell(
                 $form->generate_check_box(
-                    'searchable[' . $fieldID . ']',
+                    'enable_search[' . $fieldID . ']',
                     'true',
                     '',
-                    ['checked' => $fieldData['searchable']],
+                    ['checked' => $fieldData['enable_search']],
                     ''
                 ),
                 ['class' => 'align_center']
@@ -888,23 +888,23 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $popup->add_item(
                 $lang->edit,
-                urlHandlerBuild(['action' => 'editField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+                urlHandlerBuild(['action' => 'editField', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
             );
 
             $popup->add_item(
                 $lang->myshowcase_field_delete,
-                urlHandlerBuild(['action' => 'deleteField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+                urlHandlerBuild(['action' => 'deleteField', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
             );
 
             //add option to edit list items if db type
             if ($fieldData['html_type'] == FIELD_TYPE_HTML_DB || $fieldData['html_type'] == FIELD_TYPE_HTML_RADIO) {
                 $popup->add_item(
                     $lang->myshowcase_field_edit_options,
-                    urlHandlerBuild(['action' => 'editOption', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+                    urlHandlerBuild(['action' => 'editOption', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
                 );
             }
 
-            $maximumViewOrder = max($maximumViewOrder, $fieldData['field_order']);
+            $maximumViewOrder = max($maximumViewOrder, $fieldData['display_order']);
 
             $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
 
@@ -924,7 +924,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $page->output_footer();
 } elseif ($pageAction == 'delete') {
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (!$fieldsetData) {
         flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
@@ -932,7 +932,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         admin_redirect(urlHandlerBuild());
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
+    $showcaseObjects = showcaseGet(["field_set_id='{$fieldsetID}'"], [], ['limit' => 1]);
 
     if (!empty($showcaseObjects)) {
         flash_message($lang->myShowcaseAdminErrorFieldsetDeleteFailed, 'error');
@@ -942,7 +942,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     hooksRun('admin_fieldset_delete_start');
 
-    $fieldsetName = $fieldsetData['setname'];
+    $fieldsetName = $fieldsetData['set_name'];
 
     if ($mybb->request_method === 'post') {
         if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
@@ -957,11 +957,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         hooksRun('admin_fieldset_delete_post');
 
-        fieldsDelete(["setid='{$fieldsetID}'"]);
+        fieldsDelete(["set_id='{$fieldsetID}'"]);
 
-        fieldDataDelete(["setid='{$fieldsetID}'"]);
+        fieldDataDelete(["set_id='{$fieldsetID}'"]);
 
-        fieldsetDelete(["setid='{$fieldsetID}'"]);
+        fieldsetDelete(["set_id='{$fieldsetID}'"]);
 
         foreach ((array)$lang->get_languages() as $langfolder => $langname) {
             $languageFile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $fieldsetID . '.lang.php';
@@ -981,7 +981,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         log_admin_action(['fieldsetID' => $fieldsetID]);
 
-        if (fieldsetGet(["setid='{$fieldsetID}'"])) {
+        if (fieldsetGet(["set_id='{$fieldsetID}'"])) {
             flash_message($lang->myShowcaseAdminErrorFieldsetDelete, 'error');
         } else {
             flash_message($lang->myShowcaseAdminSuccessFieldsetDeleted, 'success');
@@ -991,12 +991,12 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'delete', 'setid' => $fieldsetID]),
+        urlHandlerBuild(['action' => 'delete', 'set_id' => $fieldsetID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmFieldsetDelete, $fieldsetName)
     );
 } elseif ($pageAction == 'editOption') {
     $fieldData = fieldsGet(
-        ["fid='{$fieldID}'", "setid='{$fieldsetID}'", "html_type In ('db', 'radio')"],
+        ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'", "html_type In ('db', 'radio')"],
         ['name'],
         ['limit' => 1]
     );
@@ -1004,21 +1004,21 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     if (!$fieldData) {
         flash_message($lang->myshowcase_field_invalid_id, 'error');
 
-        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
     }
 
     $can_edit = true;
 
-    foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
+    foreach (showcaseGet(["field_set_id='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
         if (showcaseDataTableExists($showcaseID)) {
             $can_edit = false;
         }
     }
 
-    $fieldOptionData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldOptionData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     $page->add_breadcrumb_item(
-        $lang->sprintf($lang->myshowcase_admin_edit_fieldopt, $fieldData['name'], $fieldOptionData['setname']),
+        $lang->sprintf($lang->myshowcase_admin_edit_fieldopt, $fieldData['name'], $fieldOptionData['set_name']),
         urlHandlerBuild()
     );
 
@@ -1032,37 +1032,37 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     if ($mybb->request_method === 'post') {
         //apply changes to existing fields first
         $fieldOptionObjects = fieldDataGet(
-            ["setid='{$fieldsetID}'", "fid='{$fieldID}'"],
-            ['valueid', 'value', 'disporder']
+            ["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"],
+            ['value_id', 'value', 'display_order']
         );
 
         foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
-            $fieldOptionValueID = (int)$fieldOptionData['valueid'];
+            $fieldOptionValueID = (int)$fieldOptionData['value_id'];
 
             fieldDataUpdate(
-                ["setid='{$fieldsetID}'", "fid='{$fieldID}'", "valueid='{$fieldOptionValueID}'"],
+                ["set_id='{$fieldsetID}'", "field_id='{$fieldID}'", "value_id='{$fieldOptionValueID}'"],
                 [
                     'value' => $db->escape_string(
                         $mybb->get_input('value', MyBB::INPUT_ARRAY)[$fieldOptionValueID] ?? $fieldOptionData['value']
                     ),
-                    'disporder' => (int)($mybb->get_input(
-                        'disporder',
+                    'display_order' => (int)($mybb->get_input(
+                        'display_order',
                         MyBB::INPUT_ARRAY
-                    )[$fieldOptionValueID] ?? $fieldOptionData['disporder']),
+                    )[$fieldOptionValueID] ?? $fieldOptionData['display_order']),
                 ]
             );
         }
 
         if ($mybb->get_input('value') &&
             $fieldOptionValue &&
-            $mybb->get_input('disporder', MyBB::INPUT_INT)) {
+            $mybb->get_input('display_order', MyBB::INPUT_INT)) {
             $fieldOptionData = [
-                'setid' => $fieldsetID,
-                'fid' => $fieldID,
+                'set_id' => $fieldsetID,
+                'field_id' => $fieldID,
                 'name' => $db->escape_string($mybb->get_input('name')),
                 'value' => $db->escape_string($mybb->get_input('value')),
-                'valueid' => $fieldOptionValue,
-                'disporder' => $mybb->get_input('disporder', MyBB::INPUT_INT)
+                'value_id' => $fieldOptionValue,
+                'display_order' => $mybb->get_input('display_order', MyBB::INPUT_INT)
             ];
 
             fieldDataInsert($fieldOptionData);
@@ -1081,12 +1081,12 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         flash_message($lang->myshowcase_field_update_opt_success, 'success');
 
         admin_redirect(
-            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
         );
     }
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
         'post',
         'editOption'
     );
@@ -1113,9 +1113,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     $maximumViewOrder = 0;
 
     $fieldOptionObjects = fieldDataGet(
-        ["setid='{$fieldsetID}'", "fid='{$fieldID}'"],
-        ['valueid', 'name', 'value', 'disporder'],
-        ['order_by' => 'valueid']
+        ["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"],
+        ['value_id', 'name', 'value', 'display_order'],
+        ['order_by' => 'value_id']
     );
 
     if (!$fieldOptionObjects) {
@@ -1130,9 +1130,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $maximumViewOrder = 0;
 
         foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
-            $fieldOptionValueID = (int)$fieldOptionData['valueid'];
+            $fieldOptionValueID = (int)$fieldOptionData['value_id'];
 
-            $maximumViewOrder = max($maximumViewOrder, $fieldOptionData['disporder']);
+            $maximumViewOrder = max($maximumViewOrder, $fieldOptionData['display_order']);
 
             $maximumViewOrder = max($maximumViewOrder, $fieldOptionValueID);
 
@@ -1152,9 +1152,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $formContainer->output_cell(
                 $form->generate_numeric_field(
-                    "disporder[{$fieldOptionValueID}]",
-                    $fieldOptionData['disporder'],
-                    ['id' => "disporder[{$fieldOptionValueID}]", 'class' => 'align_center field50', 'min' => 0]
+                    "display_order[{$fieldOptionValueID}]",
+                    $fieldOptionData['display_order'],
+                    ['id' => "display_order[{$fieldOptionValueID}]", 'class' => 'align_center field50', 'min' => 0]
                 ),
                 ['class' => 'align_center']
             );
@@ -1166,9 +1166,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                     $lang->myshowcase_field_delete,
                     urlHandlerBuild([
                         'action' => 'deleteOption',
-                        'setid' => $fieldsetID,
-                        'fid' => $fieldID,
-                        'valueid' => $fieldOptionValueID
+                        'set_id' => $fieldsetID,
+                        'field_id' => $fieldID,
+                        'value_id' => $fieldOptionValueID
                     ]),
                 );
             }
@@ -1192,7 +1192,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     echo '<br />';
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+        urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
         'post',
         'editOption'
     );
@@ -1216,13 +1216,13 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     echo $form->generate_hidden_field('name', $fieldData['name']);
 
-    echo $form->generate_hidden_field('valueid', ++$maximumViewOrder);
+    echo $form->generate_hidden_field('value_id', ++$maximumViewOrder);
 
     $formContainer->output_cell(
         $form->generate_numeric_field(
-            'disporder',
+            'display_order',
             ++$maximumViewOrder,
-            ['id' => 'disporder', 'class' => 'align_center field50', 'min' => 0]
+            ['id' => 'display_order', 'class' => 'align_center field50', 'min' => 0]
         ),
         ['class' => 'align_center']
     );
@@ -1237,7 +1237,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $form->end();
 } elseif ($pageAction == 'deleteOption') {
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (!$fieldsetData) {
         flash_message($lang->myShowcaseAdminErrorInvalidFieldset, 'error');
@@ -1245,23 +1245,23 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         admin_redirect(urlHandlerBuild());
     }
 
-    $fieldOptionData = fieldDataGet(["setid='{$fieldsetID}'", "valueid='{$fieldOptionValue}'"], ['name']);
+    $fieldOptionData = fieldDataGet(["set_id='{$fieldsetID}'", "value_id='{$fieldOptionValue}'"], ['name']);
 
     if (!$fieldOptionData) {
         flash_message($lang->myshowcase_field_invalid_opt, 'error');
 
         admin_redirect(
-            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID]),
+            urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID]),
         );
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"], [], ['limit' => 1]);
+    $showcaseObjects = showcaseGet(["field_set_id='{$fieldsetID}'"], [], ['limit' => 1]);
 
     if (!empty($showcaseObjects)) {
         flash_message($lang->myshowcase_fields_in_use, 'error');
 
         admin_redirect(
-            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
         );
     }
 
@@ -1272,19 +1272,19 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
 
             admin_redirect(
-                urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+                urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
             );
         }
 
         if (isset($mybb->input['no'])) {
             admin_redirect(
-                urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+                urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
             );
         }
 
         hooksRun('admin_option_delete_post');
 
-        fieldDataDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'", "valueid='{$fieldOptionValue}'"]);
+        fieldDataDelete(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'", "value_id='{$fieldOptionValue}'"]);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -1294,26 +1294,26 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         cacheUpdate(CACHE_TYPE_FIELD_SETS);
 
-        log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID, 'valueid' => $fieldOptionValue]);
+        log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID, 'value_id' => $fieldOptionValue]);
 
         flash_message($lang->myshowcase_field_delete_opt_success, 'success');
 
         admin_redirect(
-            urlHandlerBuild(['action' => 'editOption', 'setid' => $fieldsetID, 'fid' => $fieldID]),
+            urlHandlerBuild(['action' => 'editOption', 'set_id' => $fieldsetID, 'field_id' => $fieldID]),
         );
     }
 
     $page->output_confirm_action(
         urlHandlerBuild([
             'action' => 'deleteOption',
-            'setid' => $fieldsetID,
-            'fid' => $fieldID,
-            'valueid' => $fieldOptionValue
+            'set_id' => $fieldsetID,
+            'field_id' => $fieldID,
+            'value_id' => $fieldOptionValue
         ]),
-        $lang->sprintf($lang->myShowcaseAdminConfirmFieldsetDelete, $fieldsetData['setname'])
+        $lang->sprintf($lang->myShowcaseAdminConfirmFieldsetDelete, $fieldsetData['set_name'])
     );
 } elseif ($pageAction == 'deleteField') {
-    $fieldsetData = fieldsetGet(["setid='{$fieldsetID}'"], ['setname'], ['limit' => 1]);
+    $fieldsetData = fieldsetGet(["set_id='{$fieldsetID}'"], ['set_name'], ['limit' => 1]);
 
     if (!$fieldsetData) {
         flash_message($lang->myshowcase_fields_invalid_id, 'error');
@@ -1321,18 +1321,18 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         admin_redirect(urlHandlerBuild());
     }
 
-    $fieldData = fieldsGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"], ['name'], ['limit' => 1]);
+    $fieldData = fieldsGet(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"], ['name'], ['limit' => 1]);
 
-    if (empty($fieldData['fid'])) {
+    if (empty($fieldData['field_id'])) {
         flash_message($lang->myshowcase_field_invalid_id, 'error');
         admin_redirect(
-            urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]),
+            urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]),
         );
     }
 
-    $showcaseObjects = showcaseGet(["fieldsetid='{$fieldsetID}'"]);
+    $showcaseObjects = showcaseGet(["field_set_id='{$fieldsetID}'"]);
 
-    $fieldName = $fieldData['name'] ?? $fieldData['id'];
+    $fieldName = $fieldData['name'] ?? $fieldData['field_id'];
 
     $fieldIsInUse = false;
 
@@ -1351,7 +1351,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     if ($fieldIsInUse) {
         flash_message($lang->myshowcase_field_in_use, 'error');
 
-        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
     }
 
     hooksRun('admin_field_delete_start');
@@ -1364,7 +1364,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         }
 
         if (isset($mybb->input['no'])) {
-            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+            admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
         }
 
         hooksRun('admin_field_delete_post');
@@ -1375,11 +1375,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             ['myshowcase_field_' . $fieldName => '']
         );
 
-        if (fieldDataGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
-            fieldDataDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'"]);
+        if (fieldDataGet(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"])) {
+            fieldDataDelete(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"]);
         }
 
-        fieldsDelete(["setid='{$fieldsetID}'", "fid='{$fieldID}'"]);
+        fieldsDelete(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"]);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -1391,17 +1391,17 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         log_admin_action(['fieldsetID' => $fieldsetID, 'fieldID' => $fieldID]);
 
-        if (fieldsGet(["setid='{$fieldsetID}'", "fid='{$fieldID}'"])) {
+        if (fieldsGet(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"])) {
             flash_message($lang->myShowcaseAdminErrorFieldDelete, 'success');
         } else {
             flash_message($lang->myShowcaseAdminSuccessFieldDeleted, 'success');
         }
 
-        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]));
+        admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'deleteField', 'fid' => $fieldID, 'setid' => $fieldsetID]),
+        urlHandlerBuild(['action' => 'deleteField', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmFieldDelete, $fieldName)
     );
 } else {
@@ -1440,7 +1440,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $formContainer->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
 
-    $fieldsetObjects = fieldsetGet([], ['setid', 'setname'], ['order_by' => 'setname']);
+    $fieldsetObjects = fieldsetGet([], ['set_id', 'set_name'], ['order_by' => 'set_name']);
 
     if (!$fieldsetObjects) {
         $formContainer->output_cell($lang->myshowcase_fields_no_fieldsets, ['colspan' => 6]);
@@ -1448,29 +1448,29 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $formContainer->construct_row();
     } else {
         foreach ($fieldsetObjects as $fieldsetID => $result) {
-            $viewOptionsUrl = urlHandlerBuild(['action' => 'viewFields', 'setid' => $fieldsetID]);
+            $viewOptionsUrl = urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]);
 
-            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
+            foreach (showcaseGet(["field_set_id='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
                 if (showcaseDataTableExists($showcaseID)) {
                     $can_edit = false;
                 }
             }
 
             $totalUsedOn = showcaseGet(
-                ["fieldsetid='{$fieldsetID}'"],
-                ['COUNT(id) AS totalUsedOn'],
-                ['limit' => 1, 'group_by' => 'id']
+                ["field_set_id='{$fieldsetID}'"],
+                ['COUNT(showcase_id) AS totalUsedOn'],
+                ['limit' => 1, 'group_by' => 'showcase_id']
             )['totalUsedOn'] ?? 0;
 
             $totalFields = fieldsGet(
-                ["setid='{$fieldsetID}'"],
-                ['COUNT(fid) AS totalFields'],
-                ['limit' => 1, 'group_by' => 'fid']
+                ["set_id='{$fieldsetID}'"],
+                ['COUNT(field_id) AS totalFields'],
+                ['limit' => 1, 'group_by' => 'field_id']
             )['totalFields'] ?? 0;
 
             $totalTablesUsedOn = 0;
 
-            foreach (showcaseGet(["fieldsetid='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
+            foreach (showcaseGet(["field_set_id='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
                 if (showcaseDataTableExists($showcaseID)) {
                     ++$totalTablesUsedOn;
                 }
@@ -1481,7 +1481,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $popup->add_item(
                 $lang->edit,
-                urlHandlerBuild(['action' => 'edit', 'setid' => $fieldsetID]),
+                urlHandlerBuild(['action' => 'edit', 'set_id' => $fieldsetID]),
             );
 
             $popup->add_item(
@@ -1491,7 +1491,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
             $popup->add_item(
                 $lang->delete,
-                urlHandlerBuild(['action' => 'delete', 'setid' => $fieldsetID]),
+                urlHandlerBuild(['action' => 'delete', 'set_id' => $fieldsetID]),
             );
 
             //grab status images for language file
@@ -1516,7 +1516,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             $formContainer->output_cell($fieldsetID, ['class' => 'align_center']);
 
             $formContainer->output_cell(
-                "<a href='{$viewOptionsUrl}'>{$result['setname']}</a>",
+                "<a href='{$viewOptionsUrl}'>{$result['set_name']}</a>",
             );
 
             $formContainer->output_cell($totalFields, ['class' => 'align_center']);

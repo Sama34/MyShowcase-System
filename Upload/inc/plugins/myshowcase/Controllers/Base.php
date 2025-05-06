@@ -92,7 +92,7 @@ abstract class Base
 //try to load showcase specific language file
         loadLanguage();
 
-        loadLanguage('myshowcase' . $showcaseObject->id, false, true);
+        loadLanguage('myshowcase' . $showcaseObject->showcase_id, false, true);
 
         ini_set('display_errors', 1);
 

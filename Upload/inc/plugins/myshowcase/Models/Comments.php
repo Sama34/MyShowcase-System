@@ -43,6 +43,6 @@ class Comments extends Base
     ): array {
         $queryOptions['limit'] = 1;
 
-        return commentsGet(["cid='{$commentID}'"], $queryFields, $queryOptions);
+        return commentsGet(["comment_id='{$commentID}'"], $queryFields, $queryOptions);
     }
 }

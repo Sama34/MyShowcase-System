@@ -84,7 +84,7 @@ $l['myShowcaseMainSearchMatch'] = 'exact match';
 $l['myShowcaseMainTableEmpty'] = 'There are no entries at this time.';
 $l['myShowcaseMainTableEmptySearch'] = 'The search returned no results. Please try another search term.';
 $l['myshowcase_invalid_id'] = 'The specified Entry ID is invalid.';
-$l['myshowcase_invalid_cid'] = 'The specified Comment ID is invalid.';
+$l['myshowcase_invalid_comment_id'] = 'The specified Comment ID is invalid.';
 $l['myshowcase_invalid_aid'] = 'The specified Attachment ID is invalid.';
 $l['myshowcase_not_specified'] = 'Not Specified';
 

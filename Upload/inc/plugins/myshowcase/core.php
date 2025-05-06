@@ -174,48 +174,48 @@ const GUEST_GROUP_ID = 1;
 
 const TABLES_DATA = [
     'myshowcase_attachments' => [
-        'aid' => [
+        'attachment_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 1
         ],
-        'gid' => [
+        'entry_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0,
         ],
-        'posthash' => [
+        'entry_hash' => [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
         ],
-        'uid' => [
+        'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0,
         ],
-        'filename' => [
+        'file_name' => [
             'type' => 'VARCHAR',
             'size' => 120,
             'default' => ''
         ],
-        'filetype' => [
+        'file_type' => [
             'type' => 'VARCHAR',
             'size' => 120,
             'default' => ''
         ],
-        'filesize' => [
+        'file_size' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'attachname' => [
+        'attachment_name' => [
             'type' => 'VARCHAR',
             'size' => 120,
             'default' => ''
@@ -225,7 +225,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'dateuploaded' => [
+        'dateline' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -235,30 +235,30 @@ const TABLES_DATA = [
             'size' => 120,
             'default' => ''
         ],
-        'visible' => [
+        'status' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
     ],
     'myshowcase_comments' => [
-        'cid' => [
+        'comment_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 1
         ],
-        'gid' => [
+        'entry_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'uid' => [
+        'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -283,15 +283,15 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 1
         ],
-        'moderator_uid' => [
+        'moderator_user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        //'unique_key' => ['cid_gid' => 'cid,gid']
+        //'unique_key' => ['entry_comment_id' => 'entry_id,comment_id']
     ],
     'myshowcase_config' => [
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
@@ -319,27 +319,27 @@ const TABLES_DATA = [
             'size' => 50,
             'default' => ''
         ],
-        'fieldsetid' => [
+        'field_set_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 1
         ],
-        'imgfolder' => [
+        'images_directory' => [
             'type' => 'VARCHAR',
             'size' => 255,
             'default' => ''
         ],
-        'defaultimage' => [
+        'default_image' => [
             'type' => 'VARCHAR',
             'null' => true,
             'size' => 50,
         ],
-        'watermarkimage' => [
+        'water_mark_image' => [
             'type' => 'VARCHAR',
             'null' => true,
             'size' => 50,
         ],
-        'watermarkloc' => [
+        'water_mark_image_location' => [
             'type' => 'VARCHAR',
             'size' => 12,
             'default' => 'lower-right'
@@ -349,7 +349,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'f2gpath' => [
+        'relative_path' => [
             'type' => 'VARCHAR',
             'size' => 255,
             'default' => ''
@@ -359,32 +359,32 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'allowsmilies' => [
+        'allow_smilies' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'allowbbcode' => [
+        'allow_mycode' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'allowhtml' => [
+        'allow_html' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'prunetime' => [
+        'prune_time' => [
             'type' => 'VARCHAR',
             'size' => 10,
             'default' => 0
         ],
-        'modnewedit' => [
+        'moderate_edits' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1
         ],
-        'othermaxlength' => [
+        'maximum_text_field_lenght' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 500
@@ -414,27 +414,27 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 200
         ],
-        'comment_dispinit' => [
+        'comments_per_page' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 5
         ],
-        'disp_attachcols' => [
+        'attachments_per_row' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'disp_empty' => [
+        'display_empty_fields' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1
         ],
-        'link_in_postbit' => [
+        'display_in_posts' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'portal_random' => [
+        'build_random_entry_widget' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -449,31 +449,31 @@ const TABLES_DATA = [
         // todo, latest entries helper
     ],
     'myshowcase_fieldsets' => [
-        'setid' => [
+        'set_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'setname' => [
+        'set_name' => [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => ''
         ],
     ],
     'myshowcase_permissions' => [
-        'pid' => [
+        'permission_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'gid' => [
+        'group_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -539,23 +539,23 @@ const TABLES_DATA = [
         ],
     ],
     'myshowcase_moderators' => [
-        'mid' => [
+        'moderator_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'uid' => [
+        'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'isgroup' => [
+        'is_group' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -580,7 +580,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'unique_key' => ['id_uid_isgroup' => 'id,uid,isgroup']
+        'unique_key' => ['id_uid_isgroup' => 'showcase_id,user_id,is_group']
     ],
     // todo, should integrate into the code report system
     'myshowcase_reports' => [
@@ -590,12 +590,12 @@ const TABLES_DATA = [
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'id' => [
+        'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'gid' => [
+        'entry_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -627,13 +627,13 @@ const TABLES_DATA = [
         ],
     ],
     'myshowcase_fields' => [
-        'fid' => [
+        'field_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'setid' => [
+        'set_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -658,36 +658,36 @@ const TABLES_DATA = [
             'size' => 10,
             'default' => FIELD_TYPE_STORAGE_VARCHAR
         ],
-        'min_length' => [
+        'minimum_length' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'max_length' => [
+        'maximum_length' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'requiredField' => [
+        'is_required' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
-        ], // todo, rename from require to requiredField
+        ],
         'parse' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'field_order' => [
+        'display_order' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'list_table_order' => [
+        'render_order' => [
             'type' => 'SMALLINT',
             'default' => ALL_UNLIMITED_VALUE
         ],
-        'searchable' => [
+        'enable_search' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -698,23 +698,23 @@ const TABLES_DATA = [
             'size' => 10,
             'default' => FORMAT_TYPE_NONE
         ],
-        'unique_key' => ['setid_fid' => 'setid,fid']
+        'unique_key' => ['setid_fid' => 'set_id,field_id']
         // todo, add view permission
         // todo, add edit permission
         // todo, validation regex for text fields
     ],
     'myshowcase_field_data' => [
-        'fieldDataID' => [
+        'field_data_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'setid' => [
+        'set_id' => [
             'type' => 'INT',
             'unsigned' => true,
         ],
-        'fid' => [
+        'field_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -725,7 +725,7 @@ const TABLES_DATA = [
             'default' => '',
             //'unique_key' => true
         ],
-        'valueid' => [
+        'value_id' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 0
@@ -735,12 +735,12 @@ const TABLES_DATA = [
             'size' => 15,
             'default' => ''
         ],
-        'disporder' => [
+        'display_order' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 0
         ],
-        'unique_key' => ['setid_fid_valueid' => 'setid,fid,valueid']
+        'unique_key' => ['setid_fid_valueid' => 'set_id,field_id,value_id']
     ],
 ];
 
@@ -750,18 +750,18 @@ const FIELDS_DATA = [
 // todo, add field setting to order entries by (i.e: sticky)
 // todo, add field setting to block entries by (i.e: closed)
 // todo, add field setting to record changes by (i.e: history)
-// todo, add field setting to search fields data (i.e: searchable)
+// todo, add field setting to search fields data (i.e: enable_search)
 // todo, integrate Feedback plugin into entries, per showcase
 // todo, integrate Custom Rates plugin into entries, per showcase
 const DATA_TABLE_STRUCTURE = [
     'myshowcase_data' => [
-        'gid' => [
+        'entry_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'auto_increment' => true,
             'primary_key' => true
         ],
-        'uid' => [
+        'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -776,28 +776,17 @@ const DATA_TABLE_STRUCTURE = [
             'unsigned' => true,
             'default' => 0,
         ],
-        'submit_date' => [
-            'type' => 'VARCHAR',
-            'size' => 20,
-            'default' => ''
-        ],
         'dateline' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
         ],
-        'createdate' => [
         'status' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 1
         ],
-        'moderator_uid' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'dateline' => [
+        'moderator_user_id' => [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
@@ -817,7 +806,7 @@ const DATA_TABLE_STRUCTURE = [
             'unsigned' => true,
             'default' => 0
         ],
-        'posthash' => [
+        'entry_hash' => [
             'type' => 'VARCHAR',
             'size' => 32,
             'default' => ''
@@ -1035,35 +1024,35 @@ function cacheUpdate(string $cacheKey): array
 
             foreach ($showcaseObjects as $showcaseID => $showcaseData) {
                 $cacheData[$showcaseID] = [
-                    'id' => $showcaseID,
+                    'showcase_id' => $showcaseID,
                     'name' => (string)$showcaseData['name'],
                     'showcase_slug' => (string)$showcaseData['showcase_slug'],
                     'description' => (string)$showcaseData['description'],
                     'mainfile' => (string)$showcaseData['mainfile'],
-                    'fieldsetid' => (int)$showcaseData['fieldsetid'],
-                    'imgfolder' => (string)$showcaseData['imgfolder'],
-                    'defaultimage' => (string)$showcaseData['defaultimage'],
-                    'watermarkimage' => (string)$showcaseData['watermarkimage'],
-                    'watermarkloc' => (string)$showcaseData['watermarkloc'],
+                    'field_set_id' => (int)$showcaseData['field_set_id'],
+                    'images_directory' => (string)$showcaseData['images_directory'],
+                    'default_image' => (string)$showcaseData['default_image'],
+                    'water_mark_image' => (string)$showcaseData['water_mark_image'],
+                    'water_mark_image_location' => (string)$showcaseData['water_mark_image_location'],
                     'use_attach' => (bool)$showcaseData['use_attach'],
-                    'f2gpath' => (string)$showcaseData['f2gpath'],
+                    'relative_path' => (string)$showcaseData['relative_path'],
                     'enabled' => (bool)$showcaseData['enabled'],
-                    'allowsmilies' => (bool)$showcaseData['allowsmilies'],
-                    'allowbbcode' => (bool)$showcaseData['allowbbcode'],
-                    'allowhtml' => (bool)$showcaseData['allowhtml'],
-                    'prunetime' => (int)$showcaseData['prunetime'],
-                    'modnewedit' => (bool)$showcaseData['modnewedit'],
-                    'othermaxlength' => (int)$showcaseData['othermaxlength'],
+                    'allow_smilies' => (bool)$showcaseData['allow_smilies'],
+                    'allow_mycode' => (bool)$showcaseData['allow_mycode'],
+                    'allow_html' => (bool)$showcaseData['allow_html'],
+                    'prune_time' => (int)$showcaseData['prune_time'],
+                    'moderate_edits' => (bool)$showcaseData['moderate_edits'],
+                    'maximum_text_field_lenght' => (int)$showcaseData['maximum_text_field_lenght'],
                     'allow_attachments' => (bool)$showcaseData['allow_attachments'],
                     'allow_comments' => (bool)$showcaseData['allow_comments'],
                     'thumb_width' => (int)$showcaseData['thumb_width'],
                     'thumb_height' => (int)$showcaseData['thumb_height'],
                     'comment_length' => (int)$showcaseData['comment_length'],
-                    'comment_dispinit' => (int)$showcaseData['comment_dispinit'],
-                    'disp_attachcols' => (int)$showcaseData['disp_attachcols'],
-                    'disp_empty' => (bool)$showcaseData['disp_empty'],
-                    'link_in_postbit' => (bool)$showcaseData['link_in_postbit'],
-                    'portal_random' => (bool)$showcaseData['portal_random'],
+                    'comments_per_page' => (int)$showcaseData['comments_per_page'],
+                    'attachments_per_row' => (int)$showcaseData['attachments_per_row'],
+                    'display_empty_fields' => (bool)$showcaseData['display_empty_fields'],
+                    'display_in_posts' => (bool)$showcaseData['display_in_posts'],
+                    'build_random_entry_widget' => (bool)$showcaseData['build_random_entry_widget'],
                     'display_signatures' => (bool)$showcaseData['display_signatures'],
                 ];
             }
@@ -1076,10 +1065,10 @@ function cacheUpdate(string $cacheKey): array
             );
 
             foreach ($permissionsObjects as $permissionID => $permissionData) {
-                $cacheData[(int)$permissionData['id']][(int)$permissionData['gid']] = [
-                    'pid' => (int)$permissionData['pid'],
-                    'id' => (int)$permissionData['id'],
-                    'gid' => (int)$permissionData['gid'],
+                $cacheData[(int)$permissionData['showcase_id']][(int)$permissionData['group_id']] = [
+                    'permission_id' => (int)$permissionData['permission_id'],
+                    'showcase_id' => (int)$permissionData['showcase_id'],
+                    'group_id' => (int)$permissionData['group_id'],
                     UserPermissions::CanAddEntries => !empty($permissionData[UserPermissions::CanAddEntries]),
                     UserPermissions::CanEditEntries => !empty($permissionData[UserPermissions::CanEditEntries]),
                     UserPermissions::CanAttachFiles => !empty($permissionData[UserPermissions::CanAttachFiles]),
@@ -1099,13 +1088,13 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_FIELD_SETS:
             $fieldsetObjects = fieldsetGet(
                 [],
-                ['setid', 'setname']
+                ['set_id', 'set_name']
             );
 
             foreach ($fieldsetObjects as $fieldsetID => $fieldsetData) {
                 $cacheData[$fieldsetID] = [
-                    'setid' => (int)$fieldsetData['setid'],
-                    'setname' => (string)$fieldsetData['setname'],
+                    'set_id' => (int)$fieldsetData['set_id'],
+                    'set_name' => (string)$fieldsetData['set_name'],
                 ];
             }
 
@@ -1118,24 +1107,24 @@ function cacheUpdate(string $cacheKey): array
             $fieldObjects = fieldsGet(
                 [],
                 array_keys($queryFields),
-                ['order_by' => 'setid, field_order']
+                ['order_by' => 'set_id, display_order']
             );
 
             foreach ($fieldObjects as $fieldID => $fieldData) {
-                $cacheData[(int)$fieldData['setid']][$fieldID] = [
-                    'fid' => (int)$fieldData['fid'],
-                    'setid' => (int)$fieldData['setid'],
+                $cacheData[(int)$fieldData['set_id']][$fieldID] = [
+                    'field_id' => (int)$fieldData['field_id'],
+                    'set_id' => (int)$fieldData['set_id'],
                     'name' => (string)$fieldData['name'],
                     'html_type' => (string)$fieldData['html_type'],
                     'enabled' => (bool)$fieldData['enabled'],
                     'field_type' => (string)$fieldData['field_type'],
-                    'min_length' => (int)$fieldData['min_length'],
-                    'max_length' => (int)$fieldData['max_length'],
-                    'requiredField' => (bool)$fieldData['requiredField'],
+                    'minimum_length' => (int)$fieldData['minimum_length'],
+                    'maximum_length' => (int)$fieldData['maximum_length'],
+                    'is_required' => (bool)$fieldData['is_required'],
                     'parse' => (bool)$fieldData['parse'],
-                    'field_order' => (int)$fieldData['field_order'],
-                    'list_table_order' => (int)$fieldData['list_table_order'],
-                    'searchable' => (bool)$fieldData['searchable'],
+                    'display_order' => (int)$fieldData['display_order'],
+                    'render_order' => (int)$fieldData['render_order'],
+                    'enable_search' => (bool)$fieldData['enable_search'],
                     'format' => (string)$fieldData['format'],
                 ];
             }
@@ -1144,12 +1133,12 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_FIELD_DATA;
             $fieldDataObjects = fieldDataGet(
                 [],
-                ['setid', 'fid', 'valueid', 'value', 'valueid', 'disporder'],
-                ['order_by' => 'setid, fid, disporder']
+                ['set_id', 'field_id', 'value_id', 'value', 'value_id', 'display_order'],
+                ['order_by' => 'set_id, field_id, display_order']
             );
 
             foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
-                $cacheData[(int)$fieldData['setid']][$fieldDataID][(int)$fieldData['valueid']] = $fieldData;
+                $cacheData[(int)$fieldData['set_id']][$fieldDataID][(int)$fieldData['value_id']] = $fieldData;
             }
 
             break;
@@ -1157,10 +1146,10 @@ function cacheUpdate(string $cacheKey): array
             $moderatorObjects = moderatorGet(
                 [],
                 [
-                    'mid',
-                    'id',
-                    'uid',
-                    'isgroup',
+                    'moderator_id',
+                    'showcase_id',
+                    'user_id',
+                    'is_group',
                     ModeratorPermissions::CanApproveEntries,
                     ModeratorPermissions::CanEditEntries,
                     ModeratorPermissions::CanDeleteEntries,
@@ -1169,18 +1158,18 @@ function cacheUpdate(string $cacheKey): array
             );
 
             foreach ($moderatorObjects as $moderatorID => $moderatorData) {
-                $cacheData[(int)$moderatorData['id']][$moderatorID] = $moderatorData;
+                $cacheData[(int)$moderatorData['showcase_id']][$moderatorID] = $moderatorData;
             }
 
             break;
         case CACHE_TYPE_REPORTS;
             $reportObjects = reportGet(
                 ["status='0'"],
-                ['rid', 'id', 'gid', 'reporteruid', 'authoruid', 'status', 'reason', 'dateline']
+                ['rid', 'showcase_id', 'entry_id', 'reporteruid', 'authoruid', 'status', 'reason', 'dateline']
             );
 
             foreach ($reportObjects as $reportID => $reportData) {
-                $cacheData[(int)$reportData['id']][(int)$reportData['gid']][$reportID] = $reportData;
+                $cacheData[(int)$reportData['showcase_id']][(int)$reportData['entry_id']][$reportID] = $reportData;
             }
 
             break;
@@ -1222,7 +1211,7 @@ function showcaseUpdate(int $showcaseID, array $showcaseData): bool
     $db->update_query(
         'myshowcase_config',
         $showcaseData,
-        "id='{$showcaseID}'"
+        "showcase_id='{$showcaseID}'"
     );
 
     return true;
@@ -1243,7 +1232,7 @@ function showcaseGet(array $whereClauses = [], array $queryFields = [], array $q
 
     $query = $db->simple_select(
         'myshowcase_config',
-        implode(',', array_merge(['id'], $queryFields)),
+        implode(',', array_merge(['showcase_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1255,7 +1244,7 @@ function showcaseGet(array $whereClauses = [], array $queryFields = [], array $q
     $showcaseObjects = [];
 
     while ($showcaseData = $db->fetch_array($query)) {
-        $showcaseObjects[(int)$showcaseData['id']] = $showcaseData;
+        $showcaseObjects[(int)$showcaseData['showcase_id']] = $showcaseData;
     }
 
     return $showcaseObjects;
@@ -1303,12 +1292,13 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
 {
     global $db;
 
-    $showcaseFieldSetID = (int)(showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1])['fieldsetid'] ?? 0);
+    $showcaseFieldSetID = (int)(showcaseGet(["showcase_id='{$showcaseID}'"], ['field_set_id'], ['limit' => 1]
+    )['field_set_id'] ?? 0);
 
     $fieldObjects = fieldsGet(
-        ["setid='{$showcaseFieldSetID}'", "enabled='1'"],
+        ["set_id='{$showcaseFieldSetID}'", "enabled='1'"],
         [
-            'fid',
+            'field_id',
             'name',
             'field_type'
         ]
@@ -1320,8 +1310,8 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
         $showcaseInsertData['slug'] = $db->escape_string($entryData['slug']);
     }
 
-    if (isset($entryData['uid'])) {
-        $showcaseInsertData['uid'] = (int)$entryData['uid'];
+    if (isset($entryData['user_id'])) {
+        $showcaseInsertData['user_id'] = (int)$entryData['user_id'];
     }
 
     if (isset($entryData['views'])) {
@@ -1346,8 +1336,8 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
         $showcaseInsertData['status'] = (int)$entryData['status'];
     }
 
-    if (isset($entryData['moderator_uid'])) {
-        $showcaseInsertData['moderator_uid'] = (int)$entryData['moderator_uid'];
+    if (isset($entryData['moderator_user_id'])) {
+        $showcaseInsertData['moderator_user_id'] = (int)$entryData['moderator_user_id'];
     }
 
     if (isset($entryData['dateline'])) {
@@ -1366,8 +1356,8 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
         $showcaseInsertData['approved_by'] = (int)$entryData['approved_by'];
     }
 
-    if (isset($entryData['posthash'])) {
-        $showcaseInsertData['posthash'] = $db->escape_string($entryData['posthash']);
+    if (isset($entryData['entry_hash'])) {
+        $showcaseInsertData['entry_hash'] = $db->escape_string($entryData['entry_hash']);
     }
 
     foreach ($fieldObjects as $fieldID => $fieldData) {
@@ -1410,7 +1400,7 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
     }
 
     if ($isUpdate) {
-        $db->update_query('myshowcase_data' . $showcaseID, $showcaseInsertData, "gid='{$entryID}'");
+        $db->update_query('myshowcase_data' . $showcaseID, $showcaseInsertData, "entry_id='{$entryID}'");
     } elseif ($showcaseInsertData) {
         $entryID = $db->insert_query('myshowcase_data' . $showcaseID, $showcaseInsertData);
     }
@@ -1433,7 +1423,7 @@ function showcaseDataGet(
 
     $query = $db->simple_select(
         'myshowcase_data' . $showcaseID,
-        implode(',', array_merge(['gid'], $queryFields)),
+        implode(',', array_merge(['entry_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1445,11 +1435,11 @@ function showcaseDataGet(
     $entriesObjects = [];
 
     while ($fieldValueData = $db->fetch_array($query)) {
-        $entriesObjects[(int)$fieldValueData['gid']] = $fieldValueData;
+        $entriesObjects[(int)$fieldValueData['entry_id']] = $fieldValueData;
 
         foreach (DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
-            if (isset($entriesObjects[(int)$fieldValueData['gid']][$defaultFieldKey])) {
-                //$entriesObjects[(int)$fieldValueData['gid']][$defaultFieldKey] = 123;
+            if (isset($entriesObjects[(int)$fieldValueData['entry_id']][$defaultFieldKey])) {
+                //$entriesObjects[(int)$fieldValueData['entry_id']][$defaultFieldKey] = 123;
             }
         }
     }
@@ -1494,7 +1484,7 @@ function permissionsGet(array $whereClauses = [], array $queryFields = [], array
 
     $query = $db->simple_select(
         'myshowcase_permissions',
-        implode(',', array_merge(['pid'], $queryFields)),
+        implode(',', array_merge(['permission_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1506,7 +1496,7 @@ function permissionsGet(array $whereClauses = [], array $queryFields = [], array
     $permissionData = [];
 
     while ($permission = $db->fetch_array($query)) {
-        $permissionData[(int)$permission['pid']] = $permission;
+        $permissionData[(int)$permission['permission_id']] = $permission;
     }
 
     return $permissionData;
@@ -1540,7 +1530,7 @@ function moderatorGet(array $whereClauses = [], array $queryFields = [], array $
 
     $query = $db->simple_select(
         'myshowcase_moderators',
-        implode(',', array_merge(['mid'], $queryFields)),
+        implode(',', array_merge(['moderator_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1552,7 +1542,7 @@ function moderatorGet(array $whereClauses = [], array $queryFields = [], array $
     $moderatorData = [];
 
     while ($moderator = $db->fetch_array($query)) {
-        $moderatorData[(int)$moderator['mid']] = $moderator;
+        $moderatorData[(int)$moderator['moderator_id']] = $moderator;
     }
 
     return $moderatorData;
@@ -1583,7 +1573,7 @@ function fieldsetUpdate(int $fieldsetID, array $fieldsetData): bool
     $db->update_query(
         'myshowcase_fieldsets',
         $fieldsetData,
-        "setid='{$fieldsetID}'"
+        "set_id='{$fieldsetID}'"
     );
 
     return true;
@@ -1595,7 +1585,7 @@ function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $q
 
     $query = $db->simple_select(
         'myshowcase_fieldsets',
-        implode(',', array_merge(['setid'], $queryFields)),
+        implode(',', array_merge(['set_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1607,7 +1597,7 @@ function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $q
     $fieldsetData = [];
 
     while ($fieldset = $db->fetch_array($query)) {
-        $fieldsetData[(int)$fieldset['setid']] = $fieldset;
+        $fieldsetData[(int)$fieldset['set_id']] = $fieldset;
     }
 
     return $fieldsetData;
@@ -1650,7 +1640,7 @@ function fieldsGet(array $whereClauses = [], array $queryFields = [], array $que
 
     $query = $db->simple_select(
         'myshowcase_fields',
-        implode(',', array_merge(['fid'], $queryFields)),
+        implode(',', array_merge(['field_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1662,7 +1652,7 @@ function fieldsGet(array $whereClauses = [], array $queryFields = [], array $que
     $fieldData = [];
 
     while ($field = $db->fetch_array($query)) {
-        $fieldData[(int)$field['fid']] = $field;
+        $fieldData[(int)$field['field_id']] = $field;
     }
 
     return $fieldData;
@@ -1705,7 +1695,7 @@ function fieldDataGet(array $whereClauses = [], array $queryFields = [], array $
 
     $query = $db->simple_select(
         'myshowcase_field_data',
-        implode(',', array_merge(['fieldDataID'], $queryFields)),
+        implode(',', array_merge(['field_data_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1717,7 +1707,7 @@ function fieldDataGet(array $whereClauses = [], array $queryFields = [], array $
     $fieldData = [];
 
     while ($field = $db->fetch_array($query)) {
-        $fieldData[(int)$field['fieldDataID']] = $field;
+        $fieldData[(int)$field['field_data_id']] = $field;
     }
 
     return $fieldData;
@@ -1738,44 +1728,44 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
 
     $insertData = [];
 
-    if (isset($attachmentData['id'])) {
-        $insertData['id'] = (int)$attachmentData['id'];
+    if (isset($attachmentData['showcase_id'])) {
+        $insertData['showcase_id'] = (int)$attachmentData['showcase_id'];
     }
 
-    if (isset($attachmentData['gid'])) {
-        $insertData['gid'] = (int)$attachmentData['gid'];
+    if (isset($attachmentData['entry_id'])) {
+        $insertData['entry_id'] = (int)$attachmentData['entry_id'];
     }
 
-    if (isset($attachmentData['posthash'])) {
-        $insertData['posthash'] = $db->escape_string($attachmentData['posthash']);
+    if (isset($attachmentData['entry_hash'])) {
+        $insertData['entry_hash'] = $db->escape_string($attachmentData['entry_hash']);
     }
 
-    if (isset($attachmentData['uid'])) {
-        $insertData['uid'] = (int)$attachmentData['uid'];
+    if (isset($attachmentData['user_id'])) {
+        $insertData['user_id'] = (int)$attachmentData['user_id'];
     }
 
-    if (isset($attachmentData['filename'])) {
-        $insertData['filename'] = $db->escape_string($attachmentData['filename']);
+    if (isset($attachmentData['file_name'])) {
+        $insertData['file_name'] = $db->escape_string($attachmentData['file_name']);
     }
 
-    if (isset($attachmentData['filetype'])) {
-        $insertData['filetype'] = $db->escape_string($attachmentData['filetype']);
+    if (isset($attachmentData['file_type'])) {
+        $insertData['file_type'] = $db->escape_string($attachmentData['file_type']);
     }
 
-    if (isset($attachmentData['filesize'])) {
-        $insertData['filesize'] = (int)$attachmentData['filesize'];
+    if (isset($attachmentData['file_size'])) {
+        $insertData['file_size'] = (int)$attachmentData['file_size'];
     }
 
-    if (isset($attachmentData['attachname'])) {
-        $insertData['attachname'] = $db->escape_string($attachmentData['attachname']);
+    if (isset($attachmentData['attachment_name'])) {
+        $insertData['attachment_name'] = $db->escape_string($attachmentData['attachment_name']);
     }
 
     if (isset($attachmentData['downloads'])) {
         $insertData['downloads'] = (int)$attachmentData['downloads'];
     }
 
-    if (isset($attachmentData['dateuploaded'])) {
-        $insertData['dateuploaded'] = (int)$attachmentData['dateuploaded'];
+    if (isset($attachmentData['dateline'])) {
+        $insertData['dateline'] = (int)$attachmentData['dateline'];
     }
 
     if (isset($attachmentData['thumbnail'])) {
@@ -1786,16 +1776,16 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
         $insertData['dimensions'] = $db->escape_string($attachmentData['dimensions']);
     }
 
-    if (isset($attachmentData['md5hash'])) {
-        $insertData['md5hash'] = $db->escape_string($attachmentData['md5hash']);
+    if (isset($attachmentData['md5_hash'])) {
+        $insertData['md5_hash'] = $db->escape_string($attachmentData['md5_hash']);
     }
 
-    if (isset($attachmentData['uploaddate'])) {
-        $insertData['uploaddate'] = (int)$attachmentData['uploaddate'];
+    if (isset($attachmentData['edit_stamp'])) {
+        $insertData['edit_stamp'] = (int)$attachmentData['edit_stamp'];
     }*/
 
-    if (isset($attachmentData['visible'])) {
-        $insertData['visible'] = (int)$attachmentData['visible'];
+    if (isset($attachmentData['status'])) {
+        $insertData['status'] = (int)$attachmentData['status'];
     }
 
     /*if (isset($attachmentData['cdn_file'])) {
@@ -1803,7 +1793,7 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
     }*/
 
     if ($isUpdate) {
-        $db->update_query('myshowcase_attachments', $insertData, "aid='{$attachmentID}'");
+        $db->update_query('myshowcase_attachments', $insertData, "attachment_id='{$attachmentID}'");
     } else {
         $attachmentID = (int)$db->insert_query('myshowcase_attachments', $insertData);
     }
@@ -1822,7 +1812,7 @@ function attachmentGet(array $whereClauses = [], array $queryFields = [], array 
 
     $query = $db->simple_select(
         'myshowcase_attachments',
-        implode(', ', array_merge(['aid'], $queryFields)),
+        implode(', ', array_merge(['attachment_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1834,7 +1824,7 @@ function attachmentGet(array $whereClauses = [], array $queryFields = [], array 
     $attachmentObjects = [];
 
     while ($attachment = $db->fetch_array($query)) {
-        $attachmentObjects[(int)$attachment['aid']] = $attachment;
+        $attachmentObjects[(int)$attachment['attachment_id']] = $attachment;
     }
 
     return $attachmentObjects;
@@ -1855,16 +1845,16 @@ function commentInsert(array $commentData, bool $isUpdate = false, int $commentI
 
     $insertData = [];
 
-    if (isset($commentData['id'])) {
-        $insertData['id'] = (int)$commentData['id'];
+    if (isset($commentData['showcase_id'])) {
+        $insertData['showcase_id'] = (int)$commentData['showcase_id'];
     }
 
-    if (isset($commentData['gid'])) {
-        $insertData['gid'] = (int)$commentData['gid'];
+    if (isset($commentData['entry_id'])) {
+        $insertData['entry_id'] = (int)$commentData['entry_id'];
     }
 
-    if (isset($commentData['uid'])) {
-        $insertData['uid'] = (int)$commentData['uid'];
+    if (isset($commentData['user_id'])) {
+        $insertData['user_id'] = (int)$commentData['user_id'];
     }
 
     if (isset($commentData['ipaddress'])) {
@@ -1883,12 +1873,12 @@ function commentInsert(array $commentData, bool $isUpdate = false, int $commentI
         $insertData['status'] = (int)$commentData['status'];
     }
 
-    if (isset($commentData['moderator_uid'])) {
-        $insertData['moderator_uid'] = (int)$commentData['moderator_uid'];
+    if (isset($commentData['moderator_user_id'])) {
+        $insertData['moderator_user_id'] = (int)$commentData['moderator_user_id'];
     }
 
     if ($isUpdate) {
-        $db->update_query('myshowcase_comments', $insertData, "cid='{$commentID}'");
+        $db->update_query('myshowcase_comments', $insertData, "comment_id='{$commentID}'");
     } else {
         $commentID = (int)$db->insert_query('myshowcase_comments', $insertData);
     }
@@ -1907,7 +1897,7 @@ function commentsGet(array $whereClauses = [], array $queryFields = [], array $q
 
     $query = $db->simple_select(
         'myshowcase_comments',
-        implode(', ', array_merge(['cid'], $queryFields)),
+        implode(', ', array_merge(['comment_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
     );
@@ -1919,7 +1909,7 @@ function commentsGet(array $whereClauses = [], array $queryFields = [], array $q
     $commentObjects = [];
 
     while ($comment = $db->fetch_array($query)) {
-        $commentObjects[(int)$comment['cid']] = $comment;
+        $commentObjects[(int)$comment['comment_id']] = $comment;
     }
 
     return $commentObjects;
@@ -1993,7 +1983,7 @@ function reportGet(array $whereClauses = [], array $queryFields = [], array $que
  * Remove an attachment from a specific showcase
  *
  * @param int The showcase ID
- * @param string The posthash if available
+ * @param string The entry_hash if available
  * @param int The attachment ID
  */
 function attachmentRemove(
@@ -2002,32 +1992,32 @@ function attachmentRemove(
     int $attachmentID = 0,
     int $entryID = 0
 ): bool {
-    $whereClauses = ["id='{$showcase->id}'", "aid='{$attachmentID}'"];
+    $whereClauses = ["showcase_id='{$showcase->showcase_id}'", "attachment_id='{$attachmentID}'"];
 
     if (!empty($entryHash)) {
         global $db;
 
-        $whereClauses[] = "posthash='{$db->escape_string($entryHash)}'";
+        $whereClauses[] = "entry_hash='{$db->escape_string($entryHash)}'";
     } else {
-        $whereClauses[] = "gid='{$entryID}'";
+        $whereClauses[] = "entry_id='{$entryID}'";
     }
 
-    $attachmentData = attachmentGet($whereClauses, ['attachname', 'thumbnail', 'visible'], ['limit' => 1]);
+    $attachmentData = attachmentGet($whereClauses, ['attachment_name', 'thumbnail', 'status'], ['limit' => 1]);
 
     $attachmentData = hooksRun('remove_attachment_do_delete', $attachmentData);
 
-    attachmentDelete(["aid='{$attachmentID}'"]);
+    attachmentDelete(["attachment_id='{$attachmentID}'"]);
 
-    unlink($showcase->imgfolder . '/' . $attachmentData['attachname']);
+    unlink($showcase->images_directory . '/' . $attachmentData['attachment_name']);
 
     if (!empty($attachmentData['thumbnail'])) {
-        unlink($showcase->imgfolder . '/' . $attachmentData['thumbnail']);
+        unlink($showcase->images_directory . '/' . $attachmentData['thumbnail']);
     }
 
-    $dateDirectory = explode('/', $attachmentData['attachname']);
+    $dateDirectory = explode('/', $attachmentData['attachment_name']);
 
-    if (!empty($dateDirectory[0]) && is_dir($showcase->imgfolder . '/' . $dateDirectory[0])) {
-        rmdir($showcase->imgfolder . '/' . $dateDirectory[0]);
+    if (!empty($dateDirectory[0]) && is_dir($showcase->images_directory . '/' . $dateDirectory[0])) {
+        rmdir($showcase->images_directory . '/' . $dateDirectory[0]);
     }
 
     return true;
@@ -2111,9 +2101,9 @@ function attachmentUpload(
         $showcase_uid = (int)$showcase_uid;
 
         $userTotalUsage = attachmentGet(
-            ["uid='{$showcase_uid}'"],
-            ['SUM(filesize) AS userTotalUsage'],
-            ['group_by' => 'id']
+            ["user_id='{$showcase_uid}'"],
+            ['SUM(file_size) AS userTotalUsage'],
+            ['group_by' => 'showcase_id']
         )['userTotalUsage'] ?? 0;
 
         $userTotalUsage = $userTotalUsage + $attachmentData['size'];
@@ -2130,15 +2120,15 @@ function attachmentUpload(
 
     $existingAttachment = attachmentGet(
         [
-            "filename='{$db->escape_string($attachmentData['name'])}'",
-            "id='{$showcase->id}'",
-            "(posthash='{$db->escape_string($entryHash)}' OR (gid='{$gid}' AND gid!='0'))"
+            "file_name='{$db->escape_string($attachmentData['name'])}'",
+            "showcase_id='{$showcase->showcase_id}'",
+            "(entry_hash='{$db->escape_string($entryHash)}' OR (entry_id='{$gid}' AND entry_id!='0'))"
         ],
         [],
         ['limit' => 1]
     );
 
-    $attachmentID = (int)($existingAttachment['aid'] ?? 0);
+    $attachmentID = (int)($existingAttachment['attachment_id'] ?? 0);
 
     if ($attachmentID && !$isUpdate) {
         $returnData['error'] = $lang->error_alreadyuploaded;
@@ -2149,10 +2139,10 @@ function attachmentUpload(
     // Check if the attachment directory (YYYYMM) exists, if not, create it
     $directoryMonthName = gmdate('Ym');
 
-    if (!is_dir($showcase->imgfolder . '/' . $directoryMonthName)) {
-        mkdir($showcase->imgfolder . '/' . $directoryMonthName);
+    if (!is_dir($showcase->images_directory . '/' . $directoryMonthName)) {
+        mkdir($showcase->images_directory . '/' . $directoryMonthName);
 
-        if (!is_dir($showcase->imgfolder . '/' . $directoryMonthName)) {
+        if (!is_dir($showcase->images_directory . '/' . $directoryMonthName)) {
             $directoryMonthName = '';
         }
     }
@@ -2165,11 +2155,11 @@ function attachmentUpload(
     // All seems to be good, lets move the attachment!
     $fileName = "post_{$showcase_uid}_" . TIME_NOW . '_' . md5(random_str()) . '.attach';
 
-    $fileData = fileUpload($attachmentData, $showcase->imgfolder . '/' . $directoryMonthName, $fileName);
+    $fileData = fileUpload($attachmentData, $showcase->images_directory . '/' . $directoryMonthName, $fileName);
 
     // Failed to create the attachment in the monthly directory, just throw it in the main directory
     if ($fileData['error'] && $directoryMonthName) {
-        $fileData = fileUpload($attachmentData, $showcase->imgfolder . '/', $fileName);
+        $fileData = fileUpload($attachmentData, $showcase->images_directory . '/', $fileName);
     }
 
     if ($directoryMonthName) {
@@ -2192,24 +2182,24 @@ function attachmentUpload(
     }
 
     // Lets just double check that it exists
-    if (!file_exists($showcase->imgfolder . '/' . $fileName)) {
+    if (!file_exists($showcase->images_directory . '/' . $fileName)) {
         $returnData['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail . $lang->error_uploadfailed_lost;
 
         return $returnData;
     }
 
     $insertData = [
-        'id' => intval($showcase->id),
-        'gid' => intval($gid),
-        'posthash' => $db->escape_string($entryHash),
-        'uid' => intval($showcase_uid),
-        'filename' => $db->escape_string($fileData['original_filename']),
-        'filetype' => $db->escape_string($fileData['type']),
-        'filesize' => intval($fileData['size']),
-        'attachname' => $fileName,
+        'showcase_id' => intval($showcase->showcase_id),
+        'entry_id' => intval($gid),
+        'entry_hash' => $db->escape_string($entryHash),
+        'user_id' => intval($showcase_uid),
+        'file_name' => $db->escape_string($fileData['original_filename']),
+        'file_type' => $db->escape_string($fileData['type']),
+        'file_size' => intval($fileData['size']),
+        'attachment_name' => $fileName,
         'downloads' => 0,
-        'visible' => 1,
-        'dateuploaded' => TIME_NOW
+        'status' => 1,
+        'dateline' => TIME_NOW
     ];
 
     // If we're uploading an image, check the MIME type compared to the image type and attempt to generate a thumbnail
@@ -2243,11 +2233,11 @@ function attachmentUpload(
         }
 
         // Check if the uploaded file type matches the correct image type (returned by getimagesize)
-        $imageDimensions = getimagesize($showcase->imgfolder . '/' . $fileName);
+        $imageDimensions = getimagesize($showcase->images_directory . '/' . $fileName);
 
         $fileMimeType = '';
 
-        $filePath = $showcase->imgfolder . '/' . $fileName;
+        $filePath = $showcase->images_directory . '/' . $fileName;
 
         if (function_exists('finfo_open')) {
             $fileInformation = finfo_open(FILEINFO_MIME);
@@ -2263,7 +2253,7 @@ function attachmentUpload(
                     $fileMimeType,
                     $supportedMimeTypes
                 ))) {
-            unlink($showcase->imgfolder . '/' . $fileName);
+            unlink($showcase->images_directory . '/' . $fileName);
 
             $returnData['error'] = $lang->error_uploadfailed;
 
@@ -2272,20 +2262,20 @@ function attachmentUpload(
 
         //if requested and enabled, watermark the master image
         if ($showcase->userPermissions[UserPermissions::CanWaterMarkAttachments] && $addWaterMark && file_exists(
-                $showcase->watermarkimage
+                $showcase->water_mark_image
             )) {
             //get watermark image object
-            switch (strtolower(get_extension($showcase->watermarkimage))) {
+            switch (strtolower(get_extension($showcase->water_mark_image))) {
                 case 'gif':
-                    $waterMarkImage = imagecreatefromgif($showcase->watermarkimage);
+                    $waterMarkImage = imagecreatefromgif($showcase->water_mark_image);
                     break;
                 case 'jpg':
                 case 'jpeg':
                 case 'jpe':
-                    $waterMarkImage = imagecreatefromjpeg($showcase->watermarkimage);
+                    $waterMarkImage = imagecreatefromjpeg($showcase->water_mark_image);
                     break;
                 case 'png':
-                    $waterMarkImage = imagecreatefrompng($showcase->watermarkimage);
+                    $waterMarkImage = imagecreatefrompng($showcase->water_mark_image);
                     break;
             }
 
@@ -2297,10 +2287,10 @@ function attachmentUpload(
                 $waterMarkImageHeight = imagesy($waterMarkImage);
 
                 //get size of base image
-                $fileSize = getimagesize($showcase->imgfolder . '/' . $fileName);
+                $fileSize = getimagesize($showcase->images_directory . '/' . $fileName);
 
                 //set watermark location
-                switch ($showcase->watermarkloc) {
+                switch ($showcase->water_mark_image_location) {
                     case 'lower-left':
                         $waterMarkPositionX = 5;
 
@@ -2331,13 +2321,13 @@ function attachmentUpload(
                 //get base image object
                 switch ($fileType) {
                     case 1:
-                        $fileImage = imagecreatefromgif($showcase->imgfolder . '/' . $fileName);
+                        $fileImage = imagecreatefromgif($showcase->images_directory . '/' . $fileName);
                         break;
                     case 2:
-                        $fileImage = imagecreatefromjpeg($showcase->imgfolder . '/' . $fileName);
+                        $fileImage = imagecreatefromjpeg($showcase->images_directory . '/' . $fileName);
                         break;
                     case 3:
-                        $fileImage = imagecreatefrompng($showcase->imgfolder . '/' . $fileName);
+                        $fileImage = imagecreatefrompng($showcase->images_directory . '/' . $fileName);
                         break;
                 }
 
@@ -2362,7 +2352,7 @@ function attachmentUpload(
 
                     //write modified file
 
-                    $f = fopen($showcase->imgfolder . '/' . $fileName, 'w');
+                    $f = fopen($showcase->images_directory . '/' . $fileName, 'w');
 
                     if ($f) {
                         ob_start();
@@ -2398,15 +2388,15 @@ function attachmentUpload(
         $thumbnailName = str_replace('.attach', "_thumb.$fileExtension", $fileName);
 
         $fileThumbnail = generate_thumbnail(
-            $showcase->imgfolder . '/' . $fileName,
-            $showcase->imgfolder,
+            $showcase->images_directory . '/' . $fileName,
+            $showcase->images_directory,
             $thumbnailName,
             $showcase->thumb_height,
             $showcase->thumb_width
         );
 
-        if ($fileThumbnail['filename']) {
-            $insertData['thumbnail'] = $fileThumbnail['filename'];
+        if ($fileThumbnail['file_name']) {
+            $insertData['thumbnail'] = $fileThumbnail['file_name'];
         } elseif ($fileThumbnail['code'] === 4) {
             $insertData['thumbnail'] = 'SMALL';
         }
@@ -2430,7 +2420,7 @@ function attachmentUpload(
  *
  * @param array The PHP $_FILE array for the file
  * @param string The path to save the file in
- * @param string The filename for the file (if blank, current is used)
+ * @param string The file_name for the file (if blank, current is used)
  */
 function fileUpload(array $fileData, string $uploadsPath, string $fileName = ''): array
 {
@@ -2458,7 +2448,7 @@ function fileUpload(array $fileData, string $uploadsPath, string $fileName = '')
 
     my_chmod($uploadsPath . '/' . $fileName, '0644');
 
-    $returnData['filename'] = $fileName;
+    $returnData['file_name'] = $fileName;
 
     $returnData['path'] = $uploadsPath;
 
@@ -2478,12 +2468,12 @@ function entryGetRandom(): string
 
     $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
     foreach ($myshowcases as $id => $myshowcase) {
-        //$myshowcase['portal_random'] == 1;
-        if ($myshowcase['enabled'] == 1 && $myshowcase['portal_random'] == 1) {
+        //$myshowcase['build_random_entry_widget'] == 1;
+        if ($myshowcase['enabled'] == 1 && $myshowcase['build_random_entry_widget'] == 1) {
             $showcase_list[$id]['name'] = $myshowcase['name'];
             $showcase_list[$id]['mainfile'] = $myshowcase['mainfile'];
-            $showcase_list[$id]['imgfolder'] = $myshowcase['imgfolder'];
-            $showcase_list[$id]['fieldsetid'] = $myshowcase['fieldsetid'];
+            $showcase_list[$id]['images_directory'] = $myshowcase['images_directory'];
+            $showcase_list[$id]['field_set_id'] = $myshowcase['field_set_id'];
         }
     }
 
@@ -2491,20 +2481,20 @@ function entryGetRandom(): string
     if (count($showcase_list) == 0) {
         return '';
     } else {
-        //get a random showcase id of those enabled
+        //get a random showcase showcase_id of those enabled
         $rand_id = array_rand($showcase_list, 1);
         $rand_showcase = $showcase_list[$rand_id];
 
         /* URL Definitions */
         if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
-            $showcase_file = strtolower($rand_showcase['name']) . '-view-{gid}.html';
+            $showcase_file = strtolower($rand_showcase['name']) . '-view-{entry_id}.html';
         } else {
-            $showcase_file = $rand_showcase['mainfile'] . '?action=view&gid={gid}';
+            $showcase_file = $rand_showcase['mainfile'] . '?action=view&entry_id={entry_id}';
         }
 
         //init fixed fields
         $fields_fixed = [];
-        $fields_fixed[0]['name'] = 'g.uid';
+        $fields_fixed[0]['name'] = 'g.user_id';
         $fields_fixed[0]['type'] = 'default';
         $fields_fixed[1]['name'] = 'dateline';
         $fields_fixed[1]['type'] = 'default';
@@ -2514,15 +2504,15 @@ function entryGetRandom(): string
         $fields = cacheGet(CACHE_TYPE_FIELD_SETS);
 
         //get subset specific to the showcase given assigned field set
-        $fields = $fields[$rand_showcase['fieldsetid']];
+        $fields = $fields[$rand_showcase['field_set_id']];
 
         //get fields that are enabled and set for list display with pad to help sorting fixed fields)
         $description_list = [];
         foreach ($fields as $id => $field) {
-            if (/*(int)$field['list_table_order'] !== \MyShowcase\Core\ALL_UNLIMITED_VALUE && */ $field['enabled'] == 1) {
-                $field_list[$field['list_table_order'] + 10]['name'] = $field['name'];
-                $field_list[$field['list_table_order'] + 10]['type'] = $field['html_type'];
-                $description_list[$field['list_table_order']] = $field['name'];
+            if (/*(int)$field['render_order'] !== \MyShowcase\Core\ALL_UNLIMITED_VALUE && */ $field['enabled'] == 1) {
+                $field_list[$field['render_order'] + 10]['name'] = $field['name'];
+                $field_list[$field['render_order'] + 10]['type'] = $field['html_type'];
+                $description_list[$field['render_order']] = $field['name'];
             }
         }
 
@@ -2538,7 +2528,7 @@ function entryGetRandom(): string
         reset($fields_for_search);
         foreach ($fields_for_search as $id => $field) {
             if ($field['type'] == FIELD_TYPE_HTML_DB || $field['type'] == FIELD_TYPE_HTML_RADIO) {
-                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['name'] . ' ON (tbl_' . $field['name'] . '.valueid = g.' . $field['name'] . ' AND tbl_' . $field['name'] . ".name = '" . $field['name'] . "') ";
+                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['name'] . ' ON (tbl_' . $field['name'] . '.value_id = g.' . $field['name'] . ' AND tbl_' . $field['name'] . ".name = '" . $field['name'] . "') ";
                 $addon_fields .= ', tbl_' . $field['name'] . '.value AS ' . $field['name'];
             } else {
                 $addon_fields .= ', ' . $field['name'];
@@ -2549,23 +2539,23 @@ function entryGetRandom(): string
         $rand_entry = 0;
         while ($rand_entry == 0) {
             $attachmentData = attachmentGet(
-                ["id='{$rand_id}'", "filetype LIKE 'image%'", "visible='1'", "gid!='0'"],
-                ['gid', 'attachname', 'thumbnail'],
+                ["showcase_id='{$rand_id}'", "file_type LIKE 'image%'", "status='1'", "entry_id!='0'"],
+                ['entry_id', 'attachment_name', 'thumbnail'],
                 ['limit' => 1, 'order_by' => 'RAND()']
             );
 
-            $rand_entry = $attachmentData['gid'];
-            $rand_entry_img = $attachmentData['attachname'];
+            $rand_entry = $attachmentData['entry_id'];
+            $rand_entry_img = $attachmentData['attachment_name'];
             $rand_entry_thumb = $attachmentData['thumbnail'];
 
             if ($rand_entry) {
                 $query = $db->query(
                     '
-					SELECT gid, username, g.views, comments' . $addon_fields . '
+					SELECT entry_id, username, g.views, comments' . $addon_fields . '
 					FROM ' . TABLE_PREFIX . 'myshowcase_data' . $rand_id . ' g
-					LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.uid)
+					LEFT JOIN ' . TABLE_PREFIX . 'users u ON (u.uid = g.user_id)
 					' . $addon_join . '
-					WHERE approved = 1 AND gid=' . $rand_entry . '
+					WHERE approved = 1 AND entry_id=' . $rand_entry . '
 					LIMIT 0, 1'
                 );
 
@@ -2588,7 +2578,7 @@ function entryGetRandom(): string
 
         $item_member = build_profile_link(
             $entry['username'],
-            $entry['uid'],
+            $entry['user_id'],
         );
 
         $item_view_user = str_replace('{username}', $entry['username'], $lang->myshowcase_view_user);
@@ -2618,6 +2608,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
 
     if ($showcaseID && ($showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]))) {
         $fieldsetID = (int)$showcaseData['fieldsetid'];
+        $fieldsetID = (int)$showcaseData['field_set_id'];
 
         hooksRun('admin_summary_table_create_rebuild_start');
 
@@ -2713,8 +2704,6 @@ function renderGetObject(Showcase $showcaseObject): Render
 
     static $renderObjects = [];
 
-    if (!isset($renderObjects[$showcaseObject->id])) {
-        $renderObjects[$showcaseObject->id] = new Render($showcaseObject);
     }
 
     return $renderObjects[$showcaseObject->id];
@@ -2727,8 +2716,6 @@ function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HA
 
     static $dataHandlerObjects = [];
 
-    if (!isset($dataHandlerObjects[$showcaseObject->id])) {
-        $dataHandlerObjects[$showcaseObject->id] = new DataHandler($showcaseObject, $method);
     }
 
     return $dataHandlerObjects[$showcaseObject->id];
@@ -2740,8 +2727,6 @@ function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
 
     static $outputObjects = [];
 
-    if (!isset($outputObjects[$showcaseObject->id])) {
-        $outputObjects[$showcaseObject->id] = new Output($showcaseObject, $renderObject);
     }
 
     return $outputObjects[$showcaseObject->id];

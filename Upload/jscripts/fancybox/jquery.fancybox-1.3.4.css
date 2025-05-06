@@ -173,7 +173,7 @@
 }
 
 #fancybox-left:hover, #fancybox-right:hover {
-	visibility: visible; /* IE6 */
+	visibility: status; /* IE6 */
 }
 
 #fancybox-left:hover span {

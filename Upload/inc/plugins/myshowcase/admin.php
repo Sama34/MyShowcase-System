@@ -22,7 +22,16 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
 
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
+use function MyShowcase\Core\showcaseGetObject;
+
+use const MyShowcase\Core\CACHE_TYPE_CONFIG;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
+use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
+use const MyShowcase\Core\CACHE_TYPE_FIELDS;
+use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
+use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\CACHE_TYPE_REPORTS;
+use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\VERSION;
@@ -62,8 +71,6 @@ function pluginActivation(): bool
 {
     global $PL, $cache;
 
-    pluginUninstallation();
-
     loadPluginLibrary();
 
     $PL->settings('myshowcase', 'MyShowcase System', 'Options on how to configure the MyShowcase section.', [
@@ -94,10 +101,6 @@ function pluginActivation(): bool
         $plugins['myshowcase'] = $pluginInformation['versioncode'];
     }
 
-    dbVerifyTables();
-
-    dbVerifyColumns();
-
     taskInstallation();
 
     require_once MYBB_ROOT . 'inc/adminfunctions_templates.php';
@@ -110,7 +113,146 @@ function pluginActivation(): bool
 
     /*~*~* RUN UPDATES START *~*~*/
 
+    global $db;
+
+    foreach (
+        [
+            'myshowcase_attachments' => [
+                'aid' => 'attachment_id',
+                'gid' => 'entry_id',
+                'id' => 'showcase_id',
+                'posthash' => 'entry_hash',
+                'uid' => 'user_id',
+                'filename' => 'file_name',
+                'filetype' => 'file_type',
+                'filesize' => 'file_size',
+                'attachname' => 'attachment_name',
+                'dateuploaded' => 'dateline',
+                'uploaddate' => 'edit_stamp',
+                'visible' => 'status',
+            ],
+            'myshowcase_comments' => [
+                'cid' => 'comment_id',
+                'id' => 'showcase_id',
+                'gid' => 'entry_id',
+                'uid' => 'user_id',
+            ],
+            'myshowcase_config' => [
+                'id' => 'showcase_id',
+                'fieldsetid' => 'field_set_id',
+                'imgfolder' => 'images_directory',
+                'defaultimage' => 'default_image',
+                'watermarkimage' => 'water_mark_image',
+                'watermarkloc' => 'water_mark_image_location',
+                'f2gpath' => 'relative_path',
+                'allowsmilies' => 'allow_smilies',
+                'allowbbcode' => 'allow_mycode',
+                'allowhtml' => 'allow_mycode',
+                'prunetime' => 'prune_time',
+                'modnewedit' => 'moderate_edits',
+                'othermaxlength' => 'maximum_text_field_lenght',
+                'comment_dispinit' => 'comments_per_page',
+                'disp_attachcols' => 'attachments_per_row',
+                'disp_empty' => 'display_empty_fields',
+                'link_in_postbit' => 'display_in_posts',
+                'portal_random' => 'build_random_entry_widget',
+            ],
+            'myshowcase_permissions' => [
+                'pid' => 'permission_id',
+                'id' => 'showcase_id',
+                'gid' => 'group_id',
+            ],
+            'myshowcase_moderators' => [
+                'mid' => 'moderator_id',
+                'id' => 'showcase_id',
+                'uid' => 'user_id',
+                'isgroup' => 'is_group',
+            ],
+            'myshowcase_reports' => [
+                'id' => 'showcase_id',
+                'gid' => 'entry_id',
+            ],
+            'myshowcase_fieldsets' => [
+                'setid' => 'set_id',
+                'setname' => 'set_name',
+            ],
+            'myshowcase_fields' => [
+                'fid' => 'field_id',
+                'setid' => 'set_id',
+                'min_length' => 'minimum_length',
+                'max_length' => 'maximum_length',
+                'require' => 'is_required',
+                'requiredField' => 'is_required',
+                'field_order' => 'display_order',
+                'list_table_order' => 'render_order',
+                'searchable' => 'enable_search',
+            ],
+            'myshowcase_field_data' => [
+                'fieldDataID' => 'field_data_id',
+                'valueid' => 'value_id',
+                'disporder' => 'display_order',
+                'setid' => 'set_id',
+                'fid' => 'field_id',
+            ],
+            'myshowcase_data' => [
+                'gid' => 'entry_id',
+                'uid' => 'user_id',
+                'posthash' => 'entry_hash',
+            ],
+        ] as $tableName => $tableColumns
+    ) {
+        if ($db->table_exists($tableName)) {
+            foreach ($tableColumns as $oldColumnName => $newColumnName) {
+                if ($db->field_exists($oldColumnName, $tableName) &&
+                    !$db->field_exists($newColumnName, $tableName)) {
+                    $db->rename_column(
+                        $tableName,
+                        $oldColumnName,
+                        $newColumnName,
+                        buildDbFieldDefinition(TABLES_DATA[$tableName][$newColumnName])
+                    );
+                }
+            }
+        }
+
+        if ($tableName === 'myshowcase_data') {
+            foreach (showcaseGet() as $showcaseID => $showcaseData) {
+                if (showcaseDataTableExists($showcaseID)) {
+                    foreach ($tableColumns as $oldColumnName => $newColumnName) {
+                        if ($db->field_exists($oldColumnName, 'myshowcase_data' . $showcaseID) &&
+                            !$db->field_exists($newColumnName, 'myshowcase_data' . $showcaseID)) {
+                            $db->rename_column(
+                                'myshowcase_data' . $showcaseID,
+                                $oldColumnName,
+                                $newColumnName,
+                                buildDbFieldDefinition(DATA_TABLE_STRUCTURE[$tableName][$newColumnName])
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /*~*~* RUN UPDATES END *~*~*/
+
+    dbVerifyTables();
+
+    dbVerifyColumns();
+
+    foreach (
+        [
+            CACHE_TYPE_CONFIG,
+            CACHE_TYPE_PERMISSIONS,
+            CACHE_TYPE_FIELD_SETS,
+            CACHE_TYPE_FIELDS,
+            CACHE_TYPE_FIELD_DATA,
+            CACHE_TYPE_MODERATORS,
+            CACHE_TYPE_REPORTS,
+        ] as $cacheType
+    ) {
+        cacheUpdate($cacheType);
+    }
 
     $plugins['myshowcase'] = $pluginInformation['versioncode'];
 
@@ -132,15 +274,6 @@ function pluginDeactivation(): bool
     find_replace_templatesets('header', '#' . preg_quote('{$myShowcaseGlobalMessagesReportedEntries}') . '#', '');
 
     _deactivate_task();
-
-    return true;
-}
-
-function pluginInstallation(): bool
-{
-    dbVerifyTables();
-
-    dbVerifyColumns();
 
     return true;
 }

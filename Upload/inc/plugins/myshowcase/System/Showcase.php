@@ -76,7 +76,7 @@ class Showcase
         public string $orderBy = '',
         public array $errorMessages = [],
         #Config
-        public int $id = 0,
+        public int $showcase_id = 0,
         public string $name = '',
         public string $nameFriendly = '',
         public string $description = '',
@@ -90,7 +90,7 @@ class Showcase
         public array $fieldSetFieldsOrder = [],
         public array $fieldSetFieldsMaximumLenght = [],
         public array $fieldSetFieldsMinimumLenght = [],
-        public array $fieldSetFieldsRequired = ['uid' => 1], // todo, unsure if uid is necessary
+        public array $fieldSetFieldsRequired = ['user_id' => 1], // todo, unsure if user_id is necessary
         public string $imageFolder = '',
         public string $defaultImage = '',
         public string $waterMarkImage = '',
@@ -149,7 +149,7 @@ class Showcase
         //check if the requesting file is in the cache
         foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
             if ($showcaseData['showcase_slug'] === $this->showcaseSlug) {
-                $this->id = (int)$showcaseData['id'];
+                $this->showcase_id = (int)$showcaseData['showcase_id'];
 
                 $this->name = (string)$showcaseData['name'];
 
@@ -159,33 +159,33 @@ class Showcase
 
                 $this->mainFile = (string)$showcaseData['mainfile'];
 
-                $this->fieldSetID = (int)$showcaseData['fieldsetid'];
+                $this->fieldSetID = (int)$showcaseData['field_set_id'];
 
-                $this->imageFolder = (string)$showcaseData['imgfolder'];
+                $this->imageFolder = (string)$showcaseData['images_directory'];
 
-                $this->defaultImage = (string)$showcaseData['defaultimage'];
+                $this->defaultImage = (string)$showcaseData['images_directory'];
 
-                $this->waterMarkImage = (string)$showcaseData['watermarkimage'];
+                $this->waterMarkImage = (string)$showcaseData['water_mark_image'];
 
-                $this->waterMarkLocation = (string)$showcaseData['watermarkloc'];
+                $this->waterMarkLocation = (string)$showcaseData['water_mark_image_location'];
 
                 $this->userEntryAttachmentAsImage = (bool)$showcaseData['use_attach'];
 
-                $this->relativePath = (string)$showcaseData['f2gpath'];
+                $this->relativePath = (string)$showcaseData['relative_path'];
 
                 $this->enabled = (bool)$showcaseData['enabled'];
 
-                $this->parserAllowSmiles = (bool)$showcaseData['allowsmilies'];
+                $this->parserAllowSmiles = (bool)$showcaseData['allow_smilies'];
 
-                $this->parserAllowMyCode = (bool)$showcaseData['allowbbcode'];
+                $this->parserAllowMyCode = (bool)$showcaseData['allow_mycode'];
 
-                $this->parserAllowHTML = (bool)$showcaseData['allowhtml'];
+                $this->parserAllowHTML = (bool)$showcaseData['allow_html'];
 
-                $this->pruneTime = (int)$showcaseData['prunetime'];
+                $this->pruneTime = (int)$showcaseData['prune_time'];
 
-                $this->moderateEdits = (bool)$showcaseData['modnewedit'];
+                $this->moderateEdits = (bool)$showcaseData['moderate_edits'];
 
-                $this->maximumLengthForTextFields = (int)$showcaseData['othermaxlength'];
+                $this->maximumLengthForTextFields = (int)$showcaseData['maximum_text_field_lenght'];
 
                 $this->allowAttachments = (bool)$showcaseData['allow_attachments'];
 
@@ -197,15 +197,15 @@ class Showcase
 
                 $this->commentsMaximumLength = (int)$showcaseData['comment_length'];
 
-                $this->commentsPerPageLimit = (int)$showcaseData['comment_dispinit'];
+                $this->commentsPerPageLimit = (int)$showcaseData['comments_per_page'];
 
-                $this->attachmentsPerRowLimit = (int)$showcaseData['disp_attachcols'];
+                $this->attachmentsPerRowLimit = (int)$showcaseData['attachments_per_row'];
 
-                $this->displayEmptyFields = (bool)$showcaseData['disp_empty'];
+                $this->displayEmptyFields = (bool)$showcaseData['display_empty_fields'];
 
                 $this->linkInPosts = (bool)$showcaseData['allow_attachments'];
 
-                $this->portalShowRandomAttachmentWidget = (bool)$showcaseData['portal_random'];
+                $this->portalShowRandomAttachmentWidget = (bool)$showcaseData['build_random_entry_widget'];
 
                 $this->displaySignatures = (bool)$showcaseData['display_signatures'];
 
@@ -243,11 +243,11 @@ class Showcase
         );
 
         //make sure data table exists and assign table name var if it does
-        if (showcaseDataTableExists($this->id)) {
-            $this->dataTableName = 'myshowcase_data' . $this->id;
+        if (showcaseDataTableExists($this->showcase_id)) {
+            $this->dataTableName = 'myshowcase_data' . $this->showcase_id;
         }
 
-        if (!$this->id || !$this->dataTableName || !$this->fieldSetID) {
+        if (!$this->showcase_id || !$this->dataTableName || !$this->fieldSetID) {
             $this->enabled = false;
 
             $this->errorType = ERROR_TYPE_NOT_CONFIGURED;
@@ -279,7 +279,7 @@ class Showcase
             $this->fieldSetCache = cacheGet(CACHE_TYPE_FIELDS)[$this->fieldSetID] ?? [];
 
             foreach ($this->fieldSetCache as $fieldID => $fieldData) {
-                if (!$fieldData['enabled']/* || $fieldData['requiredField']*/) {
+                if (!$fieldData['enabled']/* || $fieldData['is_required']*/) {
                     continue;
                 }
 
@@ -291,18 +291,18 @@ class Showcase
 
                 $this->fieldSetFormatableFields[$fieldData['name']] = $fieldData['format'];
 
-                if ($fieldData['searchable']) {
+                if ($fieldData['enable_search']) {
                     $this->fieldSetSearchableFields[$fieldData['name']] = $fieldData['html_type'];
                 }
 
-                $this->fieldSetFieldsOrder[$fieldData['list_table_order']] = $fieldData['name'];
-                //$this->fieldSetFieldsOrder[$fieldData['field_order']] = $fieldData['name'];
+                $this->fieldSetFieldsOrder[$fieldData['render_order']] = $fieldData['name'];
+                //$this->fieldSetFieldsOrder[$fieldData['display_order']] = $fieldData['name'];
 
-                $this->fieldSetFieldsMaximumLenght[$fieldData['name']] = (int)$fieldData['max_length'];
+                $this->fieldSetFieldsMaximumLenght[$fieldData['name']] = (int)$fieldData['maximum_length'];
 
-                $this->fieldSetFieldsMinimumLenght[$fieldData['name']] = (int)$fieldData['min_length'];
+                $this->fieldSetFieldsMinimumLenght[$fieldData['name']] = (int)$fieldData['minimum_length'];
 
-                $this->fieldSetFieldsRequired[$fieldData['name']] = !empty($field['requiredField']);
+                $this->fieldSetFieldsRequired[$fieldData['name']] = !empty($field['is_required']);
             }
 
             ksort($this->fieldSetFieldsOrder);
@@ -342,15 +342,15 @@ class Showcase
 
             $this->urlPaged = $this->cleanName . '-page-{page}.html';
 
-            $this->urlViewEntry = $this->cleanName . '-view-{gid}.html';
+            $this->urlViewEntry = $this->cleanName . '-view-{entry_id}.html';
 
-            $this->urlViewComment = $this->cleanName . '-view-{gid}-last-comment.html';
+            $this->urlViewComment = $this->cleanName . '-view-{entry_id}-last-comment.html';
 
             $this->urlCreateEntry = $this->cleanName . '-new.html';
 
-            $this->urlViewAttachment = $this->cleanName . '-attachment-{aid}.html';
+            $this->urlViewAttachment = $this->cleanName . '-attachment-{attachment_id}.html';
 
-            $this->urlViewAttachmentItem = $this->cleanName . '-item-{aid}.php';
+            $this->urlViewAttachmentItem = $this->cleanName . '-item-{attachment_id}.php';
         } else {
             $this->urlMain = $this->showcaseSlug;
 
@@ -388,7 +388,7 @@ class Showcase
 
             $this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_id}/attachment/{thumbnail_id}/thumbnail';
 
-            $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&aid={aid}';
+            $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&attachment_id={attachment_id}';
         }
 
         return $this;
@@ -422,10 +422,10 @@ class Showcase
 
             $groupsCache = (array)$cache->read('usergroups');
 
-            foreach (cacheGet(CACHE_TYPE_PERMISSIONS)[$this->id] as $showcasePermissions) {
-                $groupID = (int)$showcasePermissions['gid'];
+            foreach (cacheGet(CACHE_TYPE_PERMISSIONS)[$this->showcase_id] as $showcasePermissions) {
+                $groupID = (int)$showcasePermissions['group_id'];
 
-                $showcaseGroupPermissions[$groupID]['id'] = $groupID;
+                $showcaseGroupPermissions[$groupID]['showcase_id'] = $groupID;
                 $showcaseGroupPermissions[$groupID]['name'] = $groupsCache[$groupID]['title'] ?? '';
                 //$showcaseGroupPermissions[$groupID]['intable'] = 1;
 
@@ -440,7 +440,7 @@ class Showcase
                 $groupID = (int)$groupData['gid'];
 
                 if (!array_key_exists($groupID, $showcaseGroupPermissions)) {
-                    $showcaseGroupPermissions[$groupID]['id'] = $groupID;
+                    $showcaseGroupPermissions[$groupID]['showcase_id'] = $groupID;
                     $showcaseGroupPermissions[$groupID]['name'] = $groupData['title'] ?? '';
                     //$showcaseGroupPermissions[$groupID]['intable'] = 0;
 
@@ -520,10 +520,13 @@ class Showcase
             //get showcase moderator cache to handle additional mods/modgroups
             $moderatorsCache = cacheGet(CACHE_TYPE_MODERATORS);
 
-            if (!empty($moderatorsCache[$this->id])) {
-                foreach ($moderatorsCache[$this->id] as $moderatorPermissions) {
-                    if ($moderatorPermissions['isgroup'] && in_array($moderatorPermissions['uid'], $userGroupsIDs) ||
-                        !$moderatorPermissions['isgroup'] && (int)$moderatorPermissions['uid'] === $userID) {
+            if (!empty($moderatorsCache[$this->showcase_id])) {
+                foreach ($moderatorsCache[$this->showcase_id] as $moderatorPermissions) {
+                    if ($moderatorPermissions['is_group'] && in_array(
+                            $moderatorPermissions['user_id'],
+                            $userGroupsIDs
+                        ) ||
+                        !$moderatorPermissions['is_group'] && (int)$moderatorPermissions['user_id'] === $userID) {
                         foreach ($userModeratorPermissions as $permissionKey => &$permissionValue) {
                             $userModeratorPermissions[$permissionKey] = !empty($moderatorPermissions[$permissionKey]) ||
                                 !empty($permissionValue);
@@ -570,8 +573,11 @@ class Showcase
      */
     public function attachmentsDelete(int $entryID): bool
     {
-        foreach (attachmentGet(["gid='{$entryID}'", "id='{$this->id}'"]) as $attachmentID => $attachmentData) {
-            attachmentDelete(["aid='{$attachmentID}'"]);
+        foreach (
+            attachmentGet(["entry_id='{$entryID}'", "showcase_id='{$this->showcase_id}'"]
+            ) as $attachmentID => $attachmentData
+        ) {
+            attachmentDelete(["attachment_id='{$attachmentID}'"]);
         }
 
         return true;
@@ -582,7 +588,7 @@ class Showcase
      */
     public function commentsDelete(int $entryID): void
     {
-        commentsDelete(["gid='{$entryID}'", "id='{$this->id}'"]);
+        commentsDelete(["entry_id='{$entryID}'", "showcase_id='{$this->showcase_id}'"]);
     }
 
     /**
@@ -624,17 +630,17 @@ class Showcase
 
     public function attachmentsRemove(array $whereClauses): void
     {
-        $whereClauses[] = "id='{$this->id}'";
+        $whereClauses[] = "showcase_id='{$this->showcase_id}'";
 
-        $attachmentObjects = attachmentGet($whereClauses, ['attachname', 'thumbnail', 'visible']);
+        $attachmentObjects = attachmentGet($whereClauses, ['attachment_name', 'thumbnail', 'status']);
 
         $attachmentObjects = hooksRun('remove_attachment_do_delete', $attachmentObjects);
 
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-            attachmentDelete(["aid='{$attachmentID}'"]);
+            attachmentDelete(["attachment_id='{$attachmentID}'"]);
 
-            if (file_exists($this->imageFolder . '/' . $attachmentData['attachname'])) {
-                unlink($this->imageFolder . '/' . $attachmentData['attachname']);
+            if (file_exists($this->imageFolder . '/' . $attachmentData['attachment_name'])) {
+                unlink($this->imageFolder . '/' . $attachmentData['attachment_name']);
             }
 
             if (!empty($attachmentData['thumbnail'])) {
@@ -643,7 +649,7 @@ class Showcase
                 }
             }
 
-            $dateDirectory = explode('/', $attachmentData['attachname']);
+            $dateDirectory = explode('/', $attachmentData['attachment_name']);
 
             if (!empty($dateDirectory[0]) && is_dir($this->imageFolder . '/' . $dateDirectory[0])) {
                 rmdir($this->imageFolder . '/' . $dateDirectory[0]);
@@ -666,10 +672,10 @@ class Showcase
 
         $query = $db->simple_select(
             $this->dataTableName,
-            'COUNT(gid) AS totalUnapprovedEntries',
+            'COUNT(entry_id) AS totalUnapprovedEntries',
             "approved='{$entryStatusUnapproved}'",
             [
-                'group_by' => 'gid, approved'
+                'group_by' => 'entry_id, approved'
             ]
         );
 
@@ -681,15 +687,15 @@ class Showcase
         $reportStatusPending = REPORT_STATUS_PENDING;
 
         return (int)(reportGet(
-            ["id='{$this->id}'", "status='{$reportStatusPending}'"],
+            ["showcase_id='{$this->showcase_id}'", "status='{$reportStatusPending}'"],
             ['COUNT(rid) AS totalReportedEntries'],
-            ['group_by' => 'id, rid, status']
+            ['group_by' => 'showcase_id, rid, status']
         )['totalReportedEntries'] ?? 0);
     }
 
     public function templateGet(string $templateName = '', bool $enableHTMLComments = true): string
     {
-        return getTemplate($templateName, $enableHTMLComments, $this->id);
+        return getTemplate($templateName, $enableHTMLComments, $this->showcase_id);
     }
 
     public function dataGet(
@@ -704,7 +710,7 @@ class Showcase
 
         $query = $db->simple_select(
             implode(" LEFT JOIN {$db->table_prefix}", $queryTables),
-            implode(',', array_merge(['gid'], $queryFields)),
+            implode(',', array_merge(['entry_id'], $queryFields)),
             implode(' AND ', $whereClauses),
             $queryOptions
         );
@@ -716,7 +722,7 @@ class Showcase
         $entriesObjects = [];
 
         while ($fieldValueData = $db->fetch_array($query)) {
-            $entriesObjects[(int)$fieldValueData['gid']] = $fieldValueData;
+            $entriesObjects[(int)$fieldValueData['entry_id']] = $fieldValueData;
         }
 
         return $entriesObjects;
@@ -725,14 +731,14 @@ class Showcase
     public function dataInsert(
         array $insertData
     ): int {
-        return entryDataInsert($this->id, $insertData);
+        return entryDataInsert($this->showcase_id, $insertData);
     }
 
     public function dataUpdate(
         array $updateData
     ): int {
         return entryDataUpdate(
-            $this->id,
+            $this->showcase_id,
             $this->entryID,
             $updateData
         );
@@ -743,7 +749,7 @@ class Showcase
         array $queryFields = [],
         array $queryOptions = [],
     ): array {
-        $whereClauses[] = "id='{$this->id}'";
+        $whereClauses[] = "showcase_id='{$this->showcase_id}'";
 
         return commentsGet(
             $whereClauses,
@@ -756,12 +762,12 @@ class Showcase
     {
         $this->entryData = $entryData;
 
-        if (isset($this->entryData['gid'])) {
-            $this->entryID = (int)$this->entryData['gid'];
+        if (isset($this->entryData['entry_id'])) {
+            $this->entryID = (int)$this->entryData['entry_id'];
         }
 
-        if (isset($this->entryData['uid'])) {
-            $this->entryUserID = (int)$this->entryData['uid'];
+        if (isset($this->entryData['user_id'])) {
+            $this->entryUserID = (int)$this->entryData['user_id'];
         }
     }
 

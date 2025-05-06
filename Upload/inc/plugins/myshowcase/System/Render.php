@@ -88,7 +88,7 @@ class Render
 
     public function templateGet(string $templateName = '', bool $enableHTMLComments = true): string
     {
-        return getTemplate($templateName, $enableHTMLComments, $this->showcaseObject->id);
+        return getTemplate($templateName, $enableHTMLComments, $this->showcaseObject->showcase_id);
     }
 
     private function buildPost(
@@ -286,8 +286,8 @@ class Render
         $approvedByMessage = '';
 
         if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] &&
-            !empty($postData['moderator_uid'])) {
-            $moderatorUserData = get_user($postData['moderator_uid']);
+            !empty($postData['moderator_user_id'])) {
+            $moderatorUserData = get_user($postData['moderator_user_id']);
 
             $moderatorUserProfileLink = build_profile_link(
                 $moderatorUserData['username'],
@@ -466,7 +466,7 @@ class Render
             if (
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments] ||
                 ((int)$postData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-                ((int)$this->showcaseObject->entryData['uid'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlDeleteComment,
@@ -501,20 +501,20 @@ class Render
             'dateline' => $this->showcaseObject->entryData['dateline'],
             //'ipaddress' => $this->showcaseObject->entryData['ipaddress'],
             'status' => $this->showcaseObject->entryData['status'],
-            'moderator_uid' => $this->showcaseObject->entryData['approved_by'],
+            'moderator_user_id' => $this->showcaseObject->entryData['approved_by'],
         ], alt_trow(true), self::POST_TYPE_ENTRY);
     }
 
     public function buildComment(int $commentsCounter, array $commentData, string $alternativeBackground): string
     {
         return $this->buildPost($commentsCounter, [
-            'comment_id' => $commentData['cid'],
-            'user_id' => $commentData['uid'],
+            'comment_id' => $commentData['comment_id'],
+            'user_id' => $commentData['user_id'],
             'message' => $commentData['comment'],
             'dateline' => $commentData['dateline'],
             'ipaddress' => $commentData['ipaddress'],
             'status' => $commentData['status'],
-            'moderator_uid' => $commentData['moderator_uid'],
+            'moderator_user_id' => $commentData['moderator_user_id'],
         ], $alternativeBackground);
     }
 
@@ -695,8 +695,8 @@ class Render
         }
 
         $attachmentObjects = attachmentGet(
-            ["gid='{$this->showcaseObject->entryID}'", "id='{$this->showcaseObject->id}'"],
-            ['visible', 'filename', 'filesize', 'filename', 'downloads', 'dateuploaded', 'thumbnail']
+            ["entry_id='{$this->showcaseObject->entryID}'", "showcase_id='{$this->showcaseObject->showcase_id}'"],
+            ['status', 'file_name', 'file_size', 'file_name', 'downloads', 'dateline', 'thumbnail']
         );
 
         if (!$attachmentObjects) {
@@ -726,12 +726,12 @@ class Render
                 attachmentID: $attachmentID
             );
 
-            if ($attachmentData['visible']) { // There is an attachment thats visible!
-                $attachmentFileName = htmlspecialchars_uni($attachmentData['filename']);
+            if ($attachmentData['status']) { // There is an attachment thats status!
+                $attachmentFileName = htmlspecialchars_uni($attachmentData['file_name']);
 
-                $attachmentFileSize = get_friendly_size($attachmentData['filesize']);
+                $attachmentFileSize = get_friendly_size($attachmentData['file_size']);
 
-                $attachmentExtension = get_extension($attachmentData['filename']);
+                $attachmentExtension = get_extension($attachmentData['file_name']);
 
                 $isImageAttachment = in_array($attachmentExtension, ['jpeg', 'gif', 'bmp', 'png', 'jpg']);
 
@@ -739,13 +739,13 @@ class Render
 
                 $attachmentDownloads = my_number_format($attachmentData['downloads']);
 
-                if (!$attachmentData['dateuploaded']) {
-                    $attachmentData['dateuploaded'] = $this->showcaseObject->entryData['dateline'];
+                if (!$attachmentData['dateline']) {
+                    $attachmentData['dateline'] = $this->showcaseObject->entryData['dateline'];
                 }
 
-                $attachmentDate = my_date('normal', $attachmentData['dateuploaded']);
+                $attachmentDate = my_date('normal', $attachmentData['dateline']);
 
-                // Support for [attachment=id] code
+                // Support for [attachment=showcase_id] code
                 $attachmentInField = false;
 
                 foreach ($entryFields as $fieldName => &$fieldValue) {

@@ -4,11 +4,11 @@ var Showcase = {
 		return true;
 	},
 
-	removeAttachment: function(aid)
+	removeAttachment: function(attachment_id)
 	{
 		if(confirm(removeshowcaseattach_confirm) == true)
 		{
-			document.input.attachmentaid.value = aid;
+			document.input.attachmentaid.value = attachment_id;
 			document.input.attachmentact.value = "remove";
 		}
 		else
@@ -19,11 +19,11 @@ var Showcase = {
 		}
 	},
 
-	removeShowcase: function(gid)
+	removeShowcase: function(entry_id)
 	{
 		if(confirm(removeshowcase_confirm) == true)
 		{
-			document.admin.showcasegid.value = gid;
+			document.admin.showcasegid.value = entry_id;
 			document.admin.showcaseact.value = "remove";
 		}
 		else
@@ -34,15 +34,15 @@ var Showcase = {
 		}
 	},
 
-	editShowcase: function(gid)
+	editShowcase: function(entry_id)
 	{
-		document.admin.showcasegid.value = gid;
+		document.admin.showcasegid.value = entry_id;
 		document.admin.showcaseact.value = "edit";
 	},
 
-	reportShowcase: function(gid)
+	reportShowcase: function(entry_id)
 	{
-		MyBB.popupWindow(showcase_url+"?action=report&gid="+gid, "reportShowcase", 400, 300)
+		MyBB.popupWindow(showcase_url+"?action=report&entry_id="+entry_id, "reportShowcase", 400, 300)
 	}
 
 };

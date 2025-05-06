@@ -149,9 +149,9 @@ class Output
                 //add_breadcrumb($lang->myshowcase_report, $this->showcaseObject->urlBuild($this->showcaseObject->urlMain));
 
                 $showcaseUserData = showcaseDataGet(
-                    $this->showcaseObject->id,
-                    ["gid='{$this->showcaseObject->entryID}'"],
-                    ['uid']
+                    $this->showcaseObject->showcase_id,
+                    ["entry_id='{$this->showcaseObject->entryID}'"],
+                    ['user_id']
                 );
 
                 if (!$showcaseUserData) {
@@ -159,10 +159,10 @@ class Output
                 }
 
                 $insert_array = [
-                    'id' => $this->showcaseObject->id,
-                    'gid' => $showcaseUserData['gid'],
+                    'showcase_id' => $this->showcaseObject->showcase_id,
+                    'entry_id' => $showcaseUserData['entry_id'],
                     'reporteruid' => $currentUserID,
-                    'authoruid' => $showcaseUserData['uid'],
+                    'authoruid' => $showcaseUserData['user_id'],
                     'status' => 0,
                     'reason' => $db->escape_string($mybb->get_input('reason')),
                     'dateline' => TIME_NOW
@@ -181,7 +181,7 @@ class Output
                     $report = eval($templates->render('report_thanks'));
                     output_page($report);
                     exit;
-//			$entryUrl = str_replace('{gid}', $mybb->get_input('gid', \MyBB::INPUT_INT), $this->showcaseObject->urlViewEntry);
+//			$entryUrl = str_replace('{entry_id}', $mybb->get_input('entry_id', \MyBB::INPUT_INT), $this->showcaseObject->urlViewEntry);
 //			$redirect_newshowcase = $lang->myshowcase_report_success.''.$lang->redirect_myshowcase_back.''.$lang->sprintf($lang->redirect_myshowcase_return, $this->showcaseObject->urlBuild($this->showcaseObject->urlMain));
 //			redirect($entryUrl, $redirect_newshowcase);
 //			exit;
@@ -214,7 +214,7 @@ class Output
                 $this->page = $this->pageCurrent;
 
                 $report_count = reportGet(
-                    ["status='0'", "id={$this->showcaseObject->id}"],
+                    ["status='0'", "showcase_id={$this->showcaseObject->showcase_id}"],
                     ['COUNT(rid) AS totalReports'],
                     ['limit' => 1]
                 )['totalReports'] ?? 0;
@@ -223,7 +223,10 @@ class Output
 
                 if ($mybb->get_input('rid', MyBB::INPUT_INT)) {
                     $report_count = reportGet(
-                        ["rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'", "id={$this->showcaseObject->id}"],
+                        [
+                            "rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'",
+                            "showcase_id={$this->showcaseObject->showcase_id}"
+                        ],
                         ['COUNT(rid) AS totalReports'],
                         ['limit' => 1]
                     )['totalReports'] ?? 0;
@@ -266,12 +269,12 @@ class Output
                 $reports = '';
                 $query = $db->query(
                     '
-			SELECT r.*, u.username as reportername, u.uid as reporteruid, ua.username as authorname, ua.uid as authoruid, c.name, c.mainfile, c.f2gpath
+			SELECT r.*, u.username as reportername, u.uid as reporteruid, ua.username as authorname, ua.uid as authoruid, c.name, c.mainfile, c.relative_path
 			FROM ' . TABLE_PREFIX . 'myshowcase_reports r
-			LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_config c ON (r.id=c.id)
+			LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_config c ON (r.showcase_id=c.showcase_id)
 			LEFT JOIN ' . TABLE_PREFIX . 'users u ON (r.reporteruid=u.uid)
 			LEFT JOIN ' . TABLE_PREFIX . "users ua ON (r.authoruid=ua.uid)
-			WHERE r.status='0' AND r.id={$this->showcaseObject->id}
+			WHERE r.status='0' AND r.showcase_id={$this->showcaseObject->showcase_id}
 			ORDER BY r.dateline DESC
 			LIMIT {$start}, {$reportsPerPage}
 		"
@@ -280,7 +283,11 @@ class Output
                 while ($report = $db->fetch_array($query)) {
                     $trow = 'trow_shaded';
 
-                    $report['showcaselink'] = str_replace('{gid}', $report['gid'], $this->showcaseObject->urlViewEntry);
+                    $report['showcaselink'] = str_replace(
+                        '{entry_id}',
+                        $report['entry_id'],
+                        $this->showcaseObject->urlViewEntry
+                    );
 
                     $report['reporterlink'] = build_profile_link(
                         $report['reportername'],
@@ -333,7 +340,7 @@ class Output
                 $rids = implode($mybb->get_input('reports', MyBB::INPUT_ARRAY), "','");
                 $rids = "'0','{$rids}'";
 
-                reportUpdate(['status' => 1], ["rid IN ({$rids})", "id={$this->showcaseObject->id}"]);
+                reportUpdate(['status' => 1], ["rid IN ({$rids})", "showcase_id={$this->showcaseObject->showcase_id}"]);
 
                 $this->page = $this->pageCurrent;
 
@@ -372,7 +379,7 @@ class Output
                 $this->page = $this->pageCurrent;
 
                 $report_count = reportGet(
-                    ["id='{$this->showcaseObject->id}'"],
+                    ["showcase_id='{$this->showcaseObject->showcase_id}'"],
                     ['COUNT(rid) AS totalReports'],
                     ['limit' => 1]
                 )['totalReports'] ?? 0;
@@ -381,7 +388,10 @@ class Output
 
                 if ($mybb->get_input('rid', MyBB::INPUT_INT)) {
                     $totalReports = reportGet(
-                        ["rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'", "id={$this->showcaseObject->id}"],
+                        [
+                            "rid<='{$mybb->get_input('rid', MyBB::INPUT_INT)}'",
+                            "showcase_id={$this->showcaseObject->showcase_id}"
+                        ],
                         ['COUNT(rid) AS totalReports'],
                         ['limit' => 1]
                     )['totalReports'] ?? 0;
@@ -422,12 +432,12 @@ class Output
                 $reports = '';
                 $query = $db->query(
                     '
-			SELECT r.*, u.username as reportername, u.uid as reporteruid, ua.username as authorname, ua.uid as authoruid, c.name, c.mainfile, c.f2gpath
+			SELECT r.*, u.username as reportername, u.uid as reporteruid, ua.username as authorname, ua.uid as authoruid, c.name, c.mainfile, c.relative_path
 			FROM ' . TABLE_PREFIX . 'myshowcase_reports r
-			LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_config c ON (r.id=c.id)
+			LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_config c ON (r.showcase_id=c.showcase_id)
 			LEFT JOIN ' . TABLE_PREFIX . 'users u ON (r.reporteruid=u.uid)
 			LEFT JOIN ' . TABLE_PREFIX . "users ua ON (r.authoruid=ua.uid)
-			WHERE  r.id={$this->showcaseObject->id}
+			WHERE  r.showcase_id={$this->showcaseObject->showcase_id}
 			ORDER BY r.dateline DESC
 			LIMIT {$start}, {$reportsPerPage}
 		"
@@ -440,7 +450,11 @@ class Output
                         $trow = alt_trow();
                     }
 
-                    $report['showcaselink'] = str_replace('{gid}', $report['gid'], $this->showcaseObject->urlViewEntry);
+                    $report['showcaselink'] = str_replace(
+                        '{entry_id}',
+                        $report['entry_id'],
+                        $this->showcaseObject->urlViewEntry
+                    );
 
                     $report['reporterlink'] = build_profile_link(
                         $report['reportername'],
@@ -511,7 +525,7 @@ class Output
                     $showcase_action = 'new';
 
                     //need to populated a default user value here for new entries
-                    $entryFieldsData['uid'] = $currentUserID;
+                    $entryFieldsData['user_id'] = $currentUserID;
                 } else {
                     $showcase_editing_user = str_replace(
                         '{username}',
@@ -532,13 +546,16 @@ class Output
                     $attachments = '';
 
                     $attachmentObjects = attachmentGet(
-                        ["posthash='{$db->escape_string($entryHash)}'", "id={$this->showcaseObject->id}"],
+                        [
+                            "entry_hash='{$db->escape_string($entryHash)}'",
+                            "showcase_id={$this->showcaseObject->showcase_id}"
+                        ],
                         array_keys(TABLES_DATA['myshowcase_attachments'])
                     );
 
                     foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                        $attachmentData['size'] = get_friendly_size($attachmentData['filesize']);
-                        $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['filename']));
+                        $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
+                        $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
                         $attachmentData['icon'] = str_replace(
                             '<img src="',
                             '<img src="' . $this->showcaseObject->urlBase . '/',
@@ -547,7 +564,7 @@ class Output
 
 
                         $attach_mod_options = '';
-                        if ($attachmentData['visible'] !== 1) {
+                        if ($attachmentData['status'] !== 1) {
                             $attachments .= eval(getTemplate('new_attachments_attachment_unapproved'));
                         } else {
                             $attachments .= eval(getTemplate('new_attachments_attachment'));
@@ -598,18 +615,18 @@ class Output
 
                     // Set the post data that came from the input to the $post array.
                     $default_data = [
-                        'uid' => $entryFieldsData['uid'],
+                        'user_id' => $entryFieldsData['user_id'],
                         'dateline' => TIME_NOW,
                         'approved' => $approved,
                         'approved_by' => $approved_by,
-                        'posthash' => $entryHash
+                        'entry_hash' => $entryHash
                     ];
 
-                    //add showcase id if editing so we know what to update
+                    //add showcase showcase_id if editing so we know what to update
                     if ($mybb->get_input('action') === 'edit') {
                         $default_data = array_merge(
                             $default_data,
-                            ['gid' => $this->showcaseObject->entryData]
+                            ['entry_id' => $this->showcaseObject->entryData]
                         );
                     }
 
@@ -658,13 +675,13 @@ class Output
                         } //insert showcase
                         else {
                             $insert_showcase = $showcasehandler->insert_showcase();
-                            $showcaseid = $insert_showcase['gid'];
+                            $showcaseid = $insert_showcase['entry_id'];
                         }
 
                         $plugins->run_hooks('myshowcase_do_newedit_end');
 
                         //fix url insert variable to update results
-                        $entryUrl = str_replace('{gid}', (string)$showcaseid, $this->showcaseObject->urlViewEntry);
+                        $entryUrl = str_replace('{entry_id}', (string)$showcaseid, $this->showcaseObject->urlViewEntry);
 
                         $redirect_newshowcase = $lang->redirect_myshowcase_new . '' . $lang->redirect_myshowcase . '' . $lang->sprintf(
                                 $lang->redirect_myshowcase_return,
@@ -739,12 +756,12 @@ class Output
 
                                 $fieldDataObjects = fieldDataGet(
                                     [
-                                        "setid='{$this->showcaseObject->fieldSetID}'",
+                                        "set_id='{$this->showcaseObject->fieldSetID}'",
                                         "name='{$fieldName}'",
-                                        "valueid!='0'"
+                                        "value_id!='0'"
                                     ],
-                                    ['valueid', 'value'],
-                                    ['order_by' => 'disporder']
+                                    ['value_id', 'value'],
+                                    ['order_by' => 'display_order']
                                 );
 
                                 if (!$fieldDataObjects) {
@@ -753,10 +770,10 @@ class Output
 
                                 $showcase_field_input = '';
                                 foreach ($fieldDataObjects as $fieldDataID => $results) {
-                                    $showcase_field_value = $results['valueid'];
+                                    $showcase_field_value = $results['value_id'];
                                     $showcase_field_checked = ($mybb->get_input(
                                         'myshowcase_field_' . $fieldName
-                                    ) === $results['valueid'] ? ' checked' : '');
+                                    ) === $results['value_id'] ? ' checked' : '');
                                     $showcase_field_text = $results['value'];
                                     $showcase_field_input .= eval(getTemplate('field_radio'));
                                 }
@@ -785,12 +802,12 @@ class Output
 
                                 $fieldDataObjects = fieldDataGet(
                                     [
-                                        "setid='{$this->showcaseObject->fieldSetID}'",
+                                        "set_id='{$this->showcaseObject->fieldSetID}'",
                                         "name='{$fieldName}'",
-                                        "valueid!='0'"
+                                        "value_id!='0'"
                                     ],
-                                    ['valueid', 'value'],
-                                    ['order_by' => 'disporder']
+                                    ['value_id', 'value'],
+                                    ['order_by' => 'display_order']
                                 );
 
                                 if (!$fieldDataObjects) {
@@ -801,7 +818,7 @@ class Output
                                     'action'
                                 ) === 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
                                 foreach ($fieldDataObjects as $fieldDataID => $results) {
-                                    $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($showcase_field_value === $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
+                                    $showcase_field_options .= '<option value="' . $results['value_id'] . '" ' . ($showcase_field_value === $results['value_id'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                                 }
                                 $showcase_field_input = eval(getTemplate('field_db'));
                                 break;
@@ -900,13 +917,13 @@ class Output
             $attachments = '';
 
             $attachmentObjects = attachmentGet(
-                ["posthash='{$db->escape_string($entryHash)}'"],
+                ["entry_hash='{$db->escape_string($entryHash)}'"],
                 array_keys(TABLES_DATA['myshowcase_attachments'])
             );
 
             foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                $attachmentData['size'] = get_friendly_size($attachmentData['filesize']);
-                $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['filename']));
+                $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
+                $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
                 $attachmentData['icon'] = str_replace(
                     '<img src="',
                     '<img src="' . $this->showcaseObject->urlBase . '/',
@@ -914,7 +931,7 @@ class Output
                 );
 
                 $attach_mod_options = '';
-                if ($attachmentData['visible'] !== 1) {
+                if ($attachmentData['status'] !== 1) {
                     $attachments .= eval(getTemplate('new_attachments_attachment_unapproved'));
                 } else {
                     $attachments .= eval(getTemplate('new_attachments_attachment'));
@@ -998,9 +1015,9 @@ class Output
                     $showcase_field_options = '';
 
                     $fieldObjects = fieldDataGet(
-                        ["setid='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "valueid!='0'"],
-                        ['valueid', 'value'],
-                        ['order_by' => 'disporder']
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
+                        ['value_id', 'value'],
+                        ['order_by' => 'display_order']
                     );
 
                     if (!$fieldObjects) {
@@ -1010,11 +1027,11 @@ class Output
                     $fieldInput = '';
 
                     foreach ($fieldObjects as $fieldDataID => $fieldData) {
-                        $fieldValue = $fieldData['valueid'];
+                        $fieldValue = $fieldData['value_id'];
 
                         $showcase_field_checked = ($mybb->get_input(
                             $fieldKey
-                        ) === $fieldData['valueid'] ? ' checked' : '');
+                        ) === $fieldData['value_id'] ? ' checked' : '');
 
                         $showcase_field_text = $fieldData['value'];
 
@@ -1041,9 +1058,9 @@ class Output
                     $showcase_field_checked = '';
 
                     $fieldDataObjects = fieldDataGet(
-                        ["setid='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "valueid!='0'"],
-                        ['valueid', 'value'],
-                        ['order_by' => 'disporder']
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldName}'", "value_id!='0'"],
+                        ['value_id', 'value'],
+                        ['order_by' => 'display_order']
                     );
 
                     if (!$fieldDataObjects) {
@@ -1054,7 +1071,7 @@ class Output
                         'action'
                     ) === 'new' ? '<option value=0>&lt;Select&gt;</option>' : '');
                     foreach ($fieldDataObjects as $fieldDataID => $results) {
-                        $showcase_field_options .= '<option value="' . $results['valueid'] . '" ' . ($fieldValue === $results['valueid'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
+                        $showcase_field_options .= '<option value="' . $results['value_id'] . '" ' . ($fieldValue === $results['value_id'] ? ' selected' : '') . '>' . $results['value'] . '</option>';
                     }
                     $fieldInput = eval(getTemplate('field_db'));
                     break;
@@ -1159,14 +1176,14 @@ class Output
                 $groupIDs = implode(',', $gids);
 
                 foreach ($gids as $entryID) {
-                    entryDataUpdate($this->showcaseObject->id, $entryID, [
+                    entryDataUpdate($this->showcaseObject->showcase_id, $entryID, [
                         'approved' => $mybb->get_input('action') === 'multiapprove' ? 1 : 0,
                         'approved_by' => $currentUserID,
                     ]);
                 }
 
                 $modlogdata = [
-                    'id' => $this->showcaseObject->id,
+                    'showcase_id' => $this->showcaseObject->showcase_id,
                     'gids' => implode(',', $gids)
                 ];
                 log_moderator_action(
@@ -1310,9 +1327,9 @@ class Output
         }
 
         $entryFieldData = showcaseDataGet(
-            $this->showcaseObject->id,
-            ["gid='{$this->showcaseObject->entryData}'"],
-            ['uid', 'posthash']
+            $this->showcaseObject->showcase_id,
+            ["entry_id='{$this->showcaseObject->entryData}'"],
+            ['user_id', 'entry_hash']
         );
 
         if (!$entryFieldData) {
@@ -1320,14 +1337,14 @@ class Output
         }
 
         //make sure current user is moderator or the myshowcase author
-        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] && $currentUserID !== $entryFieldData['uid']) {
+        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] && $currentUserID !== $entryFieldData['user_id']) {
             error($lang->myshowcase_not_authorized);
         }
 
         //get permissions for user
         $entryUserPermissions = $this->showcaseObject->userPermissionsGet($this->showcaseObject->entryUserID);
 
-        $entryHash = $entryFieldData['posthash'];
+        $entryHash = $entryFieldData['entry_hash'];
         //no break since edit will share NEW code
     }
 
@@ -1335,12 +1352,12 @@ class Output
     {
         global $mybb, $lang, $plugins;
 
-        $attachmentData = attachmentGet(["aid='{$attachmentID}'"],
+        $attachmentData = attachmentGet(["attachment_id='{$attachmentID}'"],
             array_keys(TABLES_DATA['myshowcase_attachments']),
             ['limit' => 1]);
 
-        // Error if attachment is invalid or not visible
-        if (!$attachmentData['aid'] || !$attachmentData['attachname'] || (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $attachmentData['visible'] !== 1)) {
+        // Error if attachment is invalid or not status
+        if (!$attachmentData['attachment_id'] || !$attachmentData['attachment_name'] || (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $attachmentData['status'] !== 1)) {
             error($lang->error_invalidattachment);
         }
 
@@ -1348,7 +1365,7 @@ class Output
             error_no_permission();
         }
 
-        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachname'];
+        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachment_name'];
 
         if (!file_exists($filePath)) {
             error($lang->error_invalidattachment);
@@ -1358,17 +1375,17 @@ class Output
 
         attachmentUpdate(['downloads' => $attachmentData['downloads'] + 1], $attachmentID);
 
-        if (stristr($attachmentData['filetype'], 'image/')) {
-            $posterdata = get_user($attachmentData['uid']);
+        if (stristr($attachmentData['file_type'], 'image/')) {
+            $posterdata = get_user($attachmentData['user_id']);
 
             $showcase_viewing_user = str_replace('{username}', $posterdata['username'], $lang->myshowcase_viewing_user);
 
             add_breadcrumb(
                 $showcase_viewing_user,
-                str_replace('{gid}', $attachmentData['gid'], $this->showcaseObject->urlViewEntry)
+                str_replace('{entry_id}', $attachmentData['entry_id'], $this->showcaseObject->urlViewEntry)
             );
 
-            $attachmentData['filename'] = rawurlencode($attachmentData['filename']);
+            $attachmentData['file_name'] = rawurlencode($attachmentData['file_name']);
 
             $plugins->run_hooks('myshowcase_attachment_end');
 
@@ -1380,22 +1397,22 @@ class Output
 
             add_breadcrumb(
                 $showcase_viewing_attachment,
-                str_replace('{gid}', $attachmentData['gid'], $this->showcaseObject->urlViewEntry)
+                str_replace('{entry_id}', $attachmentData['entry_id'], $this->showcaseObject->urlViewEntry)
             );
 
-            $lasteditdate = my_date($mybb->settings['dateformat'], $attachmentData['dateuploaded']);
+            $lasteditdate = my_date($mybb->settings['dateformat'], $attachmentData['dateline']);
 
-            $lastedittime = my_date($mybb->settings['timeformat'], $attachmentData['dateuploaded']);
+            $lastedittime = my_date($mybb->settings['timeformat'], $attachmentData['dateline']);
 
             $entryDateline = $lasteditdate . '&nbsp;' . $lastedittime;
 
-            $showcase_attachment_description = $lang->myshowcase_attachment_filename . $attachmentData['filename'] . '<br />' . $lang->myshowcase_attachment_uploaded . $entryDateline;
+            $showcase_attachment_description = $lang->myshowcase_attachment_filename . $attachmentData['file_name'] . '<br />' . $lang->myshowcase_attachment_uploaded . $entryDateline;
 
             $showcase_attachment = str_replace(
-                '{aid}',
-                $attachmentData['aid'],
+                '{attachment_id}',
+                $attachmentData['attachment_id'],
                 $this->showcaseObject->urlViewAttachmentItem
-            );//$this->showcaseObject->imgfolder."/".$attachmentData['attachname'];
+            );//$this->showcaseObject->images_directory."/".$attachmentData['attachment_name'];
 
             $pageContents = eval(getTemplate('attachment_view'));
 
@@ -1406,13 +1423,13 @@ class Output
         {
             header('Cache-Control: private', false);
 
-            header('Content-Type: ' . $attachmentData['filetype']);
+            header('Content-Type: ' . $attachmentData['file_type']);
 
             header('Content-Description: File Transfer');
 
-            header('Content-Disposition: inline; filename=' . $attachmentData['filename']);
+            header('Content-Disposition: inline; file_name=' . $attachmentData['file_name']);
 
-            header('Content-Length: ' . $attachmentData['filesize']);
+            header('Content-Length: ' . $attachmentData['file_size']);
 
             header('Expires: 0');
 
@@ -1434,14 +1451,14 @@ class Output
     {
         global $lang, $plugins;
 
-        $attachmentData = attachmentGet(["aid='{$attachmentID}'"],
+        $attachmentData = attachmentGet(["attachment_id='{$attachmentID}'"],
             array_keys(TABLES_DATA['myshowcase_attachments']),
             ['limit' => 1]);
 
-        // Error if attachment is invalid or not visible
-        if (empty($attachmentData['aid']) ||
-            empty($attachmentData['attachname']) ||
-            (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && empty($attachmentData['visible']))) {
+        // Error if attachment is invalid or not status
+        if (empty($attachmentData['attachment_id']) ||
+            empty($attachmentData['attachment_name']) ||
+            (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && empty($attachmentData['status']))) {
             error($lang->error_invalidattachment);
         }
 
@@ -1449,15 +1466,15 @@ class Output
             error_no_permission();
         }
 
-        //$attachmentExtension = get_extension($attachmentData['filename']);
+        //$attachmentExtension = get_extension($attachmentData['file_name']);
 
-        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachname'];
+        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachment_name'];
 
         if (!file_exists($filePath)) {
             error($lang->error_invalidattachment);
         }
 
-        switch ($attachmentData['filetype']) {
+        switch ($attachmentData['file_type']) {
             case 'application/pdf':
             case 'image/bmp':
             case 'image/gif':
@@ -1465,7 +1482,7 @@ class Output
             case 'image/pjpeg':
             case 'image/png':
             case 'text/plain':
-                header("Content-type: {$attachmentData['filetype']}");
+                header("Content-type: {$attachmentData['file_type']}");
 
                 $disposition = 'inline';
                 break;
@@ -1477,18 +1494,18 @@ class Output
         }
 
         if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie') !== false) {
-            header("Content-disposition: attachment; filename=\"{$attachmentData['filename']}\"");
+            header("Content-disposition: attachment; file_name=\"{$attachmentData['file_name']}\"");
         } else {
-            header("Content-disposition: {$disposition}; filename=\"{$attachmentData['filename']}\"");
+            header("Content-disposition: {$disposition}; file_name=\"{$attachmentData['file_name']}\"");
         }
 
         if (my_strpos(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0') !== false) {
             header('Expires: -1');
         }
 
-        header("Content-length: {$attachmentData['filesize']}");
+        header("Content-length: {$attachmentData['file_size']}");
 
-        header('Content-range: bytes=0-' . ($attachmentData['filesize'] - 1) . '/' . $attachmentData['filesize']);
+        header('Content-range: bytes=0-' . ($attachmentData['file_size'] - 1) . '/' . $attachmentData['file_size']);
 
         $plugins->run_hooks('myshowcase_image');
 

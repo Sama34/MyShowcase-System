@@ -70,9 +70,9 @@ function admin_user_groups_edit(): bool
     //see if added group is in each enabled myshowcase's permission set
     foreach ($myshowcases as $myshowcase) {
         foreach ($curgroups as $group) {
-            if (!array_key_exists($group['gid'], $showgroups[$myshowcase['id']] ?? [])) {
-                $myshowcase_defaultperms['id'] = $myshowcase['id'];
-                $myshowcase_defaultperms['gid'] = $group['gid'];
+            if (!array_key_exists($group['entry_id'], $showgroups[$myshowcase['showcase_id']] ?? [])) {
+                $myshowcase_defaultperms['showcase_id'] = $myshowcase['showcase_id'];
+                $myshowcase_defaultperms['entry_id'] = $group['entry_id'];
 
                 permissionsInsert($myshowcase_defaultperms);
             }
@@ -90,7 +90,7 @@ function admin_user_groups_delete_commit(): bool
 {
     global $usergroup;
 
-    permissionsDelete(["gid='{$usergroup['gid']}'"]);
+    permissionsDelete(["entry_id='{$usergroup['entry_id']}'"]);
 
     cacheUpdate(CACHE_TYPE_PERMISSIONS);
 

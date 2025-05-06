@@ -104,8 +104,8 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
                 $db->query(
                     'CREATE TABLE ' . TABLE_PREFIX . "myshowcase_reports (
 						`rid` INT( 10 ) UNSIGNED NOT NULL AUTO_INCREMENT ,
-						`id` INT( 3 ) UNSIGNED NOT NULL ,
-						`gid` INT( 10 ) UNSIGNED NOT NULL ,
+						`showcase_id` INT( 3 ) UNSIGNED NOT NULL ,
+						`entry_id` INT( 10 ) UNSIGNED NOT NULL ,
 						`reporteruid` INT( 10 ) UNSIGNED NOT NULL ,
 						`authoruid` INT( 10 ) UNSIGNED NOT NULL ,
 						`status` INT( 1 ) NOT NULL DEFAULT '0',
@@ -117,8 +117,8 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             }
 
             //add new field for random portal option
-            if (!$db->field_exists('portal_random', 'myshowcase_config')) {
-                $query = 'ALTER TABLE ' . TABLE_PREFIX . 'myshowcase_config ADD `portal_random` INT(1) DEFAULT \'0\'';
+            if (!$db->field_exists('build_random_entry_widget', 'myshowcase_config')) {
+                $query = 'ALTER TABLE ' . TABLE_PREFIX . 'myshowcase_config ADD `build_random_entry_widget` INT(1) DEFAULT \'0\'';
                 $db->write_query($query);
             }
 
@@ -251,27 +251,27 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             $db->modify_column('myshowcase_comments', 'comment', $newdef);
 
             //add prune time support
-            if (!$db->field_exists('prunetime', 'myshowcase_config')) {
+            if (!$db->field_exists('prune_time', 'myshowcase_config')) {
                 $newdef = 'VARCHAR( 10 ) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'prunetime', $newdef);
+                $db->add_column('myshowcase_config', 'prune_time', $newdef);
             }
 
             //add smilie support
-            if (!$db->field_exists('allowsmilies', 'myshowcase_config')) {
+            if (!$db->field_exists('allow_smilies', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allowsmilies', $newdef);
+                $db->add_column('myshowcase_config', 'allow_smilies', $newdef);
             }
 
             //add bbcode support
-            if (!$db->field_exists('allowbbcode', 'myshowcase_config')) {
+            if (!$db->field_exists('allow_mycode', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allowbbcode', $newdef);
+                $db->add_column('myshowcase_config', 'allow_mycode', $newdef);
             }
 
             //add html support
-            if (!$db->field_exists('allowhtml', 'myshowcase_config')) {
+            if (!$db->field_exists('allow_html', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allowhtml', $newdef);
+                $db->add_column('myshowcase_config', 'allow_html', $newdef);
             }
 
             //add parse setting
@@ -479,14 +479,14 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
                 );
             }
 
-            if (!$db->field_exists('watermarkimage', 'myshowcase_config')) {
-                $newdef = 'VARCHAR(50) NULL AFTER `defaultimage`';
-                $db->add_column('myshowcase_config', 'watermarkimage', $newdef);
+            if (!$db->field_exists('water_mark_image', 'myshowcase_config')) {
+                $newdef = 'VARCHAR(50) NULL AFTER `images_directory`';
+                $db->add_column('myshowcase_config', 'water_mark_image', $newdef);
             }
 
-            if (!$db->field_exists('watermarkloc', 'myshowcase_config')) {
-                $newdef = 'VARCHAR(12) NOT NULL DEFAULT \'lower-right\' AFTER `watermarkimage`';
-                $db->add_column('myshowcase_config', 'watermarkloc', $newdef);
+            if (!$db->field_exists('water_mark_image_location', 'myshowcase_config')) {
+                $newdef = 'VARCHAR(12) NOT NULL DEFAULT \'lower-right\' AFTER `water_mark_image`';
+                $db->add_column('myshowcase_config', 'water_mark_image_location', $newdef);
             }
 
             //add myshowcase_watermark template

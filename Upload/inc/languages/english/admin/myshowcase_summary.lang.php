@@ -183,10 +183,10 @@ $l = array_merge([
     'myShowcaseAdminSummaryViewRewritesDescription' => 'If you are using the built-in MyBB SEO or other SEO plugin, you will need to enter the information below into your .htaccess file. These settings are specific to the "{1}" showcase. If there are other showcases, the SEO settings for those will need to be added as well. If the "{2}" showcase name is changed, these .htaccess settings will need to be updated. After changing the name, return to this page to obtain the new settings and update the .htaccess file as appropriate.<br /><br />',
     'myShowcaseAdminSummaryViewRewritesMain' => 'RewriteRule ^{1}\.html$ {2} [L,QSA]<br />',
     'myShowcaseAdminSummaryViewRewritesPage' => 'RewriteRule ^{1}-page-([0-9]+)\.html$ {2}?page=$1 [L,QSA]<br />',
-    'myShowcaseAdminSummaryViewRewritesView' => 'RewriteRule ^{1}-view-([0-9]+)\.html$ {2}?action=view&gid=$1 [L,QSA]<br />',
+    'myShowcaseAdminSummaryViewRewritesView' => 'RewriteRule ^{1}-view-([0-9]+)\.html$ {2}?action=view&entry_id=$1 [L,QSA]<br />',
     'myShowcaseAdminSummaryViewRewritesNew' => 'RewriteRule ^{1}-new\.html$ {2}?action=new [L,QSA]<br />',
-    'myShowcaseAdminSummaryViewRewritesAttachment' => 'RewriteRule ^{1}-attachment-([0-9]+)\.html$ {2}?action=attachment&aid=$1 [L,QSA]<br />',
-    'myShowcaseAdminSummaryViewRewritesEntry' => 'RewriteRule ^{1}-item-([0-9]+)\.php$ {2}?action=item&aid=$1 [L,QSA]<br />',
+    'myShowcaseAdminSummaryViewRewritesAttachment' => 'RewriteRule ^{1}-attachment-([0-9]+)\.html$ {2}?action=attachment&attachment_id=$1 [L,QSA]<br />',
+    'myShowcaseAdminSummaryViewRewritesEntry' => 'RewriteRule ^{1}-item-([0-9]+)\.php$ {2}?action=item&attachment_id=$1 [L,QSA]<br />',
 
     'myShowcaseAdminUserGroup' => 'Usergroup',
 ], $l);

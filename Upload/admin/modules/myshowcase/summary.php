@@ -67,7 +67,7 @@ $page->add_breadcrumb_item($lang->myShowcaseSystem, urlHandlerBuild());
 
 $page->add_breadcrumb_item($lang->myShowcaseAdminSummary, urlHandlerBuild());
 
-$showcaseID = $mybb->get_input('id', MyBB::INPUT_INT);
+$showcaseID = $mybb->get_input('showcase_id', MyBB::INPUT_INT);
 
 $pageTabs = [
     'myShowcaseAdminSummary' => [
@@ -85,7 +85,7 @@ $pageTabs = [
 if ($mybb->get_input('action') == 'edit') {
     $pageTabs['myShowcaseAdminSummaryEdit'] = [
         'title' => $lang->myShowcaseAdminSummaryEdit,
-        'link' => urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID]),
+        'link' => urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID]),
         'description' => $lang->myShowcaseAdminSummaryEditDescription
     ];
 }
@@ -94,7 +94,7 @@ $groupsCache = $cache->read('usergroups') ?? [];
 
 $fieldsetObjects = (function (): array {
     return array_map(function ($fieldsetData) {
-        return $fieldsetData['setname'];
+        return $fieldsetData['set_name'];
     }, cacheGet(CACHE_TYPE_FIELD_SETS));
 })();
 
@@ -125,7 +125,7 @@ if ($mybb->get_input('action') === 'new') {
         if (!$mybb->get_input('name') ||
             !$mybb->get_input('showcase_slug') ||
             !$mybb->get_input('mainfile') ||
-            !$mybb->get_input('imgfolder')) {
+            !$mybb->get_input('images_directory')) {
             $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
@@ -148,9 +148,9 @@ if ($mybb->get_input('action') === 'new') {
             'showcase_slug' => $db->escape_string($mybb->get_input('showcase_slug')),
             'description' => $db->escape_string($mybb->get_input('description')),
             'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
-            'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
-            'f2gpath' => $db->escape_string($mybb->get_input('f2gpath')),
-            'fieldsetid' => $mybb->get_input('newfieldset', MyBB::INPUT_INT),
+            'images_directory' => $db->escape_string($mybb->get_input('images_directory')),
+            'relative_path' => $db->escape_string($mybb->get_input('relative_path')),
+            'field_set_id' => $mybb->get_input('newfieldset', MyBB::INPUT_INT),
         ];
 
         if ($errorMessages) {
@@ -163,9 +163,9 @@ if ($mybb->get_input('action') === 'new') {
             $defaultShowcasePermissions = showcaseDefaultPermissions();
 
             foreach ($groupsCache as $groupData) {
-                $defaultShowcasePermissions['id'] = $showcaseID;
+                $defaultShowcasePermissions['showcase_id'] = $showcaseID;
 
-                $defaultShowcasePermissions['gid'] = (int)$groupData['gid'];
+                $defaultShowcasePermissions['entry_id'] = (int)$groupData['gid'];
 
                 permissionsInsert($defaultShowcasePermissions);
             }
@@ -219,15 +219,16 @@ if ($mybb->get_input('action') === 'new') {
     $formContainer->output_row(
         $lang->myShowcaseAdminSummaryNewFormImageFolder . '<em>*</em>',
         $lang->myShowcaseAdminSummaryNewFormImageFolderDescription,
-        $form->generate_text_box('imgfolder', $mybb->get_input('imgfolder'), ['id' => 'imgfolder']),
-        'imgfolder'
+        $form->generate_text_box('images_directory', $mybb->get_input('images_directory'), ['id' => 'images_directory']
+        ),
+        'images_directory'
     );
 
     $formContainer->output_row(
         $lang->myShowcaseAdminSummaryNewFormRelativePath . '<em>*</em>',
         $lang->myShowcaseAdminSummaryNewFormRelativePathDescription,
-        $form->generate_text_box('f2gpath', $mybb->get_input('f2gpath'), ['id' => 'f2gpath']),
-        'f2gpath'
+        $form->generate_text_box('relative_path', $mybb->get_input('relative_path'), ['id' => 'relative_path']),
+        'relative_path'
     );
 
     $formContainer->output_row(
@@ -255,7 +256,9 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_footer();
 } elseif ($mybb->get_input('action') == 'edit') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], array_keys(TABLES_DATA['myshowcase_config']), ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"],
+        array_keys(TABLES_DATA['myshowcase_config']),
+        ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -265,7 +268,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->add_breadcrumb_item(
         $lang->myShowcaseAdminSummaryEdit,
-        urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID])
+        urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID])
     );
 
     $page->output_header($lang->myShowcaseAdminSummaryEdit);
@@ -286,7 +289,7 @@ if ($mybb->get_input('action') === 'new') {
                 if (!$mybb->get_input('name') ||
                     !$mybb->get_input('showcase_slug') ||
                     !$mybb->get_input('mainfile') ||
-                    !$mybb->get_input('imgfolder')) {
+                    !$mybb->get_input('images_directory')) {
                     $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
                 }
 
@@ -298,7 +301,7 @@ if ($mybb->get_input('action') === 'new') {
                         $duplicatedName = false;
 
                         foreach ($existingShowcases as $showcaseData) {
-                            if ($showcaseData['name'] === $showcaseName && $showcaseData['id'] !== $showcaseID) {
+                            if ($showcaseData['name'] === $showcaseName && $showcaseData['showcase_id'] !== $showcaseID) {
                                 $duplicatedName = true;
                             }
                         }
@@ -319,7 +322,7 @@ if ($mybb->get_input('action') === 'new') {
                         $duplicatedName = false;
 
                         foreach ($existingShowcases as $showcaseData) {
-                            if ($showcaseData['showcase_slug'] === $showcaseName && $showcaseData['id'] !== $showcaseID) {
+                            if ($showcaseData['showcase_slug'] === $showcaseName && $showcaseData['showcase_id'] !== $showcaseID) {
                                 $duplicatedName = true;
                             }
                         }
@@ -337,7 +340,7 @@ if ($mybb->get_input('action') === 'new') {
                         $duplicatedName = false;
 
                         foreach ($existingShowcases as $showcaseData) {
-                            if ($showcaseData['mainfile'] === $showcaseName && $showcaseData['id'] !== $showcaseID) {
+                            if ($showcaseData['mainfile'] === $showcaseName && $showcaseData['showcase_id'] !== $showcaseID) {
                                 $duplicatedName = true;
                             }
                         }
@@ -358,18 +361,18 @@ if ($mybb->get_input('action') === 'new') {
                         'showcase_slug' => $db->escape_string($mybb->get_input('showcase_slug')),
                         'description' => $db->escape_string($mybb->get_input('description')),
                         'mainfile' => $db->escape_string($mybb->get_input('mainfile')),
-                        'imgfolder' => $db->escape_string($mybb->get_input('imgfolder')),
-                        'defaultimage' => $db->escape_string($mybb->get_input('defaultimage')),
-                        'watermarkimage' => $db->escape_string($mybb->get_input('watermarkimage')),
-                        'watermarkloc' => $mybb->get_input('watermarkloc'),
+                        'images_directory' => $db->escape_string($mybb->get_input('images_directory')),
+                        'images_directory' => $db->escape_string($mybb->get_input('images_directory')),
+                        'water_mark_image' => $db->escape_string($mybb->get_input('water_mark_image')),
+                        'water_mark_image_location' => $mybb->get_input('water_mark_image_location'),
                         'use_attach' => $mybb->get_input('use_attach', MyBB::INPUT_INT),
-                        'f2gpath' => $db->escape_string($mybb->get_input('f2gpath'))
+                        'relative_path' => $db->escape_string($mybb->get_input('relative_path'))
                     ];
 
                     if (!showcaseDataTableExists($showcaseID)) {
                         $showcaseData = array_merge(
                             $showcaseData,
-                            ['fieldsetid' => $mybb->get_input('fieldsetid', MyBB::INPUT_INT)]
+                            ['field_set_id' => $mybb->get_input('field_set_id', MyBB::INPUT_INT)]
                         );
                     }
 
@@ -384,32 +387,33 @@ if ($mybb->get_input('action') === 'new') {
                     flash_message($lang->myShowcaseAdminSuccessShowcaseEditMain, 'success');
 
                     admin_redirect(
-                        urlHandlerBuild(['action' => 'edit', 'type' => 'main', 'id' => $showcaseID]) . '#tab_main'
+                        urlHandlerBuild(['action' => 'edit', 'type' => 'main', 'showcase_id' => $showcaseID]
+                        ) . '#tab_main'
                     );
                 }
 
                 break;
             case 'other':
                 $showcaseData = [
-                    'modnewedit' => $mybb->get_input('modnewedit', MyBB::INPUT_INT),
-                    'othermaxlength' => $mybb->get_input('othermaxlength', MyBB::INPUT_INT),
+                    'moderate_edits' => $mybb->get_input('moderate_edits', MyBB::INPUT_INT),
+                    'maximum_text_field_lenght' => $mybb->get_input('maximum_text_field_lenght', MyBB::INPUT_INT),
                     'allow_attachments' => $mybb->get_input('allow_attachments', MyBB::INPUT_INT),
                     'allow_comments' => $mybb->get_input('allow_comments', MyBB::INPUT_INT),
                     'thumb_width' => $mybb->get_input('thumb_width', MyBB::INPUT_INT),
                     'thumb_height' => $mybb->get_input('thumb_height', MyBB::INPUT_INT),
                     'comment_length' => $mybb->get_input('comment_length', MyBB::INPUT_INT),
-                    'comment_dispinit' => $mybb->get_input('comment_dispinit', MyBB::INPUT_INT),
-                    'disp_attachcols' => $mybb->get_input('disp_attachcols', MyBB::INPUT_INT),
-                    'disp_empty' => $mybb->get_input('disp_empty', MyBB::INPUT_INT),
-                    'link_in_postbit' => $mybb->get_input('link_in_postbit', MyBB::INPUT_INT),
-                    'portal_random' => $mybb->get_input('portal_random', MyBB::INPUT_INT),
+                    'comments_per_page' => $mybb->get_input('comments_per_page', MyBB::INPUT_INT),
+                    'attachments_per_row' => $mybb->get_input('attachments_per_row', MyBB::INPUT_INT),
+                    'display_empty_fields' => $mybb->get_input('display_empty_fields', MyBB::INPUT_INT),
+                    'display_in_posts' => $mybb->get_input('display_in_posts', MyBB::INPUT_INT),
+                    'build_random_entry_widget' => $mybb->get_input('build_random_entry_widget', MyBB::INPUT_INT),
                     'display_signatures' => $mybb->get_input('display_signatures', MyBB::INPUT_INT),
-                    'prunetime' => $db->escape_string(
-                        $mybb->get_input('prunetime', MyBB::INPUT_INT) . '|' . $mybb->get_input('interval')
+                    'prune_time' => $db->escape_string(
+                        $mybb->get_input('prune_time', MyBB::INPUT_INT) . '|' . $mybb->get_input('interval')
                     ),
-                    'allowsmilies' => $mybb->get_input('allowsmilies', MyBB::INPUT_INT),
-                    'allowbbcode' => $mybb->get_input('allowbbcode', MyBB::INPUT_INT),
-                    'allowhtml' => $mybb->get_input('allowhtml', MyBB::INPUT_INT),
+                    'allow_smilies' => $mybb->get_input('allow_smilies', MyBB::INPUT_INT),
+                    'allow_mycode' => $mybb->get_input('allow_mycode', MyBB::INPUT_INT),
+                    'allow_html' => $mybb->get_input('allow_html', MyBB::INPUT_INT),
                 ];
 
                 $showcaseData = hooksRun('admin_summary_edit_other', $showcaseData);
@@ -423,7 +427,8 @@ if ($mybb->get_input('action') === 'new') {
                 flash_message($lang->myShowcaseAdminSuccessShowcaseEditOther, 'success');
 
                 admin_redirect(
-                    urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'id' => $showcaseID]) . '#tab_other'
+                    urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'showcase_id' => $showcaseID]
+                    ) . '#tab_other'
                 );
 
                 break;
@@ -443,7 +448,7 @@ if ($mybb->get_input('action') === 'new') {
 
                     $permissionsData = hooksRun('admin_summary_edit_permissions', $permissionsData);
 
-                    permissionsUpdate(["id='{$showcaseID}'", "gid='{$groupID}'"], $permissionsData);
+                    permissionsUpdate(["showcase_id='{$showcaseID}'", "group_id='{$groupID}'"], $permissionsData);
                 }
 
                 cacheUpdate(CACHE_TYPE_PERMISSIONS);
@@ -454,7 +459,7 @@ if ($mybb->get_input('action') === 'new') {
 
                 admin_redirect(
                     urlHandlerBuild(
-                        ['action' => 'edit', 'type' => 'permissions', 'id' => $showcaseID]
+                        ['action' => 'edit', 'type' => 'permissions', 'showcase_id' => $showcaseID]
                     ) . '#tab_permissions'
                 );
 
@@ -473,7 +478,8 @@ if ($mybb->get_input('action') === 'new') {
                             ModeratorPermissions::CanDeleteComments => $permissions[ModeratorPermissions::CanDeleteComments] ?? 0,
                         ];
 
-                        moderatorsUpdate(["id='{$showcaseID}'", "mid='{$moderatorID}'"], $moderatorData);
+                        moderatorsUpdate(["showcase_id='{$showcaseID}'", "moderator_id='{$moderatorID}'"],
+                            $moderatorData);
                     }
                 } elseif ($mybb->get_input('add') == 'group') {
                     $groupID = $mybb->get_input('usergroup', MyBB::INPUT_INT);
@@ -485,15 +491,15 @@ if ($mybb->get_input('action') === 'new') {
 
                         admin_redirect(
                             urlHandlerBuild(
-                                ['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]
+                                ['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
                             ) . '#tab_moderators'
                         );
                     }
 
                     $moderatorData = [
-                        'id' => $showcaseID,
-                        'uid' => $groupID,
-                        'isgroup' => MODERATOR_TYPE_GROUP,
+                        'showcase_id' => $showcaseID,
+                        'user_id' => $groupID,
+                        'is_group' => MODERATOR_TYPE_GROUP,
                         ModeratorPermissions::CanApproveEntries => $mybb->get_input(
                             'gcanmodapprove',
                             MyBB::INPUT_INT
@@ -521,15 +527,15 @@ if ($mybb->get_input('action') === 'new') {
 
                         admin_redirect(
                             urlHandlerBuild(
-                                ['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]
+                                ['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
                             ) . '#tab_moderators'
                         );
                     }
 
                     $moderatorData = [
-                        'id' => $showcaseID,
-                        'uid' => (int)$userData['uid'],
-                        'isgroup' => MODERATOR_TYPE_USER,
+                        'showcase_id' => $showcaseID,
+                        'user_id' => (int)$userData['uid'],
+                        'is_group' => MODERATOR_TYPE_USER,
                         ModeratorPermissions::CanApproveEntries => $mybb->get_input(
                             'ucanmodapprove',
                             MyBB::INPUT_INT
@@ -558,13 +564,13 @@ if ($mybb->get_input('action') === 'new') {
                 flash_message($lang->myShowcaseAdminSuccessShowcaseEditModerators, 'success');
 
                 admin_redirect(
-                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]
+                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
                     ) . '#tab_moderators'
                 );
 
                 break;
             case 'delete':
-                moderatorsDelete(["mid={$mybb->get_input('mid', MyBB::INPUT_INT)}"]);
+                moderatorsDelete(["moderator_id={$mybb->get_input('moderator_id', MyBB::INPUT_INT)}"]);
 
                 cacheUpdate(CACHE_TYPE_MODERATORS);
 
@@ -573,7 +579,7 @@ if ($mybb->get_input('action') === 'new') {
                 flash_message($lang->myShowcaseAdminSuccessShowcaseEditModeratorDelete, 'success');
 
                 admin_redirect(
-                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]
+                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
                     ) . '#tab_moderators'
                 );
                 break;
@@ -602,7 +608,7 @@ if ($mybb->get_input('action') === 'new') {
     echo "<div id=\"tab_main\">\n";
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'main', 'id' => $showcaseID]) . '#tab_main',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'main', 'showcase_id' => $showcaseID]) . '#tab_main',
         'post',
         'edit'
     );
@@ -653,9 +659,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryNewFormImageFolder,
         $lang->myShowcaseAdminSummaryNewFormImageFolderDescription,
         $form->generate_text_box(
-            'imgfolder',
-            $mybb->get_input('imgfolder'),
-            ['id' => 'imgfolder', 'style' => 'width: 250px', 'class' => 'align_left'],
+            'images_directory',
+            $mybb->get_input('images_directory'),
+            ['id' => 'images_directory', 'style' => 'width: 250px', 'class' => 'align_left'],
         )
     );
 
@@ -663,9 +669,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormDefaultListImage,
         $lang->myShowcaseAdminSummaryEditFormDefaultListImageDescription,
         $form->generate_text_box(
-            'defaultimage',
-            $mybb->get_input('defaultimage'),
-            ['id' => 'defaultimage'],
+            'images_directory',
+            $mybb->get_input('images_directory'),
+            ['id' => 'images_directory'],
         )
     );
 
@@ -673,9 +679,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormWaterMarkImage,
         $lang->myShowcaseAdminSummaryEditFormWaterMarkImageDescription,
         $form->generate_text_box(
-            'watermarkimage',
-            $mybb->get_input('watermarkimage'),
-            ['id' => 'watermarkimage'],
+            'water_mark_image',
+            $mybb->get_input('water_mark_image'),
+            ['id' => 'water_mark_image'],
         )
     );
 
@@ -683,7 +689,7 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormWaterMarkLocation,
         $lang->myShowcaseAdminSummaryEditFormWaterMarkLocationDescription,
         $form->generate_select_box(
-            'watermarkloc',
+            'water_mark_image_location',
             [
                 'upper-left' => $lang->myShowcaseAdminSummaryEditFormWaterMarkLocationUpperLeft,
                 'upper-right' => $lang->myShowcaseAdminSummaryEditFormWaterMarkLocationUpperRight,
@@ -691,8 +697,8 @@ if ($mybb->get_input('action') === 'new') {
                 'lower-left' => $lang->myShowcaseAdminSummaryEditFormWaterMarkLocationLowerLeft,
                 'lower-right' => $lang->myShowcaseAdminSummaryEditFormWaterMarkLocationLowerRight
             ],
-            $mybb->get_input('watermarkloc'),
-            ['id' => 'watermarkloc']
+            $mybb->get_input('water_mark_image_location'),
+            ['id' => 'water_mark_image_location']
         )
     );
 
@@ -711,9 +717,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryNewFormRelativePath,
         $lang->myShowcaseAdminSummaryNewFormRelativePathDescription,
         $form->generate_text_box(
-            'f2gpath',
-            $mybb->get_input('f2gpath'),
-            ['id' => 'f2gpath'],
+            'relative_path',
+            $mybb->get_input('relative_path'),
+            ['id' => 'relative_path'],
         )
     );
 
@@ -722,10 +728,10 @@ if ($mybb->get_input('action') === 'new') {
             $lang->myShowcaseAdminSummaryNewFormFieldSet,
             $lang->myShowcaseAdminSummaryNewFormFieldSetDescription,
             $form->generate_select_box(
-                'fieldsetid',
+                'field_set_id',
                 $fieldsetObjects,
-                $mybb->get_input('fieldsetid', MyBB::INPUT_INT),
-                ['id' => 'fieldsetid']
+                $mybb->get_input('field_set_id', MyBB::INPUT_INT),
+                ['id' => 'field_set_id']
             )
         );
     }
@@ -745,7 +751,7 @@ if ($mybb->get_input('action') === 'new') {
     echo "<div id=\"tab_other\">\n";
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'id' => $showcaseID]) . '#tab_other',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'showcase_id' => $showcaseID]) . '#tab_other',
         'post',
         'edit'
     );
@@ -756,9 +762,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormPruning,
         $lang->myShowcaseAdminSummaryEditFormPruningDescription,
         $form->generate_numeric_field(
-            'prunetime',
-            $mybb->get_input('prunetime', MyBB::INPUT_INT),
-            ['id' => 'prunetime', 'class' => 'field150', 'min' => 0]
+            'prune_time',
+            $mybb->get_input('prune_time', MyBB::INPUT_INT),
+            ['id' => 'prune_time', 'class' => 'field150', 'min' => 0]
         ) . ' ' . $form->generate_select_box(
             'interval',
             [
@@ -776,10 +782,10 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormModerationOptions,
         $lang->myShowcaseAdminSummaryEditFormModerationOptionsDescription,
         $form->generate_check_box(
-            'modnewedit',
+            'moderate_edits',
             1,
             $lang->myShowcaseAdminSummaryEditFormModerationOptionsNewEdits,
-            ['checked' => $mybb->get_input('modnewedit', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('moderate_edits', MyBB::INPUT_INT)]
         )
     );
 
@@ -787,9 +793,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormTextTypeFields,
         $lang->myShowcaseAdminSummaryEditFormTextTypeFieldsDescription,
         $lang->myShowcaseAdminSummaryEditFormTextTypeFieldsMaxCharacters . "<br />\n" . $form->generate_numeric_field(
-            'othermaxlength',
-            $mybb->get_input('othermaxlength', MyBB::INPUT_INT),
-            ['id' => 'othermaxlength', 'class' => 'field150', 'min' => 0]
+            'maximum_text_field_lenght',
+            $mybb->get_input('maximum_text_field_lenght', MyBB::INPUT_INT),
+            ['id' => 'maximum_text_field_lenght', 'class' => 'field150', 'min' => 0]
         )
     );
 
@@ -846,22 +852,22 @@ if ($mybb->get_input('action') === 'new') {
 
     $rowOptions = [
         $form->generate_check_box(
-            'allowsmilies',
+            'allow_smilies',
             1,
             $lang->myShowcaseAdminSummaryEditParserOptionsAllowSmiles,
-            ['checked' => $mybb->get_input('allowsmilies', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('allow_smilies', MyBB::INPUT_INT)]
         ),
         $form->generate_check_box(
-            'allowbbcode',
+            'allow_mycode',
             1,
             $lang->myShowcaseAdminSummaryEditParserOptionsAllowMyCode,
-            ['checked' => $mybb->get_input('allowbbcode', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('allow_mycode', MyBB::INPUT_INT)]
         ),
         $form->generate_check_box(
-            'allowhtml',
+            'allow_html',
             1,
             $lang->myShowcaseAdminSummaryEditParserOptionsAllowHtml,
-            ['checked' => $mybb->get_input('allowhtml', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('allow_html', MyBB::INPUT_INT)]
         ),
     ];
 
@@ -876,32 +882,32 @@ if ($mybb->get_input('action') === 'new') {
 
     $rowOptions = [
         $lang->myShowcaseAdminSummaryEditDisplaySettingsAttachmentColumns . "<br />\n" . $form->generate_numeric_field(
-            'disp_attachcols',
-            $mybb->get_input('disp_attachcols', MyBB::INPUT_INT),
-            ['id' => 'disp_attachcols', 'class' => 'field150', 'min' => 0]
+            'attachments_per_row',
+            $mybb->get_input('attachments_per_row', MyBB::INPUT_INT),
+            ['id' => 'attachments_per_row', 'class' => 'field150', 'min' => 0]
         ),
         $lang->myShowcaseAdminSummaryEditDisplaySettingsCommentsPerPage . "<br />\n" . $form->generate_numeric_field(
-            'comment_dispinit',
-            $mybb->get_input('comment_dispinit', MyBB::INPUT_INT),
-            ['id' => 'comment_dispinit', 'class' => 'field150', 'min' => 0]
+            'comments_per_page',
+            $mybb->get_input('comments_per_page', MyBB::INPUT_INT),
+            ['id' => 'comments_per_page', 'class' => 'field150', 'min' => 0]
         ) . '<br /><br />',
         $form->generate_check_box(
-            'disp_empty',
+            'display_empty_fields',
             1,
             $lang->myShowcaseAdminSummaryEditDisplaySettingsDisplayEmptyFields,
-            ['checked' => $mybb->get_input('disp_empty', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('display_empty_fields', MyBB::INPUT_INT)]
         ),
         $form->generate_check_box(
-            'link_in_postbit',
+            'display_in_posts',
             1,
             $lang->myShowcaseAdminSummaryEditDisplaySettingsDisplayInPosts,
-            ['checked' => $mybb->get_input('link_in_postbit', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('display_in_posts', MyBB::INPUT_INT)]
         ),
         $form->generate_check_box(
-            'portal_random',
+            'build_random_entry_widget',
             1,
             $lang->myShowcaseAdminSummaryEditDisplaySettingsDisplayRandomEntry,
-            ['checked' => $mybb->get_input('portal_random', MyBB::INPUT_INT)]
+            ['checked' => $mybb->get_input('build_random_entry_widget', MyBB::INPUT_INT)]
         ),
         $form->generate_check_box(
             'display_signatures',
@@ -935,7 +941,8 @@ if ($mybb->get_input('action') === 'new') {
     echo "<div id=\"tab_permissions\">\n";
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'permissions', 'id' => $showcaseID]) . '#tab_permissions',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'permissions', 'showcase_id' => $showcaseID]
+        ) . '#tab_permissions',
         'post',
         'edit'
     );
@@ -1064,7 +1071,7 @@ if ($mybb->get_input('action') === 'new') {
     echo "<div id=\"tab_moderators\">\n";
 
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]) . '#tab_moderators',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]) . '#tab_moderators',
         'post',
         'management'
     );
@@ -1103,41 +1110,41 @@ if ($mybb->get_input('action') === 'new') {
     );
 
     $fieldObjects = moderatorGet(
-        ["id='{$showcaseID}'"],
+        ["showcase_id='{$showcaseID}'"],
         [
-            'mid',
-            'uid',
-            'isgroup',
+            'moderator_id',
+            'user_id',
+            'is_group',
             ModeratorPermissions::CanApproveEntries,
             ModeratorPermissions::CanEditEntries,
             ModeratorPermissions::CanDeleteEntries,
             ModeratorPermissions::CanDeleteComments
         ],
-        ['order_by' => 'isgroup']
+        ['order_by' => 'is_group']
     );
 
     while ($moderatorData = $db->fetch_array($query)) {
-        if (!empty($moderatorData['isgroup'])) {
+        if (!empty($moderatorData['is_group'])) {
             $moderatorData['img'] = "<img src=\"styles/{$page->style}/images/icons/group.png\" alt=\"{$lang->myshowcase_moderators_group}\" title=\"{$lang->myshowcase_moderators_group}\" />";
 
             foreach ($groupsCache as $groupData) {
-                if ($groupData['gid'] == $moderatorData['uid']) {
+                if ($groupData['gid'] == $moderatorData['user_id']) {
                     $moderatorData['title'] = $groupData['title'];
                 }
             }
 
             $formContainer->output_cell(
-                "{$moderatorData['img']} <a href=\"index.php?module=user-groups&amp;action=edit&amp;gid={$moderatorData['id']}\">" . htmlspecialchars_uni(
+                "{$moderatorData['img']} <a href=\"index.php?module=user-groups&amp;action=edit&amp;group_id={$moderatorData['group_id']}\">" . htmlspecialchars_uni(
                     $moderatorData['title']
                 ) . '</a>'
             );
         } else {
             $moderatorData['img'] = "<img src=\"styles/{$page->style}/images/icons/user.png\" alt=\"{$lang->myshowcase_moderators_user}\" title=\"{$lang->myshowcase_moderators_user}\" />";
 
-            $userData = get_user($moderatorData['uid']);
+            $userData = get_user($moderatorData['user_id']);
 
             $formContainer->output_cell(
-                "{$moderatorData['img']} <a href=\"index.php?module=user-users&amp;action=edit&amp;uid={$moderatorData['id']}\">" . htmlspecialchars_uni(
+                "{$moderatorData['img']} <a href=\"index.php?module=user-users&amp;action=edit&amp;user_id={$moderatorData['showcase_id']}\">" . htmlspecialchars_uni(
                     $userData['username']
                 ) . '</a>'
             );
@@ -1145,12 +1152,12 @@ if ($mybb->get_input('action') === 'new') {
 
         $formContainer->output_cell(
             $form->generate_check_box(
-                "permissions[{$moderatorData['mid']}][canmodapprove]",
+                "permissions[{$moderatorData['moderator_id']}][canmodapprove]",
                 1,
                 '',
                 [
                     'checked' => $moderatorData[ModeratorPermissions::CanApproveEntries],
-                    'id' => "modapprove{$moderatorData['mid']}"
+                    'id' => "modapprove{$moderatorData['moderator_id']}"
                 ]
             ),
             ['class' => 'align_center']
@@ -1158,12 +1165,12 @@ if ($mybb->get_input('action') === 'new') {
 
         $formContainer->output_cell(
             $form->generate_check_box(
-                "permissions[{$moderatorData['mid']}][canmodedit]",
+                "permissions[{$moderatorData['moderator_id']}][canmodedit]",
                 1,
                 '',
                 [
                     'checked' => $moderatorData[ModeratorPermissions::CanEditEntries],
-                    'id' => "modedit{$moderatorData['mid']}"
+                    'id' => "modedit{$moderatorData['moderator_id']}"
                 ]
             ),
             ['class' => 'align_center']
@@ -1171,12 +1178,12 @@ if ($mybb->get_input('action') === 'new') {
 
         $formContainer->output_cell(
             $form->generate_check_box(
-                "permissions[{$moderatorData['mid']}][canmoddelete]",
+                "permissions[{$moderatorData['moderator_id']}][canmoddelete]",
                 1,
                 '',
                 [
                     'checked' => $moderatorData[ModeratorPermissions::CanDeleteEntries],
-                    'id' => "moddelete{$moderatorData['mid']}"
+                    'id' => "moddelete{$moderatorData['moderator_id']}"
                 ]
             ),
             ['class' => 'align_center']
@@ -1184,12 +1191,12 @@ if ($mybb->get_input('action') === 'new') {
 
         $formContainer->output_cell(
             $form->generate_check_box(
-                "permissions[{$moderatorData['mid']}][canmoddelcomment]",
+                "permissions[{$moderatorData['moderator_id']}][canmoddelcomment]",
                 1,
                 '',
                 [
                     'checked' => $moderatorData[ModeratorPermissions::CanDeleteComments],
-                    'id' => "moddelcomment{$moderatorData['mid']}"
+                    'id' => "moddelcomment{$moderatorData['moderator_id']}"
                 ]
             ),
             ['class' => 'align_center']
@@ -1198,8 +1205,8 @@ if ($mybb->get_input('action') === 'new') {
         $deleteModeratorUrl = urlHandlerBuild([
                 'action' => 'edit',
                 'type' => 'delete',
-                'id' => $showcaseID,
-                'mid' => $moderatorData['mid'],
+                'showcase_id' => $showcaseID,
+                'moderator_id' => $moderatorData['moderator_id'],
                 'my_post_key' => $mybb->post_code
             ]) . '#tab_moderators';
 
@@ -1232,7 +1239,7 @@ if ($mybb->get_input('action') === 'new') {
 
     // Add Usergropups
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]) . '#tab_moderators',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]) . '#tab_moderators',
         'post',
         'management'
     );
@@ -1309,7 +1316,7 @@ if ($mybb->get_input('action') === 'new') {
 
     //add Users
     $form = new Form(
-        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'id' => $showcaseID]) . '#tab_moderators',
+        urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]) . '#tab_moderators',
         'post',
         'management'
     );
@@ -1423,7 +1430,7 @@ if ($mybb->get_input('action') === 'new') {
 } elseif (in_array($mybb->get_input('action'), ['enable', 'disable'])) {
     $enableShowcase = $mybb->get_input('action') === 'enable';
 
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], [], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1450,7 +1457,7 @@ if ($mybb->get_input('action') === 'new') {
 } elseif (in_array($mybb->get_input('action'), ['tableCreate', 'tableRebuild'])) {
     $createTable = $mybb->get_input('action') === 'tableCreate';
 
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['fieldsetid'], ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], ['field_set_id'], ['limit' => 1]);
 
     if (!$showcaseData || $createTable && showcaseDataTableExists($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1478,7 +1485,7 @@ if ($mybb->get_input('action') === 'new') {
 
     admin_redirect(urlHandlerBuild());
 } elseif ($mybb->get_input('action') === 'tableDrop') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name'], ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], ['name'], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1521,11 +1528,11 @@ if ($mybb->get_input('action') === 'new') {
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'tableDrop', 'id' => $showcaseID]),
+        urlHandlerBuild(['action' => 'tableDrop', 'showcase_id' => $showcaseID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmTableDrop, $showcaseName)
     );
 } elseif ($mybb->get_input('action') === 'viewRewrites') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], ['name', 'showcase_slug', 'mainfile'], ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], ['name', 'showcase_slug', 'mainfile'], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1535,7 +1542,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->add_breadcrumb_item(
         $lang->myshowcase_admin_show_seo,
-        urlHandlerBuild(['action' => 'viewRewrites', 'id' => $showcaseID])
+        urlHandlerBuild(['action' => 'viewRewrites', 'showcase_id' => $showcaseID])
     );
 
     $page->output_header($lang->myShowcaseAdminSummary);
@@ -1610,7 +1617,7 @@ if ($mybb->get_input('action') === 'new') {
 
     $page->output_footer();
 } elseif ($mybb->get_input('action') == 'delete') {
-    $showcaseData = showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1]);
+    $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], [], ['limit' => 1]);
 
     if (!$showcaseData) {
         flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
@@ -1635,19 +1642,19 @@ if ($mybb->get_input('action') === 'new') {
 
         hooksRun('admin_summary_delete_post');
 
-        commentsDelete(["id='{$showcaseID}'"]);
+        commentsDelete(["showcase_id='{$showcaseID}'"]);
 
-        attachmentDelete(["id='{$showcaseID}'"]);
+        attachmentDelete(["showcase_id='{$showcaseID}'"]);
 
-        permissionsDelete(["id='{$showcaseID}'"]);
+        permissionsDelete(["showcase_id='{$showcaseID}'"]);
 
-        moderatorsDelete(["id='{$showcaseID}'"]);
+        moderatorsDelete(["showcase_id='{$showcaseID}'"]);
 
         if (showcaseDataTableExists($showcaseID)) {
             showcaseDataTableDrop($showcaseID);
         }
 
-        showcaseDelete(["id='{$showcaseID}'"]);
+        showcaseDelete(["showcase_id='{$showcaseID}'"]);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -1655,7 +1662,7 @@ if ($mybb->get_input('action') === 'new') {
 
         log_admin_action(['showcaseID' => $showcaseID]);
 
-        if (showcaseGet(["id='{$showcaseID}'"], [], ['limit' => 1])) {
+        if (showcaseGet(["showcase_id='{$showcaseID}'"], [], ['limit' => 1])) {
             flash_message($lang->myShowcaseAdminErrorShowcaseDelete, 'error');
         } else {
             flash_message($lang->myShowcaseAdminSuccessShowcaseDeleted, 'success');
@@ -1665,7 +1672,7 @@ if ($mybb->get_input('action') === 'new') {
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'delete', 'id' => $showcaseID]),
+        urlHandlerBuild(['action' => 'delete', 'showcase_id' => $showcaseID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmShowcaseDelete, $showcaseName)
     );
 } else {
@@ -1751,7 +1758,7 @@ if ($mybb->get_input('action') === 'new') {
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
             $showcaseTotalEntries = $showcaseTotalAttachments = $showcaseTotalFilesSize = $showcaseTotalComments = 0;
 
-            $fieldsetID = (int)$showcaseData['fieldsetid'];
+            $fieldsetID = (int)$showcaseData['field_set_id'];
 
             $showcaseDataTableExists = showcaseDataTableExists($showcaseID);
 
@@ -1759,26 +1766,26 @@ if ($mybb->get_input('action') === 'new') {
                 $showcaseTotalEntries = showcaseDataGet(
                     $showcaseID,
                     [],
-                    ['COUNT(gid) AS showcaseTotalEntries'],
-                    ['group_by' => 'gid']
+                    ['COUNT(entry_id) AS showcaseTotalEntries'],
+                    ['group_by' => 'entry_id']
                 )['showcaseTotalEntries'] ?? 0;
 
                 $showcaseTotalAttachments = attachmentGet(
-                    ["id='{$showcaseID}'"],
-                    ['COUNT(aid) AS showcaseTotalAttachments'],
-                    ['group_by' => 'id, aid']
+                    ["showcase_id='{$showcaseID}'"],
+                    ['COUNT(attachment_id) AS showcaseTotalAttachments'],
+                    ['group_by' => 'showcase_id, attachment_id']
                 )['showcaseTotalAttachments'] ?? 0;
 
                 $showcaseTotalFilesSize = attachmentGet(
-                    ["id='{$showcaseID}'"],
-                    ['SUM(filesize) AS showcaseTotalFilesSize'],
-                    ['group_by' => 'id, aid, filesize']
+                    ["showcase_id='{$showcaseID}'"],
+                    ['SUM(file_size) AS showcaseTotalFilesSize'],
+                    ['group_by' => 'showcase_id, attachment_id, file_size']
                 )['showcaseTotalFilesSize'] ?? 0;
 
                 $showcaseTotalComments = commentsGet(
-                    ["id='{$showcaseID}'"],
-                    ['COUNT(cid) AS showcaseTotalComments'],
-                    ['group_by' => 'id, cid']
+                    ["showcase_id='{$showcaseID}'"],
+                    ['COUNT(comment_id) AS showcaseTotalComments'],
+                    ['group_by' => 'showcase_id, comment_id']
                 )['showcaseTotalComments'] ?? 0;
             }
 
@@ -1787,7 +1794,7 @@ if ($mybb->get_input('action') === 'new') {
 
             $popup->add_item(
                 $lang->myshowcase_summary_edit,
-                urlHandlerBuild(['action' => 'edit', 'id' => $showcaseID])
+                urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID])
             );
 
             //grab status images at same time
@@ -1799,7 +1806,7 @@ if ($mybb->get_input('action') === 'new') {
                 if ($showcaseDataTableExists) {
                     $popup->add_item(
                         $lang->myshowcase_summary_disable,
-                        urlHandlerBuild(['action' => 'disable', 'id' => $showcaseID])
+                        urlHandlerBuild(['action' => 'disable', 'showcase_id' => $showcaseID])
                     );
                 }
             } else {
@@ -1810,7 +1817,7 @@ if ($mybb->get_input('action') === 'new') {
                 if ($showcaseDataTableExists) {
                     $popup->add_item(
                         $lang->myshowcase_summary_enable,
-                        urlHandlerBuild(['action' => 'enable', 'id' => $showcaseID])
+                        urlHandlerBuild(['action' => 'enable', 'showcase_id' => $showcaseID])
                     );
                 }
             }
@@ -1823,32 +1830,32 @@ if ($mybb->get_input('action') === 'new') {
 
                 $popup->add_item(
                     $lang->myshowcase_summary_createtable,
-                    urlHandlerBuild(['action' => 'tableCreate', 'id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableCreate', 'showcase_id' => $showcaseID])
                 );
             } else //add delete table popup item
             {
                 $popup->add_item(
                     $lang->myshowcase_summary_rebuildtable,
-                    urlHandlerBuild(['action' => 'tableRebuild', 'id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableRebuild', 'showcase_id' => $showcaseID])
                 );
 
                 $popup->add_item(
                     $lang->myshowcase_summary_deletetable,
-                    urlHandlerBuild(['action' => 'tableDrop', 'id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableDrop', 'showcase_id' => $showcaseID])
                 );
             }
 
             $popup->add_item(
                 $lang->myshowcase_summary_seo,
-                urlHandlerBuild(['action' => 'viewRewrites', 'id' => $showcaseData['id']])
+                urlHandlerBuild(['action' => 'viewRewrites', 'showcase_id' => $showcaseData['showcase_id']])
             );
 
             $popup->add_item(
                 $lang->myshowcase_summary_delete,
-                urlHandlerBuild(['action' => 'delete', 'id' => $showcaseID])
+                urlHandlerBuild(['action' => 'delete', 'showcase_id' => $showcaseID])
             );
 
-            $showcaseData['imgfolder'] = $showcaseData['imgfolder'] ?? $lang->myshowcase_summary_not_specified;
+            $showcaseData['images_directory'] = $showcaseData['images_directory'] ?? $lang->myshowcase_summary_not_specified;
 
             $formContainer->output_cell($showcaseID, ['class' => 'align_center']);
 
@@ -1871,16 +1878,16 @@ if ($mybb->get_input('action') === 'new') {
 
             $formContainer->output_cell($showcaseData['mainfile'], ['class' => 'align_center']);
 
-            $formContainer->output_cell($showcaseData['imgfolder'], ['class' => 'align_center']);
+            $formContainer->output_cell($showcaseData['images_directory'], ['class' => 'align_center']);
 
-            $formContainer->output_cell($showcaseData['f2gpath'], ['class' => 'align_center']);
+            $formContainer->output_cell($showcaseData['relative_path'], ['class' => 'align_center']);
 
             $formContainer->output_cell(
                 fieldsetGet(
-                    ["setid='{$fieldsetID}'"],
-                    ['setname'],
+                    ["set_id='{$fieldsetID}'"],
+                    ['set_name'],
                     ['limit' => 1]
-                )['setname'] . ' (ID=' . $fieldsetID . ')',
+                )['set_name'] . ' (ID=' . $fieldsetID . ')',
                 ['class' => 'align_center']
             );
 

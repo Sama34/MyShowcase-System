@@ -147,8 +147,8 @@ function global_start(): bool
 
             //if showcase is enabled...
             if ($showcaseObject->enabled) {
-                $templatelist .= ", myShowcase{$showcaseObject->id}_" . implode(
-                        ", myShowcase{$showcaseObject->id}_",
+                $templatelist .= ", myShowcase{$showcaseObject->showcase_id}_" . implode(
+                        ", myShowcase{$showcaseObject->showcase_id}_",
                         $templateObjects
                     );
             }
@@ -243,7 +243,7 @@ function fetch_wol_activity_end(array &$user_activity): array
 {
     global $user, $mybb, $cache;
 
-    //get filename of location
+    //get file_name of location
     $split_loc = explode('.php', $user_activity['location']);
     if ($split_loc[0] == $user['location']) {
         $filename = '';
@@ -264,33 +264,33 @@ function fetch_wol_activity_end(array &$user_activity): array
     }
 
     //get cache of configured myshowcases
-    //check cache for matching filename
-    //have to do it this way since the filename can vary for each myshowcase
+    //check cache for matching file_name
+    //have to do it this way since the file_name can vary for each myshowcase
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $id => $myshowcase) {
         $split_mainfile = explode('.php', $myshowcase['mainfile']);
         if ($split_mainfile[0] == $filename) {
             //preload here so we don't need to get it in next function
             $user_activity['myshowcase_filename'] = $filename;
             $user_activity['myshowcase_name'] = $myshowcase['name'];
-            $user_activity['myshowcase_id'] = $myshowcase['id'];
+            $user_activity['myshowcase_id'] = $myshowcase['showcase_id'];
             $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
 
             if ($parameters['action'] == 'view') {
                 $user_activity['activity'] = 'myShowcaseMainTableTheadView';
-                if (is_numeric($parameters['gid'])) {
-                    $user_activity['gid'] = $parameters['gid'];
+                if (is_numeric($parameters['entry_id'])) {
+                    $user_activity['entry_id'] = $parameters['entry_id'];
                 }
             } elseif ($parameters['action'] == 'new') {
                 $user_activity['activity'] = 'myShowcaseLocationNewEntry';
             } elseif ($parameters['action'] == 'attachment') {
                 $user_activity['activity'] = 'myshowcase_view_attach';
-                if (is_numeric($parameters['aid'])) {
-                    $user_activity['aid'] = $parameters['aid'];
+                if (is_numeric($parameters['attachment_id'])) {
+                    $user_activity['attachment_id'] = $parameters['attachment_id'];
                 }
             } elseif ($parameters['action'] == 'edit') {
                 $user_activity['activity'] = 'myshowcase_edit';
-                if (is_numeric($parameters['gid'])) {
-                    $user_activity['gid'] = $parameters['gid'];
+                if (is_numeric($parameters['entry_id'])) {
+                    $user_activity['entry_id'] = $parameters['entry_id'];
                 }
             } else {
                 $user_activity['activity'] = 'myshowcase_list';
@@ -311,7 +311,7 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
     loadLanguage();
 
-    //get filename of location
+    //get file_name of location
     $split_loc = explode('.php', $plugin_array['user_activity']['location']);
     if ($split_loc[0] == $user['location']) {
         $filename = '';
@@ -348,15 +348,15 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
         $myshowcase_url = $myshowcase_name . '.html';
         $myshowcase = $myshowcase_name . '-page-{page}.html';
-        $myshowcase_url_view = $myshowcase_name . '-view-{gid}.html';
+        $myshowcase_url_view = $myshowcase_name . '-view-{entry_id}.html';
         $myshowcase_url_new = $myshowcase_name . '-new.html';
-        $myshowcase_url_view_attach = $myshowcase_name . '-attachment-{aid}.html';
+        $myshowcase_url_view_attach = $myshowcase_name . '-attachment-{attachment_id}.html';
     } else {
         $myshowcase_url = $plugin_array['user_activity']['myshowcase_mainfile'];
         $myshowcase_url_paged = $plugin_array['user_activity']['myshowcase_mainfile'] . '?page={page}';
-        $myshowcase_url_view = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=view&gid={gid}';
+        $myshowcase_url_view = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=view&entry_id={entry_id}';
         $myshowcase_url_new = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=new';
-        $myshowcase_url_view_attach = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=attachment&aid={aid}';
+        $myshowcase_url_view_attach = $plugin_array['user_activity']['myshowcase_mainfile'] . '?action=attachment&attachment_id={attachment_id}';
     }
 
     switch ($plugin_array['user_activity']['activity']) {
@@ -369,21 +369,21 @@ function build_friendly_wol_location_end(array &$plugin_array): array
             break;
 
         case 'myshowcase_view':
-            if (array_key_exists('gid', $plugin_array['user_activity'])) {
+            if (array_key_exists('entry_id', $plugin_array['user_activity'])) {
                 $showcaseID = (int)$plugin_array['user_activity']['myshowcase_id'];
 
-                $entryID = $plugin_array['user_activity']['gid'];
+                $entryID = $plugin_array['user_activity']['entry_id'];
 
-                $showcaseObjects = showcaseDataGet($showcaseID, ["gid='{$entryID}'"], ['uid']);
+                $showcaseObjects = showcaseDataGet($showcaseID, ["entry_id='{$entryID}'"], ['user_id']);
 
                 foreach ($showcaseObjects as $entryID => $entryData) {
-                    $uid = $entryData['uid'];
+                    $uid = $entryData['user_id'];
                     $userinfo = get_user($uid);
                 }
             }
             $plugin_array['location_name'] = $lang->sprintf(
                 $lang->viewing_myshowcase,
-                str_replace('{gid}', $plugin_array['user_activity']['gid'], $myshowcase_url_view),
+                str_replace('{entry_id}', $plugin_array['user_activity']['entry_id'], $myshowcase_url_view),
                 $plugin_array['user_activity']['myshowcase_name'],
                 get_profile_link($uid),
                 $userinfo['username']
@@ -406,23 +406,27 @@ function build_friendly_wol_location_end(array &$plugin_array): array
             break;
 
         case 'myshowcase_view_attach':
-            if (array_key_exists('aid', $plugin_array['user_activity'])) {
-                $attachmentID = (int)$plugin_array['user_activity']['aid'];
+            if (array_key_exists('attachment_id', $plugin_array['user_activity'])) {
+                $attachmentID = (int)$plugin_array['user_activity']['attachment_id'];
 
-                $attachmentObjects = attachmentGet(["aid='{$attachmentID}'"], ['uid', 'gid']);
+                $attachmentObjects = attachmentGet(["attachment_id='{$attachmentID}'"], ['user_id', 'entry_id']);
 
                 foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                    $uid = $attachmentData['uid'];
+                    $uid = $attachmentData['user_id'];
 
-                    $gid = $attachmentData['gid'];
+                    $gid = $attachmentData['entry_id'];
 
                     $userinfo = get_user($uid);
                 }
             }
             $plugin_array['location_name'] = $lang->sprintf(
                 $lang->viewing_myshowcase_attach,
-                str_replace('{aid}', $plugin_array['user_activity']['aid'], $myshowcase_url_view_attach),
-                str_replace('{gid}', $gid, $myshowcase_view_url ?? ''),
+                str_replace(
+                    '{attachment_id}',
+                    $plugin_array['user_activity']['attachment_id'],
+                    $myshowcase_url_view_attach
+                ),
+                str_replace('{entry_id}', $gid, $myshowcase_view_url ?? ''),
                 $plugin_array['user_activity']['myshowcase_name'],
                 get_profile_link($uid),
                 $userinfo['username']
@@ -444,10 +448,10 @@ function showthread_start(): bool
 
     $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
     foreach ($myshowcases as $id => $myshowcase) {
-        if ($myshowcase['enabled'] && $myshowcase['link_in_postbit']) {
-            $myshowcase_uids[$myshowcase['id']]['name'] = $myshowcase['name'];
-            $myshowcase_uids[$myshowcase['id']]['mainfile'] = $myshowcase['mainfile'];
-            $myshowcase_uids[$myshowcase['id']]['f2gpath'] = $myshowcase['f2gpath'];
+        if ($myshowcase['enabled'] && $myshowcase['display_in_posts']) {
+            $myshowcase_uids[$myshowcase['showcase_id']]['name'] = $myshowcase['name'];
+            $myshowcase_uids[$myshowcase['showcase_id']]['mainfile'] = $myshowcase['mainfile'];
+            $myshowcase_uids[$myshowcase['showcase_id']]['relative_path'] = $myshowcase['relative_path'];
         }
     }
 
@@ -477,13 +481,13 @@ function showthread_start(): bool
             foreach ($myshowcase_uids as $gid => $data) {
                 $entryFieldObjects = showcaseDataGet(
                     $gid,
-                    ["uid IN ('{$userIDs}')", "approved='1'"],
-                    ['uid', 'COUNT(uid) AS total'],
-                    ['group_by' => 'uid']
+                    ["user_id IN ('{$userIDs}')", "approved='1'"],
+                    ['user_id', 'COUNT(user_id) AS total'],
+                    ['group_by' => 'user_id']
                 );
 
                 foreach ($entryFieldObjects as $entryFieldID => $entryFieldData) {
-                    $myshowcase_uids[$gid]['uids'][$entryFieldData['uid']] = $entryFieldData['total'];
+                    $myshowcase_uids[$gid]['uids'][$entryFieldData['user_id']] = $entryFieldData['total'];
                 }
             }
         }
@@ -502,7 +506,7 @@ function postbit(array &$post): array
         foreach ($myshowcase_uids as $myshowcase => $data) {
             $showcase_name = $data['name'];
             $showcase_file = $data['mainfile'];
-            $showcase_fldr = $data['f2gpath'];
+            $showcase_fldr = $data['relative_path'];
 
             /* URL Definitions */
             if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {

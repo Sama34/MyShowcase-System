@@ -64,7 +64,7 @@ class Entries extends Base
         $entriesObjects = [];
 
         while ($entryData = $db->fetch_array($query)) {
-            $entriesObjects[(int)$entryData['gid']] = $entryData;
+            $entriesObjects[(int)$entryData['entry_id']] = $entryData;
         }
 
         return $entriesObjects;
