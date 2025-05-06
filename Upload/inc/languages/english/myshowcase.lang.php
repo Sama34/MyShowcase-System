@@ -17,7 +17,6 @@ global $showcaseName, $showcase_lower;
 
 //$l['nav_myshowcase'] = $showcaseName; //for breadcrumb
 //$l['myshowcase'] = $showcaseName; //for rest of myshowcase
-$l['myshowcase_specifications'] = 'Entry Details';
 $l['latest_myshowcases'] = "Latest {$showcaseName}";
 $l['myshowcase_showcase'] = 'Showcase';
 
@@ -232,6 +231,9 @@ $l = array_merge($l, [
     'myShowcaseEntryButtonRestore' => 'Restore',
     'myShowcaseEntryButtonRestoreDescription' => 'Restore entry',
     'myShowcaseEntryButtonRestoreConfirm' => 'Are you sure you want to restore this entry?',
+    'myShowcaseEntryButtonDelete' => 'Delete',
+    'myShowcaseEntryButtonDeleteDescription' => 'Delete entry',
+    'myShowcaseEntryButtonDeleteConfirm' => 'Are you sure you want to delete this entry?',
 
     'myShowcaseEntryCommentOnlineStatusOnline' => 'Online',
     'myShowcaseEntryCommentOnlineStatusOffline' => 'Offline',
@@ -265,6 +267,9 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonSoftDelete' => 'Soft Delete',
     'myShowcaseEntryCommentButtonSoftDeleteDescription' => 'Soft delete comment',
     'myShowcaseEntryCommentButtonSoftDeleteConfirm' => 'Are you sure you want to soft delete this comment?',
+    'myShowcaseEntryCommentButtonDelete' => 'Delete',
+    'myShowcaseEntryCommentButtonDeleteDescription' => 'Delete comment',
+    'myShowcaseEntryCommentButtonDeleteConfirm' => 'Are you sure you want to delete this comment?',
     'myShowcaseEntryCommentButtonRestore' => 'Restore',
     'myShowcaseEntryCommentButtonRestoreDescription' => 'Restore comment',
     'myShowcaseEntryCommentButtonRestoreConfirm' => 'Are you sure you want to restore this comment?',

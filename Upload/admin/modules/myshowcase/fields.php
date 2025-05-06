@@ -703,6 +703,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 'parse' => (int)!empty($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$fieldID]),
                 'enable_search' => (int)!empty($mybb->get_input('enable_search', MyBB::INPUT_ARRAY)[$fieldID]),
                 'enable_slug' => (int)!empty($mybb->get_input('enable_slug', MyBB::INPUT_ARRAY)[$fieldID]),
+                'enable_subject' => (int)!empty($mybb->get_input('enable_subject', MyBB::INPUT_ARRAY)[$fieldID]),
             ];
 
             $fieldData = hooksRun('admin_view_fields_update_post', $fieldData);
@@ -775,6 +776,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
     $formContainer->output_row_header(
         $lang->myshowcase_field_enable_slug,
+        ['width' => '6%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_enable_subject,
         ['width' => '6%', 'class' => 'align_center']
     );
 
@@ -890,6 +896,17 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                     'true',
                     '',
                     ['checked' => $fieldData['enable_slug']],
+                    ''
+                ),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_check_box(
+                    'enable_subject[' . $fieldID . ']',
+                    'true',
+                    '',
+                    ['checked' => $fieldData['enable_subject']],
                     ''
                 ),
                 ['class' => 'align_center']

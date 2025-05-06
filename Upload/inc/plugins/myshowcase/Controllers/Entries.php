@@ -135,9 +135,6 @@ class Entries extends Base
         global $lang, $mybb, $db;
         global $theme;
 
-        global $showcaseName;
-        global $buttonGo;
-
         $hookArguments = [];
 
         $hookArguments = hooksRun('output_main_start', $hookArguments);
@@ -490,9 +487,10 @@ class Entries extends Base
                 }*/
 
                 //build link for list view, starting with basic text
-                $entryImage = $lang->myShowcaseMainTableTheadView;
 
                 $entryImageText = str_replace('{username}', $entryUsername, $lang->myshowcase_view_user);
+
+                $entryImage = '';
 
                 //use default image is specified
                 if ($this->showcaseObject->defaultImage !== '' && (file_exists(
@@ -544,12 +542,12 @@ class Entries extends Base
                 //build custom list items based on field settings
                 $showcaseTableRowExtra = [];
 
-                foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
-                    $entryFieldText = $entryFieldData[$fieldName];
+                $entrySubject = [];
 
-                    if ((string)$entryFieldText === '') {
-                        $entryFieldText = '';
-                    }
+                foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+                    $fieldName = $fieldData['name'];
+
+                    $entryFieldText = $entryFieldData[$fieldName] ?? '';
 
                     if (empty($this->showcaseObject->fieldSetParseableFields[$fieldName])) {
                         // todo, remove this legacy updating the database and updating the format field to TINYINT
@@ -620,14 +618,18 @@ class Entries extends Base
                         $entryFieldText = $this->showcaseObject->parseMessage($entryFieldText);
                     }
 
-                    $entryFieldText = $entryFieldText;
-
                     $showcaseTableRowExtra[$fieldName] = eval(
                     $this->renderObject->templateGet(
                         'pageMainTableRowsExtra'
                     )
                     );
+
+                    if ($fieldData['enable_subject'] && !empty($entryFieldText)) {
+                        $entrySubject[] = $entryFieldText;
+                    }
                 }
+
+                $entrySubject = implode(' ', $entrySubject) ?? $lang->myShowcaseMainTableTheadView;
 
                 $this->renderObject->entryBuildAttachments($showcaseTableRowExtra);
 
@@ -736,13 +738,9 @@ class Entries extends Base
         bool $isEditPage = false,
         string $entrySlug = '',
     ): void {
-        global $lang, $mybb, $db, $cache;
+        global $lang, $mybb, $db;
         global $header, $headerinclude, $footer, $theme;
-
-        global $showcaseName;
-        global $buttonGo;
-
-        global $templates, $plugins;
+        global $plugins;
 
         $currentUserID = (int)$mybb->user['uid'];
 
@@ -1340,17 +1338,113 @@ class Entries extends Base
             $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
         );
 
+        $entrySubject = [];
+
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            if (!$fieldData['enable_subject']) {
+                continue;
+            }
+
+            $fieldName = $fieldData['name'];
+
+            $entryFieldText = $this->showcaseObject->entryData[$fieldName] ?? '';
+
+            if (empty($this->showcaseObject->fieldSetParseableFields[$fieldName])) {
+                // todo, remove this legacy updating the database and updating the format field to TINYINT
+                match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
+                    FORMAT_TYPE_MY_NUMBER_FORMAT => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = FORMAT_TYPE_MY_NUMBER_FORMAT,
+                    'decimal1' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 2,
+                    'decimal2' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 3,
+                    default => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 0
+                };
+
+                $formatTypes = FORMAT_TYPES;
+
+                if (!empty($formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]) &&
+                    function_exists(
+                        $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]
+                    )) {
+                    $entryFieldText = $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]](
+                        $entryFieldText
+                    );
+                } else {
+                    $entryFieldText = match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
+                        2 => number_format((float)$entryFieldText, 1),
+                        3 => number_format((float)$entryFieldText, 2),
+                        default => htmlspecialchars_uni($entryFieldText),
+                    };
+                }
+
+                if ($this->showcaseObject->fieldSetEnabledFields[$fieldName] === FIELD_TYPE_HTML_DATE) {
+                    if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
+                        $entryFieldText = '';
+                    } else {
+                        $entryFieldDateValue = explode('|', $entryFieldText);
+
+                        $entryFieldDateValue = array_map('intval', $entryFieldDateValue);
+
+                        if ($entryFieldDateValue[0] > 0 && $entryFieldDateValue[1] > 0 && $entryFieldDateValue[2] > 0) {
+                            $entryFieldText = my_date(
+                                $mybb->settings['dateformat'],
+                                mktime(
+                                    0,
+                                    0,
+                                    0,
+                                    $entryFieldDateValue[0],
+                                    $entryFieldDateValue[1],
+                                    $entryFieldDateValue[2]
+                                )
+                            );
+                        } else {
+                            $entryFieldText = [];
+
+                            if (!empty($entryFieldDateValue[0])) {
+                                $entryFieldText[] = $entryFieldDateValue[0];
+                            }
+
+                            if (!empty($entryFieldDateValue[1])) {
+                                $entryFieldText[] = $entryFieldDateValue[1];
+                            }
+
+                            if (!empty($entryFieldDateValue[2])) {
+                                $entryFieldText[] = $entryFieldDateValue[2];
+                            }
+
+                            $entryFieldText = implode('-', $entryFieldText);
+                        }
+                    }
+                }
+            } else {
+                $entryFieldText = $this->showcaseObject->parseMessage($entryFieldText);
+            }
+
+            if (!empty($entryFieldText)) {
+                $entrySubject[] = $entryFieldText;
+            }
+        }
+
+        $entrySubject = implode(' ', $entrySubject);
+
+        if (!$entrySubject) {
+            $entrySubject = str_replace(
+                '{username}',
+                $this->showcaseObject->entryData['username'],
+                $lang->myshowcase_viewing_user
+            );
+        }
+
+        add_breadcrumb(
+            $entrySubject,
+            $this->showcaseObject->urlBuild(
+                $this->showcaseObject->urlViewEntry,
+                $this->showcaseObject->entryData['entry_slug']
+            )
+        );
+
         if ($this->showcaseObject->entryData['username'] === '') {
             $this->showcaseObject->entryData['username'] = $lang->guest;
             $this->showcaseObject->entryData['user_id'] = 0;
         }
-
-        $showcase_viewing_user = str_replace(
-            '{username}',
-            $this->showcaseObject->entryData['username'],
-            $lang->myshowcase_viewing_user
-        );
-        add_breadcrumb($showcase_viewing_user, $this->showcaseObject->urlBuild($this->showcaseObject->urlMain));
 
         $entryUrl = str_replace(
             '{entry_id}',
@@ -1399,8 +1493,6 @@ class Entries extends Base
             // start getting comments
 
             $commentsList = $commentsEmpty = $commentsForm = '';
-
-            $entryUrl = urlHandlerBuild(['action' => 'view', 'entry_id' => $this->showcaseObject->entryID]);
 
             $commentsCounter = 0;
 

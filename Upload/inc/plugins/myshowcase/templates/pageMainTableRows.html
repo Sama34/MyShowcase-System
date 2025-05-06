@@ -3,13 +3,14 @@
         {$viewAttachmentsCount}
         <div>
             <span>
-                <a href="{$entryUrl}">{$entryImage}</a>
+                <a href="{$entryUrl}">{$entrySubject}</a>
                 {$viewPagination}
             </span>
             <div>
                 <span class="author smalltext">{$entryUsernameFormatted}{$lang->comma}</span>
                 <span class="thread_start_datetime smalltext">{$entryDateline}</span>
             </div>
+            {$entryImage}
         </div>
     </td>
     {$showcaseTableRowExtra}

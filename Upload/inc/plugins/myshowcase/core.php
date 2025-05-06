@@ -663,6 +663,11 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
+        'enable_subject' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
         // todo, remove this legacy updating the database and updating the format field to TINYINT
         'format' => [
             'type' => 'VARCHAR',
@@ -1096,6 +1101,7 @@ function cacheUpdate(string $cacheKey): array
                     'render_order' => (int)$fieldData['render_order'],
                     'enable_search' => (bool)$fieldData['enable_search'],
                     'enable_slug' => (bool)$fieldData['enable_slug'],
+                    'enable_subject' => (bool)$fieldData['enable_subject'],
                     'format' => (string)$fieldData['format'],
                 ];
             }

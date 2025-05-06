@@ -93,14 +93,8 @@ class Output
     {
         global $lang, $mybb, $db, $cache;
         global $header, $headerinclude, $footer, $theme;
-
-        global $showcaseName;
-        global $buttonGo;
-
         global $entryHash;
-
         global $templates, $plugins;
-
         global $entryHash;
 
         $currentUserID = (int)$mybb->user['uid'];
