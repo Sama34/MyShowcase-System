@@ -68,6 +68,8 @@ $router = new Router();
 
 $router->get('/{showcase_slug}', 'Entries', 'listEntries');
 
+$router->get('/{showcase_slug}/uid/{user_id}', 'Entries', 'listEntriesUser');
+
 $router->get('/{showcase_slug}/unapproved', 'Entries', 'listEntriesUnapproved');
 
 $router->get('/{showcase_slug}/create', 'Entries', 'createEntry');

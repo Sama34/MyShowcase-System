@@ -19,16 +19,15 @@ declare(strict_types=1);
 //
 // schema:
 //
-// name - string, lowercase name of fieldset
+// field_key - string, lowercase name of fieldset
 //----------------------------------------------------------
 
-use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
-use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
+global
 
-global $custom_fieldsets;
+use MyShowcase\System\FieldHtmlTypes;
+use MyShowcase\System\FieldTypes;
+
+$custom_fieldsets;
 
 $custom_fieldsets = [];
 
@@ -41,7 +40,7 @@ $custom_fieldsets[] = ['Trucks'];
 // schema:
 //
 // set_id - int, 1 is default for new installs
-// name - string, lowercase name of field
+// field_key - string, lowercase name of field
 // html_type - string, html input type. acceptable types are textarea, textbox, radio, checkbox and db. 'db' type uses myshowcase_field_data for obtaining options
 // enabled - int, 1 to enable field, 0 to disable
 // field_type - type of field to create in the table for this field. acceptable types are int, timestamp, varchar, text
@@ -60,9 +59,9 @@ $custom_fields = [];
 $custom_fields[] = [
     1,
     'year',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     4,
     1,
@@ -74,9 +73,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'make',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     1,
@@ -88,9 +87,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'model',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     30,
     1,
@@ -102,9 +101,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'engine',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     15,
     0,
@@ -116,9 +115,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'transspeed',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -130,9 +129,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'transtype',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -144,9 +143,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'gearratio',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     10,
     0,
@@ -158,9 +157,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'frontdiff',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     40,
     0,
@@ -172,9 +171,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'reardiff',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     40,
     0,
@@ -186,9 +185,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'cabstyle',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -200,9 +199,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'bedsize',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -214,9 +213,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'tiresize',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     20,
     0,
@@ -228,9 +227,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'tiremodel',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     30,
     0,
@@ -242,9 +241,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'wheelsize',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     10,
     0,
@@ -256,9 +255,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'wheelmodel',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     30,
     0,
@@ -270,9 +269,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'susplift',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -284,9 +283,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'suspmodel',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     50,
     0,
@@ -298,9 +297,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'bodylift',
-    FIELD_TYPE_HTML_DB,
+    FieldHtmlTypes::SelectSingle,
     1,
-    FIELD_TYPE_STORAGE_INT,
+    FieldTypes::Integer,
     0,
     2,
     0,
@@ -312,9 +311,9 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'bodymodel',
-    FIELD_TYPE_HTML_TEXT_BOX,
+    FieldHtmlTypes::Text,
     1,
-    FIELD_TYPE_STORAGE_VARCHAR,
+    FieldTypes::VarChar,
     0,
     50,
     0,
@@ -323,7 +322,20 @@ $custom_fields[] = [
     -1,
     0
 ];
-$custom_fields[] = [1, 'other', 'textarea', 1, FIELD_TYPE_STORAGE_TEXT, 0, 15, 0, 0, 20, -1, 1];
+$custom_fields[] = [
+    1,
+    'other',
+    FieldHtmlTypes::TextArea,
+    1,
+    FieldTypes::Text,
+    0,
+    15,
+    0,
+    0,
+    20,
+    -1,
+    1
+];
 
 //----------------------------------------------------------
 //
@@ -333,7 +345,7 @@ $custom_fields[] = [1, 'other', 'textarea', 1, FIELD_TYPE_STORAGE_TEXT, 0, 15, 0
 //
 // schema:
 //
-// name - string, lowercase name of field
+// field_key - string, lowercase name of field
 // id - int, id for this item in the assocaited field. this is the value stored in the garage_data table's related field
 // value - string, display value
 // disporderorder - int, order in which data is displayed in input form during new/edit

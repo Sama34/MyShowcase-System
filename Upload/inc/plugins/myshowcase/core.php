@@ -15,6 +15,10 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
+use MyShowcase\System\FieldDefaultTypes;
+use MyShowcase\System\FieldHtmlTypes;
+use MyShowcase\System\FieldTypes;
+use myshowcase\System\FormatTypes;
 use Postparser;
 use DirectoryIterator;
 use MyShowcase\System\DataHandler;
@@ -23,6 +27,8 @@ use MyShowcase\System\Render;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
+
+use function MyShowcase\Admin\languageModify;
 
 use const MyShowcase\ROOT;
 
@@ -54,58 +60,6 @@ const MODERATOR_TYPE_USER = 0;
 
 const MODERATOR_TYPE_GROUP = 1;
 
-const FIELD_TYPE_HTML_TEXT_BOX = 'textbox';
-
-const FIELD_TYPE_HTML_URL = 'url';
-
-const FIELD_TYPE_HTML_TEXTAREA = 'textarea';
-
-const FIELD_TYPE_HTML_RADIO = 'radio';
-
-const FIELD_TYPE_HTML_CHECK_BOX = 'checkbox';
-
-const FIELD_TYPE_HTML_DB = 'db';
-
-const FIELD_TYPE_HTML_DATE = 'date';
-
-const FIELD_TYPE_STORAGE_TINYINT = 'tinyint';
-
-const FIELD_TYPE_STORAGE_SMALLINT = 'smallint';
-
-const FIELD_TYPE_STORAGE_MEDIUMINT = 'mediumint';
-
-const FIELD_TYPE_STORAGE_INT = 'int';
-
-const FIELD_TYPE_STORAGE_BIGINT = 'bigint';
-
-const FIELD_TYPE_STORAGE_DECIMAL = 'decimal';
-
-const FIELD_TYPE_STORAGE_FLOAT = 'float';
-
-const FIELD_TYPE_STORAGE_DOUBLE = 'double';
-
-const FIELD_TYPE_STORAGE_CHAR = 'char';
-
-const FIELD_TYPE_STORAGE_VARCHAR = 'varchar';
-
-const FIELD_TYPE_STORAGE_TINYTEXT = 'tinytext';
-
-const FIELD_TYPE_STORAGE_TEXT = 'text';
-
-const FIELD_TYPE_STORAGE_MEDIUMTEXT = 'mediumtext';
-
-const FIELD_TYPE_STORAGE_DATE = 'date';
-
-const FIELD_TYPE_STORAGE_TIME = 'time';
-
-const FIELD_TYPE_STORAGE_DATETIME = 'datetime';
-
-const FIELD_TYPE_STORAGE_TIMESTAMP = 'timestamp';
-
-const FIELD_TYPE_STORAGE_BINARY = 'binary';
-
-const FIELD_TYPE_STORAGE_VARBINARY = 'varbinary';
-
 const ATTACHMENT_UNLIMITED = -1;
 
 const ATTACHMENT_ZERO = 0;
@@ -119,14 +73,6 @@ const REPORT_STATUS_PENDING = 0;
 const ERROR_TYPE_NOT_INSTALLED = 1;
 
 const ERROR_TYPE_NOT_CONFIGURED = 1;
-
-const FORMAT_TYPE_NONE = 0;
-
-const FORMAT_TYPE_MY_NUMBER_FORMAT = 1;
-
-const FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS = 2;
-
-const FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS = 3;
 
 const CHECK_BOX_IS_CHECKED = 1;
 
@@ -146,39 +92,9 @@ const ENTRY_STATUS_VISIBLE = 1;
 
 const ENTRY_STATUS_SOFT_DELETED = 2;
 
-const DATA_HANDLERT_METHOD_INSERT = 'insert';
+const DATA_HANDLER_METHOD_INSERT = 'insert';
 
-const DATA_HANDLERT_METHOD_UPDATE = 'update';
-
-define('MyShowcase\Core\FORMAT_TYPES', [
-    //'no' => '',
-    //'decimal0' => '#,###',
-    //'decimal1' => '#,###.#',
-    //'decimal2' => '#,###.##',
-    //0 => 'htmlspecialchars_uni',
-    FORMAT_TYPE_NONE => '',
-    FORMAT_TYPE_MY_NUMBER_FORMAT => function (string &$value): void {
-        $value = my_number_format((int)$value);
-    },
-    FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => function (string &$value): void {
-        $value = my_number_format(round((float)$value, 1));
-    },
-    FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => function (string &$value): void {
-        $value = my_number_format(round((float)$value, 2));
-    }
-]);
-
-define('MyShowcase\Core\FORMAT_TYPES_DISPLAY_NAMES', [
-    //'no' => '',
-    //'decimal0' => '#,###',
-    //'decimal1' => '#,###.#',
-    //'decimal2' => '#,###.##',
-    //0 => 'htmlspecialchars_uni',
-    FORMAT_TYPE_NONE => '',
-    FORMAT_TYPE_MY_NUMBER_FORMAT => 'my_number_format',
-    FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => 'my_number_format(1)',
-    FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => 'my_number_format(2)'
-]);
+const DATA_HANDLER_METHOD_UPDATE = 'update';
 
 const GUEST_GROUP_ID = 1;
 
@@ -298,7 +214,6 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        //'unique_key' => ['entry_comment_id' => 'entry_id,comment_id']
     ],
     'myshowcase_config' => [
         'showcase_id' => [
@@ -311,13 +226,12 @@ const TABLES_DATA = [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
-            'unique_key' => true
         ],
         'showcase_slug' => [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
-            'unique_key' => true
+            'unique_value' => true
         ],
         'description' => [
             'type' => 'VARCHAR',
@@ -394,7 +308,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 1
         ],
-        'maximum_text_field_lenght' => [
+        'maximum_text_field_length' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
             'default' => 500
@@ -590,7 +504,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'unique_key' => ['id_uid_isgroup' => 'showcase_id,user_id,is_group']
+        //'unique_keys' => ['id_uid_isgroup' => ['showcase_id', 'showcasuser_ide_id', 'is_group']]
     ],
     'myshowcase_fields' => [
         'field_id' => [
@@ -604,7 +518,7 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        'name' => [
+        'field_key' => [
             'type' => 'VARCHAR',
             'size' => 30,
             'default' => ''
@@ -622,7 +536,14 @@ const TABLES_DATA = [
         'field_type' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => FIELD_TYPE_STORAGE_VARCHAR
+            'default' => FieldTypes::VarChar
+        ],
+        'display_in_view_page' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'display_in_main_page' => [
         ],
         'minimum_length' => [
             'type' => 'MEDIUMINT',
@@ -635,6 +556,16 @@ const TABLES_DATA = [
             'default' => 0
         ],
         'is_required' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'default_value' => [
+            'type' => 'VARCHAR',
+            'size' => 10,
+            'default' => ''
+        ],
+        'default_type' => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -672,9 +603,15 @@ const TABLES_DATA = [
         'format' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => FORMAT_TYPE_NONE
+            'default' => 0
         ],
-        'unique_key' => ['setid_fid' => 'set_id,field_id']
+        'enable_editor' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_keys' => ['set_field_name' => ['set_id', 'field_key']]
+        //'unique_keys' => ['setid_fid' => ['set_id', 'field_id']]
         // todo, add view permission
         // todo, add edit permission
         // todo, validation regex for text fields
@@ -699,7 +636,7 @@ const TABLES_DATA = [
             'type' => 'VARCHAR',
             'size' => 15,
             'default' => '',
-            //'unique_key' => true
+            //'unique_keys' => true
         ],
         'value_id' => [
             'type' => 'SMALLINT',
@@ -708,7 +645,11 @@ const TABLES_DATA = [
         ],
         'value' => [
             'type' => 'VARCHAR',
-            'size' => 15,
+            'size' => 120,
+            'default' => ''
+        ],
+        'display_style' => [
+            'type' => 'VARCHAR',
             'default' => ''
         ],
         'display_order' => [
@@ -717,6 +658,16 @@ const TABLES_DATA = [
             'default' => 0
         ],
         'unique_key' => ['setid_fid_valueid' => 'set_id,field_id,value_id']
+            'unsigned' => true
+        ],
+        'log_time' => [
+            'type' => 'INT',
+            'unsigned' => true
+        ],
+        'log_data' => [ // comments old message, etc
+            'type' => 'TEXT',
+            'null' => true
+        ],
     ],
 ];
 
@@ -737,6 +688,9 @@ const DATA_TABLE_STRUCTURE = [
             'auto_increment' => true,
             'primary_key' => true
         ],
+        'entry_slug' => [
+            'type' => 'VARCHAR',
+            'size' => 250,
         'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
@@ -787,6 +741,12 @@ const DATA_TABLE_STRUCTURE = [
             'size' => 32,
             'default' => ''
         ],
+        'ipaddress' => [
+            'type' => 'VARBINARY',
+            'size' => 16,
+            'default' => ''
+        ],
+        //'unique_keys' => ['entry_slug' => 'entry_slug']
     ],
 ];
 
@@ -838,7 +798,7 @@ function hooksRun(string $hookName, array &$hookArguments = []): array
 {
     global $plugins;
 
-    return $plugins->run_hooks('myshowcase_' . $hookName, $hookArguments);
+    return $plugins->run_hooks('myshowcase_system_' . $hookName, $hookArguments);
 }
 
 function urlHandler(string $newUrl = ''): string
@@ -1017,7 +977,7 @@ function cacheUpdate(string $cacheKey): array
                     'allow_html' => (bool)$showcaseData['allow_html'],
                     'prune_time' => (int)$showcaseData['prune_time'],
                     'moderate_edits' => (bool)$showcaseData['moderate_edits'],
-                    'maximum_text_field_lenght' => (int)$showcaseData['maximum_text_field_lenght'],
+                    'maximum_text_field_length' => (int)$showcaseData['maximum_text_field_length'],
                     'allow_attachments' => (bool)$showcaseData['allow_attachments'],
                     'allow_comments' => (bool)$showcaseData['allow_comments'],
                     'thumb_width' => (int)$showcaseData['thumb_width'],
@@ -1077,7 +1037,7 @@ function cacheUpdate(string $cacheKey): array
         case CACHE_TYPE_FIELDS:
             $queryFields = TABLES_DATA['myshowcase_fields'];
 
-            unset($queryFields['unique_key']);
+            unset($queryFields['unique_keys']);
 
             $fieldObjects = fieldsGet(
                 [],
@@ -1089,13 +1049,20 @@ function cacheUpdate(string $cacheKey): array
                 $cacheData[(int)$fieldData['set_id']][$fieldID] = [
                     'field_id' => (int)$fieldData['field_id'],
                     'set_id' => (int)$fieldData['set_id'],
-                    'name' => (string)$fieldData['name'],
+                    'field_key' => (string)$fieldData['field_key'],
                     'html_type' => (string)$fieldData['html_type'],
                     'enabled' => (bool)$fieldData['enabled'],
                     'field_type' => (string)$fieldData['field_type'],
+                    'display_in_create_update_page' => (bool)$fieldData['display_in_create_update_page'],
+                    'display_in_view_page' => (bool)$fieldData['display_in_view_page'],
+                    'display_in_main_page' => (bool)$fieldData['display_in_main_page'],
                     'minimum_length' => (int)$fieldData['minimum_length'],
                     'maximum_length' => (int)$fieldData['maximum_length'],
                     'is_required' => (bool)$fieldData['is_required'],
+                    'allowed_groups_fill' => (string)$fieldData['allowed_groups_fill'],
+                    'allowed_groups_view' => (string)$fieldData['allowed_groups_view'],
+                    'default_value' => (string)$fieldData['default_value'],
+                    'default_type' => (int)$fieldData['default_type'],
                     'parse' => (bool)$fieldData['parse'],
                     'display_order' => (int)$fieldData['display_order'],
                     'render_order' => (int)$fieldData['render_order'],
@@ -1103,6 +1070,7 @@ function cacheUpdate(string $cacheKey): array
                     'enable_slug' => (bool)$fieldData['enable_slug'],
                     'enable_subject' => (bool)$fieldData['enable_subject'],
                     'format' => (string)$fieldData['format'],
+                    'enable_editor' => (bool)$fieldData['enable_editor'],
                 ];
             }
 
@@ -1236,6 +1204,16 @@ function showcaseDataTableFieldExists(int $showcaseID, string $fieldName): bool
     return $db->field_exists($fieldName, 'myshowcase_data' . $showcaseID);
 }
 
+function showcaseDataTableFieldRename(
+    int $showcaseID,
+    string $oldFieldName,
+    string $newFieldName,
+    string $newDefinition
+): bool {
+    global $db;
+    return $db->rename_column('myshowcase_data' . $showcaseID, $oldFieldName, $newFieldName, $newDefinition);
+}
+
 function showcaseDataTableDrop(int $showcaseID): bool
 {
     global $db;
@@ -1265,7 +1243,7 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
         ["set_id='{$showcaseFieldSetID}'", "enabled='1'"],
         [
             'field_id',
-            'name',
+            'field_key',
             'field_type'
         ]
     );
@@ -1327,40 +1305,17 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
     }
 
     foreach ($fieldObjects as $fieldID => $fieldData) {
-        if (isset($entryData[$fieldData['name']])) {
-            if (in_array($fieldData['field_type'], [
-                FIELD_TYPE_HTML_DATE,
-                FIELD_TYPE_STORAGE_TINYINT,
-                FIELD_TYPE_STORAGE_SMALLINT,
-                FIELD_TYPE_STORAGE_MEDIUMINT,
-                FIELD_TYPE_STORAGE_INT,
-                FIELD_TYPE_STORAGE_BIGINT
-            ])) {
-                $showcaseInsertData[$fieldData['name']] = (string)$entryData[$fieldData['name']];
-            } elseif (in_array($fieldData['field_type'], [
-                FIELD_TYPE_STORAGE_DECIMAL,
-                FIELD_TYPE_STORAGE_FLOAT,
-                FIELD_TYPE_STORAGE_DOUBLE
-            ])) {
-                $showcaseInsertData[$fieldData['name']] = (float)$entryData[$fieldData['name']];
-            } elseif (in_array($fieldData['field_type'], [
-                FIELD_TYPE_STORAGE_CHAR,
-                FIELD_TYPE_STORAGE_VARCHAR,
-                FIELD_TYPE_STORAGE_TINYTEXT,
-                FIELD_TYPE_STORAGE_TEXT,
-                FIELD_TYPE_STORAGE_MEDIUMTEXT,
-
-                FIELD_TYPE_STORAGE_DATE,
-                FIELD_TYPE_STORAGE_TIME,
-                FIELD_TYPE_STORAGE_DATETIME,
-                FIELD_TYPE_STORAGE_TIMESTAMP
-            ])) {
-                $showcaseInsertData[$fieldData['name']] = $db->escape_string($entryData[$fieldData['name']]);
-            } elseif (in_array($fieldData['field_type'], [
-                FIELD_TYPE_STORAGE_BINARY,
-                FIELD_TYPE_STORAGE_VARBINARY
-            ])) {
-                $showcaseInsertData[$fieldData['name']] = $db->escape_binary($entryData[$fieldData['name']]);
+        if (isset($entryData[$fieldData['field_key']])) {
+            if (fieldTypeMatchInt($fieldData['field_type'])) {
+                $showcaseInsertData[$fieldData['field_key']] = (int)$entryData[$fieldData['field_key']];
+            } elseif (fieldTypeMatchFloat($fieldData['field_type'])) {
+                $showcaseInsertData[$fieldData['field_key']] = (float)$entryData[$fieldData['field_key']];
+            } elseif (fieldTypeMatchChar($fieldData['field_type']) ||
+                fieldTypeMatchText($fieldData['field_type']) ||
+                fieldTypeMatchDateTime($fieldData['field_type'])) {
+                $showcaseInsertData[$fieldData['field_key']] = $db->escape_string($entryData[$fieldData['field_key']]);
+            } elseif (fieldTypeMatchBinary($fieldData['field_type'])) {
+                $showcaseInsertData[$fieldData['field_key']] = $db->escape_binary($entryData[$fieldData['field_key']]);
             }
         }
     }
@@ -1578,26 +1533,126 @@ function fieldsetDelete(array $whereClauses = []): bool
     return true;
 }
 
-function fieldsInsert(array $fieldData): int
+function fieldsInsert(array $fieldData, bool $isUpdate = false, int $fieldID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_fields', $fieldData);
+    $insertData = [];
 
-    return (int)$db->insert_id();
+    if (isset($fieldData['set_id'])) {
+        $insertData['set_id'] = (int)$fieldData['set_id'];
+    }
+
+    if (isset($fieldData['field_key'])) {
+        $insertData['field_key'] = $db->escape_string($fieldData['field_key']);
+    }
+
+    if (isset($fieldData['html_type'])) {
+        $insertData['html_type'] = $db->escape_string($fieldData['html_type']);
+    }
+
+    if (isset($fieldData['enabled'])) {
+        $insertData['enabled'] = (int)$fieldData['enabled'];
+    }
+
+    if (isset($fieldData['field_type'])) {
+        $insertData['field_type'] = $db->escape_string($fieldData['field_type']);
+    }
+
+    if (isset($fieldData['display_in_create_update_page'])) {
+        $insertData['display_in_create_update_page'] = $db->escape_string($fieldData['display_in_create_update_page']);
+    }
+
+    if (isset($fieldData['display_in_view_page'])) {
+        $insertData['display_in_view_page'] = $db->escape_string($fieldData['display_in_view_page']);
+    }
+
+    if (isset($fieldData['display_in_main_page'])) {
+        $insertData['display_in_main_page'] = $db->escape_string($fieldData['display_in_main_page']);
+    }
+
+    if (isset($fieldData['minimum_length'])) {
+        $insertData['minimum_length'] = (int)$fieldData['minimum_length'];
+    }
+
+    if (isset($fieldData['maximum_length'])) {
+        $insertData['maximum_length'] = (int)$fieldData['maximum_length'];
+    }
+
+    if (isset($fieldData['is_required'])) {
+        $insertData['is_required'] = (int)$fieldData['is_required'];
+    }
+
+    if (isset($fieldData['allowed_groups_fill'])) {
+        $insertData['allowed_groups_fill'] = $db->escape_string(
+            is_array($fieldData['allowed_groups_fill']) ? implode(
+                ',',
+                $fieldData['allowed_groups_fill']
+            ) : $fieldData['allowed_groups_fill']
+        );
+    }
+
+    if (isset($fieldData['allowed_groups_view'])) {
+        $insertData['allowed_groups_view'] = $db->escape_string(
+            is_array($fieldData['allowed_groups_view']) ? implode(
+                ',',
+                $fieldData['allowed_groups_view']
+            ) : $fieldData['allowed_groups_view']
+        );
+    }
+
+    if (isset($fieldData['default_value'])) {
+        $insertData['default_value'] = $db->escape_string($fieldData['default_value']);
+    }
+
+    if (isset($fieldData['default_type'])) {
+        $insertData['default_type'] = (int)$fieldData['default_type'];
+    }
+
+    if (isset($fieldData['parse'])) {
+        $insertData['parse'] = (int)$fieldData['parse'];
+    }
+
+    if (isset($fieldData['display_order'])) {
+        $insertData['display_order'] = (int)$fieldData['display_order'];
+    }
+
+    if (isset($fieldData['render_order'])) {
+        $insertData['render_order'] = (int)$fieldData['render_order'];
+    }
+
+    if (isset($fieldData['enable_search'])) {
+        $insertData['enable_search'] = (int)$fieldData['enable_search'];
+    }
+
+    if (isset($fieldData['enable_slug'])) {
+        $insertData['enable_slug'] = (int)$fieldData['enable_slug'];
+    }
+
+    if (isset($fieldData['enable_subject'])) {
+        $insertData['enable_subject'] = (int)$fieldData['enable_subject'];
+    }
+
+    if (isset($fieldData['format'])) {
+        $insertData['format'] = $db->escape_string($fieldData['format']);
+    }
+
+    if (isset($fieldData['enable_editor'])) {
+        $insertData['enable_editor'] = (int)$fieldData['enable_editor'];
+    }
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_fields', $insertData, "field_id='{$fieldID}'");
+    } else {
+        $db->insert_query('myshowcase_fields', $insertData);
+    }
+
+    return $fieldID;
 }
 
-function fieldsUpdate(array $whereClauses, array $fieldData): bool
+function fieldsUpdate(array $fieldData, int $fieldID): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_fields',
-        $fieldData,
-        implode(' AND ', $whereClauses)
-    );
-
-    return true;
+    return fieldsInsert($fieldData, true, $fieldID);
 }
 
 function fieldsGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -1633,7 +1688,7 @@ function fieldsDelete(array $whereClauses = []): bool
     return true;
 }
 
-function fieldDataInsert(array $fieldData): int
+function fieldDataInsert(array $fieldData, bool $isUpdate = false, int $fieldDataID): int
 {
     global $db;
 
@@ -1642,7 +1697,7 @@ function fieldDataInsert(array $fieldData): int
     return (int)$db->insert_id();
 }
 
-function fieldDataUpdate(array $whereClauses, array $fieldData): bool
+function fieldDataUpdate(array $whereClauses, array $fieldData): int
 {
     global $db;
 
@@ -1652,7 +1707,7 @@ function fieldDataUpdate(array $whereClauses, array $fieldData): bool
         implode(' AND ', $whereClauses)
     );
 
-    return true;
+    return fieldDataInsert($fieldData, true, $fieldDataID);
 }
 
 function fieldDataGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -2337,17 +2392,17 @@ function fileUpload(array $fileData, string $uploadsPath, string $fileName = '')
 {
     $returnData = [];
 
-    if (empty($fileData['name']) || $fileData['name'] === 'none' || $fileData['size'] < 1) {
+    if (empty($fileData['field_key']) || $fileData['field_key'] === 'none' || $fileData['size'] < 1) {
         $returnData['error'] = UPLOAD_STATUS_INVALID;
 
         return $returnData;
     }
 
     if (!$fileName) {
-        $fileName = $fileData['name'];
+        $fileName = $fileData['field_key'];
     }
 
-    $returnData['original_filename'] = preg_replace('#/$#', '', $fileData['name']);
+    $returnData['original_filename'] = preg_replace('#/$#', '', $fileData['field_key']);
 
     $fileName = preg_replace('#/$#', '', $fileName);
 
@@ -2421,28 +2476,24 @@ function entryGetRandom(): string
         $description_list = [];
         foreach ($fields as $id => $field) {
             if (/*(int)$field['render_order'] !== \MyShowcase\Core\ALL_UNLIMITED_VALUE && */ $field['enabled'] == 1) {
-                $field_list[$field['render_order'] + 10]['name'] = $field['name'];
+                $field_list[$field['render_order'] + 10]['field_key'] = $field['field_key'];
                 $field_list[$field['render_order'] + 10]['type'] = $field['html_type'];
-                $description_list[$field['render_order']] = $field['name'];
+                $description_list[$field['render_order']] = $field['field_key'];
             }
         }
 
         //merge dynamic and fixed fields
         $fields_for_search = array_merge($fields_fixed, $field_list);
 
-        //sort array of header fields by their list display order
-        ksort($fields_for_search);
-
         //build where clause based on search_field terms
         $addon_join = '';
         $addon_fields = '';
-        reset($fields_for_search);
         foreach ($fields_for_search as $id => $field) {
-            if ($field['type'] == FIELD_TYPE_HTML_DB || $field['type'] == FIELD_TYPE_HTML_RADIO) {
-                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['name'] . ' ON (tbl_' . $field['name'] . '.value_id = g.' . $field['name'] . ' AND tbl_' . $field['name'] . ".name = '" . $field['name'] . "') ";
-                $addon_fields .= ', tbl_' . $field['name'] . '.value AS ' . $field['name'];
+            if ($field['type'] == FieldHtmlTypes::SelectSingle || $field['type'] == FieldHtmlTypes::Radio) {
+                $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['field_key'] . ' ON (tbl_' . $field['field_key'] . '.value_id = g.' . $field['field_key'] . ' AND tbl_' . $field['field_key'] . ".field_id = '" . $field['field_id'] . "') ";
+                $addon_fields .= ', tbl_' . $field['field_key'] . '.value AS ' . $field['field_key'];
             } else {
-                $addon_fields .= ', ' . $field['name'];
+                $addon_fields .= ', ' . $field['field_key'];
             }
         }
 
@@ -2515,6 +2566,8 @@ function entryGetRandom(): string
 
 function dataTableStructureGet(int $showcaseID = 0): array
 {
+    global $db;
+
     $dataTableStructure = DATA_TABLE_STRUCTURE['myshowcase_data'];
 
     if ($showcaseID &&
@@ -2526,57 +2579,104 @@ function dataTableStructureGet(int $showcaseID = 0): array
         foreach (
             fieldsGet(
                 ["set_id='{$fieldsetID}'"],
-                ['name', 'field_type', 'maximum_length', 'is_required']
+                ['field_key', 'field_type', 'maximum_length', 'is_required', 'default_value', 'default_type']
             ) as $fieldID => $fieldData
         ) {
-            $dataTableStructure[$fieldData['name']] = [];
+            $dataTableStructure[$fieldData['field_key']] = [];
 
-            $field = &$dataTableStructure[$fieldData['name']];
+            if (fieldTypeMatchInt($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
 
-            switch ($fieldData['field_type']) {
-                case FIELD_TYPE_STORAGE_VARCHAR:
-                    $field['type'] = 'VARCHAR';
+                $dataTableStructure[$fieldData['field_key']]['size'] = (int)$fieldData['maximum_length'];
 
-                    $field['size'] = (int)$fieldData['maximum_length'];
+                if ($fieldData['default_value'] !== '') {
+                    $defaultValue = (int)$fieldData['default_value'];
+                } else {
+                    $defaultValue = 0;
+                }
+            } elseif (fieldTypeMatchFloat($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
 
-                    if (empty($fieldData['is_required'])) {
-                        $field['default'] = '';
+                $dataTableStructure[$fieldData['field_key']]['size'] = (float)$fieldData['maximum_length'];
+
+                if ($fieldData['default_value'] !== '') {
+                    $defaultValue = (float)$fieldData['default_value'];
+                } else {
+                    $defaultValue = 0;
+                }
+            } elseif (fieldTypeMatchChar($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
+
+                $dataTableStructure[$fieldData['field_key']]['size'] = (int)$fieldData['maximum_length'];
+
+                if ($fieldData['default_value'] !== '') {
+                    $defaultValue = $db->escape_string($fieldData['default_value']);
+                } else {
+                    $defaultValue = '';
+                }
+            } elseif (fieldTypeMatchText($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
+
+                // todo, TEXT fields cannot have default values, should validate in front end
+                $fieldData['default_type'] = FieldDefaultTypes::IsNull;
+            } elseif (fieldTypeMatchDateTime($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
+
+                if ($fieldData['default_value'] !== '') {
+                    $defaultValue = $db->escape_string($fieldData['default_value']);
+                } else {
+                    $defaultValue = '';
+                }
+            } elseif (fieldTypeMatchBinary($fieldData['field_type'])) {
+                $dataTableStructure[$fieldData['field_key']]['type'] = $fieldData['field_type'];
+
+                $dataTableStructure[$fieldData['field_key']]['size'] = (int)$fieldData['maximum_length'];
+
+                if ($fieldData['default_value'] !== '') {
+                    $defaultValue = $db->escape_string($fieldData['default_value']);
+                } else {
+                    $defaultValue = '';
+                }
+            }
+
+            switch ($fieldData['default_type']) {
+                case FieldDefaultTypes::AsDefined:
+                    if ($fieldData['default_value'] !== '' && isset($defaultValue)) {
+                        $dataTableStructure[$fieldData['field_key']]['default'] = $defaultValue;
                     }
                     break;
-                case FIELD_TYPE_STORAGE_TEXT:
-                    $field['type'] = 'TEXT';
+                case FieldDefaultTypes::IsNull:
+                    unset($dataTableStructure[$fieldData['field_key']]['default']);
 
-                    if (empty($fieldData['is_required'])) {
-                        $field['null'] = true;
-                    }
+                    $dataTableStructure[$fieldData['field_key']]['null'] = true;
                     break;
-                case FIELD_TYPE_STORAGE_INT:
-                case FIELD_TYPE_STORAGE_BIGINT:
-                    $field['type'] = my_strtoupper($fieldData['field_type']);
+                case FieldDefaultTypes::CurrentTimestamp:
+                    unset($dataTableStructure[$fieldData['field_key']]['default']);
 
-                    $field['size'] = (int)$fieldData['maximum_length'];
-
-                    if (empty($fieldData['is_required'])) {
-                        $field['default'] = 0;
-                    }
+                    $dataTableStructure[$fieldData['field_key']]['default'] = 'TIMESTAMP';
                     break;
-                case FIELD_TYPE_STORAGE_TIMESTAMP:
-                    $field['type'] = 'TIMESTAMP';
+                case FieldDefaultTypes::UUID:
+                    unset($dataTableStructure[$fieldData['field_key']]['default']);
+
+                    $dataTableStructure[$fieldData['field_key']]['default'] = 'UUID';
                     break;
             }
 
             if (!empty($fieldData['is_required'])) {
                 global $mybb;
 
-                if ($fieldData['field_type'] === FIELD_TYPE_STORAGE_TEXT && $mybb->settings['searchtype'] == 'fulltext') {
-                    $create_index = ', FULLTEXT KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
+                if (fieldTypeSupportsFullText($fieldData['field_type']) &&
+                    $mybb->settings['searchtype'] === 'fulltext') {
+                    isset($dataTableStructure['full_keys']) || $dataTableStructure['full_keys'] = [];
+
+                    $dataTableStructure['full_keys'][$fieldData['field_key']] = $fieldData['field_key'];
                 } else {
-                    $create_index = ', KEY `' . $fieldData['name'] . '` (`' . $fieldData['name'] . '`)';
+                    isset($dataTableStructure['keys']) || $dataTableStructure['keys'] = [];
+
+                    $dataTableStructure['keys'][$fieldData['field_key']] = $fieldData['field_key'];
                 }
                 // todo: add key for uid & approved
             }
-
-            unset($field);
         }
     }
 
@@ -2637,7 +2737,7 @@ function renderGetObject(Showcase $showcaseObject): Render
     return $renderObjects[$showcaseObject->showcase_id];
 }
 
-function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HANDLERT_METHOD_INSERT): DataHandler
+function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HANDLER_METHOD_INSERT): DataHandler
 {
     require_once MYBB_ROOT . 'inc/datahandler.php';
     require_once ROOT . '/System/DataHandler.php';
@@ -2662,4 +2762,151 @@ function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
     }
 
     return $outputObjects[$showcaseObject->showcase_id];
+}
+
+function formatTypes()
+{
+    return [
+        FormatTypes::noFormat => '',
+        FormatTypes::numberFormat => 'my_number_format(#,###)',
+        FormatTypes::numberFormat1 => 'my_number_format(#,###.#)',
+        FormatTypes::numberFormat2 => 'my_number_format(#,###.##)',
+        FormatTypes::htmlSpecialCharactersUni => 'htmlspecialchars_uni',
+        FormatTypes::stripTags => 'strip_tags',
+    ];
+}
+
+function formatField(int $formatType, string &$fieldValue)
+{
+    $fieldValue = match ($formatType) {
+        FormatTypes::numberFormat => $value = my_number_format((int)$value),
+        FormatTypes::numberFormat1 => number_format((float)$fieldValue, 1),
+        FormatTypes::numberFormat2 => number_format((float)$fieldValue, 2),
+        FormatTypes::htmlSpecialCharactersUni => $fieldValue = htmlspecialchars_uni($fieldValue),
+        FormatTypes::stripTags => $fieldValue = strip_tags($fieldValue),
+        default => $fieldValue
+    };
+}
+
+function fieldTypesGet(): array
+{
+    return [
+        FieldTypes::TinyInteger => FieldTypes::TinyInteger,
+        FieldTypes::SmallInteger => FieldTypes::SmallInteger,
+        FieldTypes::MediumInteger => FieldTypes::MediumInteger,
+        FieldTypes::BigInteger => FieldTypes::BigInteger,
+        FieldTypes::Integer => FieldTypes::Integer,
+
+        FieldTypes::Decimal => FieldTypes::Decimal,
+        FieldTypes::Float => FieldTypes::Float,
+        FieldTypes::Double => FieldTypes::Double,
+
+        FieldTypes::Char => FieldTypes::Char,
+        FieldTypes::VarChar => FieldTypes::VarChar,
+
+        FieldTypes::TinyText => FieldTypes::TinyText,
+        FieldTypes::Text => FieldTypes::Text,
+        FieldTypes::MediumText => FieldTypes::MediumText,
+
+        FieldTypes::Date => FieldTypes::Date,
+        FieldTypes::Time => FieldTypes::Time,
+        FieldTypes::DateTime => FieldTypes::DateTime,
+        FieldTypes::TimeStamp => FieldTypes::TimeStamp,
+
+        FieldTypes::Binary => FieldTypes::Binary,
+        FieldTypes::VarBinary => FieldTypes::VarBinary,
+    ];
+}
+
+function fieldTypeMatchInt(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::TinyInteger => FieldTypes::TinyInteger,
+        FieldTypes::SmallInteger => FieldTypes::SmallInteger,
+        FieldTypes::MediumInteger => FieldTypes::MediumInteger,
+        FieldTypes::BigInteger => FieldTypes::BigInteger,
+        FieldTypes::Integer => FieldTypes::Integer,
+    ], true);
+}
+
+function fieldTypeMatchFloat(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::Decimal => FieldTypes::Decimal,
+        FieldTypes::Float => FieldTypes::Float,
+        FieldTypes::Double => FieldTypes::Double,
+    ], true);
+}
+
+function fieldTypeMatchChar(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::Char => FieldTypes::Char,
+        FieldTypes::VarChar => FieldTypes::VarChar,
+    ], true);
+}
+
+function fieldTypeMatchText(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::TinyText => FieldTypes::TinyText,
+        FieldTypes::Text => FieldTypes::Text,
+        FieldTypes::MediumText => FieldTypes::MediumText,
+    ], true);
+}
+
+function fieldTypeMatchDateTime(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::Date => FieldTypes::Date,
+        FieldTypes::Time => FieldTypes::Time,
+        FieldTypes::DateTime => FieldTypes::DateTime,
+        FieldTypes::TimeStamp => FieldTypes::TimeStamp,
+    ], true);
+}
+
+function fieldTypeMatchBinary(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::Binary => FieldTypes::Binary,
+        FieldTypes::VarBinary => FieldTypes::VarBinary,
+    ], true);
+}
+
+function fieldTypeSupportsFullText(string $fieldType): bool
+{
+    return in_array($fieldType, [
+        FieldTypes::Char => FieldTypes::Char,
+        FieldTypes::VarChar => FieldTypes::VarChar,
+
+        FieldTypes::Text => FieldTypes::Text,
+    ], true);
+}
+
+function fieldHtmlTypes(): array
+{
+    return [
+        FieldHtmlTypes::Text => FieldHtmlTypes::Text,
+        FieldHtmlTypes::TextArea => FieldHtmlTypes::TextArea,
+        FieldHtmlTypes::Radio => FieldHtmlTypes::Radio,
+        FieldHtmlTypes::CheckBox => FieldHtmlTypes::CheckBox,
+        FieldHtmlTypes::Url => FieldHtmlTypes::Url,
+        FieldHtmlTypes::Date => FieldHtmlTypes::Date,
+        FieldHtmlTypes::SelectSingle => FieldHtmlTypes::SelectSingle,
+        FieldHtmlTypes::SelectMultiple => FieldHtmlTypes::SelectMultiple,
+    ];
+}
+
+function fieldDefaultTypes(): array
+{
+    global $lang;
+
+    loadLanguage();
+
+    return [
+        FieldDefaultTypes::AsDefined => $lang->myShowcaseAdminFieldsNewFormDefaultTypeAsDefined,
+        FieldDefaultTypes::IsNull => $lang->myShowcaseAdminFieldsNewFormDefaultTypeNull,
+        FieldDefaultTypes::CurrentTimestamp => $lang->myShowcaseAdminFieldsNewFormDefaultTypeTimeStamp,
+        FieldDefaultTypes::UUID => $lang->myShowcaseAdminFieldsNewFormDefaultTypeUUID,
+    ];
 }

@@ -23,27 +23,18 @@ use function MyShowcase\Core\commentInsert;
 use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentUpdate;
 
+use function MyShowcase\Core\fieldTypeMatchChar;
+use function MyShowcase\Core\fieldTypeMatchInt;
+use function MyShowcase\Core\fieldTypeMatchText;
+
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
-use const MyShowcase\Core\DATA_HANDLERT_METHOD_INSERT;
+use const MyShowcase\Core\DATA_HANDLER_METHOD_INSERT;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_BIGINT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_CHAR;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_INT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMINT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_MEDIUMTEXT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_SMALLINT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_TEXT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_TIMESTAMP;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYINT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_TINYTEXT;
-use const MyShowcase\Core\FIELD_TYPE_STORAGE_VARCHAR;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
@@ -57,7 +48,7 @@ class DataHandler extends CoreDataHandler
 {
     public function __construct(
         protected Showcase $showcaseObject,
-        public $method = DATA_HANDLERT_METHOD_INSERT,
+        public $method = DATA_HANDLER_METHOD_INSERT,
         /**
          * The language file used in the data handler.
          *
@@ -111,7 +102,7 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid entry identifier');
         }
 
-        if (isset($entryData['entry_slug']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
+        if (isset($entryData['entry_slug']) || $this->method === DATA_HANDLER_METHOD_INSERT) {
             $slugLength = my_strlen($this->data['entry_slug']);
 
             if ($slugLength < 1) {
@@ -161,70 +152,58 @@ class DataHandler extends CoreDataHandler
         global $lang;
 
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-            $fieldName = $fieldData['name'];
+            $fieldKey = $fieldData['field_key'];
 
-            if (!$fieldData['enabled'] || !isset($entryData[$fieldName])) {
+            if (!$fieldData['enabled'] || !isset($entryData[$fieldKey])) {
                 continue;
             }
 
             if ($fieldData['is_required']) {
-                if (empty($entryData[$fieldName])) {
-                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
-                } elseif ($fieldData['html_type'] === FIELD_TYPE_HTML_DB && empty($entryData[$fieldName])) {
-                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
+                if (empty($entryData[$fieldKey])) {
+                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
+                } elseif ($fieldData['html_type'] === FieldHtmlTypes::SelectSingle && empty($entryData[$fieldKey])) {
+                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
                 }
             }
 
-            $fieldValueLenght = my_strlen($entryData[$fieldName]);
+            $fieldValueLength = my_strlen($entryData[$fieldKey]);
 
-            switch ($fieldData['field_type']) {
-                case FIELD_TYPE_STORAGE_TINYINT:
-                case FIELD_TYPE_STORAGE_SMALLINT:
-                case FIELD_TYPE_STORAGE_MEDIUMINT:
-                case FIELD_TYPE_STORAGE_INT:
-                case FIELD_TYPE_STORAGE_BIGINT:
-                case FIELD_TYPE_STORAGE_TIMESTAMP:
-                    if (isset($entryData[$fieldName]) && !is_numeric($entryData[$fieldName])) {
-                        $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
-                    }
+            if (fieldTypeMatchInt($fieldData['field_type'])) {
+                if (isset($entryData[$fieldKey]) && !is_numeric($entryData[$fieldKey])) {
+                    $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
+                }
+            } elseif (fieldTypeMatchChar($fieldData['field_type']) ||
+                fieldTypeMatchText($fieldData['field_type'])) {
+                if (isset($entryData[$fieldKey]) && !is_scalar($entryData[$fieldKey])) {
+                    $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
+                }
 
-                    break;
-                case FIELD_TYPE_STORAGE_CHAR:
-                case FIELD_TYPE_STORAGE_VARCHAR:
-                case FIELD_TYPE_STORAGE_TINYTEXT:
-                case FIELD_TYPE_STORAGE_TEXT:
-                case FIELD_TYPE_STORAGE_MEDIUMTEXT:
-                    if (isset($entryData[$fieldName]) && !is_scalar($entryData[$fieldName])) {
-                        $this->set_error('invalid_type', [$lang->{'myshowcase_field_' . $fieldName} ?? $fieldName]);
-                    }
+                //date fields do not have length limitations since the min/max are settings for the year
+                if ($fieldData['html_type'] !== FieldHtmlTypes::Date) {
+                    if ($fieldValueLength > $fieldData['maximum_length'] ||
+                        $fieldValueLength < $fieldData['minimum_length']) {
+                        $this->set_error(
+                            'invalid_length',
+                            [
+                                $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey,
+                                $fieldValueLength,
+                                $fieldData['minimum_length'] . '-' . $fieldData['maximum_length']
+                            ]
+                        );
 
-                    //date fields do not have length limitations since the min/max are settings for the year
-                    if ($fieldData['html_type'] !== FIELD_TYPE_HTML_DATE) {
-                        if ($fieldValueLenght > $fieldData['maximum_length'] ||
-                            $fieldValueLenght < $fieldData['minimum_length']) {
+                        if ($fieldValueLength > $this->showcaseObject->maximumLengthForTextFields &&
+                            $this->showcaseObject->maximumLengthForTextFields > 0) {
                             $this->set_error(
-                                'invalid_length',
+                                'message_too_long',
                                 [
-                                    $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName,
-                                    $fieldValueLenght,
-                                    $fieldData['minimum_length'] . '-' . $fieldData['maximum_length']
+                                    $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey,
+                                    $fieldValueLength,
+                                    $this->showcaseObject->maximumLengthForTextFields
                                 ]
                             );
-
-                            if ($fieldValueLenght > $this->showcaseObject->maximumLengthForTextFields &&
-                                $this->showcaseObject->maximumLengthForTextFields > 0) {
-                                $this->set_error(
-                                    'message_too_long',
-                                    [
-                                        $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName,
-                                        $fieldValueLenght,
-                                        $this->showcaseObject->maximumLengthForTextFields
-                                    ]
-                                );
-                            }
                         }
                     }
-                    break;
+                }
             }
         }
 
@@ -291,7 +270,6 @@ class DataHandler extends CoreDataHandler
                 ['entry_slug'],
                 ['limit' => 1]
             )['entry_slug'] ?? '';
-            _dump(123, $returnData['entry_slug']);
         }
 
         if (isset($this->insertData['status'])) {
@@ -340,7 +318,7 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid user identifier');
         }
 
-        if (isset($commentData['comment']) || $this->method === DATA_HANDLERT_METHOD_INSERT) {
+        if (isset($commentData['comment']) || $this->method === DATA_HANDLER_METHOD_INSERT) {
             $commentLength = my_strlen($this->data['comment']);
 
             if ($commentLength < 1) {

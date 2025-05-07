@@ -16,6 +16,10 @@ declare(strict_types=1);
 namespace MyShowcase\Admin;
 
 use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\fieldTypeMatchBinary;
+use function MyShowcase\Core\fieldTypeMatchChar;
+use function MyShowcase\Core\fieldTypeMatchDateTime;
+use function MyShowcase\Core\fieldTypeMatchText;
 use function MyShowcase\Core\getTemplatesList;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableDrop;
@@ -149,7 +153,8 @@ function pluginActivation(): bool
                 'allowhtml' => 'allow_mycode',
                 'prunetime' => 'prune_time',
                 'modnewedit' => 'moderate_edits',
-                'othermaxlength' => 'maximum_text_field_lenght',
+                'othermaxlength' => 'maximum_text_field_length',
+                'maximum_text_field_lenght' => 'maximum_text_field_length',
                 'comment_dispinit' => 'comments_per_page',
                 'disp_attachcols' => 'attachments_per_row',
                 'disp_empty' => 'display_empty_fields',
@@ -174,6 +179,7 @@ function pluginActivation(): bool
             'myshowcase_fields' => [
                 'fid' => 'field_id',
                 'setid' => 'set_id',
+                'name' => 'field_key',
                 'min_length' => 'minimum_length',
                 'max_length' => 'maximum_length',
                 'require' => 'is_required',
@@ -449,8 +455,12 @@ function dbTables(array $tableObjects = TABLES_DATA): array
             if (isset($fieldData['primary_key'])) {
                 $tablesData[$tableName]['primary_key'] = $fieldName;
             }
-            if ($fieldName === 'unique_key') {
-                $tablesData[$tableName]['unique_key'] = $fieldData;
+
+            if ($fieldName === 'unique_keys') {
+                $tablesData[$tableName]['unique_keys'] = array_merge(
+                    $tablesData[$tableName]['unique_keys'] ?? [],
+                    $fieldData
+                );
             }
         }
     }
@@ -469,7 +479,7 @@ function dbVerifyTables(array $tableObjects = TABLES_DATA): bool
     foreach (dbTables($tableObjects) as $tableName => $tableData) {
         if ($db->table_exists($tableName)) {
             foreach ($tableData as $fieldName => $fieldData) {
-                if ($fieldName == 'primary_key' || $fieldName == 'unique_key') {
+                if ($fieldName === 'primary_key' || $fieldName === 'unique_keys') {
                     continue;
                 }
 
@@ -487,7 +497,7 @@ function dbVerifyTables(array $tableObjects = TABLES_DATA): bool
             foreach ($tableData as $fieldName => $fieldData) {
                 if ($fieldName === 'primary_key') {
                     $fields[] = "PRIMARY KEY (`{$fieldData}`)";
-                } elseif ($fieldName !== 'unique_key') {
+                } elseif ($fieldName !== 'unique_keys') {
                     $fields[] = "`{$fieldName}` {$fieldData}";
                 }
             }
@@ -516,13 +526,53 @@ function dbVerifyIndexes(array $tableObjects = TABLES_DATA): bool
             continue;
         }
 
-        if (isset($tableData['unique_key'])) {
-            foreach ($tableData['unique_key'] as $keyName => $keyValue) {
+        if (isset($tableData['unique_keys'])) {
+            foreach ($tableData['unique_keys'] as $keyName => $keyValue) {
                 if ($db->index_exists($tableName, $keyName)) {
                     continue;
                 }
 
-                $db->write_query("ALTER TABLE {$tablePrefix}{$tableName} ADD UNIQUE KEY {$keyName} ({$keyValue})");
+                if (!is_array($keyValue)) {
+                    $keyValue = [$keyValue];
+                }
+
+                $keyValue = implode('`,`', $keyValue);
+
+                $db->write_query("ALTER TABLE {$tablePrefix}{$tableName} ADD UNIQUE KEY `{$keyName}` (`{$keyValue}`)");
+            }
+        }
+
+        if (isset($tableData['keys'])) {
+            foreach ($tableData['keys'] as $keyName => $keyValue) {
+                if ($db->index_exists($tableName, $keyName)) {
+                    continue;
+                }
+
+                if (!is_array($keyValue)) {
+                    $keyValue = [$keyValue];
+                }
+
+                $keyValue = implode('`,`', $keyValue);
+
+                $db->write_query("ALTER TABLE {$tablePrefix}{$tableName} ADD KEY `{$keyName}` (`{$keyValue}`)");
+            }
+        }
+
+        if (isset($tableData['full_keys'])) {
+            foreach ($tableData['full_keys'] as $keyName => $keyValue) {
+                if ($db->index_exists($tableName, $keyName)) {
+                    continue;
+                }
+
+                if (!is_array($keyValue)) {
+                    $keyValue = [$keyValue];
+                }
+
+                $keyValue = implode('`,`', $keyValue);
+
+                $db->write_query(
+                    "ALTER TABLE {$tablePrefix}{$tableName} ADD FULLTEXT KEY `{$keyName}` (`{$keyValue}`)"
+                );
             }
         }
     }
@@ -595,11 +645,19 @@ function buildDbFieldDefinition(array $fieldData): string
 
     $fieldDefinition .= $fieldData['type'];
 
-    if (isset($fieldData['size'])) {
+    if (isset($fieldData['size']) && (
+            !fieldTypeMatchText($fieldData['type']) ||
+            !fieldTypeMatchDateTime($fieldData['type'])
+        )) {
         $fieldDefinition .= "({$fieldData['size']})";
     }
 
-    if (isset($fieldData['unsigned'])) {
+    if (isset($fieldData['unsigned']) && (
+            !fieldTypeMatchChar($fieldData['type']) ||
+            !fieldTypeMatchText($fieldData['type']) ||
+            !fieldTypeMatchDateTime($fieldData['type']) ||
+            !fieldTypeMatchBinary($fieldData['type'])
+        )) {
         if ($fieldData['unsigned'] === true) {
             $fieldDefinition .= ' UNSIGNED';
         } else {
@@ -618,7 +676,11 @@ function buildDbFieldDefinition(array $fieldData): string
     }
 
     if (isset($fieldData['default'])) {
-        $fieldDefinition .= " DEFAULT '{$fieldData['default']}'";
+        if (in_array($fieldData['default'], ['TIMESTAMP', 'UUID'])) {
+            $fieldDefinition .= " DEFAULT {$fieldData['default']}";
+        } else {
+            $fieldDefinition .= " DEFAULT '{$fieldData['default']}'";
+        }
     }
 
     return $fieldDefinition;

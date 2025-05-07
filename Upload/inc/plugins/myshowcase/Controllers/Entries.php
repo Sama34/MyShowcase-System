@@ -33,6 +33,7 @@ namespace MyShowcase\Controllers;
 use MyBB;
 use JetBrains\PhpStorm\NoReturn;
 use MyShowcase\Models\Entries as EntriesModel;
+use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\Router;
 use MyShowcase\System\UserPermissions;
@@ -42,28 +43,18 @@ use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\dataHandlerGetObject;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldDataGet;
+use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 
 use const MyShowcase\ROOT;
-use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\ATTACHMENT_UNLIMITED;
 use const MyShowcase\Core\ATTACHMENT_ZERO;
-use const MyShowcase\Core\DATA_HANDLERT_METHOD_UPDATE;
+use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
-use const MyShowcase\Core\FIELD_TYPE_HTML_RADIO;
-use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
-use const MyShowcase\Core\FIELD_TYPE_HTML_TEXTAREA;
-use const MyShowcase\Core\FIELD_TYPE_HTML_URL;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT;
-use const MyShowcase\Core\FORMAT_TYPE_NONE;
-use const MyShowcase\Core\FORMAT_TYPES;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 use const MyShowcase\Core\TABLES_DATA;
@@ -104,17 +95,25 @@ class Entries extends Base
         $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
 
         if ($loadFields) {
-            foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-                if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
-                    $queryTables[] = "myshowcase_field_data table_{$fieldName} ON (table_{$fieldName}.value_id=entryData.{$fieldName} AND table_{$fieldName}.name='{$fieldName}')";
+            foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+                $fieldKey = $fieldData['field_key'];
 
-                    $queryFields[] = "table_{$fieldName}.value AS {$fieldName}";
+                $htmlType = $fieldData['html_type'];
+
+                $fieldID = (int)$fieldData['field_id'];
+
+                if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
+                    $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id=entryData.{$fieldKey} AND table_{$fieldKey}.field_id='{$fieldID}')";
+
+                    //$queryFields[] = "table_{$fieldKey}.value AS {$fieldKey}";
+
+                    $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
 
                     // todo, I don't understand the purpose of this now
                     // the condition after OR seems to fix it for now
-                    //$whereClauses[] = "(table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldName}=0)";
+                    //$whereClauses[] = "(table_{$fieldKey}.set_id='{$this->showcaseObject->fieldSetID}' OR entryData.{$fieldKey}=0)";
                 } else {
-                    $queryFields[] = $fieldName;
+                    $queryFields[] = $fieldKey;
                 }
             }
         }
@@ -155,6 +154,8 @@ class Entries extends Base
 
         $showcaseSelectOrderAscendingSelectedElement = $showcaseSelectOrderDescendingSelectedElement = '';
 
+        $showcaseInputOrderText = '';
+
         switch ($this->showcaseObject->orderBy) {
             case ORDER_DIRECTION_ASCENDING:
                 $showcaseSelectOrderAscendingSelectedElement = 'selected="selected"';
@@ -166,19 +167,15 @@ class Entries extends Base
 
                 $showcaseInputOrderText = $lang->myshowcase_asc;
                 break;
-            default:
-                $showcaseInputOrderText = '';
         }
 
         //build sort_by option list
         $selectOptions = '';
 
-        reset($this->showcaseObject->fieldSetFieldsDisplayFields);
-
-        foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldName => $fieldDisplayName) {
+        foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldKey => $fieldDisplayName) {
             $selectedElement = '';
 
-            if ($this->showcaseObject->sortByField === $fieldName) {
+            if ($this->showcaseObject->sortByField === $fieldKey) {
                 $selectedElement = 'selected="selected"';
             }
 
@@ -194,12 +191,10 @@ class Entries extends Base
         //build searchfield option list
         $selectOptionsSearchField = '';
 
-        reset($this->renderObject->fieldSetFieldsSearchFields);
-
-        foreach ($this->renderObject->fieldSetFieldsSearchFields as $fieldName => $fieldDisplayName) {
+        foreach ($this->renderObject->fieldSetFieldsSearchFields as $fieldKey => $fieldDisplayName) {
             $optionSelectedElement = '';
 
-            if ($this->showcaseObject->searchField === $fieldName) {
+            if ($this->showcaseObject->searchField === $fieldKey) {
                 $optionSelectedElement = 'selected="selected"';
             }
 
@@ -220,11 +215,13 @@ class Entries extends Base
             return '';
         }, $this->showcaseObject->fieldSetFieldsDisplayFields);
 
-        $orderInputs[$this->showcaseObject->sortByField] = eval(
-        $this->renderObject->templateGet(
-            'pageMainTableTheadFieldSort'
-        )
-        );
+        if ($showcaseInputOrderText) {
+            $orderInputs[$this->showcaseObject->sortByField] = eval(
+            $this->renderObject->templateGet(
+                'pageMainTableTheadFieldSort'
+            )
+            );
+        }
 
         // Check if the active user is a moderator and get the inline moderation tools.
         $showcaseColumnsCount = 5;
@@ -232,10 +229,13 @@ class Entries extends Base
         //build custom list header based on field settings
         $showcaseTableTheadExtra = '';
 
-        foreach ($this->showcaseObject->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
-            $showcaseTableTheadExtraFieldTitle = $lang->{"myshowcase_field_{$fieldName}"} ?? ucfirst($fieldName);
+        foreach ($this->showcaseObject->fieldSetFieldsOrder as $renderOrder => $fieldID) {
+            $fieldKey = $this->showcaseObject->fieldSetCache[$fieldID]['field_key'];
 
-            $showcaseTableTheadExtraFieldOrder = $this->showcaseObject->fieldSetFieldsDisplayFields[$fieldName];
+            $showcaseTableTheadExtraFieldTitle = $lang->{"myshowcase_field_{$fieldKey}"} ?? ucfirst($fieldKey);
+
+            //_dump($this->showcaseObject->fieldSetFieldsDisplayFields);
+            //$showcaseTableTheadExtraFieldOrder = $this->showcaseObject->fieldSetFieldsDisplayFields[$fieldKey];
 
             $showcaseTableTheadExtra .= eval($this->renderObject->templateGet('pageMainTableTheadRowField'));
 
@@ -258,27 +258,29 @@ class Entries extends Base
 
         $searchDone = false;
 
-        reset($this->showcaseObject->fieldSetSearchableFields);
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldKey = $fieldData['field_key'];
 
-        foreach ($this->showcaseObject->fieldSetSearchableFields as $fieldName => $htmlType) {
-            if ($htmlType === FIELD_TYPE_HTML_DB || $htmlType === FIELD_TYPE_HTML_RADIO) {
-                $queryTables[] = "myshowcase_field_data table_{$fieldName} ON (table_{$fieldName}.value_id = entryData.{$fieldName} AND table_{$fieldName}.name = '{$fieldName}')";
+            $htmlType = $fieldData['html_type'];
 
-                $queryFields[] = "table_{$fieldName}.value AS {$fieldName}";
+            if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
+                $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id = entryData.{$fieldKey} AND table_{$fieldKey}.field_id = '{$fieldData['field_id']}')";
 
-                if ($this->renderObject->searchKeyWords && $this->showcaseObject->searchField === $fieldName) {
+                $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
+
+                if ($this->renderObject->searchKeyWords && $this->showcaseObject->searchField === $fieldKey) {
                     if ($this->renderObject->searchExactMatch) {
-                        $whereClauses[] = "table_{$fieldName}.value='{$db->escape_string($this->renderObject->searchKeyWords)}'";
+                        $whereClauses[] = "table_{$fieldKey}.value='{$db->escape_string($this->renderObject->searchKeyWords)}'";
                     } else {
-                        $whereClauses[] = "table_{$fieldName}.value LIKE '%{$db->escape_string($this->renderObject->searchKeyWords)}%'";
+                        $whereClauses[] = "table_{$fieldKey}.value LIKE '%{$db->escape_string($this->renderObject->searchKeyWords)}%'";
                     }
 
-                    $whereClauses[] = "table_{$fieldName}.set_id='{$this->showcaseObject->fieldSetID}'";
+                    $whereClauses[] = "table_{$fieldKey}.set_id='{$this->showcaseObject->fieldSetID}'";
                 }
             } elseif ($this->showcaseObject->searchField === 'username' && !$searchDone) {
                 $queryTables[] = 'users us ON (entryData.user_id = us.uid)';
 
-                $queryFields[] = $fieldName;
+                $queryFields[] = $fieldKey;
 
                 if ($this->renderObject->searchKeyWords) {
                     if ($this->renderObject->searchExactMatch) {
@@ -290,13 +292,13 @@ class Entries extends Base
 
                 $searchDone = true;
             } else {
-                $queryFields[] = $fieldName;
+                $queryFields[] = $fieldKey;
 
-                if ($this->renderObject->searchKeyWords && $this->showcaseObject->searchField === $fieldName) {
+                if ($this->renderObject->searchKeyWords && $this->showcaseObject->searchField === $fieldKey) {
                     if ($this->renderObject->searchExactMatch) {
-                        $whereClauses[] = "entryData.{$fieldName}='{$db->escape_string($this->renderObject->searchKeyWords)}'";
+                        $whereClauses[] = "entryData.{$fieldKey}='{$db->escape_string($this->renderObject->searchKeyWords)}'";
                     } else {
-                        $whereClauses[] = "entryData.{$fieldName} LIKE '%{$db->escape_string($this->renderObject->searchKeyWords)}%'";
+                        $whereClauses[] = "entryData.{$fieldKey} LIKE '%{$db->escape_string($this->renderObject->searchKeyWords)}%'";
                     }
                 }
             }
@@ -546,37 +548,17 @@ class Entries extends Base
                 $entrySubject = [];
 
                 foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-                    $fieldName = $fieldData['name'];
+                    $fieldKey = $fieldData['field_key'];
 
-                    $entryFieldText = $entryFieldData[$fieldName] ?? '';
+                    $htmlType = $fieldData['html_type'];
 
-                    if (empty($this->showcaseObject->fieldSetParseableFields[$fieldName])) {
+                    $entryFieldText = $entryFieldData[$fieldKey] ?? '';
+
+                    if (!$fieldData['parse']) {
                         // todo, remove this legacy updating the database and updating the format field to TINYINT
-                        match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
-                            FORMAT_TYPE_MY_NUMBER_FORMAT => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = FORMAT_TYPE_MY_NUMBER_FORMAT,
-                            'decimal1' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 2,
-                            'decimal2' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 3,
-                            default => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 0
-                        };
+                        formatField((int)$fieldData['format'], $entryFieldText);
 
-                        $formatTypes = FORMAT_TYPES;
-
-                        if (!empty($formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]) &&
-                            function_exists(
-                                $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]
-                            )) {
-                            $entryFieldText = $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]](
-                                $entryFieldText
-                            );
-                        } else {
-                            $entryFieldText = match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
-                                2 => number_format((float)$entryFieldText, 1),
-                                3 => number_format((float)$entryFieldText, 2),
-                                default => htmlspecialchars_uni($entryFieldText),
-                            };
-                        }
-
-                        if ($this->showcaseObject->fieldSetEnabledFields[$fieldName] === FIELD_TYPE_HTML_DATE) {
+                        if ($htmlType === FieldHtmlTypes::Date) {
                             if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
                                 $entryFieldText = '';
                             } else {
@@ -619,7 +601,7 @@ class Entries extends Base
                         $entryFieldText = $this->showcaseObject->parseMessage($entryFieldText);
                     }
 
-                    $showcaseTableRowExtra[$fieldName] = eval(
+                    $showcaseTableRowExtra[$fieldKey] = eval(
                     $this->renderObject->templateGet(
                         'pageMainTableRowsExtra'
                     )
@@ -710,7 +692,31 @@ class Entries extends Base
             $inlineModeration = eval($this->renderObject->templateGet('pageMainInlineModeration'));
         }
 
+        $baseUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
+
         $this->outputSuccess(eval($this->renderObject->templateGet('pageMainContents')));
+    }
+
+    #[NoReturn] public function listEntriesUser(
+        string $showcaseSlug,
+        int $userID,
+        int $limit = 10,
+        int $limitStart = 0,
+        string $groupBy = '',
+        string $orderBy = 'user_id',
+        string $orderDirection = ORDER_DIRECTION_ASCENDING
+    ): void {
+        $statusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
+
+        $this->listEntries(
+            $showcaseSlug,
+            $limit,
+            $limitStart,
+            $groupBy,
+            $orderBy,
+            $orderDirection,
+            ["user_id='{$userID}'"]
+        );
     }
 
     #[NoReturn] public function listEntriesUnapproved(
@@ -852,36 +858,34 @@ class Entries extends Base
             //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
 
             if ($isEditPage) {
-                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
             } else {
                 $dataHandler = dataHandlerGetObject($this->showcaseObject);
             }
 
-            reset($this->showcaseObject->fieldSetEnabledFields);
-
             $entrySlug = [];
 
             foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-                $fieldName = $fieldData['name'];
+                $fieldKey = $fieldData['field_key'];
 
                 switch ($fieldData['html_type']) {
-                    case FIELD_TYPE_HTML_DB;
-                    case FIELD_TYPE_HTML_RADIO;
-                    case FIELD_TYPE_HTML_CHECK_BOX;
-                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+                    case FieldHtmlTypes::SelectSingle;
+                    case FieldHtmlTypes::Radio;
+                    case FieldHtmlTypes::CheckBox;
+                        $insertData[$fieldKey] = $mybb->get_input($fieldKey, MyBB::INPUT_INT);
                         break;
-                    case FIELD_TYPE_HTML_DATE;
-                        $insertData[$fieldName] = $mybb->get_input($fieldName . '_month', MyBB::INPUT_INT) . '|' .
-                            $mybb->get_input($fieldName . '_day', MyBB::INPUT_INT) . '|' .
-                            $mybb->get_input($fieldName . '_year', MyBB::INPUT_INT);
+                    case FieldHtmlTypes::Date;
+                        $insertData[$fieldKey] = $mybb->get_input($fieldKey . '_month', MyBB::INPUT_INT) . '|' .
+                            $mybb->get_input($fieldKey . '_day', MyBB::INPUT_INT) . '|' .
+                            $mybb->get_input($fieldKey . '_year', MyBB::INPUT_INT);
                         break;
                     default:
-                        $insertData[$fieldName] = $mybb->get_input($fieldName);
+                        $insertData[$fieldKey] = $mybb->get_input($fieldKey);
                         break;
                 }
 
                 if ($fieldData['enable_slug']) {
-                    $entrySlug[] = $insertData[$fieldName];
+                    $entrySlug[] = $insertData[$fieldKey];
                 }
             }
 
@@ -1014,50 +1018,60 @@ class Entries extends Base
 
         $alternativeBackground = alt_trow(true);
 
-        reset($this->showcaseObject->fieldSetEnabledFields);
-
         $showcaseFields = '';
 
         $fieldTabIndex = 1;
 
-        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-            $fieldID = $this->showcaseObject->fieldSetFieldsIDs[$fieldName] ?? 0;
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldKey = $fieldData['field_key'];
 
-            $fieldNameEscaped = $db->escape_string($fieldName);
+            $htmlType = $fieldData['html_type'];
 
-            $fieldTitle = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
+            $fieldID = $this->showcaseObject->fieldSetFieldsIDs[$fieldKey] ?? 0;
+
+            $fieldKeyEscaped = $db->escape_string($fieldKey);
+
+            $fieldTitle = $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey;
 
             $fieldElementRequired = '';
 
-            if ($this->showcaseObject->fieldSetFieldsRequired[$fieldName]) {
+            if ($fieldData['is_required']) {
                 $fieldElementRequired = 'required="required"';
             }
-
-            $fieldMinimumLength = $this->showcaseObject->fieldSetFieldsMinimumLenght[$fieldName] ?? 0;
-
-            $fieldMaximumLength = $this->showcaseObject->fieldSetFieldsMaximumLenght[$fieldName] ?? 0;
 
             $fieldInput = '';
 
             switch ($htmlType) {
-                case FIELD_TYPE_HTML_TEXT_BOX:
-                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
+                case FieldHtmlTypes::Text:
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldKey));
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextBox'));
                     break;
-                case FIELD_TYPE_HTML_URL:
-                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
+                case FieldHtmlTypes::Url:
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldKey));
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextUrl'));
                     break;
-                case FIELD_TYPE_HTML_TEXTAREA:
-                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldName));
+                case FieldHtmlTypes::TextArea:
+                    $code_buttons = $smile_inserter = '';
+
+                    if (!empty($mybb->settings['bbcodeinserter']) &&
+                        $this->showcaseObject->parserAllowMyCode &&
+                        (!$currentUserID || !empty($mybb->user['showcodebuttons']))) {
+                        $code_buttons = build_mycode_inserter($fieldKey, $this->showcaseObject->parserAllowSmiles);
+
+                        if ($this->showcaseObject->parserAllowSmiles) {
+                            $smile_inserter = build_clickable_smilies();
+                        }
+                    }
+
+                    $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldKey));
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextArea'));
                     break;
-                case FIELD_TYPE_HTML_RADIO:
+                case FieldHtmlTypes::Radio:
                     $fieldDataObjects = fieldDataGet(
-                        ["set_id='{$this->showcaseObject->fieldSetID}'", "name='{$fieldNameEscaped}'"],
+                        ["set_id='{$this->showcaseObject->fieldSetID}'", "field_id='{$fieldID}'"],
                         ['value_id', 'value'],
                         ['order_by' => 'display_order']
                     );
@@ -1072,7 +1086,7 @@ class Entries extends Base
 
                             $checkedElement = '';
 
-                            if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === $valueID) {
+                            if ($mybb->get_input($fieldKey, MyBB::INPUT_INT) === $valueID) {
                                 $checkedElement = 'checked="checked"';
                             }
 
@@ -1087,24 +1101,23 @@ class Entries extends Base
                     }
 
                     break;
-                case FIELD_TYPE_HTML_CHECK_BOX:
+                case FieldHtmlTypes::CheckBox:
                     $valueID = 1;
 
-                    $valueName = htmlspecialchars_uni($fieldName);
+                    $valueName = htmlspecialchars_uni($fieldKey);
 
                     $checkedElement = '';
 
-                    if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === 1) {
+                    if ($mybb->get_input($fieldKey, MyBB::INPUT_INT) === 1) {
                         $checkedElement = 'checked="checked"';
                     }
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldCheckBox'));
                     break;
-                case FIELD_TYPE_HTML_DB:
+                case FieldHtmlTypes::SelectSingle:
                     $fieldDataObjects = fieldDataGet(
                         [
                             "set_id='{$this->showcaseObject->fieldSetID}'",
-                            "name='{$fieldNameEscaped}'",
                             "field_id='{$fieldID}'"
                         ],
                         ['field_data_id', 'value_id', 'value'],
@@ -1121,7 +1134,7 @@ class Entries extends Base
 
                             $selectedElement = '';
 
-                            if ($mybb->get_input($fieldName, MyBB::INPUT_INT) === $valueID) {
+                            if ($mybb->get_input($fieldKey, MyBB::INPUT_INT) === $valueID) {
                                 $selectedElement = 'selected="selected"';
                             }
 
@@ -1138,14 +1151,14 @@ class Entries extends Base
                     }
                     break;
 
-                case FIELD_TYPE_HTML_DATE:
-                    list($mybb->input[$fieldName . '_month'], $mybb->input[$fieldName . '_day'], $mybb->input[$fieldName . '_year']) = array_pad(
-                        array_map('intval', explode('|', $mybb->get_input($fieldName))),
+                case FieldHtmlTypes::Date:
+                    list($mybb->input[$fieldKey . '_month'], $mybb->input[$fieldKey . '_day'], $mybb->input[$fieldKey . '_year']) = array_pad(
+                        array_map('intval', explode('|', $mybb->get_input($fieldKey))),
                         3,
                         0
                     );
 
-                    $daySelect = (function (string $fieldName) use (
+                    $daySelect = (function (string $fieldKey) use (
                         $mybb,
                         $lang,
                         $fieldTabIndex,
@@ -1170,7 +1183,7 @@ class Entries extends Base
 
                             $selectedElement = '';
 
-                            if ($mybb->get_input($fieldName . '_day', MyBB::INPUT_INT) === $valueID) {
+                            if ($mybb->get_input($fieldKey . '_day', MyBB::INPUT_INT) === $valueID) {
                                 $selectedElement = 'selected="selected"';
                             }
 
@@ -1183,14 +1196,14 @@ class Entries extends Base
 
                         $fieldOptions = implode('', $fieldOptions);
 
-                        $fieldName = $fieldName . '_day';
+                        $fieldKey = $fieldKey . '_day';
 
                         return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
                     })(
-                        $fieldName
+                        $fieldKey
                     );
 
-                    $monthSelect = (function (string $fieldName) use (
+                    $monthSelect = (function (string $fieldKey) use (
                         $mybb,
                         $lang,
                         $fieldTabIndex,
@@ -1215,7 +1228,7 @@ class Entries extends Base
 
                             $selectedElement = '';
 
-                            if ($mybb->get_input($fieldName . '_month', MyBB::INPUT_INT) === $valueID) {
+                            if ($mybb->get_input($fieldKey . '_month', MyBB::INPUT_INT) === $valueID) {
                                 $selectedElement = 'selected="selected"';
                             }
 
@@ -1228,20 +1241,19 @@ class Entries extends Base
 
                         $fieldOptions = implode('', $fieldOptions);
 
-                        $fieldName = $fieldName . '_month';
+                        $fieldKey = $fieldKey . '_month';
 
                         return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
                     })(
-                        $fieldName
+                        $fieldKey
                     );
 
-                    $yearSelect = (function (string $fieldName) use (
+                    $yearSelect = (function (string $fieldKey) use (
                         $mybb,
                         $lang,
                         $fieldTabIndex,
                         $fieldElementRequired,
-                        $fieldMinimumLength,
-                        $fieldMaximumLength
+                        $fieldData
                     ): string {
                         $valueID = 0;
 
@@ -1257,12 +1269,12 @@ class Entries extends Base
                             )
                         ];
 
-                        for ($valueID = $fieldMinimumLength; $valueID <= $fieldMaximumLength; ++$valueID) {
+                        for ($valueID = $fieldData['minimum_length']; $valueID <= $fieldData['maximum_length']; ++$valueID) {
                             $valueName = $valueID;
 
                             $selectedElement = '';
 
-                            if ($mybb->get_input($fieldName . '_year', MyBB::INPUT_INT) === $valueID) {
+                            if ($mybb->get_input($fieldKey . '_year', MyBB::INPUT_INT) === $valueID) {
                                 $selectedElement = 'selected="selected"';
                             }
 
@@ -1275,11 +1287,11 @@ class Entries extends Base
 
                         $fieldOptions = implode('', $fieldOptions);
 
-                        $fieldName = $fieldName . '_year';
+                        $fieldKey = $fieldKey . '_year';
 
                         return eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDataBase'));
                     })(
-                        $fieldName
+                        $fieldKey
                     );
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldDate'));
@@ -1330,8 +1342,6 @@ class Entries extends Base
 
         $plugins->run_hooks('myshowcase_view_start');
 
-        reset($this->showcaseObject->fieldSetEnabledFields);
-
         $this->setEntry($entrySlug, true);
 
         if (!$this->showcaseObject->entryID || empty($this->showcaseObject->entryData)) {
@@ -1350,37 +1360,17 @@ class Entries extends Base
                 continue;
             }
 
-            $fieldName = $fieldData['name'];
+            $fieldKey = $fieldData['field_key'];
 
-            $entryFieldText = $this->showcaseObject->entryData[$fieldName] ?? '';
+            $htmlType = $fieldData['html_type'];
 
-            if (empty($this->showcaseObject->fieldSetParseableFields[$fieldName])) {
+            $entryFieldText = $this->showcaseObject->entryData[$fieldKey] ?? '';
+
+            if (!$fieldData['parse']) {
                 // todo, remove this legacy updating the database and updating the format field to TINYINT
-                match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
-                    FORMAT_TYPE_MY_NUMBER_FORMAT => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = FORMAT_TYPE_MY_NUMBER_FORMAT,
-                    'decimal1' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 2,
-                    'decimal2' => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 3,
-                    default => $this->showcaseObject->fieldSetFormatableFields[$fieldName] = 0
-                };
+                formatField((int)$fieldData['format'], $entryFieldText);
 
-                $formatTypes = FORMAT_TYPES;
-
-                if (!empty($formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]) &&
-                    function_exists(
-                        $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]]
-                    )) {
-                    $entryFieldText = $formatTypes[$this->showcaseObject->fieldSetFormatableFields[$fieldName]](
-                        $entryFieldText
-                    );
-                } else {
-                    $entryFieldText = match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
-                        2 => number_format((float)$entryFieldText, 1),
-                        3 => number_format((float)$entryFieldText, 2),
-                        default => htmlspecialchars_uni($entryFieldText),
-                    };
-                }
-
-                if ($this->showcaseObject->fieldSetEnabledFields[$fieldName] === FIELD_TYPE_HTML_DATE) {
+                if ($htmlType === FieldHtmlTypes::Date) {
                     if ((int)$entryFieldText === 0 || (string)$entryFieldText === '') {
                         $entryFieldText = '';
                     } else {
@@ -1480,8 +1470,6 @@ class Entries extends Base
         //doing this now should not impact anyhting. no issues with gomobile beta4
         define('IN_ARCHIVE', 1);
 
-        reset($this->showcaseObject->fieldSetEnabledFields);
-
         $entryPost = $this->renderObject->buildEntry($this->showcaseObject->entryData);
 
         if ($this->showcaseObject->allowComments && $this->showcaseObject->userPermissions[UserPermissions::CanViewComments]) {
@@ -1550,7 +1538,7 @@ class Entries extends Base
 
                 $alternativeBackground = alt_trow(true);
 
-                $urlCommentCreate = $this->showcaseObject->urlBuild(
+                $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlCreateComment,
                     $this->showcaseObject->entryData['entry_slug']
                 );
@@ -1572,7 +1560,7 @@ class Entries extends Base
 
         $hookArguments['extractVariables'] = &$unpackVariables;
 
-        $hookArguments = \MyShowcase\Core\hooksRun('entry_view_end', $hookArguments);
+        $hookArguments = hooksRun('entry_view_end', $hookArguments);
 
         extract($hookArguments['extractVariables']);
 
@@ -1593,7 +1581,7 @@ class Entries extends Base
             error_no_permission();
         }
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+        $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
 
         $dataHandler->setData(['status' => $status]);
 

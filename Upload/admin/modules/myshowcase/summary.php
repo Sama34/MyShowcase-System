@@ -396,7 +396,7 @@ if ($mybb->get_input('action') === 'new') {
             case 'other':
                 $showcaseData = [
                     'moderate_edits' => $mybb->get_input('moderate_edits', MyBB::INPUT_INT),
-                    'maximum_text_field_lenght' => $mybb->get_input('maximum_text_field_lenght', MyBB::INPUT_INT),
+                    'maximum_text_field_length' => $mybb->get_input('maximum_text_field_length', MyBB::INPUT_INT),
                     'allow_attachments' => $mybb->get_input('allow_attachments', MyBB::INPUT_INT),
                     'allow_comments' => $mybb->get_input('allow_comments', MyBB::INPUT_INT),
                     'thumb_width' => $mybb->get_input('thumb_width', MyBB::INPUT_INT),
@@ -793,9 +793,9 @@ if ($mybb->get_input('action') === 'new') {
         $lang->myShowcaseAdminSummaryEditFormTextTypeFields,
         $lang->myShowcaseAdminSummaryEditFormTextTypeFieldsDescription,
         $lang->myShowcaseAdminSummaryEditFormTextTypeFieldsMaxCharacters . "<br />\n" . $form->generate_numeric_field(
-            'maximum_text_field_lenght',
-            $mybb->get_input('maximum_text_field_lenght', MyBB::INPUT_INT),
-            ['id' => 'maximum_text_field_lenght', 'class' => 'field150', 'min' => 0]
+            'maximum_text_field_length',
+            $mybb->get_input('maximum_text_field_length', MyBB::INPUT_INT),
+            ['id' => 'maximum_text_field_length', 'class' => 'field150', 'min' => 0]
         )
     );
 
@@ -1015,10 +1015,6 @@ if ($mybb->get_input('action') === 'new') {
     );
 
     $defaultShowcasePermissions = showcaseDefaultPermissions();
-
-    reset($groupsCache);
-
-    //reset($defaultShowcasePermissions);
 
     foreach ($groupsCache as $group) {
         $formContainer->output_cell(

@@ -43,7 +43,7 @@
     {$showcaseEntriesList}
     <tr>
         <td class="tfoot" align="right" colspan="{$showcaseColumnsCount}">
-            <form action="{$this->showcaseObject->urlBase}/{$this->showcaseObject->showcaseUrl}" method="get">
+            <form action="{$this->showcaseObject->urlBase}/{$baseUrl}" method="post">
                 <input type="hidden" name="page" value="{$this->outputObject->pageCurrent}"/>
                 {$selectFieldCode}
                 <select name="order_by">

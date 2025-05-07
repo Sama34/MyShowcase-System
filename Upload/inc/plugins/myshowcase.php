@@ -40,8 +40,12 @@ define('MyShowcase\Core\DEBUG', false);
 
 define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
 
-require_once ROOT . '/System/UserPermissions.php';
+require_once ROOT . '/System/FieldDefaultTypes.php';
+require_once ROOT . '/System/FieldHtmlTypes.php';
+require_once ROOT . '/System/FieldTypes.php';
+require_once ROOT . '/System/FormatTypes.php';
 require_once ROOT . '/System/ModeratorPermissions.php';
+require_once ROOT . '/System/UserPermissions.php';
 
 require_once ROOT . '/core.php';
 

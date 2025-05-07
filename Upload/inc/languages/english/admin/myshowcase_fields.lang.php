@@ -77,12 +77,9 @@ $l['myshowcase_field_field_type'] = 'Field Type';
 $l['myshowcase_field_enabled'] = 'Enabled';
 $l['myshowcase_field_min_length'] = 'Minimum Length';
 $l['myshowcase_field_max_length'] = 'Maximum Length';
-$l['myshowcase_field_required'] = 'Required';
 $l['myshowcase_field_field_order'] = 'View Order';
 $l['myshowcase_field_list_table_order'] = 'List Order';
 $l['myshowcase_field_searchable'] = 'Searchable';
-$l['myshowcase_field_enable_slug'] = 'Add to Slug';
-$l['myshowcase_field_enable_subject'] = 'Build as Subject';
 $l['myshowcase_field_parse'] = 'Parse';
 $l['myshowcase_field_format'] = 'Format?';
 
@@ -90,7 +87,6 @@ $l['myshowcase_field_delete'] = 'Delete';
 $l['myshowcase_field_edit_options'] = 'Edit Options';
 
 //messages
-$l['myshowcase_field_in_use'] = 'The field is already in use in a table.';
 $l['myshowcase_field_invalid_name'] = 'The selected field name is invalid or already in use.';
 $l['myshowcase_field_invalid_id'] = 'The selected field ID is invalid.';
 $l['myshowcase_field_required_not_filled'] = 'The required fields are not populated or are invalid.';
@@ -113,6 +109,7 @@ $l['myshowcase_field_no_options'] = 'The specified field has no options.';
 $l['myshowcase_field_new_option'] = 'New Field Option';
 
 $l['myshowcase_field_option_text'] = 'Option Value';
+$l['myshowcase_field_display_style'] = 'Display Style';
 $l['myshowcase_field_invalid_opt'] = 'The selected field option is invalid.';
 
 $l['myshowcase_field_year_order'] = 'For the DATE field the MIN and MAX values need to be in the proper order.';
@@ -134,22 +131,49 @@ $l = array_merge([
 
     'myShowcaseAdminFieldsNew' => 'New Field',
     'myShowcaseAdminFieldsNewDescription' => 'Create a new field for this fieldset.',
-    'myShowcaseAdminFieldsNewFormName' => 'Name',
-    'myShowcaseAdminFieldsNewFormNameDescription' => 'The name of the field.',
+    'myShowcaseAdminFieldsNewFormKey' => 'Name',
+    'myShowcaseAdminFieldsNewFormKeyDescription' => 'The key of the field.',
     'myShowcaseAdminFieldsNewFormLabel' => 'Label',
     'myShowcaseAdminFieldsNewFormLabelDescription' => 'The label of the field.',
     'myShowcaseAdminFieldsNewFormHtmlType' => 'HTML Type',
     'myShowcaseAdminFieldsNewFormHtmlTypeDescription' => 'The HTML type of the field.',
     'myShowcaseAdminFieldsNewFormFieldType' => 'Field Type',
     'myShowcaseAdminFieldsNewFormFieldTypeDescription' => 'The type of the field.',
+    'myShowcaseAdminFieldsNewFormFieldTypeExisting' => ' <span style="color: red;">Warning: changing this option may cause data loss to existing data stored in the showcase data table!</span>',
+    'myShowcaseAdminFieldsNewFormDisplayInCreateUpdatePage' => 'Display in Create/Update Page',
+    'myShowcaseAdminFieldsNewFormDisplayInCreateUpdatePageDescription' => 'Display this field in the create/update page.',
+    'myShowcaseAdminFieldsNewFormDisplayInViewPage' => 'Display in View Page',
+    'myShowcaseAdminFieldsNewFormDisplayInViewPageDescription' => 'Display this field in the view page.',
+    'myShowcaseAdminFieldsNewFormDisplayInMainPage' => 'Display in Main Page',
+    'myShowcaseAdminFieldsNewFormDisplayInMainPageDescription' => 'Display this field in the main page.',
+    'myShowcaseAdminFieldsNewFormDefaultValue' => 'Default Value',
+    'myShowcaseAdminFieldsNewFormDefaultValueDescription' => 'The default value of the field.',
+    'myShowcaseAdminFieldsNewFormDefaultType' => 'Default Type',
+    'myShowcaseAdminFieldsNewFormDefaultTypeDescription' => 'The default value type for this field.',
+    'myShowcaseAdminFieldsNewFormDefaultTypeAsDefined' => 'As Defined',
+    'myShowcaseAdminFieldsNewFormDefaultTypeNull' => 'NULL',
+    'myShowcaseAdminFieldsNewFormDefaultTypeTimeStamp' => 'Time Stamp',
+    'myShowcaseAdminFieldsNewFormDefaultTypeUUID' => 'UUID',
     'myShowcaseAdminFieldsNewFormMinimumLength' => 'Minimum Length',
     'myShowcaseAdminFieldsNewFormMinimumLengthDescription' => 'The minimum length of the field.',
     'myShowcaseAdminFieldsNewFormMaximumLength' => 'Maximum Length',
     'myShowcaseAdminFieldsNewFormMaximumLengthDescription' => 'The maximum length of the field.',
+    'myShowcaseAdminFieldsNewFormRequired' => 'Is Required',
+    'myShowcaseAdminFieldsNewFormRequiredDescription' => 'Require allowed groups to fill this field.',
+    'myShowcaseAdminFieldsNewAllowedGroupsFill' => 'Allowed Fill Groups',
+    'myShowcaseAdminFieldsNewAllowedGroupsFillDescription' => 'The groups that can fill this field.',
+    'myShowcaseAdminFieldsNewFormAllowedGroupsView' => 'Allowed View Groups',
+    'myShowcaseAdminFieldsNewFormAllowedGroupsViewDescription' => 'The groups that can view this field.',
     'myShowcaseAdminFieldsNewFormOrderList' => 'List Order',
     'myShowcaseAdminFieldsNewFormOrderListDescription' => 'The order of the field in the list.',
+    'myShowcaseAdminFieldsNewFormEnableSubject' => 'Append as Subject',
+    'myShowcaseAdminFieldsNewFormEnableSubjectDescription' => 'Append this field value as the entry subject.',
+    'myShowcaseAdminFieldsNewFormEnableSlug' => 'Append as Slug',
+    'myShowcaseAdminFieldsNewFormEnableSlugDescription' => 'Append this field value as the entry slug.',
     'myShowcaseAdminFieldsNewFormFormat' => 'Format',
     'myShowcaseAdminFieldsNewFormFormatDescription' => 'The format of the field.',
+    'myShowcaseAdminFieldsNewFormEnableEditor' => 'Enable Editor',
+    'myShowcaseAdminFieldsNewFormEnableEditorDescription' => 'Build an editor for this field.',
 
     'myShowcaseAdminFieldsEdit' => 'Edit Field',
     'myShowcaseAdminFieldsEditDescription' => 'Edit a field for this fieldset.',
@@ -162,7 +186,7 @@ $l = array_merge([
     'myShowcaseAdminErrorFieldsetDeleteFailed' => 'Can not perform that action, specified field set is being used by a showcase.',
     'myShowcaseAdminErrorFieldsetDelete' => 'The fieldset was not deleted.',
     'myShowcaseAdminErrorInvalidField' => 'Invalid field',
-    'myShowcaseAdminErrorFieldDelete' => 'The field deletion failed.',
+    'myShowcaseAdminErrorFieldDeleteFailed' => 'The field deletion failed.',
     'myShowcaseAdminErrorInvalidMinMax' => 'Invalid minimum/maximum values.',
 
     'myShowcaseAdminSuccessNewFieldset' => 'The fieldset was successfully added.',
@@ -174,4 +198,5 @@ $l = array_merge([
 
     'myShowcaseAdminConfirmFieldsetDelete' => 'Are you sure you want to delete the "{1}" fieldset? ',
     'myShowcaseAdminConfirmFieldDelete' => 'Are you sure you want to delete the "{1}" field?',
+    'myShowcaseAdminConfirmFieldDeleteExisting' => '<br/>The field is already in use in a table and data could be lost.',
 ], $l);

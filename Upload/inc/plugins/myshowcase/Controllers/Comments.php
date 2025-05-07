@@ -43,7 +43,7 @@ use const MyShowcase\ROOT;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
-use const MyShowcase\Core\DATA_HANDLERT_METHOD_UPDATE;
+use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 
 class Comments extends Base
@@ -128,7 +128,7 @@ class Comments extends Base
             verify_post_check($mybb->get_input('my_post_key'));
 
             if ($isEditPage) {
-                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+                $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
             } else {
                 $dataHandler = dataHandlerGetObject($this->showcaseObject);
             }
@@ -215,15 +215,15 @@ class Comments extends Base
         $alternativeBackground = alt_trow(true);
 
         if ($isEditPage) {
-            $urlCommentCreate = $this->showcaseObject->urlBuild(
+            $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlUpdateComment,
-                $this->showcaseObject->entryID,
+                $this->showcaseObject->entryData['entry_slug'],
                 $commentID
             );
         } else {
-            $urlCommentCreate = $this->showcaseObject->urlBuild(
+            $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
                 $this->showcaseObject->urlCreateComment,
-                $this->showcaseObject->entryID
+                $this->showcaseObject->entryData['entry_slug'],
             );
         }
 
@@ -257,7 +257,7 @@ class Comments extends Base
             error_no_permission();
         }
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLERT_METHOD_UPDATE);
+        $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
 
         $dataHandler->setData(['status' => $status]);
 

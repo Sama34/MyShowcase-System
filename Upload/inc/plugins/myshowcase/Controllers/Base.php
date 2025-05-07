@@ -42,6 +42,8 @@ use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseGetObjectBySlug;
 
 use const MyShowcase\Core\DEBUG;
+use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
+use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
 use const MyShowcase\Core\VERSION_CODE;
 
 abstract class Base
@@ -80,10 +82,10 @@ abstract class Base
 
         if (!$this->showcaseObject->enabled) {
             match ($this->showcaseObject->errorType) {
-                \MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED => error(
+                ERROR_TYPE_NOT_INSTALLED => error(
                     'The MyShowcase System has not been installed and activated yet.'
                 ),
-                \MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED => error(
+                ERROR_TYPE_NOT_CONFIGURED => error(
                     'This file is not properly configured in the MyShowcase Admin section of the ACP'
                 ),
                 default => error_no_permission()

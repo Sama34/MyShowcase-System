@@ -84,13 +84,8 @@ class Showcase
         public array $fieldSetCache = [],
         public array $fieldSetFieldsIDs = [],
         public array $fieldSetEnabledFields = [],
-        public array $fieldSetParseableFields = [],
-        public array $fieldSetFormatableFields = [],
         public array $fieldSetSearchableFields = [],
         public array $fieldSetFieldsOrder = [],
-        public array $fieldSetFieldsMaximumLenght = [],
-        public array $fieldSetFieldsMinimumLenght = [],
-        public array $fieldSetFieldsRequired = ['user_id' => 1], // todo, unsure if user_id is necessary
         public string $imageFolder = '',
         public string $defaultImage = '',
         public string $waterMarkImage = '',
@@ -103,7 +98,6 @@ class Showcase
         public bool $parserAllowHTML = false,
         public int $pruneTime = 0,
         public bool $moderateEdits = false,
-        public int $maximumLengthForTextFields = 0,
         public bool $allowAttachments = false,
         public bool $allowComments = false,
         public int $attachmentThumbWidth = 0,
@@ -188,7 +182,7 @@ class Showcase
 
                 $this->moderateEdits = (bool)$showcaseData['moderate_edits'];
 
-                $this->maximumLengthForTextFields = (int)$showcaseData['maximum_text_field_lenght'];
+                $this->maximumLengthForTextFields = (int)$showcaseData['maximum_text_field_length'];
 
                 $this->allowAttachments = (bool)$showcaseData['allow_attachments'];
 
@@ -288,47 +282,32 @@ class Showcase
                     continue;
                 }
 
-                $this->fieldSetFieldsIDs[$fieldData['name']] = $fieldID;
+                $this->fieldSetFieldsIDs[$fieldData['field_key']] = $fieldID;
 
-                $this->fieldSetEnabledFields[$fieldData['name']] = $fieldData['html_type'];
-
-                if ($fieldData['parse']) {
-                    $this->fieldSetParseableFields[$fieldData['name']] = $fieldData['parse'];
-                }
-
-                $this->fieldSetFormatableFields[$fieldData['name']] = $fieldData['format'];
+                $this->fieldSetEnabledFields[$fieldData['field_key']] = $fieldData['html_type'];
 
                 if ($fieldData['enable_search']) {
-                    $this->fieldSetSearchableFields[$fieldData['name']] = $fieldData['html_type'];
+                    $this->fieldSetSearchableFields[$fieldData['field_key']] = $fieldData['html_type'];
                 }
 
-                $this->fieldSetFieldsOrder[$fieldData['render_order']] = $fieldData['name'];
-                //$this->fieldSetFieldsOrder[$fieldData['display_order']] = $fieldData['name'];
-
-                $this->fieldSetFieldsMaximumLenght[$fieldData['name']] = (int)$fieldData['maximum_length'];
-
-                $this->fieldSetFieldsMinimumLenght[$fieldData['name']] = (int)$fieldData['minimum_length'];
-
-                $this->fieldSetFieldsRequired[$fieldData['name']] = !empty($field['is_required']);
-
-                if ($fieldData['enable_slug']) {
-                    $this->fieldSetParseableFields[$fieldID] = $fieldData['name'];
-                }
+                $this->fieldSetFieldsOrder[$fieldData['render_order']] = $fieldID;
+                //$this->fieldSetFieldsOrder[$fieldData['display_order']] = $fieldData['field_key'];
             }
-
-            ksort($this->fieldSetFieldsOrder);
         }
 
         $this->fieldSetFieldsDisplayFields = [
-            'createdate' => '',
+            'dateline' => '',
             //'edit_stamp' => '',
             'username' => '',
+            'user' => '',
             'views' => '',
             'comments' => ''
         ];
 
-        foreach ($this->fieldSetFieldsOrder as $fieldOrder => $fieldName) {
-            $this->fieldSetFieldsDisplayFields[$fieldName] = '';
+        foreach ($this->fieldSetFieldsOrder as $renderOrder => $fieldID) {
+            $fieldKey = $this->fieldSetCache[$fieldID]['field_key'];
+
+            $this->fieldSetFieldsDisplayFields[$fieldKey] = '';
         }
 
         $this->searchField = $mybb->get_input('search_field');

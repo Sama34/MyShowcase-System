@@ -1,3 +1,2 @@
 <textarea name="{$fieldKey}" id="{$fieldKey}" rows="20" cols="70" tabindex="{$fieldTabIndex}"
-          maxlength="{$maximumLength}" minlength="{$minimumLength}" minlength="{$minimumLength}"
-          {$fieldElementRequired}>{$fieldValue}</textarea>
+          maxlength="{$fieldData['maximum_length']}" minlength="{$fieldData['minimum_length']}" {$fieldElementRequired}>{$fieldValue}</textarea>

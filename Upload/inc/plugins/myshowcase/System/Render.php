@@ -16,6 +16,7 @@ declare(strict_types=1);
 namespace MyShowcase\System;
 
 use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\postParser;
@@ -27,17 +28,6 @@ use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_CHECK_BOX;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DATE;
-use const MyShowcase\Core\FIELD_TYPE_HTML_DB;
-use const MyShowcase\Core\FIELD_TYPE_HTML_RADIO;
-use const MyShowcase\Core\FIELD_TYPE_HTML_TEXT_BOX;
-use const MyShowcase\Core\FIELD_TYPE_HTML_TEXTAREA;
-use const MyShowcase\Core\FIELD_TYPE_HTML_URL;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS;
-use const MyShowcase\Core\FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS;
-use const MyShowcase\Core\FORMAT_TYPES;
 
 class Render
 {
@@ -51,7 +41,6 @@ class Render
         public string $searchKeyWords = '',
         public int $searchExactMatch = 0,
         public array $parserOptions = [],
-        public array $fieldSetFieldsOrder = [],
         public array $fieldSetFieldsSearchFields = [],
     ) {
         global $mybb;
@@ -74,18 +63,20 @@ class Render
 
         loadLanguage();
 
-        foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldName => &$fieldDisplayName) {
-            $fieldDisplayName = $lang->{"myShowcaseMainSort{$fieldName}"} ?? ucfirst($fieldName);
+        foreach ($this->showcaseObject->fieldSetFieldsDisplayFields as $fieldKey => &$fieldDisplayName) {
+            $fieldDisplayName = $lang->{"myShowcaseMainSort{$fieldKey}"} ?? ucfirst($fieldKey);
         }
 
         $this->fieldSetFieldsSearchFields = [
             'username' => $lang->myShowcaseMainSortUsername
         ];
 
-        foreach ($this->showcaseObject->fieldSetSearchableFields as $fieldName => $htmlType) {
-            $fieldNameUpper = ucfirst($fieldName);
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldKey = $fieldData['field_key'];
 
-            $this->fieldSetFieldsSearchFields[$fieldName] = $lang->{"myShowcaseMainSort{$fieldNameUpper}"} ?? $lang->{"myshowcase_field_{$fieldName}"} ?? $fieldNameUpper;
+            $fieldKeyUpper = ucfirst($fieldKey);
+
+            $this->fieldSetFieldsSearchFields[$fieldKey] = $lang->{"myShowcaseMainSort{$fieldKeyUpper}"} ?? $lang->{"myshowcase_field_{$fieldKey}"} ?? $fieldKeyUpper;
         }
     }
 
@@ -189,8 +180,6 @@ class Render
         if (!empty($groupPermissions['usertitle']) && empty($userData['usertitle'])) {
             $userData['usertitle'] = $groupPermissions['usertitle'];
         } elseif (empty($groupPermissions['usertitle']) && ($userTitlesCache = $this->cacheGetUserTitles())) {
-            reset($userTitlesCache);
-
             foreach ($userTitlesCache as $postNumber => $titleinfo) {
                 if ($userData['postnum'] >= $postNumber) {
                     if (empty($userData['usertitle'])) {
@@ -578,22 +567,26 @@ class Render
 
         $entryFieldsList = [];
 
-        foreach ($this->showcaseObject->fieldSetEnabledFields as $fieldName => $htmlType) {
-            $fieldHeader = $lang->{'myshowcase_field_' . $fieldName} ?? $fieldName;
+        foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldKey = $fieldData['field_key'];
+
+            $htmlType = $fieldData['html_type'];
+
+            $fieldHeader = $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey;
 
             //set parser options for current field
 
-            $entryFieldValue = $this->showcaseObject->entryData[$fieldName] ?? '';
+            $entryFieldValue = $this->showcaseObject->entryData[$fieldKey] ?? '';
 
             switch ($htmlType) {
-                case FIELD_TYPE_HTML_TEXTAREA:
+                case FieldHtmlTypes::TextArea:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
                             $entryFieldValue = $this->showcaseObject->parseMessage(
                                 $entryFieldValue,
-                                $this->parserOptions
+                                $this->parserOptions,
                             );
                         } else {
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
@@ -601,29 +594,18 @@ class Render
                             $entryFieldValue = nl2br($entryFieldValue);
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldTextArea'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextArea'));
                     }
 
                     break;
-                case FIELD_TYPE_HTML_TEXT_BOX:
+                case FieldHtmlTypes::Text:
                     //format values as requested
-                    match ($this->showcaseObject->fieldSetFormatableFields[$fieldName]) {
-                        FORMAT_TYPE_MY_NUMBER_FORMAT => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT](
-                            $entryFieldValue
-                        ),
-                        FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_1_DECIMALS](
-                            $entryFieldValue
-                        ),
-                        FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS => FORMAT_TYPES[FORMAT_TYPE_MY_NUMBER_FORMAT_2_DECIMALS](
-                            $entryFieldValue
-                        ),
-                        default => false
-                    };
+                    formatField((int)$fieldData['format'], $entryFieldValue);
 
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
                             $entryFieldValue = $this->showcaseObject->parseMessage(
                                 $entryFieldValue,
                                 $this->parserOptions
@@ -632,14 +614,14 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldTextBox'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextBox'));
                     }
                     break;
-                case FIELD_TYPE_HTML_URL:
+                case FieldHtmlTypes::Url:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName]) {
+                        } elseif ($fieldData['parse']) {
                             $entryFieldValue = postParser()->mycode_parse_url(
                                 $entryFieldValue
                             );
@@ -647,10 +629,10 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldUrl'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldUrl'));
                     }
                     break;
-                case FIELD_TYPE_HTML_RADIO:
+                case FieldHtmlTypes::Radio:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
@@ -658,10 +640,10 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldRadio'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldRadio'));
                     }
                     break;
-                case FIELD_TYPE_HTML_CHECK_BOX:
+                case FieldHtmlTypes::CheckBox:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $entryFieldValueImage = $lang->myShowcaseEntryFieldValueEmpty;
@@ -679,14 +661,14 @@ class Render
                             $entryFieldValueImage = eval($this->templateGet('pageViewDataFieldCheckBoxImage'));
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldCheckBox'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldCheckBox'));
                     }
                     break;
-                case FIELD_TYPE_HTML_DB:
+                case FieldHtmlTypes::SelectSingle:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($this->showcaseObject->fieldSetParseableFields[$fieldName] || $this->highlightTerms) {
+                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
                             $entryFieldValue = $this->showcaseObject->parseMessage(
                                 $entryFieldValue,
                                 $this->parserOptions
@@ -695,10 +677,10 @@ class Render
                             $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
                         }
 
-                        $entryFieldsList[$fieldName] = eval($this->templateGet('pageViewDataFieldDataBase'));
+                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldDataBase'));
                     }
                     break;
-                case FIELD_TYPE_HTML_DATE:
+                case FieldHtmlTypes::Date:
                     if (!empty($entryFieldValue) || $this->showcaseObject->displayEmptyFields) {
                         if (empty($entryFieldValue)) {
                             $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
@@ -731,7 +713,7 @@ class Render
                             }
                         }
 
-                        $entryFieldsList[$fieldName] = eval(getTemplate('pageViewDataFieldDate'));
+                        $entryFieldsList[$fieldKey] = eval(getTemplate('pageViewDataFieldDate'));
                     }
 
                     break;
@@ -802,7 +784,7 @@ class Render
                 // Support for [attachment=showcase_id] code
                 $attachmentInField = false;
 
-                foreach ($entryFields as $fieldName => &$fieldValue) {
+                foreach ($entryFields as $fieldKey => &$fieldValue) {
                     if (str_contains($fieldValue, '[attachment=' . $attachmentID . ']') !== false) {
                         $attachmentInField = true;
 
@@ -916,10 +898,6 @@ class Render
                 if (!empty($userTitle)) {
                     $titlesCache[(int)$userTitle['posts']] = $userTitle;
                 }
-            }
-
-            if (is_array($titlesCache)) {
-                krsort($titlesCache);
             }
         }
 
