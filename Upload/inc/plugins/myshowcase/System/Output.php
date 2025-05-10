@@ -105,30 +105,8 @@ class Output
                     error($lang->myshowcase_invalid_id);
                 }
             } else {
-                if ($mybb->get_input('action') === 'new') {
-                    add_breadcrumb(
-                        $lang->myShowcaseButtonEntryCreate,
-                        $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                    );
-                    $showcase_action = 'new';
-
-                    //need to populated a default user value here for new entries
-                    $entryFieldsData['user_id'] = $currentUserID;
-                } else {
-                    $showcase_editing_user = str_replace(
-                        '{username}',
-                        $entryUserData['username'],
-                        $lang->myshowcase_editing_user
-                    );
-                    add_breadcrumb(
-                        $showcase_editing_user,
-                        $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                    );
-                    $showcase_action = 'edit';
-                }
-
                 // Get a listing of the current attachments.
-                if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
+                if (!empty($showcaseUserPermissions[UserPermissions::CanCreateAttachments])) {
                     $attachcount = 0;
 
                     $attachments = '';
@@ -172,101 +150,6 @@ class Output
                     }
                     $showcase_attachments = eval(getTemplate('new_attachments'));
                 }
-
-                if ($mybb->request_method === 'post' && $mybb->get_input('submit')) {
-                    // Decide on the visibility of this post.
-                    if ($this->showcaseObject->moderateEdits && !$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
-                        $approved = 0;
-                        $approved_by = 0;
-                    } else {
-                        $approved = 1;
-                        $approved_by = $currentUserID;
-                    }
-
-                    $plugins->run_hooks('myshowcase_do_newedit_start');
-
-                    // Set up showcase handler.
-                    //require_once MYBB_ROOT . 'inc/datahandlers/myshowcase_dh.php';
-
-                    if ($mybb->get_input('action') === 'edit') {
-                        $showcasehandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
-                        $showcasehandler->action = 'edit';
-                    } else {
-                        $showcasehandler = dataHandlerGetObject($this->showcaseObject);
-                        $showcasehandler->action = 'new';
-                    }
-
-                    //This is where the work is done
-
-                    // Verify incoming POST request
-                    verify_post_check($mybb->get_input('my_post_key'));
-
-                    // Set the post data that came from the input to the $post array.
-                    $default_data = [
-                        'user_id' => $entryFieldsData['user_id'],
-                        'dateline' => TIME_NOW,
-                        'approved' => $approved,
-                        'approved_by' => $approved_by,
-                        'entry_hash' => $entryHash
-                    ];
-
-                    //add showcase showcase_id if editing so we know what to update
-                    if ($mybb->get_input('action') === 'edit') {
-                        $default_data = array_merge(
-                            $default_data,
-                            ['entry_id' => $this->showcaseObject->entryData]
-                        );
-                    }
-
-                    $submitted_data = [];
-
-                    //send data to handler
-                    $showcasehandler->set_data(array_merge($default_data, $submitted_data));
-
-                    // Now let the showcase handler do all the hard work.
-                    $valid_showcase = $showcasehandler->entryValidateData();
-
-                    $showcase_errors = [];
-
-                    // Fetch friendly error messages if this is an invalid showcase
-                    if (!$valid_showcase) {
-                        $showcase_errors = $showcasehandler->get_friendly_errors();
-                    }
-                    if (count($showcase_errors) > 0) {
-                        $error = inline_error($showcase_errors);
-                        $pageContents = eval($templates->render('error'));
-                    } else {
-                        //update showcase
-                        if ($mybb->get_input('action') === 'edit') {
-                            $insert_showcase = $showcasehandler->updateEntry();
-                            $showcaseid = $this->showcaseObject->entryData;
-                        } //insert showcase
-                        else {
-                            $insert_showcase = $showcasehandler->entryInsert();
-                            $showcaseid = $insert_showcase['entry_id'];
-                        }
-
-                        $plugins->run_hooks('myshowcase_do_newedit_end');
-
-                        //fix url insert variable to update results
-                        $entryUrl = str_replace('{entry_id}', (string)$showcaseid, $this->showcaseObject->urlViewEntry);
-
-                        $redirect_newshowcase = $lang->redirect_myshowcase_new . '' . $lang->redirect_myshowcase . '' . $lang->sprintf(
-                                $lang->redirect_myshowcase_return,
-                                $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-                            );
-                        redirect($entryUrl, $redirect_newshowcase);
-                        exit;
-                    }
-                } else {
-                    $plugins->run_hooks('myshowcase_newedit_start');
-
-                    $pageContents .= eval(getTemplate('new_top'));
-
-                    $plugins->run_hooks('myshowcase_newedit_end');
-
-                    $pageContents .= eval(getTemplate('new_bottom'));
-                }
             }
         }
 
@@ -285,10 +168,10 @@ class Output
         }
 
         if ($isEditPage) {
-            if (!$this->showcaseObject->userPermissions[UserPermissions::CanEditEntries]) {
+            if (!$this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries]) {
                 error($lang->myshowcase_not_authorized);
             }
-        } elseif (!$this->showcaseObject->userPermissions[UserPermissions::CanAddEntries]) {
+        } elseif (!$this->showcaseObject->userPermissions[UserPermissions::CanCreateEntries]) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -296,12 +179,12 @@ class Output
 
         global $errorsAttachments;
 
-        $errorsAttachments = $errorsAttachments ?? '';
+        $errorsAttachments ??= '';
 
         $attachmentsTable = '';
 
         // Get a listing of the current attachments.
-        if (!empty($showcaseUserPermissions[UserPermissions::CanAttachFiles])) {
+        if (!empty($showcaseUserPermissions[UserPermissions::CanCreateAttachments])) {
             $attachcount = 0;
 
             $attachments = '';
@@ -334,8 +217,8 @@ class Output
                     ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
                 ) . '<br>';
             if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit])) {
-                if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments] && $this->showcaseObject->waterMarkImage !== '' && file_exists(
-                        $this->showcaseObject->waterMarkImage
+                if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments] && $this->showcaseObject->config['attachments_watermark_file'] !== '' && file_exists(
+                        $this->showcaseObject->config['attachments_watermark_file']
                     )) {
                     $showcase_watermark = eval(getTemplate('watermark'));
                 }
@@ -353,7 +236,7 @@ class Output
 
         $fieldTabIndex = 1;
 
-        $pageTitle = $this->showcaseObject->name;
+        $pageTitle = $this->showcaseObject->config['name'];
 
         $pageContents = eval(getTemplate('pageEntryCreateUpdateContents'));
 
@@ -379,7 +262,7 @@ class Output
             case 'multiunapprove';
             {
                 //verify if moderator and coming in from a click
-                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $mybb->get_input(
+                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] && $mybb->get_input(
                         'modtype'
                     ) !== 'inlineshowcase') {
                     error($lang->myshowcase_not_authorized);
@@ -448,7 +331,7 @@ class Output
             {
                 add_breadcrumb($lang->myshowcase_nav_multidelete);
 
-                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries] && $mybb->get_input(
+                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] && $mybb->get_input(
                         'modtype'
                     ) !== 'inlineshowcase') {
                     error($lang->myshowcase_not_authorized);
@@ -492,7 +375,7 @@ class Output
             }
             case 'do_multidelete';
             {
-                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanDeleteEntries]) {
+                if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
                     error($lang->myshowcase_not_authorized);
                 }
 
@@ -559,7 +442,7 @@ class Output
         }
 
         //make sure current user is moderator or the myshowcase author
-        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanEditEntries] && $currentUserID !== $entryFieldData['user_id']) {
+        if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] && $currentUserID !== $entryFieldData['user_id']) {
             error($lang->myshowcase_not_authorized);
         }
 
@@ -579,15 +462,15 @@ class Output
             ['limit' => 1]);
 
         // Error if attachment is invalid or not status
-        if (!$attachmentData['attachment_id'] || !$attachmentData['attachment_name'] || (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && $attachmentData['status'] !== 1)) {
+        if (!$attachmentData['attachment_id'] || !$attachmentData['attachment_name'] || (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] && $attachmentData['status'] !== 1)) {
             error($lang->error_invalidattachment);
         }
 
-        if (!$this->showcaseObject->allowAttachments || !$this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
+        if (!$this->showcaseObject->config['attachments_allow_entries'] || !$this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
             error_no_permission();
         }
 
-        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachment_name'];
+        $filePath = MYBB_ROOT . $this->showcaseObject->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name'];
 
         if (!file_exists($filePath)) {
             error($lang->error_invalidattachment);
@@ -634,7 +517,7 @@ class Output
                 '{attachment_id}',
                 $attachmentData['attachment_id'],
                 $this->showcaseObject->urlViewAttachmentItem
-            );//$this->showcaseObject->images_directory."/".$attachmentData['attachment_name'];
+            );//$this->showcaseObject->attachments_uploads_path."/".$attachmentData['attachment_name'];
 
             $pageContents = eval(getTemplate('attachment_view'));
 
@@ -680,17 +563,17 @@ class Output
         // Error if attachment is invalid or not status
         if (empty($attachmentData['attachment_id']) ||
             empty($attachmentData['attachment_name']) ||
-            (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] && empty($attachmentData['status']))) {
+            (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] && empty($attachmentData['status']))) {
             error($lang->error_invalidattachment);
         }
 
-        if (!$this->showcaseObject->allowAttachments || !$this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) {
+        if (!$this->showcaseObject->config['attachments_allow_entries'] || !$this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) {
             error_no_permission();
         }
 
         //$attachmentExtension = get_extension($attachmentData['file_name']);
 
-        $filePath = MYBB_ROOT . $this->showcaseObject->imageFolder . '/' . $attachmentData['attachment_name'];
+        $filePath = MYBB_ROOT . $this->showcaseObject->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name'];
 
         if (!file_exists($filePath)) {
             error($lang->error_invalidattachment);

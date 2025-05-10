@@ -18,6 +18,7 @@
                 <div style="width: 95%">
                     <textarea style="width: 100%; padding: 4px; margin: 0;" rows="8" cols="80" name="comment"
                               id="comment" tabindex="1">{$commentMessage}</textarea>
+                    {$code_buttons}
                 </div>
                 <div class="editor_control_bar" style="width: 95%; padding: 4px; margin-top: 3px;">
 						<span class="smalltext">
@@ -26,6 +27,7 @@
                 </div>
             </td>
         </tr>
+        {$captcha}
         <tr>
             <td colspan="2" align="center" class="tfoot">
                 <input type="submit" class="button" value="{$lang->myShowcaseEntryCommentCreateButton}" tabindex="2"

@@ -105,7 +105,7 @@ v2.5.0
 
 v2.4.0
 - fixed upgrade code that was setting some templates as empty
-- added verification of versions between main file and the overall system version
+- added verification of versions between script file and the overall system version
 - updated help page
 - changed attachment view code to support no Javascript or no FancyBox or server
   configurations that can not open ".attach" filenames directly.

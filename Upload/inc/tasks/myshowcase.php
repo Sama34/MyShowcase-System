@@ -35,7 +35,7 @@ function task_myshowcase(array $taskData): array
         if ($showcasePruneTime[0] > 0 && $showcaseData['enabled'] === SHOWCASE_STATUS_ENABLED) {
             $pruneTime = (int)strtotime('-' . $showcasePruneTime[0] . ' ' . $showcasePruneTime[1], TIME_NOW);
 
-            $showcase = new Showcase($showcaseData['mainfile']);
+            $showcase = new Showcase($showcaseData['script_name']);
 
             $showcaseObjects = entryDataGet($showcaseID, ["dateline<='{$pruneTime}'"]);
 

@@ -9,8 +9,8 @@
     </tr>
     <tr>
         <td id="posts_container">
-            <div id="posts">
-                {$entryPost}
+            {$entryPost}
+            <div id="comments">
                 {$commentsList}
             </div>
         </td>
@@ -20,6 +20,7 @@
         </td>
     </tr>
 </table>
+{$commentsPagination}
 <br class="clear"/>
 {$commentsEmpty}
 {$commentsForm}

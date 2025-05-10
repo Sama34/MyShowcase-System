@@ -106,17 +106,15 @@ function pluginActivation(): bool
 
     taskInstallation();
 
-    require_once MYBB_ROOT . 'inc/adminfunctions_templates.php';
-
-    find_replace_templatesets(
-        'header',
-        '#' . preg_quote('{$pm_notice}') . '#',
-        '{$pm_notice}{$myShowcaseGlobalMessagesUnapprovedEntries}{$myShowcaseGlobalMessagesReportedEntries}'
-    );
-
     /*~*~* RUN UPDATES START *~*~*/
 
     global $db;
+
+    $db->update_query(
+        'myshowcase_config',
+        ['attachments_watermark_location' => 0],
+        'attachments_watermark_location NOT IN (1,2,3,4,5)'
+    );
 
     foreach (
         [
@@ -141,25 +139,42 @@ function pluginActivation(): bool
                 'uid' => 'user_id',
             ],
             'myshowcase_config' => [
+                // todo, drop thumb_width, thumb_height, maximum_text_field_length, prune_time
                 'id' => 'showcase_id',
                 'fieldsetid' => 'field_set_id',
-                'imgfolder' => 'images_directory',
-                'defaultimage' => 'default_image',
-                'watermarkimage' => 'water_mark_image',
-                'watermarkloc' => 'water_mark_image_location',
                 'f2gpath' => 'relative_path',
-                'allowsmilies' => 'allow_smilies',
-                'allowbbcode' => 'allow_mycode',
-                'allowhtml' => 'allow_mycode',
+                'allowsmilies' => 'parser_allow_smilies',
+                'allowbbcode' => 'parser_allow_mycode',
+                'allowhtml' => 'parser_allow_mycode',
                 'prunetime' => 'prune_time',
-                'modnewedit' => 'moderate_edits',
                 'othermaxlength' => 'maximum_text_field_length',
                 'maximum_text_field_lenght' => 'maximum_text_field_length',
                 'comment_dispinit' => 'comments_per_page',
-                'disp_attachcols' => 'attachments_per_row',
+                'disp_attachcols' => 'attachments_grouping',
+                'attachments_per_row' => 'attachments_grouping',
                 'disp_empty' => 'display_empty_fields',
                 'link_in_postbit' => 'display_in_posts',
-                'portal_random' => 'build_random_entry_widget',
+                'allow_attachments' => 'attachments_allow_entries',
+                'use_attach' => 'attachments_main_render_first',
+                'defaultimage' => 'attachments_main_render_default_image',
+                'default_image' => 'attachments_main_render_default_image',
+                'imgfolder' => 'attachments_uploads_path',
+                'images_directory' => 'attachments_uploads_path',
+                'watermarkloc' => 'attachments_watermark_location',
+                'water_mark_image_location' => 'attachments_watermark_location',
+                'portal_random' => 'attachments_portal_build_widget',
+                'build_random_entry_widget' => 'attachments_portal_build_widget',
+                'mainfile' => 'script_name',
+                'modnewedit' => 'moderate_entries_update',
+                'moderate_edits' => 'moderate_entries_update',
+                'comment_length' => 'comments_maximum_length',
+                'allow_html' => 'parser_allow_html',
+                'allow_mycode' => 'parser_allow_mycode',
+                'allow_smilies' => 'parser_allow_smilies',
+                'allow_image_code' => 'parser_allow_image_code',
+                'allow_video_code' => 'parser_allow_video_code',
+                'allow_comments' => 'comments_allow',
+                'display_signatures' => 'display_signatures_entries',
             ],
             'myshowcase_permissions' => [
                 'pid' => 'permission_id',
@@ -206,7 +221,8 @@ function pluginActivation(): bool
         if ($db->table_exists($tableName)) {
             foreach ($tableColumns as $oldColumnName => $newColumnName) {
                 if ($db->field_exists($oldColumnName, $tableName) &&
-                    !$db->field_exists($newColumnName, $tableName)) {
+                    !$db->field_exists($newColumnName, $tableName) &&
+                    isset(TABLES_DATA[$tableName][$newColumnName])) {
                     $db->rename_column(
                         $tableName,
                         $oldColumnName,
@@ -268,12 +284,6 @@ function pluginActivation(): bool
 
 function pluginDeactivation(): bool
 {
-    include MYBB_ROOT . '/inc/adminfunctions_templates.php';
-
-    find_replace_templatesets('header', '#' . preg_quote('{$myShowcaseGlobalMessagesUnapprovedEntries}') . '#', '');
-
-    find_replace_templatesets('header', '#' . preg_quote('{$myShowcaseGlobalMessagesReportedEntries}') . '#', '');
-
     _deactivate_task();
 
     return true;

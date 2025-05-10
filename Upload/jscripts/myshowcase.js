@@ -41,7 +41,31 @@ var Showcase = {
 
 	reportComment: function(commentID, showcaseID) {
 		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentID + "&showcaseID=" + showcaseID);
-	}
+	},
+
+	showDeletedEntry: function(entryID)
+	{
+		$('#deleted_entry_' + entryID).slideToggle("slow");
+		$('#entryBody' + entryID).slideToggle("slow");
+	},
+
+	showDeletedComment: function(commentID)
+	{
+		$('#deleted_comment_' + commentID).slideToggle("slow");
+		$('#commentBody' + commentID).slideToggle("slow");
+	},
+
+	showIgnoredEntry: function(entryID)
+	{
+		$('#ignored_entry_' + entryID).slideToggle("slow");
+		$('#entryBody' + entryID).slideToggle("slow");
+	},
+
+	showIgnoredComment: function(commentID)
+	{
+		$('#ignored_comment_' + commentID).slideToggle("slow");
+		$('#commentBody' + commentID).slideToggle("slow");
+	},
 
 };
 Event.observe(document, 'dom:loaded', Showcase.init);

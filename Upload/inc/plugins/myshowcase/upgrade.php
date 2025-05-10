@@ -100,8 +100,8 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
 
         if (version_compare($need_upgrade['prev'], '2.1.0', '<')) {
             //add new field for random portal option
-            if (!$db->field_exists('build_random_entry_widget', 'myshowcase_config')) {
-                $query = 'ALTER TABLE ' . TABLE_PREFIX . 'myshowcase_config ADD `build_random_entry_widget` INT(1) DEFAULT \'0\'';
+            if (!$db->field_exists('attachments_portal_build_widget', 'myshowcase_config')) {
+                $query = 'ALTER TABLE ' . TABLE_PREFIX . 'myshowcase_config ADD `attachments_portal_build_widget` INT(1) DEFAULT \'0\'';
                 $db->write_query($query);
             }
 
@@ -167,21 +167,21 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             }
 
             //add smilie support
-            if (!$db->field_exists('allow_smilies', 'myshowcase_config')) {
+            if (!$db->field_exists('parser_allow_smilies', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allow_smilies', $newdef);
+                $db->add_column('myshowcase_config', 'parser_allow_smilies', $newdef);
             }
 
             //add bbcode support
-            if (!$db->field_exists('allow_mycode', 'myshowcase_config')) {
+            if (!$db->field_exists('parser_allow_mycode', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allow_mycode', $newdef);
+                $db->add_column('myshowcase_config', 'parser_allow_mycode', $newdef);
             }
 
             //add html support
-            if (!$db->field_exists('allow_html', 'myshowcase_config')) {
+            if (!$db->field_exists('parser_allow_html', 'myshowcase_config')) {
                 $newdef = 'SMALLINT(1) NOT NULL DEFAULT 0 AFTER `enabled`';
-                $db->add_column('myshowcase_config', 'allow_html', $newdef);
+                $db->add_column('myshowcase_config', 'parser_allow_html', $newdef);
             }
 
             //add parse setting
@@ -377,14 +377,14 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
                 );
             }
 
-            if (!$db->field_exists('water_mark_image', 'myshowcase_config')) {
-                $newdef = 'VARCHAR(50) NULL AFTER `images_directory`';
-                $db->add_column('myshowcase_config', 'water_mark_image', $newdef);
+            if (!$db->field_exists('attachments_watermark_file', 'myshowcase_config')) {
+                $newdef = 'VARCHAR(50) NULL AFTER `attachments_uploads_path`';
+                $db->add_column('myshowcase_config', 'attachments_watermark_file', $newdef);
             }
 
-            if (!$db->field_exists('water_mark_image_location', 'myshowcase_config')) {
-                $newdef = 'VARCHAR(12) NOT NULL DEFAULT \'lower-right\' AFTER `water_mark_image`';
-                $db->add_column('myshowcase_config', 'water_mark_image_location', $newdef);
+            if (!$db->field_exists('attachments_watermark_location', 'myshowcase_config')) {
+                $newdef = 'VARCHAR(12) NOT NULL DEFAULT \'lower-right\' AFTER `attachments_watermark_file`';
+                $db->add_column('myshowcase_config', 'attachments_watermark_location', $newdef);
             }
 
             //add myshowcase_watermark template

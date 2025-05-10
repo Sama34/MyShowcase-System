@@ -86,6 +86,8 @@ function global_start(): bool
                     'pageViewCommentsCommentButtonUnapprove',
                     'pageViewCommentsCommentButtonWarn',
                     'pageViewCommentsCommentButtonWebsite',
+                    'pageViewCommentsCommentDeletedBit',
+                    'pageViewCommentsCommentIgnoredBit',
                     'pageViewCommentsCommentModeratedBy',
                     'pageViewCommentsCommentUrl',
                     'pageViewCommentsCommentUserAvatar',
@@ -131,6 +133,8 @@ function global_start(): bool
                     'pageViewEntryButtonWarn',
                     'pageViewEntryUrl',
                     'pageViewEntryButtonWebsite',
+                    'pageViewEntryDeletedBit',
+                    'pageViewEntryIgnoredBit',
                     'pageViewEntryModeratedBy',
                     'pageViewEntryUserAvatar',
                     'pageViewEntryUserDetails',
@@ -164,7 +168,7 @@ function global_start(): bool
             $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
 
             //if showcase is enabled...
-            if ($showcaseObject->enabled) {
+            if ($showcaseObject->config['enabled']) {
                 $templatelist .= ", myShowcase{$showcaseObject->showcase_id}_" . implode(
                         ", myShowcase{$showcaseObject->showcase_id}_",
                         $templateObjects
@@ -195,18 +199,18 @@ function global_intermediate(): bool
         $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
 
         //if showcase is enabled...
-        if ($showcaseObject->enabled) {
+        if ($showcaseObject->config['enabled']) {
             //load language if we are going to use it
-            if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries] || $showcaseObject->userPermissions[ModeratorPermissions::CanDeleteComments]) {
+            if ($showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] || $showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]) {
                 loadLanguage();
             }
 
-            urlHandlerSet($showcaseObject->mainFile);
+            urlHandlerSet($showcaseObject->config['script_name']);
 
             $showcaseObject->urlSet(urlHandlerGet());
 
             //awaiting approval
-            if ($showcaseObject->userPermissions[ModeratorPermissions::CanApproveEntries]) {
+            if ($showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
                 $unapprovedEntriesUrl = $showcaseObject->urlBuild($showcaseObject->urlMainUnapproved);
 
                 $totalUnapprovedEntries = $showcaseObject->entriesGetUnapprovedCount();
@@ -214,7 +218,7 @@ function global_intermediate(): bool
                 if ($totalUnapprovedEntries > 0) {
                     $unapprovedText = $lang->sprintf(
                         $lang->myshowcase_unapproved_count,
-                        $showcaseObject->name,
+                        $showcaseObject->config['name'],
                         my_number_format($totalUnapprovedEntries)
                     );
 
@@ -266,13 +270,13 @@ function fetch_wol_activity_end(array &$user_activity): array
     //check cache for matching file_name
     //have to do it this way since the file_name can vary for each myshowcase
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $id => $myshowcase) {
-        $split_mainfile = explode('.php', $myshowcase['mainfile']);
+        $split_mainfile = explode('.php', $myshowcase['script_name']);
         if ($split_mainfile[0] == $filename) {
             //preload here so we don't need to get it in next function
             $user_activity['myshowcase_filename'] = $filename;
             $user_activity['myshowcase_name'] = $myshowcase['name'];
             $user_activity['myshowcase_id'] = $myshowcase['showcase_id'];
-            $user_activity['myshowcase_mainfile'] = $myshowcase['mainfile'];
+            $user_activity['myshowcase_mainfile'] = $myshowcase['script_name'];
 
             if ($parameters['action'] == 'view') {
                 $user_activity['activity'] = 'myShowcaseMainTableTheadView';
@@ -449,7 +453,7 @@ function showthread_start(): bool
     foreach ($myshowcases as $id => $myshowcase) {
         if ($myshowcase['enabled'] && $myshowcase['display_in_posts']) {
             $myshowcase_uids[$myshowcase['showcase_id']]['name'] = $myshowcase['name'];
-            $myshowcase_uids[$myshowcase['showcase_id']]['mainfile'] = $myshowcase['mainfile'];
+            $myshowcase_uids[$myshowcase['showcase_id']]['script_name'] = $myshowcase['script_name'];
             $myshowcase_uids[$myshowcase['showcase_id']]['relative_path'] = $myshowcase['relative_path'];
         }
     }
@@ -504,14 +508,14 @@ function postbit(array &$post): array
     if (count($myshowcase_uids) > 0) {
         foreach ($myshowcase_uids as $myshowcase => $data) {
             $showcase_name = $data['name'];
-            $showcase_file = $data['mainfile'];
+            $showcase_file = $data['script_name'];
             $showcase_fldr = $data['relative_path'];
 
             /* URL Definitions */
             if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
                 $showcase_file = strtolower($data['name']) . '.html';
             } else {
-                $showcase_file = $data['mainfile'];
+                $showcase_file = $data['script_name'];
             }
 
             if ($data['uids'][$post['uid']] > 0) {
@@ -553,6 +557,7 @@ function report_type(): void
 {
     global $mybb;
 
+    // todo, id1=showcase_id, id2=report_type, id3=comment_id/entry_id/attachment_id
     if ($mybb->get_input('type') === 'showcase_entries') {
         global $report_type, $error, $verified, $id, $id2, $id3, $checkid, $report_type_db, $button;
 
@@ -651,7 +656,7 @@ function modcp_reports_report()
             ['limit' => 1]
         );
 
-        $showcaseID = (int)$commentData['showcase_id'];
+        $showcaseID = (int)$entryData['showcase_id'];
 
         $showcaseObject = showcaseGetObject($showcaseID);
 

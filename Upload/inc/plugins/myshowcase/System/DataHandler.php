@@ -22,10 +22,10 @@ use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\commentInsert;
 use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentUpdate;
-
 use function MyShowcase\Core\fieldTypeMatchChar;
 use function MyShowcase\Core\fieldTypeMatchInt;
 use function MyShowcase\Core\fieldTypeMatchText;
+use function MyShowcase\Core\hooksRun;
 
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
@@ -80,13 +80,9 @@ class DataHandler extends CoreDataHandler
          */
         public array $updateData = [],
         public int $entry_id = 0,
+        public int $comment_id = 0,
     ) {
         parent::__construct($method);
-    }
-
-    public function setData(array $entryCommentData): void
-    {
-        $this->set_data($entryCommentData);
     }
 
     /**
@@ -96,6 +92,8 @@ class DataHandler extends CoreDataHandler
      */
     public function entryValidateData(): bool
     {
+        hooksRun('data_handler_entry_validate_start', $this);
+
         $entryData = $this->data;
 
         if (isset($entryData['entry_id']) && (int)$entryData['entry_id'] !== $this->showcaseObject->entryID) {
@@ -191,14 +189,14 @@ class DataHandler extends CoreDataHandler
                             ]
                         );
 
-                        if ($fieldValueLength > $this->showcaseObject->maximumLengthForTextFields &&
-                            $this->showcaseObject->maximumLengthForTextFields > 0) {
+                        if ($fieldValueLength > $this->showcaseObject->config['maximum_text_field_length'] &&
+                            $this->showcaseObject->config['maximum_text_field_length'] > 0) {
                             $this->set_error(
                                 'message_too_long',
                                 [
                                     $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey,
                                     $fieldValueLength,
-                                    $this->showcaseObject->maximumLengthForTextFields
+                                    $this->showcaseObject->config['maximum_text_field_length']
                                 ]
                             );
                         }
@@ -223,7 +221,7 @@ class DataHandler extends CoreDataHandler
      */
     public function entryInsert(bool $isUpdate = false): array
     {
-        global $db, $plugins;
+        global $db;
 
         $entryData = &$this->data;
 
@@ -239,7 +237,7 @@ class DataHandler extends CoreDataHandler
             $this->insertData[$key] = $db->escape_string($value);
         }
 
-        $plugins->run_hooks('datahandler_myshowcase_insert', $this);
+        hooksRun('data_handler_entry_insert_update_start', $this);
 
         if ($isUpdate) {
             $this->entry_id = $this->showcaseObject->dataUpdate($this->insertData);
@@ -247,7 +245,7 @@ class DataHandler extends CoreDataHandler
             $this->entry_id = $this->showcaseObject->dataInsert($this->insertData);
         }
 
-        // Assign any uploaded attachments with the specific entry_hash to the newly created post.
+        // Assign any uploaded attachments with the specific entry_hash to the newly created entry.
         if (isset($entryData['entry_hash'])) {
             foreach (
                 attachmentGet(
@@ -283,7 +281,7 @@ class DataHandler extends CoreDataHandler
      * Updates a showcase that is already in the database.
      *
      */
-    public function updateEntry()
+    public function updateEntry(): array
     {
         return $this->entryInsert(true);
     }
@@ -304,6 +302,8 @@ class DataHandler extends CoreDataHandler
 
     public function commentValidateData(): bool
     {
+        hooksRun('data_handler_comment_validate_start', $this);
+
         $commentData = $this->data;
 
         if (isset($commentData['showcase_id']) && (int)$commentData['showcase_id'] !== $this->showcaseObject->showcase_id) {
@@ -321,11 +321,11 @@ class DataHandler extends CoreDataHandler
         if (isset($commentData['comment']) || $this->method === DATA_HANDLER_METHOD_INSERT) {
             $commentLength = my_strlen($this->data['comment']);
 
-            if ($commentLength < 1) {
+            if ($commentLength < $this->showcaseObject->config['comments_minimum_length']) {
                 $this->set_error('the message is too short');
             }
 
-            if ($commentLength > $this->showcaseObject->commentsMaximumLength) {
+            if ($commentLength > $this->showcaseObject->config['comments_maximum_length']) {
                 $this->set_error('the message is too large');
             }
         }
@@ -354,19 +354,64 @@ class DataHandler extends CoreDataHandler
         return true;
     }
 
-    public function commentInsert(): int
+    public function commentInsert(bool $isUpdate = false, int $commentID = 0): array
     {
-        return commentInsert(
-            array_merge($this->data, [
-                'showcase_id' => $this->showcaseObject->showcase_id,
-                'entry_id' => $this->showcaseObject->entryID
-            ])
-        );
+        global $db;
+
+        $commentData = &$this->data;
+
+        if (!$this->get_validated()) {
+            die('The comment needs to be validated before inserting it into the DB.');
+        }
+
+        if (count($this->get_errors()) > 0) {
+            die('The comment is not valid.');
+        }
+
+        foreach ($commentData as $key => $value) {
+            $this->insertData[$key] = $db->escape_string($value);
+        }
+
+        hooksRun('data_handler_comment_insert_update_start', $this);
+
+        if ($isUpdate) {
+            commentUpdate($this->insertData, $commentID);
+
+            $this->comment_id = $commentID;
+        } else {
+            $this->comment_id = commentInsert(
+                array_merge($this->insertData, [
+                    'showcase_id' => $this->showcaseObject->showcase_id,
+                    'entry_id' => $this->showcaseObject->entryID
+                ])
+            );
+        }
+
+        // Assign any uploaded attachments with the specific comment_hash to the newly created comment.
+        if (isset($commentData['comment_hash'])) {
+            foreach (
+                attachmentGet(
+                    ["comment_hash='{$db->escape_string($commentData['comment_hash'])}'"]
+                ) as $attachmentID => $attachmentData
+            ) {
+                attachmentUpdate(['comment_id' => $this->comment_id], $attachmentID);
+            }
+        }
+
+        $returnData = [
+            'comment_id' => $this->comment_id
+        ];
+
+        if (isset($this->insertData['status'])) {
+            $returnData['status'] = $commentData['status'];
+        }
+
+        return $returnData;
     }
 
-    public function commentUpdate(int $commentID): int
+    public function commentUpdate(int $commentID): array
     {
-        return commentUpdate($this->data, $commentID);
+        return $this->commentInsert(true, $commentID);
     }
 
     public function commentDelete(int $commentID): void

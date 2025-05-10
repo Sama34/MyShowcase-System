@@ -80,7 +80,7 @@ abstract class Base
 
         $this->outputObject = outputGetObject($this->showcaseObject, $this->renderObject);
 
-        if (!$this->showcaseObject->enabled) {
+        if (!$this->showcaseObject->config['enabled']) {
             match ($this->showcaseObject->errorType) {
                 ERROR_TYPE_NOT_INSTALLED => error(
                     'The MyShowcase System has not been installed and activated yet.'
@@ -113,7 +113,7 @@ abstract class Base
         global $mybb, $lang;
         global $headerinclude, $header, $footer;
 
-        $pageTitle = $this->showcaseObject->name;
+        $pageTitle = $this->showcaseObject->config['name'];
 
         $errorMessages = empty($this->showcaseObject->errorMessages) ? '' : inline_error(
             $this->showcaseObject->errorMessages
@@ -126,6 +126,8 @@ abstract class Base
         }
 
         $metaData = '';
+
+        $showcaseDescription = htmlspecialchars_uni($this->showcaseObject->config['description']);
 
         if ($this->showcaseObject->entryID) {
             $entryUrl = $this->showcaseObject->urlBuild(

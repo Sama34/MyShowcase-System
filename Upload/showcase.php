@@ -17,9 +17,18 @@ declare(strict_types=1);
  * Only user edits required
 */
 
+use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\Router;
+use MyShowcase\System\UserPermissions;
+
+use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\attachmentUpload;
+use function MyShowcase\Core\loadLanguage;
+use function MyShowcase\Core\urlHandlerGet;
+use function MyShowcase\Core\urlHandlerSet;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 
 $forumDirectoryPath = ''; //no trailing slash
 
@@ -68,7 +77,7 @@ $router = new Router();
 
 $router->get('/{showcase_slug}', 'Entries', 'listEntries');
 
-$router->get('/{showcase_slug}/uid/{user_id}', 'Entries', 'listEntriesUser');
+$router->get('/{showcase_slug}/user/{user_id}', 'Entries', 'listEntriesUser');
 
 $router->get('/{showcase_slug}/unapproved', 'Entries', 'listEntriesUnapproved');
 
@@ -76,42 +85,45 @@ $router->get('/{showcase_slug}/create', 'Entries', 'createEntry');
 
 $router->post('/{showcase_slug}/create', 'Entries', 'createEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}', 'Entries', 'viewEntry');
+$router->get('/{showcase_slug}/view/{entry_slug}', 'Entries', 'viewEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/update', 'Entries', 'updateEntry');
+$router->get('/{showcase_slug}/view/{entry_slug}/page/{current_page}', 'Entries', 'viewEntryPage');
 
-$router->post('/{showcase_slug}/view/{entry_id}/update', 'Entries', 'updateEntry');
+$router->get('/{showcase_slug}/view/{entry_slug}/update', 'Entries', 'updateEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/approve', 'Entries', 'approveEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/update', 'Entries', 'updateEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/approve', 'Entries', 'approveEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/soft_delete', 'Entries', 'softDeleteEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/restore', 'Entries', 'restoreEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/soft_delete', 'Entries', 'softDeleteEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/delete', 'Entries', 'deleteEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/restore', 'Entries', 'restoreEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/{showcase_slug}/view/{entry_slug}/delete', 'Entries', 'deleteEntry');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/create', 'Comments', 'createComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}', 'Comments', 'viewComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/create', 'Comments', 'createComment');
 
-$router->get('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/update', 'Comments', 'updateComment');
+$router->get('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}', 'Comments', 'viewComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/update', 'Comments', 'updateComment');
+$router->get('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/approve', 'Comments', 'approveComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/approve', 'Comments', 'approveComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
 
-$router->post('/{showcase_slug}/view/{entry_id}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
+
+$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
+
+$router->get('/{showcase_slug}/search', 'Search', 'searchForm');
 
 $router->run();
 
-exit;

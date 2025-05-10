@@ -1,0 +1,14 @@
+<div class="ignored_post" id="ignored_comment_{$commentID}">
+    <div class="ignored_post_author"><strong><span class="largetext">{$userProfileLink}</span></strong></div>
+    <div class="ignored_post_message">
+        <div class="show_ignored_post float_right" style="vertical-align: top;" id="show_ignored_link_{$commentID}"><a
+                href="javascript:void(0)" onclick="Showcase.showIgnoredComment({$commentID}); return false;"
+                class="button small_button"><span>{$lang->myShowcaseEntryCommentDeletedSButtonShow}</span></a></div>
+        <script type="text/javascript">
+            <!--
+                $('#show_ignored_link_{$commentID}').show();
+            // -->
+        </script>
+        {$ignoredMessage}
+    </div>
+</div>

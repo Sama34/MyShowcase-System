@@ -77,40 +77,13 @@ class Showcase
         #Config
         public int $showcase_id = 0,
         public string $name = '',
-        public string $nameFriendly = '',
-        public string $description = '',
-        public string $mainFile = '',
-        public int $fieldSetID = 0,
         public array $fieldSetCache = [],
         public array $fieldSetFieldsIDs = [],
         public array $fieldSetEnabledFields = [],
         public array $fieldSetSearchableFields = [],
         public array $fieldSetFieldsOrder = [],
-        public string $imageFolder = '',
-        public string $defaultImage = '',
-        public string $waterMarkImage = '',
-        public string $waterMarkLocation = '',
-        public bool $userEntryAttachmentAsImage = false,
-        public string $relativePath = '',
-        public bool $enabled = false,
-        public bool $parserAllowSmiles = false,
-        public bool $parserAllowMyCode = false,
-        public bool $parserAllowHTML = false,
-        public int $pruneTime = 0,
-        public bool $moderateEdits = false,
-        public bool $allowAttachments = false,
-        public bool $allowComments = false,
-        public int $attachmentThumbWidth = 0,
-        public int $attachmentThumbHeight = 0,
-        public int $commentsMaximumLength = 0,
-        public int $commentsPerPageLimit = 0,
-        public int $attachmentsPerRowLimit = 0,
         public bool $attachmentsDisplayThumbnails = true,
         public bool $attachmentsDisplayFullSizeImage = false,
-        public bool $displayEmptyFields = false,
-        public bool $linkInPosts = false,
-        public bool $portalShowRandomAttachmentWidget = false,
-        public bool $displaySignatures = false,
         public string $maximumAvatarSize = '55x55',
         #urls
         public string $urlBase = '',
@@ -118,12 +91,14 @@ class Showcase
         public string $urlMainUnapproved = '',
         public string $urlPaged = '',
         public string $urlViewEntry = '',
+        public string $urlViewEntryPage = '',
         public string $urlViewComment = '',
         public string $urlCreateEntry = '',
         public string $urlUpdateEntry = '',
         public string $urlApproveEntry = '',
         public string $urlUnapproveEntry = '',
         public string $urlSoftDeleteEntry = '',
+        public string $urlRestoreEntry = '',
         public string $urlDeleteEntry = '',
         public string $urlCreateComment = '',
         public string $urlUpdateComment = '',
@@ -134,6 +109,7 @@ class Showcase
         public string $urlDeleteComment = '',
         public string $urlViewAttachment = '',
         public string $urlViewAttachmentItem = '',
+        public array $config = [],
     ) {
         global $db, $mybb, $cache;
 
@@ -144,76 +120,27 @@ class Showcase
         $plugin_cache = $cache->read('plugins');
 
         //check if the requesting file is in the cache
-        foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseData) {
-            if ($showcaseData['showcase_slug'] === $this->showcaseSlug) {
-                $this->showcase_id = (int)$showcaseData['showcase_id'];
+        foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
+            if ($showcaseData['showcase_slug'] === $this->showcaseSlug/* &&
+                $showcaseData['script_name'] === THIS_SCRIPT*/) {
+                $this->config = array_merge($showcaseData, $this->config);
 
-                $this->name = (string)$showcaseData['name'];
+                $this->showcase_id = $showcaseID;
 
-                $this->nameFriendly = ucwords(strtolower($this->name));
-
-                $this->description = (string)$showcaseData['description'];
-
-                $this->mainFile = (string)$showcaseData['mainfile'];
-
-                $this->fieldSetID = (int)$showcaseData['field_set_id'];
-
-                $this->imageFolder = (string)$showcaseData['images_directory'];
-
-                $this->defaultImage = (string)$showcaseData['images_directory'];
-
-                $this->waterMarkImage = (string)$showcaseData['water_mark_image'];
-
-                $this->waterMarkLocation = (string)$showcaseData['water_mark_image_location'];
-
-                $this->userEntryAttachmentAsImage = (bool)$showcaseData['use_attach'];
-
-                $this->relativePath = (string)$showcaseData['relative_path'];
-
-                $this->enabled = (bool)$showcaseData['enabled'];
-
-                $this->parserAllowSmiles = (bool)$showcaseData['allow_smilies'];
-
-                $this->parserAllowMyCode = (bool)$showcaseData['allow_mycode'];
-
-                $this->parserAllowHTML = (bool)$showcaseData['allow_html'];
-
-                $this->pruneTime = (int)$showcaseData['prune_time'];
-
-                $this->moderateEdits = (bool)$showcaseData['moderate_edits'];
-
-                $this->maximumLengthForTextFields = (int)$showcaseData['maximum_text_field_length'];
-
-                $this->allowAttachments = (bool)$showcaseData['allow_attachments'];
-
-                $this->allowComments = (bool)$showcaseData['allow_comments'];
-
-                $this->attachmentThumbWidth = (int)$showcaseData['thumb_width'];
-
-                $this->attachmentThumbHeight = (int)$showcaseData['thumb_height'];
-
-                $this->commentsMaximumLength = (int)$showcaseData['comment_length'];
-
-                $this->commentsPerPageLimit = (int)$showcaseData['comments_per_page'];
-
-                $this->attachmentsPerRowLimit = (int)$showcaseData['attachments_per_row'];
-
-                $this->displayEmptyFields = (bool)$showcaseData['display_empty_fields'];
-
-                $this->linkInPosts = (bool)$showcaseData['allow_attachments'];
-
-                $this->portalShowRandomAttachmentWidget = (bool)$showcaseData['build_random_entry_widget'];
-
-                $this->displaySignatures = (bool)$showcaseData['display_signatures'];
+                $this->config['name_friendly'] = ucwords(strtolower($this->config['name']));
 
                 break;
             }
         }
 
-        if (!$db->table_exists('myshowcase_config') || !array_key_exists('myshowcase', $plugin_cache['active'])) {
-            $this->enabled = false;
+        if (!$this->showcase_id ||
+            !$db->table_exists('myshowcase_config') ||
+            !array_key_exists('myshowcase', $plugin_cache['active'])) {
+            $this->config['enabled'] = false;
 
             $this->errorType = ERROR_TYPE_NOT_INSTALLED;
+
+            return;
         }
 
         //clean the name and make it suitable for SEO
@@ -229,7 +156,7 @@ class Showcase
         $this->cleanName = preg_replace(
             "/^[$pattern]+|[$pattern]+$/u",
             '',
-            strtolower($this->name)
+            strtolower($this->config['name'])
         );
 
         // Replace middle punctuation with one separator.
@@ -244,24 +171,26 @@ class Showcase
             $this->dataTableName = 'myshowcase_data' . $this->showcase_id;
         }
 
-        if (!$this->showcase_id || !$this->dataTableName || !$this->fieldSetID) {
-            $this->enabled = false;
+        if (!$this->dataTableName || !$this->config['field_set_id']) {
+            $this->config['enabled'] = false;
 
             $this->errorType = ERROR_TYPE_NOT_CONFIGURED;
+
+            return;
         }
 
         //get basename of the calling file. This is used later for SEO support
-        $this->prefix = explode('.', $this->mainFile)[0];
+        $this->prefix = explode('.', $this->config['script_name'])[0];
 
         $currentUserID = (int)$mybb->user['uid'];
 
         $this->userPermissions = $this->userPermissionsGet($currentUserID);
 
         $this->parserOptions = array_merge($this->parserOptions, [
-            'allow_html' => $this->parserAllowHTML,
-            'allow_mycode' => $this->parserAllowMyCode,
+            'allow_html' => $this->config['parser_allow_html'],
+            'allow_mycode' => $this->config['parser_allow_mycode'],
             'me_username' => $mybb->user['username'] ?? '',
-            'allow_smilies' => $this->parserAllowSmiles
+            'allow_smilies' => $this->config['parser_allow_smiles']
         ]);
 
         $this->entryUserID = $currentUserID;
@@ -272,8 +201,8 @@ class Showcase
             $this->entryUserID = $mybb->get_input('entryUserID', MyBB::INPUT_INT);
         }
 
-        if ($this->fieldSetID) {
-            $this->fieldSetCache = cacheGet(CACHE_TYPE_FIELDS)[$this->fieldSetID] ?? [];
+        if ($this->config['field_set_id']) {
+            $this->fieldSetCache = cacheGet(CACHE_TYPE_FIELDS)[$this->config['field_set_id']] ?? [];
 
             foreach ($this->fieldSetCache as $fieldID => $fieldData) {
                 if (!$fieldData['enabled']/* || $fieldData['is_required']*/) {
@@ -327,7 +256,7 @@ class Showcase
         $this->urlBase = $mybb->settings['bburl'];
 
         if ($this->friendlyUrlsEnabled) {
-            //$showcase_name = strtolower($showcaseObject->name);
+            //$showcase_name = strtolower($showcaseObject->config['name']);
             $this->urlMain = $this->cleanName . '.html';
 
             $this->urlPaged = $this->cleanName . '-page-{page}.html';
@@ -350,6 +279,8 @@ class Showcase
 
             $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_slug}';
 
+            $this->urlViewEntryPage = $this->showcaseSlug . '/view/{entry_slug}/page/{current_page}';
+
             $this->urlViewComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}';
 
             $this->urlCreateEntry = $this->showcaseSlug . '/create';
@@ -360,9 +291,9 @@ class Showcase
 
             $this->urlUnapproveEntry = $this->showcaseSlug . '/view/{entry_slug}/unapprove';
 
-            //$this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_slug}/restore';
-
             $this->urlSoftDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/soft_delete';
+
+            $this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_slug}/restore';
 
             $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/delete';
 
@@ -390,11 +321,40 @@ class Showcase
         return $this;
     }
 
-    public function urlBuild(string $url, $entrySlug = 0, int $commentID = 0, int $attachmentID = 0): string
+    public function urlGetEntry(): string
     {
+        return $this->urlBuild($this->urlViewEntry, $this->entryData['entry_slug']);
+    }
+
+    public function urlGetEntryPage(int $currentPage = 0, string $pagePlaceholder = ''): string
+    {
+        return $this->urlBuild(
+            $this->urlViewEntryPage,
+            $this->entryData['entry_slug'],
+            currentPage: $pagePlaceholder ?? $currentPage
+        );
+    }
+
+    public function urlGetCreateEntry(): string
+    {
+        return $this->urlBuild($this->urlCreateEntry);
+    }
+
+    public function urlGetUpdateEntry(): string
+    {
+        return $this->urlBuild($this->urlUpdateEntry, $this->entryData['entry_slug']);
+    }
+
+    public function urlBuild(
+        string $url,
+        $entrySlug = 0,
+        int $commentID = 0,
+        int $attachmentID = 0,
+        int|string $currentPage = 0
+    ): string {
         return 'showcase.php?route=/' . str_replace(
-                ['{entry_slug}', '{comment_id}'],
-                [$entrySlug, (string)$commentID],
+                ['{entry_slug}', '{comment_id}', '{current_page}'],
+                [$entrySlug, $commentID, $currentPage],
                 $url
             );
     }
@@ -635,20 +595,22 @@ class Showcase
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
             attachmentDelete(["attachment_id='{$attachmentID}'"]);
 
-            if (file_exists($this->imageFolder . '/' . $attachmentData['attachment_name'])) {
-                unlink($this->imageFolder . '/' . $attachmentData['attachment_name']);
+            if (file_exists($this->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name'])) {
+                unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name']);
             }
 
             if (!empty($attachmentData['thumbnail'])) {
-                if (file_exists($this->imageFolder . '/' . $attachmentData['thumbnail'])) {
-                    unlink($this->imageFolder . '/' . $attachmentData['thumbnail']);
+                if (file_exists($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail'])) {
+                    unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail']);
                 }
             }
 
             $dateDirectory = explode('/', $attachmentData['attachment_name']);
 
-            if (!empty($dateDirectory[0]) && is_dir($this->imageFolder . '/' . $dateDirectory[0])) {
-                rmdir($this->imageFolder . '/' . $dateDirectory[0]);
+            if (!empty($dateDirectory[0]) && is_dir(
+                    $this->config['attachments_uploads_path'] . '/' . $dateDirectory[0]
+                )) {
+                rmdir($this->config['attachments_uploads_path'] . '/' . $dateDirectory[0]);
             }
         }
     }
@@ -657,7 +619,11 @@ class Showcase
     {
         global $mybb;
 
-        return $mybb->settings['bburl'] . '/' . $this->relativePath . $this->mainFile;
+        if ($this->config['relative_path']) {
+            return $this->config['relative_path'] . '/' . $this->config['script_name'];
+        } else {
+            return $mybb->settings['bburl'] . '/' . $this->config['script_name'];
+        }
     }
 
     public function entriesGetUnapprovedCount(): int

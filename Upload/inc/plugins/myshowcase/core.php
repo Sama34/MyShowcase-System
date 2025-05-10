@@ -15,20 +15,18 @@ declare(strict_types=1);
 
 namespace MyShowcase\Core;
 
+use Postparser;
+use DirectoryIterator;
 use MyShowcase\System\FieldDefaultTypes;
 use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\FieldTypes;
 use myshowcase\System\FormatTypes;
-use Postparser;
-use DirectoryIterator;
 use MyShowcase\System\DataHandler;
 use MyShowcase\System\Output;
 use MyShowcase\System\Render;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
-
-use function MyShowcase\Admin\languageModify;
 
 use const MyShowcase\ROOT;
 
@@ -226,151 +224,464 @@ const TABLES_DATA = [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
+            'form_category' => 'main',
+            'form_type' => 'text',
         ],
         'showcase_slug' => [
             'type' => 'VARCHAR',
             'size' => 50,
             'default' => '',
-            'unique_value' => true
+            'unique_value' => true,
+            'form_category' => 'main',
+            'form_type' => 'text',
         ],
         'description' => [
             'type' => 'VARCHAR',
             'size' => 255,
-            'default' => ''
+            'default' => '',
+            'form_category' => 'main',
+            'form_type' => 'text',
         ],
-        'mainfile' => [
+        'script_name' => [
             'type' => 'VARCHAR',
             'size' => 50,
-            'default' => ''
+            'default' => '',
+            'form_category' => 'main',
+            'form_type' => 'text',
         ],
         'field_set_id' => [
             'type' => 'INT',
             'unsigned' => true,
-            'default' => 1
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'select',
+            'form_function' => '\MyShowcase\Core\generateFieldSetSelectArray',
         ],
-        'images_directory' => [
+        /*'relative_path' => [
             'type' => 'VARCHAR',
             'size' => 255,
-            'default' => ''
-        ],
-        'default_image' => [
-            'type' => 'VARCHAR',
-            'null' => true,
-            'size' => 50,
-        ],
-        'water_mark_image' => [
-            'type' => 'VARCHAR',
-            'null' => true,
-            'size' => 50,
-        ],
-        'water_mark_image_location' => [
-            'type' => 'VARCHAR',
-            'size' => 12,
-            'default' => 'lower-right'
-        ],
-        'use_attach' => [
-            'type' => 'INT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'relative_path' => [
-            'type' => 'VARCHAR',
-            'size' => 255,
-            'default' => ''
-        ],
+            'default' => '',
+            'form_category' => 'main',
+            'form_type' => 'text',
+        ],*/
         'enabled' => [
             'type' => 'INT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'yes_no',
         ],
-        'allow_smilies' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'allow_mycode' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'allow_html' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'prune_time' => [
-            'type' => 'VARCHAR',
-            'size' => 10,
-            'default' => 0
-        ],
-        'moderate_edits' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 1
-        ],
-        'maximum_text_field_length' => [
-            'type' => 'SMALLINT',
-            'unsigned' => true,
-            'default' => 500
-        ],
-        'allow_attachments' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 1
-        ],
-        'allow_comments' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 1
-        ],
-        'thumb_width' => [
-            'type' => 'SMALLINT',
-            'unsigned' => true,
-            'default' => 200
-        ],
-        'thumb_height' => [
-            'type' => 'SMALLINT',
-            'unsigned' => true,
-            'default' => 200
-        ],
-        'comment_length' => [
+        'display_order' => [ // mean to be useful for building a header link, etc
             'type' => 'INT',
             'unsigned' => true,
-            'default' => 200
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'numeric',
+        ],
+        /*'enable_dvz_stream_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'yes_no',
+        ],
+        'enable_dvz_stream_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'yes_no',
+        ],
+        'custom_theme_force' => [ // if force & no custom theme selected, force default theme
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'yes_no',
+        ],
+        'custom_theme_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'select',
+        ],*/
+        'custom_theme_template_prefix' => [
+            'type' => 'VARCHAR',
+            'size' => 50,
+            'default' => '',
+            'form_category' => 'main',
+            'form_type' => 'text',
+        ],
+        /*'order_default_field' => [ // dateline, username, custom fields, etc
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'select',
+            'form_function' => '\MyShowcase\Core\generateFilterFieldsSelectArray',
+        ],*/
+        'filter_default_field' => [ // force view entries by uid, etc
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'select',
+            'form_function' => '\MyShowcase\Core\generateFilterFieldsSelectArray',
+        ],
+        /*'order_default_direction' => [ // asc, desc
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_type' => 'yes_no',
+        ],
+        'entries_grouping' => [ // inserts template between entry rows in the main page
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_section' => 'entries',
+            'form_type' => 'numeric',
+        ],*/
+        'entries_per_page' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'main',
+            'form_section' => 'entries',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
+        ],
+        'parser_allow_html' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'parser',
+            'form_type' => 'check_box',
+        ],
+        'parser_allow_mycode' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'parser',
+            'form_type' => 'check_box',
+        ],
+        'parser_allow_smiles' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'parser',
+            'form_type' => 'check_box',
+        ],
+        'parser_allow_image_code' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'parser',
+            'form_type' => 'check_box',
+        ],
+        'parser_allow_video_code' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'parser',
+            'form_type' => 'check_box',
+        ],
+        /*'display_moderators_list' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_stats' => [ // a duplicate of the index table 'showindexstats'
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_users_browsing_main' => [ // 'showforumviewing'
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_users_browsing_entries' => [ // 'showforumviewing'
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],*/
+        'display_empty_fields' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        /*'display_in_posts' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_profile_fields' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],*/
+        'display_avatars_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_avatars_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_stars_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_stars_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_group_image_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_group_image_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_user_details_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_user_details_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_signatures_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'display_signatures_comments' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'moderate_entries_create' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'moderation',
+            'form_type' => 'check_box',
+        ],
+        'moderate_entries_update' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'moderation',
+            'form_type' => 'check_box',
+        ],
+        'moderate_comments_create' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'moderation',
+            'form_type' => 'check_box',
+        ],
+        'moderate_comments_update' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'moderation',
+            'form_type' => 'check_box',
+        ],
+        'comments_allow' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'check_box',
+        ],
+        /*
+        'display_recursive_comments' => [ // 'showforumviewing'
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],
+        'comments_allow_quotes' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'check_box',
+        ],*/
+        /*'comments_quick_form' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'display',
+            'form_type' => 'check_box',
+        ],*/
+        'comments_build_editor' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'check_box',
+        ],
+        'comments_minimum_length' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
+        ],
+        'comments_maximum_length' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
         ],
         'comments_per_page' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 5
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
         ],
-        'attachments_per_row' => [
+        /*'comments_direction' => [ // reverse order
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
-        ],
-        'display_empty_fields' => [
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'comments',,
+            'form_type' => 'check_box',
+        ],*/
+        /*'attachments_allow_comments' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 1
-        ],
-        'display_in_posts' => [
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'attachments',
+            'form_type' => 'check_box',
+        ],*/
+        /*'attachments_limit_comments' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'attachments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
+        ],*/
+        /*'attachments_enable_sharing' => [ // allow using attachments from other entries
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
-        ],
-        'build_random_entry_widget' => [
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'attachments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
+        ],*/
+        /*'attachments_main_render_default_image' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+            'default' => '',
+            'form_category' => 'other',
+            'form_section' => 'attachments',
+            'form_type' => 'text',
+            'form_class' => 'field150',
+        ],*/
+        /*'attachments_portal_build_widget' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
-        ],
-        'display_signatures' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        // todo, trigger notification (user, group), pm, or alert
-        // todo, DVZ Stream
-        // todo, latest entries helper
+            'default' => 0,
+            'form_category' => 'other',
+            'form_section' => 'attachments',
+            'form_type' => 'numeric',
+            'form_class' => 'field150',
+        ],*/
     ],
     'myshowcase_fieldsets' => [
         'set_id' => [
@@ -402,64 +713,76 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        UserPermissions::CanAddEntries => [
+        UserPermissions::CanCreateEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
-        UserPermissions::CanEditEntries => [
+        UserPermissions::CanUpdateEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
-        UserPermissions::CanAttachFiles => [
+        UserPermissions::CanCreateAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanView => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanViewComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanViewAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanCreateComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanDeleteComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanDeleteAuthorComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanSearch => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::CanWaterMarkAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
         UserPermissions::AttachmentsLimit => [
             'type' => 'INT',
-            'default' => 0
+            'default' => 0,
+            'is_permission' => true
         ],
     ],
     'myshowcase_moderators' => [
@@ -484,22 +807,22 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        ModeratorPermissions::CanApproveEntries => [
+        ModeratorPermissions::CanManageEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        ModeratorPermissions::CanEditEntries => [
+        ModeratorPermissions::CanManageEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        ModeratorPermissions::CanDeleteEntries => [
+        ModeratorPermissions::CanManageEntries => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
         ],
-        ModeratorPermissions::CanDeleteComments => [
+        ModeratorPermissions::CanManageComments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -650,6 +973,7 @@ const TABLES_DATA = [
         ],
         'display_style' => [
             'type' => 'VARCHAR',
+            'size' => 200,
             'default' => ''
         ],
         'display_order' => [
@@ -670,6 +994,11 @@ const TABLES_DATA = [
         ],
     ],
 ];
+// todo, Profile Activity integration
+// todo, Extra Forum Permissions integration
+// todo, integrate to Forum Logo plugin
+// todo, integrate with ougc Online Users List
+// todo, attachment display type, thumbnail, full, link
 
 const FIELDS_DATA = [
 ];
@@ -680,6 +1009,25 @@ const FIELDS_DATA = [
 // todo, add field setting to search fields data (i.e: enable_search)
 // todo, integrate Feedback plugin into entries, per showcase
 // todo, integrate Custom Rates plugin into entries, per showcase
+// todo, check integration with Signature Image & Signature Control
+// todo, trigger notification (user, group), pm, or alert
+// todo, DVZ Stream
+// todo, latest entries helper
+// todo, NewPoints integration, income,
+// todo, add preview entry/comment input
+// todo, tree comments
+// todo, browsingthisthread
+// todo, threadviews_countspiders
+// todo, threadviews_countguests
+// todo, threadviews_countthreadauthor
+// todo, entries per page
+// todo,mycodemessagelength
+// integrate to AdRem
+// todo, MyAlerts integration
+// todo, users see own unapproved content
+// todo, Integrate to Rates, Feedback,
+// todo, build Pages menu as if inside a showcase (add_breadcrum, force theme, etc)
+// ougc Private Threads integration
 const DATA_TABLE_STRUCTURE = [
     'myshowcase_data' => [
         'entry_id' => [
@@ -691,6 +1039,9 @@ const DATA_TABLE_STRUCTURE = [
         'entry_slug' => [
             'type' => 'VARCHAR',
             'size' => 250,
+            'default' => '',
+            'unique_key' => true
+        ],
         'user_id' => [
             'type' => 'INT',
             'unsigned' => true,
@@ -794,7 +1145,7 @@ function addHooks(string $namespace): bool
     return true;
 }
 
-function hooksRun(string $hookName, array &$hookArguments = []): array
+function hooksRun(string $hookName, array|object &$hookArguments = []): array|object
 {
     global $plugins;
 
@@ -849,24 +1200,30 @@ function getSetting(string $settingKey = '')
     );
 }
 
-function getTemplateName(string $templateName = '', int $showcaseID = 0): string
+function getTemplateName(string $templateName = '', string $showcasePrefix = '', bool $addPrefix = true): string
 {
-    $templatePrefix = '';
+    $templatePrefix = $showcasePrefix !== '' ? $showcasePrefix . '_' : '';
 
-    if ($templateName) {
+    if ($templateName && $addPrefix) {
         $templatePrefix = '_';
     }
 
-    if ($showcaseID) {
-        return "myShowcase{$showcaseID}{$templatePrefix}{$templateName}";
+    if ($addPrefix) {
+        $templatePrefix = 'myShowcase' . $templatePrefix;
     }
 
-    return "myShowcase{$templatePrefix}{$templateName}";
+    return $templatePrefix . $templateName;
 }
 
-function getTemplate(string $templateName = '', bool $enableHTMLComments = true, int $showcaseID = 0): string
+function getTemplate(string $templateName = '', bool $enableHTMLComments = true, string $showcasePrefix = ''): string
 {
     global $templates;
+
+    if (DEBUG) {
+        //$templates->get(getTemplateName($templateName));
+
+        //$templates->get(getTemplateName($templateName, $showcasePrefix));
+    }
 
     if (DEBUG && file_exists($filePath = ROOT . "/templates/{$templateName}.html")) {
         $templateContents = file_get_contents($filePath);
@@ -876,13 +1233,40 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true,
         $templateName = substr($templateName, my_strpos($templateName, '/') + 1);
     }
 
-    if ($showcaseID && isset($templates->cache[getTemplateName($templateName, $showcaseID)])) {
-        return $templates->render(getTemplateName($templateName, $showcaseID), true, $enableHTMLComments);
-    } elseif ($showcaseID) {
+    if ($showcasePrefix !== '' && isset($templates->cache[getTemplateName($templateName, $showcasePrefix)])) {
+        return $templates->render(getTemplateName($templateName, $showcasePrefix), true, $enableHTMLComments);
+    } elseif ($showcasePrefix) {
         return getTemplate($templateName, $enableHTMLComments);
     }
 
-    return $templates->render(getTemplateName($templateName, $showcaseID), true, $enableHTMLComments);
+    return $templates->render(getTemplateName($templateName, $showcasePrefix), true, $enableHTMLComments);
+}
+
+function templateGetCachedName(string $templateName = '', string $showcasePrefix = '', bool $addPrefix = false): string
+{
+    global $templates;
+
+    if (DEBUG) {
+        //$templates->get(getTemplateName($templateName));
+
+        //$templates->get(getTemplateName($templateName, $showcasePrefix));
+    }
+
+    if (DEBUG && file_exists($filePath = ROOT . "/templates/{$templateName}.html")) {
+        $templateContents = file_get_contents($filePath);
+
+        $templates->cache[getTemplateName($templateName)] = $templateContents;
+    } elseif (my_strpos($templateName, '/') !== false) {
+        $templateName = substr($templateName, my_strpos($templateName, '/') + 1);
+    }
+
+    if ($showcasePrefix !== '' && isset($templates->cache[getTemplateName($templateName, $showcasePrefix)])) {
+        return getTemplateName($templateName, $showcasePrefix, $addPrefix);
+    } elseif ($showcasePrefix) {
+        return templateGetCachedName($templateName, addPrefix: $addPrefix);
+    }
+
+    return getTemplateName($templateName, $showcasePrefix, $addPrefix);
 }
 
 //set default permissions for all groups in all myshowcases
@@ -891,9 +1275,9 @@ function getTemplate(string $templateName = '', bool $enableHTMLComments = true,
 function showcaseDefaultPermissions(): array
 {
     return [
-        UserPermissions::CanAddEntries => false,
-        UserPermissions::CanEditEntries => false,
-        UserPermissions::CanAttachFiles => false,
+        UserPermissions::CanCreateEntries => false,
+        UserPermissions::CanUpdateEntries => false,
+        UserPermissions::CanCreateAttachments => false,
         UserPermissions::CanView => true,
         UserPermissions::CanViewComments => true,
         UserPermissions::CanViewAttachments => true,
@@ -909,10 +1293,10 @@ function showcaseDefaultPermissions(): array
 function showcaseDefaultModeratorPermissions(): array
 {
     return [
-        ModeratorPermissions::CanApproveEntries => false,
-        ModeratorPermissions::CanEditEntries => false,
-        ModeratorPermissions::CanDeleteEntries => false,
-        ModeratorPermissions::CanDeleteComments => false
+        ModeratorPermissions::CanManageEntries => false,
+        ModeratorPermissions::CanManageEntries => false,
+        ModeratorPermissions::CanManageEntries => false,
+        ModeratorPermissions::CanManageComments => false
     ];
 }
 
@@ -954,42 +1338,23 @@ function cacheUpdate(string $cacheKey): array
     switch ($cacheKey) {
         case CACHE_TYPE_CONFIG:
             $showcaseObjects = showcaseGet(
-                queryFields: array_keys(TABLES_DATA['myshowcase_config'])
+                queryFields: array_keys(TABLES_DATA['myshowcase_config']),
+                queryOptions: ['order_by' => 'display_order']
             );
 
             foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-                $cacheData[$showcaseID] = [
-                    'showcase_id' => $showcaseID,
-                    'name' => (string)$showcaseData['name'],
-                    'showcase_slug' => (string)$showcaseData['showcase_slug'],
-                    'description' => (string)$showcaseData['description'],
-                    'mainfile' => (string)$showcaseData['mainfile'],
-                    'field_set_id' => (int)$showcaseData['field_set_id'],
-                    'images_directory' => (string)$showcaseData['images_directory'],
-                    'default_image' => (string)$showcaseData['default_image'],
-                    'water_mark_image' => (string)$showcaseData['water_mark_image'],
-                    'water_mark_image_location' => (string)$showcaseData['water_mark_image_location'],
-                    'use_attach' => (bool)$showcaseData['use_attach'],
-                    'relative_path' => (string)$showcaseData['relative_path'],
-                    'enabled' => (bool)$showcaseData['enabled'],
-                    'allow_smilies' => (bool)$showcaseData['allow_smilies'],
-                    'allow_mycode' => (bool)$showcaseData['allow_mycode'],
-                    'allow_html' => (bool)$showcaseData['allow_html'],
-                    'prune_time' => (int)$showcaseData['prune_time'],
-                    'moderate_edits' => (bool)$showcaseData['moderate_edits'],
-                    'maximum_text_field_length' => (int)$showcaseData['maximum_text_field_length'],
-                    'allow_attachments' => (bool)$showcaseData['allow_attachments'],
-                    'allow_comments' => (bool)$showcaseData['allow_comments'],
-                    'thumb_width' => (int)$showcaseData['thumb_width'],
-                    'thumb_height' => (int)$showcaseData['thumb_height'],
-                    'comment_length' => (int)$showcaseData['comment_length'],
-                    'comments_per_page' => (int)$showcaseData['comments_per_page'],
-                    'attachments_per_row' => (int)$showcaseData['attachments_per_row'],
-                    'display_empty_fields' => (bool)$showcaseData['display_empty_fields'],
-                    'display_in_posts' => (bool)$showcaseData['display_in_posts'],
-                    'build_random_entry_widget' => (bool)$showcaseData['build_random_entry_widget'],
-                    'display_signatures' => (bool)$showcaseData['display_signatures'],
-                ];
+                $tableFields = TABLES_DATA['myshowcase_config'];
+
+                $cacheData[$showcaseID] = [];
+
+                foreach ($tableFields as $fieldName => $fieldDefinition) {
+                    if (isset($showcaseData[$fieldName])) {
+                        $cacheData[$showcaseID][$fieldName] = castTableFieldValue(
+                            $showcaseData[$fieldName],
+                            $fieldDefinition['type']
+                        );
+                    }
+                }
             }
 
             break;
@@ -1004,9 +1369,9 @@ function cacheUpdate(string $cacheKey): array
                     'permission_id' => (int)$permissionData['permission_id'],
                     'showcase_id' => (int)$permissionData['showcase_id'],
                     'group_id' => (int)$permissionData['group_id'],
-                    UserPermissions::CanAddEntries => !empty($permissionData[UserPermissions::CanAddEntries]),
-                    UserPermissions::CanEditEntries => !empty($permissionData[UserPermissions::CanEditEntries]),
-                    UserPermissions::CanAttachFiles => !empty($permissionData[UserPermissions::CanAttachFiles]),
+                    UserPermissions::CanCreateEntries => !empty($permissionData[UserPermissions::CanCreateEntries]),
+                    UserPermissions::CanUpdateEntries => !empty($permissionData[UserPermissions::CanUpdateEntries]),
+                    UserPermissions::CanCreateAttachments => !empty($permissionData[UserPermissions::CanCreateAttachments]),
                     UserPermissions::CanView => !empty($permissionData[UserPermissions::CanView]),
                     UserPermissions::CanViewComments => !empty($permissionData[UserPermissions::CanViewComments]),
                     UserPermissions::CanViewAttachments => !empty($permissionData[UserPermissions::CanViewAttachments]),
@@ -1042,7 +1407,7 @@ function cacheUpdate(string $cacheKey): array
             $fieldObjects = fieldsGet(
                 [],
                 array_keys($queryFields),
-                ['order_by' => 'set_id, display_order']
+                ['order_by' => 'display_order']
             );
 
             foreach ($fieldObjects as $fieldID => $fieldData) {
@@ -1079,7 +1444,7 @@ function cacheUpdate(string $cacheKey): array
             $fieldDataObjects = fieldDataGet(
                 [],
                 ['set_id', 'field_id', 'value_id', 'value', 'value_id', 'display_order'],
-                ['order_by' => 'set_id, field_id, display_order']
+                ['order_by' => 'display_order']
             );
 
             foreach ($fieldDataObjects as $fieldDataID => $fieldData) {
@@ -1095,10 +1460,10 @@ function cacheUpdate(string $cacheKey): array
                     'showcase_id',
                     'user_id',
                     'is_group',
-                    ModeratorPermissions::CanApproveEntries,
-                    ModeratorPermissions::CanEditEntries,
-                    ModeratorPermissions::CanDeleteEntries,
-                    ModeratorPermissions::CanDeleteComments
+                    ModeratorPermissions::CanManageEntries,
+                    ModeratorPermissions::CanManageEntries,
+                    ModeratorPermissions::CanManageEntries,
+                    ModeratorPermissions::CanManageComments
                 ]
             );
 
@@ -1129,26 +1494,32 @@ function cacheGet(string $cacheKey, bool $forceReload = false): array
     return $cacheData ?? [];
 }
 
-function showcaseInsert(array $showcaseData): int
+function showcaseInsert(array $showcaseData, bool $isUpdate = false, int $showcaseID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_config', $showcaseData);
+    $tableFields = TABLES_DATA['myshowcase_config'];
 
-    return (int)$db->insert_id();
+    $insertData = [];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($showcaseData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($showcaseData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_config', $insertData, "showcase_id='{$showcaseID}'");
+    } else {
+        $showcaseID = (int)$db->insert_query('myshowcase_config', $showcaseData);
+    }
+
+    return $showcaseID;
 }
 
-function showcaseUpdate(int $showcaseID, array $showcaseData): bool
+function showcaseUpdate(array $showcaseData, int $showcaseID): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_config',
-        $showcaseData,
-        "showcase_id='{$showcaseID}'"
-    );
-
-    return true;
+    return showcaseInsert($showcaseData, true, $showcaseID);
 }
 
 function showcaseDelete(array $whereClauses = []): bool
@@ -1368,26 +1739,37 @@ function entryDataGet(
     return $entriesObjects;
 }
 
-function permissionsInsert(array $permissionData): int
+function permissionsInsert(array $permissionData, bool $isUpdate = false, int $showcaseID = 0, int $groupID = 0): bool
 {
+    $tableFields = TABLES_DATA['myshowcase_permissions'];
+
+    $insertData = [];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($permissionData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($permissionData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+
     global $db;
 
-    $db->insert_query('myshowcase_permissions', $permissionData);
-
-    return (int)$db->insert_id();
-}
-
-function permissionsUpdate(array $whereClauses = [], array $permissionData = []): bool
-{
-    global $db;
-
-    $db->update_query(
-        'myshowcase_permissions',
-        $permissionData,
-        implode(' AND ', $whereClauses)
-    );
+    if ($isUpdate) {
+        $db->update_query(
+            'myshowcase_permissions',
+            $insertData,
+            "showcase_id='{$showcaseID}' AND group_id='{$groupID}'"
+        );
+    } else {
+        $db->insert_query('myshowcase_permissions', $insertData);
+    }
 
     return true;
+}
+
+function permissionsUpdate(array $permissionData, int $showcaseID, int $groupID): bool
+{
+    return permissionsInsert($permissionData, true, $groupID, $showcaseID);
 }
 
 function permissionsDelete(array $whereClauses = []): bool
@@ -1974,16 +2356,16 @@ function attachmentRemove(
 
     attachmentDelete(["attachment_id='{$attachmentID}'"]);
 
-    unlink($showcase->images_directory . '/' . $attachmentData['attachment_name']);
+    unlink($showcase->attachments_uploads_path . '/' . $attachmentData['attachment_name']);
 
     if (!empty($attachmentData['thumbnail'])) {
-        unlink($showcase->images_directory . '/' . $attachmentData['thumbnail']);
+        unlink($showcase->attachments_uploads_path . '/' . $attachmentData['thumbnail']);
     }
 
     $dateDirectory = explode('/', $attachmentData['attachment_name']);
 
-    if (!empty($dateDirectory[0]) && is_dir($showcase->images_directory . '/' . $dateDirectory[0])) {
-        rmdir($showcase->images_directory . '/' . $dateDirectory[0]);
+    if (!empty($dateDirectory[0]) && is_dir($showcase->attachments_uploads_path . '/' . $dateDirectory[0])) {
+        rmdir($showcase->attachments_uploads_path . '/' . $dateDirectory[0]);
     }
 
     return true;
@@ -2105,10 +2487,10 @@ function attachmentUpload(
     // Check if the attachment directory (YYYYMM) exists, if not, create it
     $directoryMonthName = gmdate('Ym');
 
-    if (!is_dir($showcase->images_directory . '/' . $directoryMonthName)) {
-        mkdir($showcase->images_directory . '/' . $directoryMonthName);
+    if (!is_dir($showcase->attachments_uploads_path . '/' . $directoryMonthName)) {
+        mkdir($showcase->attachments_uploads_path . '/' . $directoryMonthName);
 
-        if (!is_dir($showcase->images_directory . '/' . $directoryMonthName)) {
+        if (!is_dir($showcase->attachments_uploads_path . '/' . $directoryMonthName)) {
             $directoryMonthName = '';
         }
     }
@@ -2121,11 +2503,11 @@ function attachmentUpload(
     // All seems to be good, lets move the attachment!
     $fileName = "post_{$showcase_uid}_" . TIME_NOW . '_' . md5(random_str()) . '.attach';
 
-    $fileData = fileUpload($attachmentData, $showcase->images_directory . '/' . $directoryMonthName, $fileName);
+    $fileData = fileUpload($attachmentData, $showcase->attachments_uploads_path . '/' . $directoryMonthName, $fileName);
 
     // Failed to create the attachment in the monthly directory, just throw it in the main directory
     if ($fileData['error'] && $directoryMonthName) {
-        $fileData = fileUpload($attachmentData, $showcase->images_directory . '/', $fileName);
+        $fileData = fileUpload($attachmentData, $showcase->attachments_uploads_path . '/', $fileName);
     }
 
     if ($directoryMonthName) {
@@ -2148,7 +2530,7 @@ function attachmentUpload(
     }
 
     // Lets just double check that it exists
-    if (!file_exists($showcase->images_directory . '/' . $fileName)) {
+    if (!file_exists($showcase->attachments_uploads_path . '/' . $fileName)) {
         $returnData['error'] = $lang->error_uploadfailed . $lang->error_uploadfailed_detail . $lang->error_uploadfailed_lost;
 
         return $returnData;
@@ -2199,11 +2581,11 @@ function attachmentUpload(
         }
 
         // Check if the uploaded file type matches the correct image type (returned by getimagesize)
-        $imageDimensions = getimagesize($showcase->images_directory . '/' . $fileName);
+        $imageDimensions = getimagesize($showcase->attachments_uploads_path . '/' . $fileName);
 
         $fileMimeType = '';
 
-        $filePath = $showcase->images_directory . '/' . $fileName;
+        $filePath = $showcase->attachments_uploads_path . '/' . $fileName;
 
         if (function_exists('finfo_open')) {
             $fileInformation = finfo_open(FILEINFO_MIME);
@@ -2219,7 +2601,7 @@ function attachmentUpload(
                     $fileMimeType,
                     $supportedMimeTypes
                 ))) {
-            unlink($showcase->images_directory . '/' . $fileName);
+            unlink($showcase->attachments_uploads_path . '/' . $fileName);
 
             $returnData['error'] = $lang->error_uploadfailed;
 
@@ -2228,20 +2610,20 @@ function attachmentUpload(
 
         //if requested and enabled, watermark the master image
         if ($showcase->userPermissions[UserPermissions::CanWaterMarkAttachments] && $addWaterMark && file_exists(
-                $showcase->water_mark_image
+                $showcase->attachments_watermark_file
             )) {
             //get watermark image object
-            switch (strtolower(get_extension($showcase->water_mark_image))) {
+            switch (strtolower(get_extension($showcase->attachments_watermark_file))) {
                 case 'gif':
-                    $waterMarkImage = imagecreatefromgif($showcase->water_mark_image);
+                    $waterMarkImage = imagecreatefromgif($showcase->attachments_watermark_file);
                     break;
                 case 'jpg':
                 case 'jpeg':
                 case 'jpe':
-                    $waterMarkImage = imagecreatefromjpeg($showcase->water_mark_image);
+                    $waterMarkImage = imagecreatefromjpeg($showcase->attachments_watermark_file);
                     break;
                 case 'png':
-                    $waterMarkImage = imagecreatefrompng($showcase->water_mark_image);
+                    $waterMarkImage = imagecreatefrompng($showcase->attachments_watermark_file);
                     break;
             }
 
@@ -2253,10 +2635,10 @@ function attachmentUpload(
                 $waterMarkImageHeight = imagesy($waterMarkImage);
 
                 //get size of base image
-                $fileSize = getimagesize($showcase->images_directory . '/' . $fileName);
+                $fileSize = getimagesize($showcase->attachments_uploads_path . '/' . $fileName);
 
                 //set watermark location
-                switch ($showcase->water_mark_image_location) {
+                switch ($showcase->attachments_watermark_location) {
                     case 'lower-left':
                         $waterMarkPositionX = 5;
 
@@ -2287,13 +2669,13 @@ function attachmentUpload(
                 //get base image object
                 switch ($fileType) {
                     case 1:
-                        $fileImage = imagecreatefromgif($showcase->images_directory . '/' . $fileName);
+                        $fileImage = imagecreatefromgif($showcase->attachments_uploads_path . '/' . $fileName);
                         break;
                     case 2:
-                        $fileImage = imagecreatefromjpeg($showcase->images_directory . '/' . $fileName);
+                        $fileImage = imagecreatefromjpeg($showcase->attachments_uploads_path . '/' . $fileName);
                         break;
                     case 3:
-                        $fileImage = imagecreatefrompng($showcase->images_directory . '/' . $fileName);
+                        $fileImage = imagecreatefrompng($showcase->attachments_uploads_path . '/' . $fileName);
                         break;
                 }
 
@@ -2318,7 +2700,7 @@ function attachmentUpload(
 
                     //write modified file
 
-                    $f = fopen($showcase->images_directory . '/' . $fileName, 'w');
+                    $f = fopen($showcase->attachments_uploads_path . '/' . $fileName, 'w');
 
                     if ($f) {
                         ob_start();
@@ -2354,8 +2736,8 @@ function attachmentUpload(
         $thumbnailName = str_replace('.attach', "_thumb.$fileExtension", $fileName);
 
         $fileThumbnail = generate_thumbnail(
-            $showcase->images_directory . '/' . $fileName,
-            $showcase->images_directory,
+            $showcase->attachments_uploads_path . '/' . $fileName,
+            $showcase->attachments_uploads_path,
             $thumbnailName,
             $showcase->thumb_height,
             $showcase->thumb_width
@@ -2434,11 +2816,11 @@ function entryGetRandom(): string
 
     $myshowcases = cacheGet(CACHE_TYPE_CONFIG);
     foreach ($myshowcases as $id => $myshowcase) {
-        //$myshowcase['build_random_entry_widget'] == 1;
-        if ($myshowcase['enabled'] == 1 && $myshowcase['build_random_entry_widget'] == 1) {
+        //$myshowcase['attachments_portal_build_widget'] == 1;
+        if ($myshowcase['enabled'] == 1 && $myshowcase['attachments_portal_build_widget'] == 1) {
             $showcase_list[$id]['name'] = $myshowcase['name'];
-            $showcase_list[$id]['mainfile'] = $myshowcase['mainfile'];
-            $showcase_list[$id]['images_directory'] = $myshowcase['images_directory'];
+            $showcase_list[$id]['script_name'] = $myshowcase['script_name'];
+            $showcase_list[$id]['attachments_uploads_path'] = $myshowcase['attachments_uploads_path'];
             $showcase_list[$id]['field_set_id'] = $myshowcase['field_set_id'];
         }
     }
@@ -2455,7 +2837,7 @@ function entryGetRandom(): string
         if ($mybb->settings['seourls'] == 'yes' || ($mybb->settings['seourls'] == 'auto' && $_SERVER['SEO_SUPPORT'] == 1)) {
             $showcase_file = strtolower($rand_showcase['name']) . '-view-{entry_id}.html';
         } else {
-            $showcase_file = $rand_showcase['mainfile'] . '?action=view&entry_id={entry_id}';
+            $showcase_file = $rand_showcase['script_name'] . '?action=view&entry_id={entry_id}';
         }
 
         //init fixed fields
@@ -2555,9 +2937,9 @@ function entryGetRandom(): string
         $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
         if ($rand_entry_thumb == 'SMALL') {
-            $rand_img = $rand_showcase['images_directory'] . '/' . $rand_entry_img;
+            $rand_img = $rand_showcase['attachments_uploads_path'] . '/' . $rand_entry_img;
         } else {
-            $rand_img = $rand_showcase['images_directory'] . '/' . $rand_entry_thumb;
+            $rand_img = $rand_showcase['attachments_uploads_path'] . '/' . $rand_entry_thumb;
         }
 
         return eval($templates->render('portal_rand_showcase'));
@@ -2776,16 +3158,18 @@ function formatTypes()
     ];
 }
 
-function formatField(int $formatType, string &$fieldValue)
+function formatField(int $formatType, string &$fieldValue): string|int
 {
     $fieldValue = match ($formatType) {
-        FormatTypes::numberFormat => $value = my_number_format((int)$value),
-        FormatTypes::numberFormat1 => number_format((float)$fieldValue, 1),
-        FormatTypes::numberFormat2 => number_format((float)$fieldValue, 2),
+        FormatTypes::numberFormat => $fieldValue = my_number_format((int)$fieldValue),
+        FormatTypes::numberFormat1 => $fieldValue = number_format((float)$fieldValue, 1),
+        FormatTypes::numberFormat2 => $fieldValue = number_format((float)$fieldValue, 2),
         FormatTypes::htmlSpecialCharactersUni => $fieldValue = htmlspecialchars_uni($fieldValue),
         FormatTypes::stripTags => $fieldValue = strip_tags($fieldValue),
         default => $fieldValue
     };
+
+    return $fieldValue;
 }
 
 function fieldTypesGet(): array
@@ -2820,7 +3204,7 @@ function fieldTypesGet(): array
 
 function fieldTypeMatchInt(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::TinyInteger => FieldTypes::TinyInteger,
         FieldTypes::SmallInteger => FieldTypes::SmallInteger,
         FieldTypes::MediumInteger => FieldTypes::MediumInteger,
@@ -2831,7 +3215,7 @@ function fieldTypeMatchInt(string $fieldType): bool
 
 function fieldTypeMatchFloat(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::Decimal => FieldTypes::Decimal,
         FieldTypes::Float => FieldTypes::Float,
         FieldTypes::Double => FieldTypes::Double,
@@ -2840,7 +3224,7 @@ function fieldTypeMatchFloat(string $fieldType): bool
 
 function fieldTypeMatchChar(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::Char => FieldTypes::Char,
         FieldTypes::VarChar => FieldTypes::VarChar,
     ], true);
@@ -2848,7 +3232,7 @@ function fieldTypeMatchChar(string $fieldType): bool
 
 function fieldTypeMatchText(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::TinyText => FieldTypes::TinyText,
         FieldTypes::Text => FieldTypes::Text,
         FieldTypes::MediumText => FieldTypes::MediumText,
@@ -2857,7 +3241,7 @@ function fieldTypeMatchText(string $fieldType): bool
 
 function fieldTypeMatchDateTime(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::Date => FieldTypes::Date,
         FieldTypes::Time => FieldTypes::Time,
         FieldTypes::DateTime => FieldTypes::DateTime,
@@ -2867,7 +3251,7 @@ function fieldTypeMatchDateTime(string $fieldType): bool
 
 function fieldTypeMatchBinary(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::Binary => FieldTypes::Binary,
         FieldTypes::VarBinary => FieldTypes::VarBinary,
     ], true);
@@ -2875,7 +3259,7 @@ function fieldTypeMatchBinary(string $fieldType): bool
 
 function fieldTypeSupportsFullText(string $fieldType): bool
 {
-    return in_array($fieldType, [
+    return in_array(my_strtolower($fieldType), [
         FieldTypes::Char => FieldTypes::Char,
         FieldTypes::VarChar => FieldTypes::VarChar,
 
@@ -2893,7 +3277,6 @@ function fieldHtmlTypes(): array
         FieldHtmlTypes::Url => FieldHtmlTypes::Url,
         FieldHtmlTypes::Date => FieldHtmlTypes::Date,
         FieldHtmlTypes::SelectSingle => FieldHtmlTypes::SelectSingle,
-        FieldHtmlTypes::SelectMultiple => FieldHtmlTypes::SelectMultiple,
     ];
 }
 
@@ -2909,4 +3292,89 @@ function fieldDefaultTypes(): array
         FieldDefaultTypes::CurrentTimestamp => $lang->myShowcaseAdminFieldsNewFormDefaultTypeTimeStamp,
         FieldDefaultTypes::UUID => $lang->myShowcaseAdminFieldsNewFormDefaultTypeUUID,
     ];
+}
+
+/**
+ * @throws RandomException
+ */
+//https://stackoverflow.com/a/15875555
+function createUUIDv4(): string
+{
+    $data = random_bytes(16);
+
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
+
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
+function castTableFieldValue(mixed $value, string $fieldType): mixed
+{
+    if (fieldTypeMatchInt($fieldType)) {
+        $value = (int)$value;
+    } elseif (fieldTypeMatchFloat($fieldType)) {
+        $value = (float)$value;
+    } elseif (fieldTypeMatchChar($fieldType) ||
+        fieldTypeMatchText($fieldType) ||
+        fieldTypeMatchDateTime($fieldType)) {
+        $value = (string)$value;
+    }
+
+    return $value;
+}
+
+function sanitizeTableFieldValue(mixed $value, string $fieldType)
+{
+    global $db;
+
+    if (fieldTypeMatchInt($fieldType)) {
+        $value = (int)$value;
+    } elseif (fieldTypeMatchFloat($fieldType)) {
+        $value = (float)$value;
+    } elseif (fieldTypeMatchChar($fieldType) ||
+        fieldTypeMatchText($fieldType) ||
+        fieldTypeMatchDateTime($fieldType)) {
+        $value = $db->escape_string($value);
+    } elseif (fieldTypeMatchBinary($fieldType)) {
+        $value = $db->escape_binary($value);
+    }
+
+    return $value;
+}
+
+function cleanSlug(string $slug): string
+{
+    return str_replace(['---', '--'],
+        '-',
+        preg_replace(
+            '/[^\da-z]/i',
+            '-',
+            my_strtolower($slug)
+        ));
+}
+
+function generateFieldSetSelectArray(): array
+{
+    return array_map(function ($fieldsetData) {
+        return $fieldsetData['set_name'];
+    }, cacheGet(CACHE_TYPE_FIELD_SETS));
+}
+
+function generateFilterFieldsSelectArray(): array
+{
+    return [
+        0 => 'none',
+        1 => 'User ID',
+    ];
+}
+
+function generateWatermarkLocationsSelectArray(): array
+{
+    return array(
+        1 => 'lower-left',
+        2 => 'lower-right',
+        3 => 'center',
+        4 => 'upper-left',
+        5 => 'upper-right',
+    );
 }

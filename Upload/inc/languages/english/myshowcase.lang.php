@@ -65,6 +65,7 @@ $l['myShowcaseMainSelectSortBy'] = 'Sort By:';
 $l['myShowcaseMainSortDateline'] = 'Creation Date';
 $l['myShowcaseMainSortEditDate'] = 'Edited Date';
 $l['myShowcaseMainSortUsername'] = 'Username';
+$l['myShowcaseMainSortUid'] = 'User ID';
 $l['myShowcaseMainSortViews'] = 'Views';
 $l['myShowcaseMainSortComments'] = 'Comments';
 $l['myShowcaseMainSelectAscending'] = 'Ascending';
@@ -205,7 +206,11 @@ $l = array_merge($l, [
     'myShowcaseEntryFieldValueCheckBoxYes' => 'Yes',
     'myShowcaseEntryFieldValueCheckBoxNo' => 'No',
 
+    'myShowcaseEntryIgnoredUserMessage' => 'The contents of this message are hidden because {1} is on your <a href="{2}/usercp.php?action=editlists">ignore list</a>.',
+
     'myShowcaseEntryModeratedBy' => 'Moderated by',
+    'myShowcaseEntryDeletedMessage' => 'This entry by {1} has been deleted.',
+    'myShowcaseEntryDeletedSButtonShow' => 'Show this Comment',
 
     'myShowcaseEntryAttachmentsFiles' => 'Attached Files',
     'myShowcaseEntryAttachmentsImages' => 'Image(s)',
@@ -250,6 +255,10 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentButtonWebsite' => 'Website',
     'myShowcaseEntryCommentButtonWebsiteDescription' => "Visit this user's website",
 
+    'myShowcaseEntryCommentModeratedBy' => 'Moderated by',
+    'myShowcaseEntryCommentDeletedMessage' => 'This entry by {1} has been deleted.',
+    'myShowcaseEntryCommentDeletedSButtonShow' => 'Show this Comment',
+
     'myShowcaseEntryCommentButtonEdit' => 'Edit',
     'myShowcaseEntryCommentButtonEditDescription' => 'Edit this comment',
     'myShowcaseEntryCommentButtonWarn' => 'Warn',
@@ -280,7 +289,9 @@ $l = array_merge($l, [
     'myShowcaseEntryCommentCreateButton' => 'Post Comment',
 
     'myShowcaseEntryCommentCreated' => 'Your comment has been created successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentCreatedStatus' => 'Your comment has been created successfully.<br />You will now be returned back to where you came from.',
     'myShowcaseEntryCommentUpdated' => 'Your comment has been updated successfully.<br />You will now be returned back to where you came from.',
+    'myShowcaseEntryCommentUpdatedStatus' => 'Your comment has been updated successfully.<br />You will now be returned back to where you came from.',
 
     'myShowcaseEntryEntryCreated' => 'Your entry has been created successfully.<br />You will now be redirected to the entry.',
     'myShowcaseEntryEntryCreatedStatus' => 'Your entry has been created successfully.<br />You will now be returned back to where you came from.',

@@ -1,5 +1,6 @@
 <a name="entryID{$entryID}" id="entryID{$entryID}"></a>
-<div class="post {$styleClass}" style="" id="entryBody{$entryID}">
+{$deletedBit}{$ignoredBit}
+<div class="post {$styleClass}" style="{$postVisibility}" id="entryBody{$entryID}">
     <div class="post_author">
         {$userAvatar}
         <div class="author_information">
@@ -7,7 +8,7 @@
             <span class="smalltext">
 				{$userTitle}<br/>
 				{$userStars}
-				{$userGroupImage}
+				{$userGroupImage}{$userData['ougc_agi']}
 			</span>
         </div>
         <div class="author_statistics">
