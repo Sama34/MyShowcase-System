@@ -21,17 +21,31 @@ use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\postParser;
-
 use function MyShowcase\Core\templateGetCachedName;
+use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
-use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_APPROVE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_DELETE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_RESTORE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_SOFT_DELETE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UNAPPROVE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
+use const MyShowcase\Core\URL_TYPE_ENTRY_APPROVE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_DELETE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_RESTORE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_SOFT_DELETE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_UNAPPROVE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
 
 class Render
 {
@@ -160,11 +174,10 @@ class Render
 
             $commentNumber = my_number_format($commentsCounter);
 
-            $commentUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewComment,
-                $this->showcaseObject->entryData['entry_slug'],
-                $commentID
-            );
+            $commentUrl = url(
+                URL_TYPE_COMMENT_VIEW,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+            )->getRelativeUrl();
 
             $commentUrl = eval($this->templateGet($templatePrefix . 'Url'));
         } else {
@@ -172,10 +185,10 @@ class Render
 
             $commentsNumber = my_number_format($this->showcaseObject->entryData['comments']);
 
-            $entryUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            );
+            $entryUrl = url(
+                URL_TYPE_ENTRY_VIEW,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            )->getRelativeUrl();
 
             $entryUrl = eval($this->templateGet($templatePrefix . 'Url'));
 
@@ -289,18 +302,17 @@ class Render
         $buttonEdit = '';
 
         if ($postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
-            $editUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlUpdateEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            );
+            $editUrl = url(
+                URL_TYPE_ENTRY_UPDATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            )->getRelativeUrl();
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
         } elseif ($postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]) {
-            $editUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlUpdateComment,
-                $this->showcaseObject->entryData['entry_slug'],
-                $commentID
-            );
+            $editUrl = url(
+                URL_TYPE_COMMENT_UPDATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+            )->getRelativeUrl();
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
         }
@@ -459,33 +471,33 @@ class Render
         if ($postType === self::POST_TYPE_ENTRY &&
             $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
             if ($postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
-                $approveUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlApproveEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $approveUrl = url(
+                    URL_TYPE_ENTRY_APPROVE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
-                $unapproveUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlUnapproveEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $unapproveUrl = url(
+                    URL_TYPE_ENTRY_UNAPPROVE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
             }
 
             if ($postStatus === ENTRY_STATUS_SOFT_DELETED) {
-                $restoreUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlRestoreEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $restoreUrl = url(
+                    URL_TYPE_ENTRY_RESTORE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
-                $softDeleteUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlSoftDeleteEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $softDeleteUrl = url(
+                    URL_TYPE_ENTRY_SOFT_DELETE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
             }
@@ -495,10 +507,10 @@ class Render
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
                 ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries])
             ) {
-                $deleteUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlDeleteEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $deleteUrl = url(
+                    URL_TYPE_ENTRY_DELETE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
             }
@@ -507,37 +519,33 @@ class Render
         if ($postType === self::POST_TYPE_COMMENT &&
             $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]) {
             if ($postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
-                $approveUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlApproveComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                );
+                $approveUrl = url(
+                    URL_TYPE_COMMENT_APPROVE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl();
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
-                $unapproveUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlUnapproveComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                );
+                $unapproveUrl = url(
+                    URL_TYPE_COMMENT_UNAPPROVE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl();
 
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
             }
 
             if ($postStatus === COMMENT_STATUS_SOFT_DELETED) {
-                $restoreUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlRestoreComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                );
+                $restoreUrl = url(
+                    URL_TYPE_COMMENT_RESTORE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl();
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
-                $softDeleteUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlSoftDeleteComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                );
+                $softDeleteUrl = url(
+                    URL_TYPE_COMMENT_SOFT_DELETE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl();
 
                 $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
             }
@@ -548,11 +556,10 @@ class Render
                 ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments])/* ||
                 ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])*/
             ) {
-                $deleteUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlDeleteComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                );
+                $deleteUrl = url(
+                    URL_TYPE_COMMENT_DELETE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl();
 
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
             }
@@ -637,7 +644,7 @@ class Render
             $ignoredMessage = $lang->sprintf(
                 $lang->myShowcaseEntryIgnoredUserMessage,
                 $userName,
-                $mybb->settings['bburl']
+                $this->urlBase
             );
 
             $ignoredBit = eval($this->templateGet($templatePrefix . 'IgnoredBit'));
