@@ -34,7 +34,7 @@ showcases you have created or customized.
 
 To v2.5.2 from any version >= 2.0.3
 1) Deactivate plugin
-2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/myshowcase/myshowcase_*.php
+2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/MyShowcase/MyShowcase_*.php
 3) Upload files
 4) Activate plugin
 5) Run Find Updated Templates to check for templates that may need updating
@@ -43,21 +43,21 @@ To v2.5.2 from any version >= 2.0.3
 
 To v2.5.0 from any version >= 2.0.3
 1) Deactivate plugin
-2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/myshowcase/myshowcase_*.php
+2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/MyShowcase/MyShowcase_*.php
 3) Upload files
 4) Activate plugin
 5) Run Find Updated Templates to check for templates that may need updating
 
 To v2.4.0 from any version >= 2.0.3
 1) Deactivate plugin
-2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/myshowcase/myshowcase_*.php
+2) Delete old files if they exist: <MYBB_ROOT>/inc/plugins/MyShowcase/MyShowcase_*.php
 3) Upload files
 4) Activate plugin
 5) Run Find Updated Templates to check for templates that may need updating
 
 To v2.3.0 from any version >= 2.0.3
 1) Deactivate plugin
-2) Delete old files: <MYBB_ROOT>/inc/plugins/myshowcase/myshowcase_*.php
+2) Delete old files: <MYBB_ROOT>/inc/plugins/MyShowcase/MyShowcase_*.php
 3) Upload files
 4) Activate plugin
 
