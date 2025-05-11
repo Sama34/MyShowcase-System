@@ -54,6 +54,8 @@ const CACHE_TYPE_PERMISSIONS = 'permissions';
 
 const CACHE_TYPE_FIELD_DATA = 'field_data'; // todo, add cache update method
 
+const CACHE_TYPE_ATTACHMENT_TYPES = 'attachment_types';
+
 const MODERATOR_TYPE_USER = 0;
 
 const MODERATOR_TYPE_GROUP = 1;
