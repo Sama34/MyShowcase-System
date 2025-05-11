@@ -1,21 +1,19 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - Admin module for MyShowcase
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \admin\modules\myshowcase\module_meta.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
 declare(strict_types=1);
 
 use function MyShowcase\Core\hooksRun;
-use function MyShowcase\Core\showcaseGet;
-use function MyShowcase\Core\urlHandlerBuild;
 
 if (!defined('IN_MYBB')) {
     die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');

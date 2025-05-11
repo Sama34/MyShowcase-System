@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - Admin module for Summary actions
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \admin\modules\myshowcase\summary.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -22,7 +22,6 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\castTableFieldValue;
-use function MyShowcase\Core\cleanSlug;
 use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\dataTableStructureGet;

@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - MyShowcase Class
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\class_showcase.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -40,12 +40,14 @@ use const MyShowcase\Core\URL_TYPE_COMMENT_UNAPPROVE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
 use const MyShowcase\Core\URL_TYPE_ENTRY_APPROVE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_CREATE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_DELETE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_RESTORE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_SOFT_DELETE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_UNAPPROVE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_THUMBNAIL_VIEW;
 
 class Render
 {
@@ -119,7 +121,8 @@ class Render
         int $commentsCounter,
         array $postData,
         string $alternativeBackground,
-        int $postType = self::POST_TYPE_COMMENT
+        int $postType = self::POST_TYPE_COMMENT,
+        bool $isPreview = false,
     ): string {
         global $mybb, $lang, $theme;
 
@@ -192,7 +195,12 @@ class Render
 
             $entryUrl = eval($this->templateGet($templatePrefix . 'Url'));
 
-            $entryAttachments = $this->entryBuildAttachments($entryFields);
+            $entryAttachments = '';
+
+            if ($this->showcaseObject->config['attachments_allow_entries'] &&
+                $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
+                $entryAttachments = $this->entryBuildAttachments($entryFields, $postType, $commentID ?? 0);
+            }
 
             $entryFields = implode('', $entryFields);
         }
@@ -605,8 +613,10 @@ class Render
 
         $deletedBit = $ignoredBit = $postVisibility = '';
 
-        if (self::POST_TYPE_ENTRY && $postStatus === ENTRY_STATUS_SOFT_DELETED ||
-            self::POST_TYPE_COMMENT && $postStatus === COMMENT_STATUS_SOFT_DELETED) {
+        if (!$isPreview && (
+                self::POST_TYPE_ENTRY && $postStatus === ENTRY_STATUS_SOFT_DELETED ||
+                self::POST_TYPE_COMMENT && $postStatus === COMMENT_STATUS_SOFT_DELETED
+            )) {
             if (self::POST_TYPE_ENTRY) {
                 $deletedMessage = $lang->sprintf($lang->myShowcaseEntryDeletedMessage, $userName);
             } else {
@@ -619,16 +629,16 @@ class Render
         }
 
         // Is the user (not moderator) logged in and have unapproved posts?
-        if ($currentUserID &&
-            (
-                $postType === self::POST_TYPE_ENTRY && $postStatus === ENTRY_STATUS_PENDING_APPROVAL ||
-                $postType === self::POST_TYPE_COMMENT && $postStatus === COMMENT_STATUS_PENDING_APPROVAL
-            ) &&
-            $userID === $currentUserID &&
-            !(
-                $postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
-                $postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]
-            )) {
+        if (!$isPreview && ($currentUserID &&
+                (
+                    $postType === self::POST_TYPE_ENTRY && $postStatus === ENTRY_STATUS_PENDING_APPROVAL ||
+                    $postType === self::POST_TYPE_COMMENT && $postStatus === COMMENT_STATUS_PENDING_APPROVAL
+                ) &&
+                $userID === $currentUserID &&
+                !(
+                    $postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
+                    $postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]
+                ))) {
             $ignoredMessage = $lang->sprintf($lang->postbit_post_under_moderation, $userName);
 
             $ignoredBit = eval($this->templateGet($templatePrefix . 'IgnoredBit'));
@@ -644,7 +654,7 @@ class Render
             $ignoredMessage = $lang->sprintf(
                 $lang->myShowcaseEntryIgnoredUserMessage,
                 $userName,
-                $this->urlBase
+                $mybb->settings['bburl']
             );
 
             $ignoredBit = eval($this->templateGet($templatePrefix . 'IgnoredBit'));
@@ -655,7 +665,7 @@ class Render
         return eval($this->templateGet($templatePrefix));
     }
 
-    public function buildEntry(array $entryData): string
+    public function buildEntry(array $entryData, bool $isPreview = false): string
     {
         return $this->buildPost(0, [
             'user_id' => $this->showcaseObject->entryUserID,
@@ -663,7 +673,7 @@ class Render
             //'ipaddress' => $this->showcaseObject->entryData['ipaddress'],
             'status' => $this->showcaseObject->entryData['status'],
             'moderator_user_id' => $this->showcaseObject->entryData['approved_by'],
-        ], alt_trow(true), self::POST_TYPE_ENTRY);
+        ], alt_trow(true), self::POST_TYPE_ENTRY, $isPreview);
     }
 
     public function buildComment(int $commentsCounter, array $commentData, string $alternativeBackground): string
@@ -842,15 +852,22 @@ class Render
     }
 
     // todo, add support for fancy box for attachment images
-    public function entryBuildAttachments(array &$entryFields): string
-    {
-        if (!$this->showcaseObject->config['attachments_allow_entries'] || !$this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
-            return '';
-        }
-
+    public function entryBuildAttachments(
+        array &$entryFields,
+        int $postType = self::POST_TYPE_ENTRY,
+        int $commentID = 0
+    ): string {
         $attachmentObjects = attachmentGet(
             ["entry_id='{$this->showcaseObject->entryID}'", "showcase_id='{$this->showcaseObject->showcase_id}'"],
-            ['status', 'file_name', 'file_size', 'file_name', 'downloads', 'dateline', 'thumbnail']
+            [
+                'status',
+                'attachment_name',
+                'file_size',
+                'downloads',
+                'dateline',
+                'thumbnail_name',
+                'attachment_hash'
+            ]
         );
 
         if (!$attachmentObjects) {
@@ -868,24 +885,28 @@ class Render
         $attachedFiles = $attachedThumbnails = $attachedImages = '';
 
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-            $attachmentUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewAttachment,
-                $this->showcaseObject->entryData['entry_slug'],
-                attachmentID: $attachmentID
-            );
+            $attachmentUrl = url(
+                \MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW,
+                [
+                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'attachment_hash' => $attachmentData['attachment_hash']
+                ]
+            )->getRelativeUrl();
 
-            $attachmentThumbnailUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewAttachmentThumbnail,
-                $this->showcaseObject->entryData['entry_slug'],
-                attachmentID: $attachmentID
-            );
+            $attachmentThumbnailUrl = url(
+                URL_TYPE_THUMBNAIL_VIEW,
+                [
+                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'attachment_hash' => $attachmentData['attachment_hash']
+                ]
+            )->getRelativeUrl();
 
             if ($attachmentData['status']) { // There is an attachment thats status!
-                $attachmentFileName = htmlspecialchars_uni($attachmentData['file_name']);
+                $attachmentFileName = htmlspecialchars_uni($attachmentData['attachment_name']);
 
                 $attachmentFileSize = get_friendly_size($attachmentData['file_size']);
 
-                $attachmentExtension = get_extension($attachmentData['file_name']);
+                $attachmentExtension = get_extension($attachmentData['attachment_name']);
 
                 $isImageAttachment = in_array($attachmentExtension, ['jpeg', 'gif', 'bmp', 'png', 'jpg']);
 
@@ -910,7 +931,7 @@ class Render
                         // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
                         // Show as download for all other cases
                         if ($attachmentData['thumbnail'] !== 'SMALL' &&
-                            $attachmentData['thumbnail'] !== '' &&
+                            $attachmentData['thumbnail_name'] !== '' &&
                             $this->showcaseObject->attachmentsDisplayThumbnails) {
                             $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
                         } elseif ((($attachmentData['thumbnail'] === 'SMALL' &&
@@ -932,7 +953,7 @@ class Render
 
                 if (!$attachmentInField &&
                     $attachmentData['thumbnail'] !== 'SMALL' &&
-                    $attachmentData['thumbnail'] !== '' &&
+                    $attachmentData['thumbnail_name'] !== '' &&
                     $this->showcaseObject->attachmentsDisplayThumbnails) {
                     // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
                     // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
@@ -1020,6 +1041,36 @@ class Render
         }
 
         return $titlesCache;
+    }
+
+    public function buildAttachmentsUpload(bool $isEditPage): string
+    {
+        global $mybb, $lang, $theme;
+
+        if (DEBUG) {
+            $version = TIME_NOW;
+        }
+
+        if ($isEditPage) {
+            $createUpdateUrl = url(
+                URL_TYPE_ENTRY_UPDATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                $this->showcaseObject->urlParams
+            )->getRelativeUrl();
+        } else {
+            $createUpdateUrl = url(
+                URL_TYPE_ENTRY_CREATE,
+                getParams: $this->showcaseObject->urlParams
+            )->getRelativeUrl();
+        }
+
+        $watermarkSelectedElement = '';
+
+        if ($mybb->get_input('attachment_watermark_file')) {
+            $watermarkSelectedElement = 'checked="checked"';
+        }
+
+        return eval($this->templateGet('pageEntryCommentCreateUpdateAttachmentsBox'));
     }
 
     public function buildEntrySubject(): string

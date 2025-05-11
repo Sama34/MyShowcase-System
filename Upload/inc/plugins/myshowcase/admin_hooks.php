@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - Main Plugin Controls
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \MyShowcase\plugin.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -18,13 +18,13 @@ namespace MyShowcase\Hooks\Admin;
 use MyBB;
 use FormContainer;
 
-use function MyShowcase\Admin\buildPermissionsRow;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\permissionsDelete;
 use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseGet;
+use function MyShowcase\Admin\buildPermissionsRow;
 
 use const MyShowcase\Core\CACHE_TYPE_ATTACHMENT_TYPES;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
@@ -222,7 +222,13 @@ function admin_config_attachment_types_add_commit(): void
         [
             'myshowcase_ids' => $db->escape_string(
                 implode(',', array_map('intval', $mybb->input['myshowcase_ids']))
-            )
+            ),
+            'myshowcase_image_minimum_dimensions' => $db->escape_string(
+                $mybb->input['myshowcase_image_minimum_dimensions']
+            ),
+            'myshowcase_image_maximum_dimensions' => $db->escape_string(
+                $mybb->input['myshowcase_image_maximum_dimensions']
+            ),
         ],
         "atid='{$atid}'"
     );
@@ -239,6 +245,14 @@ function admin_config_attachment_types_edit_commit20(): void
 
     $updated_type['myshowcase_ids'] = $db->escape_string(
         implode(',', array_map('intval', $mybb->input['myshowcase_ids']))
+    );
+
+    $updated_type['myshowcase_image_minimum_dimensions'] = $db->escape_string(
+        $mybb->input['myshowcase_image_minimum_dimensions']
+    );
+
+    $updated_type['myshowcase_image_maximum_dimensions'] = $db->escape_string(
+        $mybb->input['myshowcase_image_maximum_dimensions']
     );
 
     $db->update_query('attachtypes', $updated_type, "atid='{$attachment_type['atid']}'");
@@ -283,6 +297,26 @@ function admin_formcontainer_output_row(array &$hookArguments): array
             ['multiple' => 5]
         ),
         'myshowcase_ids'
+    );
+
+    $hookArguments['this']->output_row(
+        $lang->MyShowcaseAttachmentTypesMinimumImageDimensions,
+        $lang->MyShowcaseAttachmentTypesMinimumImageDimensionsDescription,
+        $form->generate_text_box(
+            'myshowcase_image_minimum_dimensions',
+            $mybb->get_input('myshowcase_image_minimum_dimensions')
+        ),
+        'myshowcase_image_minimum_dimensions'
+    );
+
+    $hookArguments['this']->output_row(
+        $lang->MyShowcaseAttachmentTypesMaximumImageDimensions,
+        $lang->MyShowcaseAttachmentTypesMaximumImageDimensionsDescription,
+        $form->generate_text_box(
+            'myshowcase_image_maximum_dimensions',
+            $mybb->get_input('myshowcase_image_maximum_dimensions')
+        ),
+        'myshowcase_image_maximum_dimensions'
     );
 
     return $hookArguments;

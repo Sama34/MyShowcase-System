@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - Main Plugin Controls
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \MyShowcase\plugin.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -19,6 +19,7 @@ use Form;
 use MyBB;
 
 use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldTypeMatchBinary;
 use function MyShowcase\Core\fieldTypeMatchChar;
 use function MyShowcase\Core\fieldTypeMatchDateTime;
@@ -131,12 +132,13 @@ function pluginActivation(): bool
                 'posthash' => 'entry_hash',
                 'uid' => 'user_id',
                 'filename' => 'file_name',
-                'filetype' => 'file_type',
+                'filetype' => 'mime_type',
                 'filesize' => 'file_size',
                 'attachname' => 'attachment_name',
                 'dateuploaded' => 'dateline',
                 'uploaddate' => 'edit_stamp',
                 'visible' => 'status',
+                'thumbnail' => 'thumbnail_name',
             ],
             'myshowcase_comments' => [
                 'cid' => 'comment_id',
@@ -280,6 +282,12 @@ function pluginActivation(): bool
     dbVerifyTables();
 
     dbVerifyColumns();
+
+    foreach (showcaseGet() as $showcaseID => $showcaseData) {
+        $dataTableStructure = dataTableStructureGet($showcaseID);
+
+        dbVerifyTables(["myshowcase_data{$showcaseID}" => $dataTableStructure]);
+    }
 
     $mybb->cache->update_usergroups();
 

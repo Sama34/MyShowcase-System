@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - MyShowcase Class
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\class_showcase.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -70,6 +70,8 @@ class Showcase
         public array $entryData = [],
         public int $entryID = 0,
         public int $entryUserID = 0,
+        public string $entryHash = '',
+        public string $commentHash = '',
         public array $fieldSetFieldsDisplayFields = [],
         public string $searchField = '',
         public string $sortByField = '',
@@ -611,7 +613,7 @@ class Showcase
     {
         $whereClauses[] = "showcase_id='{$this->showcase_id}'";
 
-        $attachmentObjects = attachmentGet($whereClauses, ['attachment_name', 'thumbnail', 'status']);
+        $attachmentObjects = attachmentGet($whereClauses, ['attachment_name', 'thumbnail_name', 'status']);
 
         $attachmentObjects = hooksRun('remove_attachment_do_delete', $attachmentObjects);
 
@@ -622,9 +624,9 @@ class Showcase
                 unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name']);
             }
 
-            if (!empty($attachmentData['thumbnail'])) {
-                if (file_exists($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail'])) {
-                    unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail']);
+            if (!empty($attachmentData['thumbnail_name'])) {
+                if (file_exists($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail_name'])) {
+                    unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['thumbnail_name']);
                 }
             }
 
@@ -742,6 +744,10 @@ class Showcase
 
         if (isset($this->entryData['user_id'])) {
             $this->entryUserID = (int)$this->entryData['user_id'];
+        }
+
+        if (isset($this->entryData['entry_hash'])) {
+            $this->entryHash = (string)$this->entryData['entry_hash'];
         }
     }
 

@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - English Language File
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\langauges\<language>\myshowcase.lang.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -199,8 +199,10 @@ $l = array_merge($l, [
     'myShowcaseNewEditFormValue' => 'Value',
 
     'myShowcaseNewEditFormButtonCreateEntry' => 'Post Entry',
-    'myShowcaseNewEditFormButtonUpdate' => 'Update Entry',
-    'myShowcaseNewEditFormButtonPreview' => 'Preview Entry',
+    'myShowcaseNewEditFormButtonUpdateEntry' => 'Update Entry',
+    'myShowcaseNewEditFormButtonPreviewEntry' => 'Preview Entry',
+
+    'myShowcaseNewEditEntryPreview' => 'Entry Preview',
 
     'myShowcaseEntryFieldValueEmpty' => '(no value)',
     'myShowcaseEntryFieldValueCheckBoxYes' => 'Yes',
@@ -313,4 +315,12 @@ $l = array_merge($l, [
 
     'myShowcaseReportEntryInvalid' => 'This entry either does not exist or is not allowed to be reported.',
     'myShowcaseReportEntryContent' => '<a href="{1}">Entry</a> from {2}',
+
+    'myShowcaseAttachmentsWatermarkInput' => 'Watermark upload images.',
+
+    'myShowcaseAttachmentsUploadErrorMinimumDimensions' => 'The minimum image dimensions for {1} are {2}x{3} (width x height).',
+    'myShowcaseAttachmentsUploadErrorMaximumDimensions' => 'The maximum image dimensions for {1} are {2}x{3} (width x height).',
+    'myShowcaseAttachmentsUploadErrorUploadFailed' => 'Upload failed. Please try again.',
+    'myShowcaseAttachmentsUploadErrorInvalidType' => 'The attachment file type is invalid.',
+    'myShowcaseAttachmentsUploadErrorThumbnailFailure' => 'There was an problem generating a thumbnail for the selected attachment.',
 ]);

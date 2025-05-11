@@ -1,30 +1,15 @@
 <?php
-
-/***************************************************************************
+/**
+ * MyShowcase Plugin for MyBB - Main Plugin
+ * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- *    ougc REST API plugin (/inc/plugins/ougc/RestApi/core.php)
- *    Author: Omar Gonzalez
- *    Copyright: © 2024 Omar Gonzalez
+ * Website: https://github.com/Sama34/MyShowcase-System
+ * Version 2.5.2
+ * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
+ * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
+ * File: \inc\plugins\myshowcase.php
  *
- *    Website: https://ougc.network
- *
- *    Implements a REST Api system to your forum.
- *
- ***************************************************************************
- ****************************************************************************
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- ****************************************************************************/
+ */
 
 declare(strict_types=1);
 
@@ -40,6 +25,7 @@ use MyShowcase\System\UserPermissions;
 use Pecee\SimpleRouter\SimpleRouter;
 
 use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\attachmentUpload;
 use function MyShowcase\Core\cleanSlug;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\createUUIDv4;
@@ -52,6 +38,7 @@ use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
@@ -61,8 +48,6 @@ use const MyShowcase\Core\URL_TYPE_ENTRY_CREATE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
 use const MyShowcase\Core\URL_TYPE_MAIN;
 use const MyShowcase\Core\URL_TYPE_MAIN_USER;
-use const MyShowcase\Core\ATTACHMENT_UNLIMITED;
-use const MyShowcase\Core\ATTACHMENT_ZERO;
 use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
@@ -70,7 +55,6 @@ use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
-use const MyShowcase\Core\TABLES_DATA;
 
 class Entries extends Base
 {
@@ -459,10 +443,10 @@ class Entries extends Base
                     [
                         'entry_id',
                         'MIN(attachment_id) as attachment_id',
-                        'file_type',
+                        'mime_type',
                         'file_name',
                         'attachment_name',
-                        'thumbnail'
+                        'thumbnail_name'
                     ],
                     // todo, seems like MIN(attachment_id) as attachment_id is unnecessary
                     ['group_by' => 'entry_id']
@@ -472,8 +456,8 @@ class Entries extends Base
                     $entryAttachmentsCache[$attachmentData['entry_id']] = [
                         'attachment_id' => $attachmentID,
                         'attachment_name' => $attachmentData['attachment_name'],
-                        'thumbnail' => $attachmentData['thumbnail'],
-                        'file_type' => $attachmentData['file_type'],
+                        'thumbnail_name' => $attachmentData['thumbnail_name'],
+                        'mime_type' => $attachmentData['mime_type'],
                         'file_name' => $attachmentData['file_name'],
                     ];
                 }
@@ -583,19 +567,19 @@ class Entries extends Base
 
                 //use showcase attachment if one exists, scaled of course
                 if ($this->showcaseObject->config['attachments_main_render_first']) {
-                    if (stristr($entryAttachmentsCache[$entryFieldData['entry_id']]['file_type'], 'image/')) {
+                    if (stristr($entryAttachmentsCache[$entryFieldData['entry_id']]['mime_type'], 'image/')) {
                         $imagePath = $this->showcaseObject->config['attachments_uploads_path'] . '/' . $entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_name'];
 
                         if ($entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_id'] && file_exists(
                                 $imagePath
                             )) {
-                            if ($entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail'] === 'SMALL') {
+                            if ($entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_dimensions'] === 'SMALL') {
                                 $urlImage = $mybb->get_asset_url($imagePath);
 
                                 $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
                             } else {
                                 $urlImage = $mybb->get_asset_url(
-                                    $this->showcaseObject->config['attachments_uploads_path'] . '/' . $entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail']
+                                    $this->showcaseObject->config['attachments_uploads_path'] . '/' . $entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_name']
                                 );
 
                                 $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
@@ -688,14 +672,19 @@ class Entries extends Base
 
                 $entrySubject = implode(' ', $entrySubject) ?? $lang->myShowcaseMainTableTheadView;
 
-                $this->renderObject->entryBuildAttachments($showcaseTableRowExtra);
+                if ($this->showcaseObject->config['attachments_allow_entries'] &&
+                    $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
+                    $this->renderObject->entryBuildAttachments(
+                        $showcaseTableRowExtra,
+                        $this->renderObject::POST_TYPE_COMMENT
+                    );
+                }
 
                 $showcaseTableRowExtra = implode('', $showcaseTableRowExtra);
 
                 $showcaseTableRowInlineModeration = '';
 
-                if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] &&
-                    $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
+                if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
                     $inlineModerationCheckElement = '';
 
                     if (isset($mybb->cookies['inlinemod_showcase' . $this->showcaseObject->showcase_id]) &&
@@ -888,64 +877,17 @@ class Entries extends Base
             );
         }
 
+        $entryPreview = '';
+
         if ($mybb->request_method === 'post') {
             verify_post_check($mybb->get_input('my_post_key'));
 
-            $entryHash = $mybb->get_input('entryHash');
+            $this->showcaseObject->entryHash = $mybb->get_input('entry_hash');
 
-            $this->uploadAttachment();
+            $isPreview = isset($mybb->input['preview']);
 
-            if (!empty($showcaseUserPermissions[UserPermissions::CanUploadAttachments])) {
-                $attachcount = 0;
-
-                $attachments = '';
-
-                $attachmentObjects = attachmentGet(
-                    [
-                        "entry_hash='{$db->escape_string($entryHash)}'",
-                        "showcase_id={$this->showcaseObject->showcase_id}"
-                    ],
-                    array_keys(TABLES_DATA['myshowcase_attachments'])
-                );
-
-                foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                    $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
-                    $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
-                    $attachmentData['icon'] = str_replace(
-                        '<img src="',
-                        '<img src="' . $this->showcaseObject->urlBase . '/',
-                        $attachmentData['icon']
-                    );
-
-
-                    $attach_mod_options = '';
-                    if ($attachmentData['status'] !== 1) {
-                        $attachments .= eval(
-                        $this->renderObject->templateGet(
-                            'new_attachments_attachment_unapproved'
-                        )
-                        );
-                    } else {
-                        $attachments .= eval($this->renderObject->templateGet('new_attachments_attachment'));
-                    }
-                    $attachcount++;
-                }
-                $lang->myshowcase_attach_quota = $lang->sprintf(
-                        $lang->myshowcase_attach_quota,
-                        $attachcount,
-                        ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])
-                    ) . '<br>';
-                if ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit]))) {
-                    if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments]) {
-                        $showcase_watermark = eval($this->renderObject->templateGet('watermark'));
-                    }
-                    $showcase_new_attachments_input = eval(
-                    $this->renderObject->templateGet(
-                        'new_attachments_input'
-                    )
-                    );
-                }
-                $showcase_attachments = eval($this->renderObject->templateGet('new_attachments'));
+            if ($this->showcaseObject->config['attachments_allow_entries']) {
+                $this->uploadAttachment();
             }
 
             $insertData = [
@@ -957,8 +899,8 @@ class Entries extends Base
                 $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
             }
 
-            if ($entryHash) {
-                $insertData['entry_hash'] = $entryHash;
+            if ($this->showcaseObject->entryHash) {
+                $insertData['entry_hash'] = $this->showcaseObject->entryHash;
             }
 
             // Set up showcase handler.
@@ -1030,7 +972,7 @@ class Entries extends Base
                 );
             }
 
-            if (!$this->showcaseObject->errorMessages) {
+            if (!$isPreview && !$this->showcaseObject->errorMessages) {
                 if ($isEditPage) {
                     $insertResult = $dataHandler->updateEntry();
                 } else {
@@ -1039,6 +981,23 @@ class Entries extends Base
 
                 if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
                     $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+
+                    switch ($this->showcaseObject->config['filter_force_field']) {
+                        case FILTER_TYPE_USER_ID:
+                            $mainUrl = str_replace(
+                                '/user/',
+                                '/user/' . $this->showcaseObject->entryUserID,
+                                url(URL_TYPE_MAIN_USER)->getRelativeUrl()
+                            );
+
+                            break;
+                        default:
+                            $mainUrl = url(
+                                URL_TYPE_MAIN,
+                                getParams: $this->showcaseObject->urlParams
+                            )->getRelativeUrl();
+                            break;
+                    }
 
                     redirect(
                         $mainUrl,
@@ -1058,12 +1017,18 @@ class Entries extends Base
 
                 exit;
             }
+
+            if ($isPreview) {
+                $this->showcaseObject->entryData = array_merge($this->showcaseObject->entryData, $mybb->input);
+
+                $entryPreview = $this->renderObject->buildEntry($this->showcaseObject->entryData, true);
+            }
         } elseif ($isEditPage) {
             $mybb->input = array_merge($this->showcaseObject->entryData, $mybb->input);
+        }
 
-            $entryHash = $mybb->get_input('entry_hash');
-        } else {
-            $entryHash = createUUIDv4();
+        if (!$this->showcaseObject->entryHash) {
+            $this->showcaseObject->entryHash = createUUIDv4();
         }
 
         if ($isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries]) {
@@ -1077,55 +1042,6 @@ class Entries extends Base
         global $errorsAttachments;
 
         $errorsAttachments ??= '';
-
-        $attachmentsTable = '';
-
-        // Get a listing of the current attachments.
-        if (!empty($showcaseUserPermissions[UserPermissions::CanUploadAttachments])) {
-            $attachcount = 0;
-
-            $attachments = '';
-
-            $attachmentObjects = attachmentGet(
-                ["entry_hash='{$db->escape_string($entryHash)}'"],
-                array_keys(TABLES_DATA['myshowcase_attachments'])
-            );
-
-            foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-                $attachmentData['size'] = get_friendly_size($attachmentData['file_size']);
-                $attachmentData['icon'] = get_attachment_icon(get_extension($attachmentData['file_name']));
-                $attachmentData['icon'] = str_replace(
-                    '<img src="',
-                    '<img src="' . $this->showcaseObject->urlBase . '/',
-                    $attachmentData['icon']
-                );
-
-                $attach_mod_options = '';
-                if ($attachmentData['status'] !== 1) {
-                    $attachments .= eval($this->renderObject->templateGet('new_attachments_attachment_unapproved'));
-                } else {
-                    $attachments .= eval($this->renderObject->templateGet('new_attachments_attachment'));
-                }
-                $attachcount++;
-            }
-            $lang->myshowcase_attach_quota = $lang->sprintf(
-                    $lang->myshowcase_attach_quota,
-                    $attachcount,
-                    ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])
-                ) . '<br>';
-            if ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])) {
-                if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments] && $this->showcaseObject->config['attachments_watermark_file'] !== '' && file_exists(
-                        $this->showcaseObject->config['attachments_watermark_file']
-                    )) {
-                    $showcase_watermark = eval($this->renderObject->templateGet('watermark'));
-                }
-                $showcase_new_attachments_input = eval($this->renderObject->templateGet('new_attachments_input'));
-            }
-
-            if (!empty($showcase_new_attachments_input) || $attachments !== '') {
-                $attachmentsTable = eval($this->renderObject->templateGet('pageNewAttachments'));
-            }
-        }
 
         $alternativeBackground = alt_trow(true);
 
@@ -1411,14 +1327,16 @@ class Entries extends Base
         $hookArguments = hooksRun('output_new_end', $hookArguments);
 
         if ($isEditPage) {
-            $createUpdateUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlUpdateEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            );
+            $createUpdateUrl = url(
+                URL_TYPE_ENTRY_UPDATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                $this->showcaseObject->urlParams
+            )->getRelativeUrl();
         } else {
-            $createUpdateUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlCreateEntry
-            );
+            $createUpdateUrl = url(
+                URL_TYPE_ENTRY_CREATE,
+                getParams: $this->showcaseObject->urlParams
+            )->getRelativeUrl();
         }
 
         $attachmentsUpload = $this->renderObject->buildAttachmentsUpload($isEditPage);
@@ -1426,6 +1344,16 @@ class Entries extends Base
         $hookArguments = hooksRun('entry_create_update_end', $hookArguments);
 
         extract($hookArguments['extractVariables']);
+
+        if ($isEditPage) {
+            $buttonText = $lang->myShowcaseNewEditFormButtonUpdateEntry;
+        } else {
+            $buttonText = $lang->myShowcaseNewEditFormButtonCreateEntry;
+        }
+
+        if ($entryPreview) {
+            $entryPreview = eval($this->renderObject->templateGet('pageEntryCreateUpdateContentsPreview'));
+        }
 
         $this->outputSuccess(eval($this->renderObject->templateGet('pageEntryCreateUpdateContents')));
     }
@@ -1529,7 +1457,7 @@ class Entries extends Base
             $this->showcaseObject->urlViewEntry
         );
 
-        //$entryHash = $this->showcaseObject->entryData['entry_hash'];
+        //$this->showcaseObject->entryHash = $this->showcaseObject->entryData['entry_hash'];
 
         //trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
         //doing this now should not impact anyhting. no issues with gomobile beta4
@@ -1828,11 +1756,36 @@ class Entries extends Base
 
     #[NoReturn] private function uploadAttachment(): void
     {
-        if (empty($_FILES['attachment']) || empty($_FILES['attachment']['name'])) {
+        $process_file = (
+            !empty($_FILES['attachment']) &&
+            !empty($_FILES['attachment']['name'])
+        );
+
+        if (!$process_file) {
             return;
         }
-        /*
-        echo json_encode($_FILES['attachment']);
-        exit();*/
+
+        if (!$this->showcaseObject->userPermissions[UserPermissions::CanUploadAttachments]) {
+            error_no_permission();
+        }
+
+        global $mybb, $lang;
+
+        $currentUserID = (int)$mybb->user['uid'];
+
+        require_once MYBB_ROOT . 'inc/functions_upload.php';
+
+        $fileObject = attachmentUpload(
+            $this->showcaseObject,
+            $_FILES['attachment'],
+            watermarkImage: $mybb->get_input('attachment_watermark_file', MyBB::INPUT_BOOL),
+        );
+
+        if (isset($fileObject['error'])) {
+            $this->showcaseObject->errorMessages = array_merge(
+                $this->showcaseObject->errorMessages,
+                (array)$fileObject['error']
+            );
+        }
     }
 }

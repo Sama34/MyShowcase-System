@@ -1,13 +1,13 @@
 <?php
 /**
- * MyShowcase Plugin for MyBB - Language file for ACP, MyShowcase Summary
+ * MyShowcase Plugin for MyBB - Main Plugin
  * Copyright 2012 CommunityPlugins.com, All Rights Reserved
  *
- * Website: http://www.communityplugins.com
+ * Website: https://github.com/Sama34/MyShowcase-System
  * Version 2.5.2
  * License: Creative Commons Attribution-NonCommerical ShareAlike 3.0
  * http://creativecommons.org/licenses/by-nc-sa/3.0/legalcode
- * File: \inc\languages\<language>\admin\myshowcase_summary.lang.php
+ * File: \inc\plugins\myshowcase.php
  *
  */
 
@@ -181,7 +181,7 @@ $l = array_merge([
     'myShowcaseAdminSummaryAddEditModerationModerateEntriesUpdate' => 'Moderate entry updates',
     'myShowcaseAdminSummaryAddEditModerationModerateCommentsCreate' => 'Moderate new comments',
     'myShowcaseAdminSummaryAddEditModerationModerateCommentsUpdate' => 'Moderate comment updates',
-    'myShowcaseAdminSummaryAddEditModerationModerateAttachmentsCreate' => 'Moderate new attachments',
+    'myShowcaseAdminSummaryAddEditModerationModerateAttachmentsUpload' => 'Moderate new attachments',
     'myShowcaseAdminSummaryAddEditModerationModerateAttachmentsUpdate' => 'Moderate attachment updates',
     'myShowcaseAdminSummaryAddEditComments' => 'Comments Options',
     'myShowcaseAdminSummaryAddEditCommentsCommentsAllow' => 'Allow comments',
@@ -195,7 +195,7 @@ $l = array_merge([
     'myShowcaseAdminSummaryAddEditAttachments' => 'Attachments Options',
     'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsAllowEntries' => 'Enable attachments in entries',
     'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsUploadsPath' => 'Attachments Upload Path',
-    'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsUploadsPathDescription' => 'The path to upload attachments.',
+    'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsUploadsPathDescription' => 'The path to upload attachments. Example: <code>./uploads/showcase</code>',
     'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsLimitEntries' => 'Attachments limit in entries',
     'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsLimitEntriesDescription' => 'Maximum attachments allowed per entry.',
     'myShowcaseAdminSummaryAddEditAttachmentsAttachmentsGrouping' => 'Attachments grouping in entries',
