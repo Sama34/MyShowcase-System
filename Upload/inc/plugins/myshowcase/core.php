@@ -108,6 +108,46 @@ const FORM_TYPE_YES_NO_FIELD = 'yesNoField';
 
 const FORM_TYPE_PHP_CODE = 'phpFunction';
 
+const URL_TYPE_MAIN = 'main';
+
+const URL_TYPE_MAIN_USER = 'main_user';
+
+const URL_TYPE_ENTRY_VIEW = 'entry_view';
+
+const URL_TYPE_ENTRY_CREATE = 'entry_create';
+
+const URL_TYPE_ENTRY_UPDATE = 'entry_update';
+
+const URL_TYPE_ENTRY_APPROVE = 'entry_approve';
+
+const URL_TYPE_ENTRY_UNAPPROVE = 'entry_unapprove';
+
+const URL_TYPE_ENTRY_SOFT_DELETE = 'entry__soft_delete';
+
+const URL_TYPE_ENTRY_RESTORE = 'entry_restore';
+
+const URL_TYPE_ENTRY_DELETE = 'entry_delete';
+
+const URL_TYPE_COMMENT_VIEW = 'comment_view';
+
+const URL_TYPE_COMMENT_CREATE = 'comment_create';
+
+const URL_TYPE_COMMENT_UPDATE = 'comment_update';
+
+const URL_TYPE_COMMENT_APPROVE = 'comment_approve';
+
+const URL_TYPE_COMMENT_UNAPPROVE = 'comment_unapprove';
+
+const URL_TYPE_COMMENT_SOFT_DELETE = 'comment_soft_delete';
+
+const URL_TYPE_COMMENT_RESTORE = 'comment_restore';
+
+const URL_TYPE_COMMENT_DELETE = 'comment_delete';
+
+const FILTER_TYPE_NONE = 0;
+
+const FILTER_TYPE_USER_ID = 1;
+
 const TABLES_DATA = [
     'myshowcase_attachments' => [
         'attachment_id' => [
@@ -3643,9 +3683,11 @@ function generateFieldSetSelectArray(): array
 
 function generateFilterFieldsSelectArray(): array
 {
+    global $lang;
+
     return [
-        0 => 'none',
-        1 => 'User ID',
+        FILTER_TYPE_NONE => $lang->none,
+        FILTER_TYPE_USER_ID => $lang->myShowcaseAdminSummaryAddEditFilterForceFieldUserID,
     ];
 }
 
