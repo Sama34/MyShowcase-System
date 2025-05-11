@@ -239,14 +239,6 @@ const TABLES_DATA = [
             'formCategory' => 'main',
             'formType' => FORM_TYPE_TEXT_FIELD,
         ],
-        'showcase_slug' => [
-            'type' => 'VARCHAR',
-            'size' => 50,
-            'default' => '',
-            'unique_value' => true,
-            'formCategory' => 'main',
-            'formType' => FORM_TYPE_TEXT_FIELD,
-        ],
         'description' => [
             'type' => 'VARCHAR',
             'size' => 255,
@@ -3365,32 +3357,34 @@ function postParser(): postParser
     return $parser;
 }
 
-function showcaseGetObject(int $selectedShowcaseID): Showcase
+function showcaseGetObject(int $selectedShowcaseID): ?Showcase
 {
     $showcaseObjects = showcaseGet(
         queryFields: array_keys(TABLES_DATA['myshowcase_config'])
     );
 
+    $scriptName = '';
+
     foreach ($showcaseObjects as $showcaseID => $showcaseData) {
         if ($selectedShowcaseID === $showcaseID) {
-            $showcaseSlug = $showcaseData['showcase_slug'];
+            $scriptName = $showcaseData['script_name'];
         }
     }
 
-    return showcaseGetObjectBySlug($showcaseSlug);
+    return showcaseGetObjectByScriptName($scriptName);
 }
 
-function showcaseGetObjectBySlug(string $showcaseSlug): Showcase
+function showcaseGetObjectByScriptName(string $scriptName): Showcase
 {
     require_once ROOT . '/System/Showcase.php';
 
     static $showcaseObjects = [];
 
-    if (!isset($showcaseObjects[$showcaseSlug])) {
-        $showcaseObjects[$showcaseSlug] = new Showcase($showcaseSlug);
+    if (!isset($showcaseObjects[$scriptName])) {
+        $showcaseObjects[$scriptName] = new Showcase($scriptName);
     }
 
-    return $showcaseObjects[$showcaseSlug];
+    return $showcaseObjects[$scriptName];
 }
 
 function renderGetObject(Showcase $showcaseObject): Render

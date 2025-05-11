@@ -129,7 +129,6 @@ class Entries extends Base
     }
 
     #[NoReturn] public function listEntries(
-        string $showcaseSlug,
         int $limit = 0,
         int $limitStart = 0,
         string $groupBy = '',
@@ -725,7 +724,6 @@ class Entries extends Base
     }
 
     #[NoReturn] public function listEntriesUser(
-        string $showcaseSlug,
         int $userID,
         int $limit = 10,
         int $limitStart = 0,
@@ -734,7 +732,6 @@ class Entries extends Base
         string $orderDirection = ORDER_DIRECTION_ASCENDING
     ): void {
         $this->listEntries(
-            $showcaseSlug,
             $limit,
             $limitStart,
             $groupBy,
@@ -746,7 +743,6 @@ class Entries extends Base
     }
 
     #[NoReturn] public function listEntriesUnapproved(
-        string $showcaseSlug,
         int $limit = 10,
         int $limitStart = 0,
         string $groupBy = '',
@@ -756,7 +752,6 @@ class Entries extends Base
         $statusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
 
         $this->listEntries(
-            $showcaseSlug,
             $limit,
             $limitStart,
             $groupBy,
@@ -770,7 +765,6 @@ class Entries extends Base
      * @throws RandomException
      */
     #[NoReturn] public function createEntry(
-        string $showcaseSlug,
         bool $isEditPage = false,
         string $entrySlug = '',
     ): void {
@@ -1362,22 +1356,19 @@ class Entries extends Base
     }
 
     #[NoReturn] public function updateEntry(
-        string $showcaseSlug,
         string $entrySlug,
     ): void {
-        $this->createEntry($showcaseSlug, true, $entrySlug);
+        $this->createEntry(true, $entrySlug);
     }
 
     #[NoReturn] public function viewEntryPage(
-        string $showcaseSlug,
         string $entrySlug,
         int $currentPage
     ): void {
-        $this->viewEntry($showcaseSlug, $entrySlug, $currentPage);
+        $this->viewEntry($entrySlug, $currentPage);
     }
 
     #[NoReturn] public function viewEntry(
-        string $showcaseSlug,
         string $entrySlug,
         int $currentPage = 1,
         int $commentID = 0,
@@ -1632,7 +1623,6 @@ class Entries extends Base
     }
 
     #[NoReturn] public function approveEntry(
-        string $showcaseSlug,
         string $entrySlug,
         int $status = ENTRY_STATUS_VISIBLE
     ): void {
@@ -1674,39 +1664,32 @@ class Entries extends Base
     }
 
     #[NoReturn] public function unapproveEntry(
-        string $showcaseSlug,
         string $entrySlug,
     ): void {
         $this->approveEntry(
-            $showcaseSlug,
             $entrySlug,
             ENTRY_STATUS_PENDING_APPROVAL
         );
     }
 
     #[NoReturn] public function softDeleteEntry(
-        string $showcaseSlug,
         string $entrySlug
     ): void {
         $this->approveEntry(
-            $showcaseSlug,
             $entrySlug,
             ENTRY_STATUS_SOFT_DELETED
         );
     }
 
     #[NoReturn] public function restoreEntry(
-        string $showcaseSlug,
         string $entrySlug
     ): void {
         $this->approveEntry(
-            $showcaseSlug,
             $entrySlug
         );
     }
 
     #[NoReturn] public function deleteEntry(
-        string $showcaseSlug,
         string $entrySlug
     ): void {
         global $mybb, $lang, $plugins;

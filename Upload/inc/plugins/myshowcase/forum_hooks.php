@@ -26,7 +26,7 @@ use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\entryDataGet;
 use function MyShowcase\Core\showcaseGetObject;
-use function MyShowcase\Core\showcaseGetObjectBySlug;
+use function MyShowcase\Core\showcaseGetObjectByScriptName;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerGet;
 use function MyShowcase\Core\urlHandlerSet;
@@ -56,7 +56,7 @@ function global_start(): bool
         $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
 
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-            $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
+            $showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
 
             if (THIS_SCRIPT === 'showcase.php') {
                 $templateObjects = array_merge($templateObjects, [
@@ -165,7 +165,7 @@ function global_start(): bool
         $templatelist .= ', myShowcase_' . implode(', myShowcase_', $templateObjects);
 
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-            $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
+            $showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
 
             //if showcase is enabled...
             if ($showcaseObject->config['enabled']) {
@@ -196,7 +196,7 @@ function global_intermediate(): bool
     $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
-        $showcaseObject = showcaseGetObjectBySlug($showcaseData['showcase_slug'] ?? '');
+        $showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
 
         //if showcase is enabled...
         if ($showcaseObject->config['enabled']) {

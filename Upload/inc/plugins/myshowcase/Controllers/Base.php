@@ -39,7 +39,7 @@ use MyShowcase\System\Showcase;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\outputGetObject;
 use function MyShowcase\Core\renderGetObject;
-use function MyShowcase\Core\showcaseGetObjectBySlug;
+use function MyShowcase\Core\showcaseGetObjectByScriptName;
 
 use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
@@ -74,7 +74,7 @@ abstract class Base
 
         //\MyShowcase\Core\cacheUpdate(\MyShowcase\Core\CACHE_TYPE_CONFIG);
 //start by constructing the showcase
-        $this->showcaseObject = showcaseGetObjectBySlug($router->params['showcase_slug'] ?? '');
+        $this->showcaseObject = showcaseGetObjectByScriptName(THIS_SCRIPT);
 
         $this->renderObject = renderGetObject($this->showcaseObject);
 

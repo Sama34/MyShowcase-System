@@ -65,54 +65,54 @@ require_once ROOT . '/Models/Base.php';
 
 $router = new Router();
 
-$router->get('/{showcase_slug}', 'Entries', 'listEntries');
+$router->get('/', 'Entries', 'listEntries');
 
-$router->get('/{showcase_slug}/user/{user_id}', 'Entries', 'listEntriesUser');
+$router->get('/user/{user_id}', 'Entries', 'listEntriesUser');
 
-$router->get('/{showcase_slug}/unapproved', 'Entries', 'listEntriesUnapproved');
+$router->get('/unapproved', 'Entries', 'listEntriesUnapproved');
 
-$router->get('/{showcase_slug}/create', 'Entries', 'createEntry');
+$router->get('/create', 'Entries', 'createEntry');
 
-$router->post('/{showcase_slug}/create', 'Entries', 'createEntry');
+$router->post('/create', 'Entries', 'createEntry');
 
-$router->get('/{showcase_slug}/view/{entry_slug}', 'Entries', 'viewEntry');
+$router->get('/view/{entry_slug}', 'Entries', 'viewEntry');
 
-$router->get('/{showcase_slug}/view/{entry_slug}/page/{current_page}', 'Entries', 'viewEntryPage');
+$router->get('/view/{entry_slug}/page/{current_page}', 'Entries', 'viewEntryPage');
 
-$router->get('/{showcase_slug}/view/{entry_slug}/update', 'Entries', 'updateEntry');
+$router->get('/view/{entry_slug}/update', 'Entries', 'updateEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/update', 'Entries', 'updateEntry');
+$router->post('/view/{entry_slug}/update', 'Entries', 'updateEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/approve', 'Entries', 'approveEntry');
+$router->post('/view/{entry_slug}/approve', 'Entries', 'approveEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/soft_delete', 'Entries', 'softDeleteEntry');
+$router->post('/view/{entry_slug}/soft_delete', 'Entries', 'softDeleteEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/restore', 'Entries', 'restoreEntry');
+$router->post('/view/{entry_slug}/restore', 'Entries', 'restoreEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/delete', 'Entries', 'deleteEntry');
+$router->post('/view/{entry_slug}/delete', 'Entries', 'deleteEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
+$router->post('/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/create', 'Comments', 'createComment');
+$router->post('/view/{entry_slug}/comment/create', 'Comments', 'createComment');
 
-$router->get('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}', 'Comments', 'viewComment');
+$router->get('/view/{entry_slug}/comment/{comment_id}', 'Comments', 'viewComment');
 
-$router->get('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
+$router->get('/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/approve', 'Comments', 'approveComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/approve', 'Comments', 'approveComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
 
-$router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
+$router->post('/view/{entry_slug}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
 
-$router->get('/{showcase_slug}/search', 'Search', 'searchForm');
+$router->get('/search', 'Search', 'searchForm');
 
 $router->run();

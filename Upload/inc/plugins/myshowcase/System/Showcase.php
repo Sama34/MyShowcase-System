@@ -55,7 +55,7 @@ class Showcase
      * @return Showcase
      */
     public function __construct(
-        public string $showcaseSlug,
+        public string $scriptName,
         public string $dataTableName = '',
         public string $prefix = '',
         public string $cleanName = '',
@@ -123,7 +123,7 @@ class Showcase
 
         //check if the requesting file is in the cache
         foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
-            if ($showcaseData['showcase_slug'] === $this->showcaseSlug/* &&
+            if ($showcaseData['script_name'] === $this->scriptName/* &&
                 $showcaseData['script_name'] === THIS_SCRIPT*/) {
                 $this->config = array_merge($showcaseData, $this->config);
 
@@ -256,6 +256,8 @@ class Showcase
         }
 
         $this->urlBase = $mybb->settings['bburl'];
+
+        $this->showcaseSlug = str_replace('.php', '', $this->scriptName);
 
         if ($this->friendlyUrlsEnabled) {
             //$showcase_name = strtolower($showcaseObject->config['name']);

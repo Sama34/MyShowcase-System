@@ -81,7 +81,7 @@ class Router
             if (preg_match($route['regex'], $routePath, $matches)) {
                 $this->params = $this->extractParams($route, $matches);
 
-                $this->callController($route['controller'], $route['action'], $this->params);
+                $this->callController($route['controller'], $route['action']);
 
                 return;
             }
@@ -110,7 +110,7 @@ class Router
         return $params;
     }
 
-    protected function callController($controllerClass, $method, $params): void
+    protected function callController($controllerClass, $method): void
     {
         if (file_exists(ROOT . "/Controllers/{$controllerClass}.php")) {
             require_once ROOT . "/Controllers/{$controllerClass}.php";
@@ -120,6 +120,6 @@ class Router
 
         $controller = new $controllerClass($this);
 
-        call_user_func_array([$controller, $method], array_values($params));
+        call_user_func_array([$controller, $method], array_values($this->params));
     }
 }

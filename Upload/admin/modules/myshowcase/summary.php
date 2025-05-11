@@ -555,10 +555,6 @@ $(function() {
         switch ($mybb->get_input('type')) {
             case 'main':
             case 'other':
-                if (isset($mybb->input['showcase_slug'])) {
-                    $mybb->input['showcase_slug'] = cleanSlug($mybb->get_input('showcase_slug'));
-                }
-
                 $insertData = [];
 
                 foreach ($tablesData['myshowcase_config'] as $fieldName => $fieldDefinition) {
@@ -601,27 +597,6 @@ $(function() {
                         ))) {
                     $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
                 }
-
-                /*if (isset($insertData['showcase_slug']) && (!$insertData['showcase_slug'] || in_array(
-                            $insertData['showcase_slug'],
-                            array_column($existingShowcases, 'showcase_slug')
-                        ) && (function (
-                            string $showcaseName
-                        ) use ($showcaseID, $existingShowcases): bool {
-                            $duplicatedName = false;
-
-                            foreach ($existingShowcases as $showcaseData) {
-                                if ($showcaseData['showcase_slug'] === $showcaseName && $showcaseData['showcase_id'] !== $showcaseID) {
-                                    $duplicatedName = true;
-                                }
-                            }
-
-                            return $duplicatedName;
-                        })(
-                            $insertData['showcase_slug']
-                        ))) {
-                    $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedShowcaseSlug;
-                }*/
 
                 if (isset($insertData['script_name']) && (!$insertData['script_name'] || in_array(
                             $insertData['script_name'],
@@ -689,6 +664,7 @@ $(function() {
 
                             hooksRun('admin_summary_add_edit_post_permissions');
 
+                            _dump(777);
                             permissionsUpdate($permissionsData, $showcaseID, $groupID);
                         }
                     } else {
@@ -1861,7 +1837,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
     );
 } elseif ($mybb->get_input('action') === 'viewRewrites') {
     $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"],
-        ['name', 'showcase_slug', 'script_name'],
+        ['name', 'script_name'],
         ['limit' => 1]);
 
     if (!$showcaseData) {
@@ -1912,7 +1888,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
     echo $lang->sprintf(
         $lang->myShowcaseAdminSummaryViewRewritesMain,
         $showcaseName,
-        $showcaseData['showcase_slug']
+        $showcaseData['script_name']
     );
 
     echo $lang->sprintf(
@@ -2186,7 +2162,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
 
             $formContainer->output_cell($showcaseData['name']);
 
-            $formContainer->output_cell($showcaseData['showcase_slug']);
+            $formContainer->output_cell($showcaseData['script_name']);
 
             $formContainer->output_cell($showcaseData['description']);
 

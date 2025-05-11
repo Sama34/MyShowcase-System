@@ -99,7 +99,7 @@ class Comments extends Base
     }
 
     #[NoReturn] public function viewComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {
@@ -150,11 +150,11 @@ class Comments extends Base
             error_no_permission();
         }
 
-        $entriesController->viewEntry($showcaseSlug, $entrySlug, commentID: $commentID, commentData: $commentData);
+        $entriesController->viewEntry($entrySlug, commentID: $commentID, commentData: $commentData);
     }
 
     #[NoReturn] public function createComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         bool $isEditPage = false,
         int $commentID = 0
@@ -341,15 +341,15 @@ class Comments extends Base
     }
 
     #[NoReturn] public function updateComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {
-        $this->createComment($showcaseSlug, $entrySlug, true, $commentID);
+        $this->createComment($entrySlug, true, $commentID);
     }
 
     #[NoReturn] public function approveComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID,
         int $status = COMMENT_STATUS_VISIBLE
@@ -397,12 +397,11 @@ class Comments extends Base
     }
 
     #[NoReturn] public function unapproveComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
-            $showcaseSlug,
             $entrySlug,
             $commentID,
             COMMENT_STATUS_PENDING_APPROVAL
@@ -410,12 +409,11 @@ class Comments extends Base
     }
 
     #[NoReturn] public function softDeleteComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
-            $showcaseSlug,
             $entrySlug,
             $commentID,
             COMMENT_STATUS_SOFT_DELETED
@@ -423,19 +421,18 @@ class Comments extends Base
     }
 
     #[NoReturn] public function restoreComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {
         $this->approveComment(
-            $showcaseSlug,
             $entrySlug,
             $commentID
         );
     }
 
     #[NoReturn] public function deleteComment(
-        string $showcaseSlug,
+
         string $entrySlug,
         int $commentID
     ): void {

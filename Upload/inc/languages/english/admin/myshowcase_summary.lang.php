@@ -97,7 +97,6 @@ $l = array_merge([
     'myShowcaseAdminErrorInvalidShowcase' => 'Invalid showcase',
     'myShowcaseAdminErrorNoFieldSets' => 'Can not create a new showcase as there are no field sets defined.',
     'myShowcaseAdminErrorDuplicatedName' => 'The selected name is already in use.',
-    'myShowcaseAdminErrorDuplicatedShowcaseSlug' => 'The selected showcase slug is already in use.',
     'myShowcaseAdminErrorDuplicatedScriptFile' => 'The selected script file is already in use.',
     'myShowcaseAdminErrorTableDelete' => "This showcase's data table contains data and can not be deleted separately. If you wish to delete the populated table, delete the entire showcase.",
     'myShowcaseAdminErrorTableCreate' => 'Creating the showcase data table was unsuccessful.',
@@ -134,8 +133,6 @@ $l = array_merge([
 
     'myShowcaseAdminSummaryAddEditName' => 'Name',
     'myShowcaseAdminSummaryAddEditNameDescription' => 'This is the name used in links and titles of the showcase.',
-    'myShowcaseAdminSummaryAddEditShowcaseSlug' => 'Slug',
-    'myShowcaseAdminSummaryAddEditShowcaseSlugDescription' => 'Showcase slug that is used with this specific showcase.',
     'myShowcaseAdminSummaryAddEditDescription' => 'Description',
     'myShowcaseAdminSummaryAddEditDescriptionDescription' => 'Simple description of the showcase. Not used externally, for admin use only.',
     'myShowcaseAdminSummaryAddEditScriptName' => 'Script Name',
