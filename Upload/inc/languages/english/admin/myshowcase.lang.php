@@ -20,7 +20,6 @@ $l = [
 
     'myShowcaseAdminButtonSubmit' => 'Submit',
     'myShowcaseAdminButtonSubmitOther' => 'Submit Other',
-    'myShowcaseAdminButtonSubmitPermissions' => 'Submit Permissions',
     'myShowcaseAdminButtonSubmitSaveModeratorPermissions' => 'Save Moderator Permissions',
     'myShowcaseAdminButtonSubmitAddModeratorGroup' => 'Add Group Moderator',
     'myShowcaseAdminButtonSubmitAddModeratorUser' => 'Add User Moderator',
@@ -31,4 +30,6 @@ $l = [
     'myShowcaseAdminErrorMissingRequiredFields' => 'Some required fields are missing.',
 
     'report_content_showcase_comments' => 'Showcase comments',
+
+    'MyShowcaseGroupsTab' => 'MyShowcase',
 ];

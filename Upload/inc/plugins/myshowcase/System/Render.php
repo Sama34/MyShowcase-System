@@ -545,8 +545,8 @@ class Render
             //only mods, original author (if allowed) or owner (if allowed) can delete comments
             if (
                 $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments] ||
-                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments]) ||
-                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])
+                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments])/* ||
+                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])*/
             ) {
                 $deleteUrl = $this->showcaseObject->urlBuild(
                     $this->showcaseObject->urlDeleteComment,

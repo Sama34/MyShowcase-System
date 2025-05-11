@@ -15,6 +15,9 @@ declare(strict_types=1);
 
 namespace MyShowcase\Admin;
 
+use Form;
+use MyBB;
+
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\fieldTypeMatchBinary;
 use function MyShowcase\Core\fieldTypeMatchChar;
@@ -26,8 +29,6 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
 
-use function MyShowcase\Core\showcaseGetObjectBySlug;
-
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -36,6 +37,11 @@ use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\FIELDS_DATA;
+use const MyShowcase\Core\FORM_TYPE_CHECK_BOX;
+use const MyShowcase\Core\FORM_TYPE_NUMERIC_FIELD;
+use const MyShowcase\Core\FORM_TYPE_SELECT_FIELD;
+use const MyShowcase\Core\FORM_TYPE_TEXT_FIELD;
+use const MyShowcase\Core\FORM_TYPE_YES_NO_FIELD;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\VERSION;
 use const MyShowcase\Core\VERSION_CODE;
@@ -72,7 +78,7 @@ function pluginInformation(): array
 
 function pluginActivation(): bool
 {
-    global $PL, $cache;
+    global $PL, $mybb;
 
     loadPluginLibrary();
 
@@ -92,7 +98,7 @@ function pluginActivation(): bool
     }
 
     // Insert/update version into cache
-    $plugins = $cache->read('ougc_plugins');
+    $plugins = $mybb->cache->read('ougc_plugins');
 
     if (!$plugins) {
         $plugins = [];
@@ -177,9 +183,22 @@ function pluginActivation(): bool
                 'display_signatures' => 'display_signatures_entries',
             ],
             'myshowcase_permissions' => [
+                // drop candelauthcomment
                 'pid' => 'permission_id',
                 'id' => 'showcase_id',
                 'gid' => 'group_id',
+                'canview' => 'can_view',
+                'canadd' => 'can_create_entries',
+                'canedit' => 'can_update_entries',
+                'canviewcomment' => 'can_view_comments',
+                'cancomment' => 'can_create_comments',
+                'candelowncomment' => 'can_delete_comments',
+                'canviewattach' => 'can_view_attachments',
+                'canattach' => 'can_upload_attachments',
+                'canwatermark' => 'can_watermark_attachments',
+                'attachlimit' => 'attachments_files_limit',
+                'cansearch' => 'can_search',
+                //'candelauthcomment' => 'can_delete_author_comments',
             ],
             'myshowcase_moderators' => [
                 'mid' => 'moderator_id',
@@ -262,9 +281,11 @@ function pluginActivation(): bool
 
     dbVerifyColumns();
 
+    $mybb->cache->update_usergroups();
+
     $plugins['myshowcase'] = $pluginInformation['versioncode'];
 
-    $cache->update('ougc_plugins', $plugins);
+    $mybb->cache->update('ougc_plugins', $plugins);
 
     foreach (
         [
@@ -783,4 +804,117 @@ function languageModify(
     unset($l, $fp, $languagePath);
 
     return true;
+}
+
+function buildPermissionsRow(
+    Form $form,
+    string $fieldName,
+    array $fieldData,
+    string $key,
+    string $section = 'Main',
+    bool $extraText = false,
+    string $languagePrefix = 'myShowcaseAdminSummaryAddEdit'
+): string {
+    global $mybb, $lang;
+
+    $formInput = '';
+
+    switch ($fieldData['formType']) {
+        case FORM_TYPE_TEXT_FIELD:
+            if ($extraText) {
+                $formInput .= '<div class="group_settings_bit">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key};
+
+                $formInput .= '<br /><small class="input">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key . 'Description'};
+
+                $formInput .= '</small><br />';
+            }
+
+            $formInput .= $form->generate_text_box(
+                $fieldName,
+                $mybb->get_input($fieldName),
+                ['id' => $fieldName, 'max' => $fieldData['size']]
+            );
+
+            if ($extraText) {
+                $formInput .= '</div>';
+            }
+
+            break;
+        case FORM_TYPE_NUMERIC_FIELD:
+            if ($extraText) {
+                $formInput .= '<div class="group_settings_bit">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key};
+
+                $formInput .= '<br /><small class="input">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key . 'Description'};
+
+                $formInput .= '</small><br />';
+            }
+
+            $formInput .= $form->generate_numeric_field(
+                $fieldName,
+                $mybb->get_input($fieldName, MyBB::INPUT_INT),
+                ['id' => $fieldName, 'class' => $fieldData['form_class'] ?? '']
+            );
+
+            if ($extraText) {
+                $formInput .= '</div>';
+            }
+
+            break;
+        case FORM_TYPE_YES_NO_FIELD:
+            $formInput .= $form->generate_yes_no_radio(
+                $fieldName,
+                $mybb->get_input($fieldName, MyBB::INPUT_INT),
+                ['id' => $fieldName]
+            );
+
+            break;
+        case FORM_TYPE_SELECT_FIELD:
+            if ($extraText) {
+                $formInput .= '<div class="group_settings_bit">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key};
+
+                $formInput .= '<br /><small class="input">';
+
+                $formInput .= $lang->{$languagePrefix . $section . $key . 'Description'};
+
+                $formInput .= '</small><br />';
+            }
+
+            $formInput .= $form->generate_select_box(
+                $fieldName,
+                isset($fieldData['form_function']) ? $fieldData['form_function']() : $fieldData['form_array'],
+                [$mybb->get_input($fieldName, MyBB::INPUT_INT)],
+                ['id' => $fieldName]
+            );
+
+            if ($extraText) {
+                $formInput .= '</div>';
+            }
+
+            break;
+        case FORM_TYPE_CHECK_BOX:
+            $formInput .= '<div class="user_settings_bit">';
+
+            $formInput .= $form->generate_check_box(
+                $fieldName,
+                1,
+                $lang->{$languagePrefix . $section . $key},
+                ['checked' => $mybb->get_input($fieldName, MyBB::INPUT_INT)]
+            );
+
+            $formInput .= '</div>';
+
+            break;
+    }
+
+    return $formInput;
 }

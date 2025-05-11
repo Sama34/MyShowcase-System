@@ -14,8 +14,8 @@
 declare(strict_types=1);
 
 use MyShowcase\System\ModeratorPermissions;
-use MyShowcase\System\UserPermissions;
 
+use function MyShowcase\Admin\buildPermissionsRow;
 use function MyShowcase\Admin\dbVerifyTables;
 use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
@@ -34,6 +34,7 @@ use function MyShowcase\Core\moderatorsDelete;
 use function MyShowcase\Core\moderatorsInsert;
 use function MyShowcase\Core\moderatorsUpdate;
 use function MyShowcase\Core\permissionsDelete;
+use function MyShowcase\Core\permissionsGet;
 use function MyShowcase\Core\permissionsInsert;
 use function MyShowcase\Core\permissionsUpdate;
 use function MyShowcase\Core\showcaseDataTableDrop;
@@ -42,10 +43,11 @@ use function MyShowcase\Core\showcaseDelete;
 use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\entryDataGet;
 use function MyShowcase\Core\showcaseInsert;
-use function MyShowcase\Core\showcaseDefaultPermissions;
 use function MyShowcase\Core\showcaseUpdate;
 use function MyShowcase\Core\urlHandlerBuild;
 
+use const MyShowcase\Core\FORM_TYPE_CHECK_BOX;
+use const MyShowcase\Core\FORM_TYPE_NUMERIC_FIELD;
 use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -65,11 +67,13 @@ global $page;
 
 loadLanguage();
 
+$tablesData = TABLES_DATA;
+
 $page->add_breadcrumb_item($lang->myShowcaseSystem, urlHandlerBuild());
 
 $page->add_breadcrumb_item($lang->myShowcaseAdminSummary, urlHandlerBuild());
 
-$showcaseID = $mybb->get_input('showcase_id', MyBB::INPUT_INT);
+$showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
 $pageTabs = [
     'myShowcaseAdminSummary' => [
@@ -87,7 +91,7 @@ $pageTabs = [
 if ($mybb->get_input('action') == 'edit') {
     $pageTabs['myShowcaseAdminSummaryEdit'] = [
         'title' => $lang->myShowcaseAdminSummaryEdit,
-        'link' => urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID]),
+        'link' => urlHandlerBuild(['action' => 'edit', 'showcaseID' => $showcaseID]),
         'description' => $lang->myShowcaseAdminSummaryEditDescription
     ];
 }
@@ -102,15 +106,429 @@ $fieldsetObjects = (function (): array {
 
 hooksRun('admin_summary_start');
 
-if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit') {
+$page->extra_header .= <<<EOL
+<style type="text/css">
+    .user_settings_bit label {
+        font-weight: normal;
+    }
+</style>
+EOL;
+
+$cachedPermissions = cacheGet(CACHE_TYPE_PERMISSIONS);
+
+if ($mybb->input['action'] == 'clear_permission') {
+    $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
+    $permissionID = $mybb->get_input('permissionID', MyBB::INPUT_INT);
+
+    $permissionData = permissionsGet(
+        ["showcase_id='{$showcaseID}'", "permission_id='{$permissionID}'"]
+    );
+
+    if (!empty($mybb->input['no']) || !$permissionData) {
+        admin_redirect(
+            urlHandlerBuild(
+                ['action' => 'edit', 'type' => 'permissions', 'showcaseID' => $showcaseID]
+            ) . '#tab_permissions'
+        );
+    }
+
+    $plugins->run_hooks('admin_forum_management_clear_permission');
+
+    if ($mybb->request_method === 'post') {
+        permissionsDelete(["showcase_id='{$showcaseID}'", "permission_id='{$permissionID}'"]);
+
+        hooksRun('admin_summary_clear_permissions_post');
+
+        cacheUpdate(CACHE_TYPE_PERMISSIONS);
+
+        flash_message($lang->myShowcaseAdminSummaryPermissionsClearSuccess, 'success');
+
+        admin_redirect(
+            urlHandlerBuild(
+                ['action' => 'edit', 'type' => 'permissions', 'showcaseID' => $showcaseID]
+            ) . '#tab_permissions'
+        );
+    } else {
+        $page->output_confirm_action(
+            urlHandlerBuild(
+                [
+                    'action' => 'clear_permission',
+                    'showcaseID' => $showcaseID,
+                    'permissionID' => $permissionID,
+                    'my_post_key' => $mybb->post_code
+                ]
+            ),
+            $lang->myShowcaseAdminSummaryPermissionsClearConfirm
+        );
+    }
+} elseif ($mybb->input['action'] == 'permissions') {
+    $showcaseData = showcaseGet(
+        ["showcase_id='{$showcaseID}'"],
+        array_keys($tablesData['myshowcase_config']),
+        ['limit' => 1]
+    );
+
+    if (!$showcaseData) {
+        flash_message($lang->myShowcaseAdminErrorInvalidShowcase, 'error');
+
+        admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
+    }
+
+    $groupID = $mybb->get_input('groupID', MyBB::INPUT_INT);
+
+    $permissionID = $mybb->get_input('permissionID', MyBB::INPUT_INT);
+
+    $whereClauses = ["showcase_id='{$showcaseID}'"];
+
+    if ($groupID) {
+        $whereClauses[] = "group_id='{$groupID}'";
+    }
+
+    if ($permissionID) {
+        $whereClauses[] = "permission_id='{$permissionID}'";
+    }
+
+    $plugins->run_hooks('admin_forum_management_permissions');
+
+    $permission_data = permissionsGet(
+        $whereClauses,
+        array_keys($tablesData['myshowcase_permissions']),
+        ['limit' => 1]
+    );
+
+    if (!$groupID && !empty($permission_data['showcase_id'])) {
+        $permissionID = $permission_data['permission_id'];
+
+        $showcaseID = $permission_data['showcase_id'];
+
+        $groupID = $permission_data['group_id'];
+    }
+
+    $inputPermissions = $mybb->get_input('permissions', MyBB::INPUT_ARRAY);
+
+    $showcasePermissionsUrl = urlHandlerBuild(
+            ['action' => 'permissions', 'showcaseID' => $showcaseID]
+        ) . '#tab_permissions';
+
+    $isModal = $mybb->get_input('ajax', MyBB::INPUT_INT);
+
+    if ($mybb->request_method === 'post') {
+        $insertData = $field_list = [];
+
+        foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+            if (!isset($fieldData['isPermission'])) {
+                continue;
+            }
+
+            if (isset($inputPermissions[$fieldName])) {
+                $insertData[$fieldName] = castTableFieldValue(
+                    $inputPermissions[$fieldName],
+                    $fieldData['type']
+                );
+            } else {
+                $insertData[$fieldName] = $fieldData['default'];
+            }
+        }
+
+        if (!$permissionID) {
+            $insertData['showcase_id'] = $showcaseID;
+
+            $insertData['group_id'] = $groupID;
+        }
+
+        $inputPermissions = $mybb->get_input('permissions', MyBB::INPUT_ARRAY);
+
+        $plugins->run_hooks('admin_forum_management_permissions_commit');
+
+        if ($permissionID) {
+            permissionsUpdate($insertData, $permissionID);
+        } else {
+            permissionsInsert($insertData);
+        }
+
+        cacheUpdate(CACHE_TYPE_PERMISSIONS);
+
+        log_admin_action($showcaseID, $showcaseData['name']);
+
+        if ($isModal) {
+            echo json_encode(
+                "<script type=\"text/javascript\">$('#row_{$groupID}').html('" . str_replace(["'", "\t", "\n"],
+                    ["\\'", '', ''],
+                    retrieveSinglePermissionsRow($groupID, $showcaseID)
+                ) . "'); QuickPermEditor.init({$groupID});</script>"
+            );
+
+            die;
+        } else {
+            flash_message($lang->myShowcaseAdminSummaryPermissionsFormCustomPermissionsSuccess, 'success');
+
+            admin_redirect($showcasePermissionsUrl);
+        }
+    }
+
+    if (!$isModal) {
+        $sub_tabs = [];
+
+        $page->add_breadcrumb_item(
+            $lang->myShowcaseAdminSummaryPermissionsFormPermissions,
+            $showcasePermissionsUrl
+        );
+
+        $permissionsUrl = urlHandlerBuild(
+            [
+                'action' => 'permissions',
+                'showcaseID' => $showcaseID,
+                'permissionID' => $permissionID,
+                'groupID' => $groupID
+            ]
+        );
+
+        $sub_tabs['edit_permissions'] = [
+            'title' => $lang->myShowcaseAdminSummaryPermissionsFormCustomPermissions,
+            'link' => $permissionsUrl,
+            'description' => $lang->myShowcaseAdminSummaryPermissionsFormCustomPermissionsDescription
+        ];
+
+        $page->add_breadcrumb_item($lang->myShowcaseAdminSummaryPermissionsFormCustomPermissions);
+
+        $page->output_header($lang->myShowcaseAdminSummaryPermissionsFormCustomPermissions);
+
+        $page->output_nav_tabs($sub_tabs, 'edit_permissions');
+    } else {
+        echo "
+		<div class=\"modal\" style=\"width: auto\">
+		<script src=\"jscripts/tabs.js\" type=\"text/javascript\"></script>\n
+		<script type=\"text/javascript\">
+<!--
+$(function() {
+	$(\"#modal_form\").on(\"click\", \"#savePermissions\", function(e) {
+		e.preventDefault();
+
+		var datastring = $(\"#modal_form\").serialize();
+		$.ajax({
+			type: \"POST\",
+			url: $(\"#modal_form\").attr('action'),
+			data: datastring,
+			dataType: \"json\",
+			success: function(data) {
+				$(data).filter(\"script\").each(function(e) {
+					eval($(this).text());
+				});
+				$.modal.close();
+			},
+			error: function(){
+			}
+		});
+	});
+});
+// -->
+		</script>
+		<div style=\"overflow-y: auto; max-height: 400px\">";
+    }
+
+    if (!empty($mybb->input['permissionID']) || (!empty($mybb->input['groupID']) && !empty($mybb->input['showcaseID']))) {
+        if (!$isModal) {
+            $permissionsUrl = urlHandlerBuild(
+                [
+                    'action' => 'permissions',
+                    'showcaseID' => $showcaseID,
+                ]
+            );
+
+            $form = new Form($permissionsUrl, 'post');
+        } else {
+            $permissionsUrl = urlHandlerBuild(
+                [
+                    'action' => 'permissions',
+                    'showcaseID' => $showcaseID,
+                    'permissionID' => $permissionID,
+                    'groupID' => $groupID,
+                    'ajax' => 1
+                ]
+            );
+
+            $form = new Form(
+                $permissionsUrl, 'post', 'modal_form'
+            );
+        }
+
+        echo $form->generate_hidden_field('usecustom', '1');
+
+        $customperms = permissionsGet(
+            $whereClauses,
+            array_keys($tablesData['myshowcase_permissions'])
+        );
+
+        if (!empty($permission_data['permission_id'])) {
+            $permission_data['usecustom'] = 1;
+        } elseif (empty($customperms['permission_id'])) {
+            $permission_data = usergroup_permissions($groupID);
+
+            foreach ($permission_data as $permissionKey => $permissionValue) {
+                if (str_starts_with($permissionKey, 'myshowcase_')) {
+                    $permission_data[str_replace('myshowcase_', '', $permissionKey)] = $permissionValue;
+                }
+
+                unset($permission_data[$permissionKey]);
+            }
+        } else {
+            $permission_data = $cachedPermissions[$showcaseID][$groupID];
+        }
+
+        if ($groupID) {
+            echo $form->generate_hidden_field('groupID', $groupID);
+        }
+
+        if ($permissionID) {
+            echo $form->generate_hidden_field('permissionID', $permissionID);
+        }
+
+        $field_list = [];
+
+        foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+            if (!isset($fieldData['isPermission'])) {
+                continue;
+            }
+
+            $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
+
+            $field_list[$fieldData['formCategory']][$fieldName] = $lang->{'myShowcaseAdminSummaryPermissionsField' . $key};
+        }
+
+        $tabs = [];
+
+        foreach (array_keys($field_list) as $tabKey) {
+            $languageKey = str_replace(' ', '', ucwords(str_replace('_', ' ', $tabKey)));
+
+            $tabs[$tabKey] = $lang->{'myShowcaseAdminSummaryPermissionsFieldGroup' . $languageKey};
+        }
+
+        if ($isModal) {
+            $page->output_tab_control($tabs, false, 'tabs2');
+        } else {
+            $page->output_tab_control($tabs);
+        }
+
+        $existing_permissions = [];
+
+        if (isset($cachedPermissions[$showcaseID])) {
+            foreach ($cachedPermissions[$showcaseID] as $showcasePermissions) {
+                $existing_permissions[$showcasePermissions['group_id']] = $showcasePermissions;
+            }
+        }
+
+        if (!$existing_permissions) {
+            $default_checked = true;
+        }
+
+        foreach (array_keys($field_list) as $tabKey) {
+            $lang_group = 'group_' . $tabKey;
+
+            echo "<div id=\"tab_" . $tabKey . "\">\n";
+
+            $form_container = new FormContainer(
+                "\"" . htmlspecialchars_uni(
+                    $groupsCache[$groupID]['title']
+                ) . "\" " . $lang->myShowcaseAdminSummaryPermissionsFormCustomPermissions
+            );
+
+            $fields = [];
+
+            foreach ($field_list[$tabKey] as $permissionName => $permissionTitle) {
+                $fieldData = $tablesData['myshowcase_permissions'][$permissionName];
+
+                $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $permissionName)));
+
+                switch ($fieldData['formType']) {
+                    case FORM_TYPE_NUMERIC_FIELD:
+                        $formInput = '<div class="group_settings_bit">';
+
+                        $formInput .= $lang->{'myShowcaseAdminSummaryPermissionsField' . $key};
+
+                        $formInput .= '<br /><small class="input">';
+
+                        $formInput .= $lang->{'myShowcaseAdminSummaryPermissionsField' . $key . 'Description'};
+
+                        $formInput .= '</small><br />';
+
+                        $formInput .= $form->generate_numeric_field(
+                            "permissions[{$permissionName}]",
+                            isset($permission_data[$permissionName]) ? (int)$permission_data[$permissionName] : 0,
+                            ['id' => $permissionName, 'class' => $fieldData['form_class'] ?? '']
+                        );
+
+                        $formInput .= '</div>';
+
+                        $fields[] = $formInput;
+
+                        break;
+                    case FORM_TYPE_CHECK_BOX:
+                        $fields[] = $form->generate_check_box(
+                            "permissions[{$permissionName}]",
+                            1,
+                            $permissionTitle,
+                            ['checked' => !empty($permission_data[$permissionName]), 'id' => $permissionName]
+                        );
+
+                        break;
+                }
+            }
+
+            $form_container->output_row(
+                '',
+                '',
+                "<div class=\"forum_settings_bit\">" . implode(
+                    "</div><div class=\"forum_settings_bit\">",
+                    $fields
+                ) . '</div>'
+            );
+
+            $form_container->end();
+
+            echo '</div>';
+        }
+
+        if ($isModal) {
+            $buttons[] = $form->generate_submit_button(
+                $lang->cancel,
+                ['onclick' => '$.modal.close(); return false;']
+            );
+
+            $buttons[] = $form->generate_submit_button(
+                $lang->myShowcaseAdminSummaryPermissionsFormSave,
+                ['id' => 'savePermissions']
+            );
+
+            $form->output_submit_wrapper($buttons);
+
+            $form->end();
+
+            echo '</div>';
+
+            echo '</div>';
+        } else {
+            $buttons[] = $form->generate_submit_button($lang->myShowcaseAdminSummaryPermissionsFormSave);
+
+            $form->output_submit_wrapper($buttons);
+
+            $form->end();
+        }
+    }
+
+    if (!$isModal) {
+        $page->output_footer();
+    }
+} elseif ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit') {
     $isAddPage = $mybb->get_input('action') === 'add';
 
     $isEditPage = $mybb->get_input('action') === 'edit';
 
     if ($isEditPage) {
-        $showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"],
-            array_keys(TABLES_DATA['myshowcase_config']),
-            ['limit' => 1]);
+        $showcaseData = showcaseGet(
+            ["showcase_id='{$showcaseID}'"],
+            array_keys($tablesData['myshowcase_config']),
+            ['limit' => 1]
+        );
     }
 
     if ($isEditPage && !$showcaseData) {
@@ -118,8 +536,6 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
         admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
-
-    $tablesData = TABLES_DATA;
 
     $existingShowcases = cacheGet(CACHE_TYPE_CONFIG);
 
@@ -131,7 +547,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         $defaultPermissions = [];
 
         foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldDefinition) {
-            if (isset($fieldDefinition['is_permission'])) {
+            if (isset($fieldDefinition['isPermission'])) {
                 $defaultPermissions[$fieldName] = $fieldDefinition;
             }
         }
@@ -146,8 +562,8 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                 $insertData = [];
 
                 foreach ($tablesData['myshowcase_config'] as $fieldName => $fieldDefinition) {
-                    if (!isset($fieldDefinition['form_type']) ||
-                        $fieldDefinition['form_category'] !== $mybb->get_input('type')) {
+                    if (!isset($fieldDefinition['formType']) ||
+                        $fieldDefinition['formCategory'] !== $mybb->get_input('type')) {
                         continue;
                     }
 
@@ -156,7 +572,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                             $mybb->input[$fieldName],
                             $fieldDefinition['type']
                         );
-                    } elseif ($fieldDefinition['form_type'] === 'check_box') {
+                    } elseif ($fieldDefinition['formType'] === FORM_TYPE_CHECK_BOX) {
                         $insertData[$fieldName] = $fieldDefinition['default'];
                     }
                 }
@@ -273,7 +689,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                             hooksRun('admin_summary_add_edit_post_permissions');
 
-                            permissionsUpdate($permissionsData, $groupID, $showcaseID);
+                            permissionsUpdate($permissionsData, $showcaseID, $groupID);
                         }
                     } else {
                         showcaseUpdate($insertData, $showcaseID);
@@ -293,7 +709,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                     admin_redirect(
                         urlHandlerBuild(
-                            ['action' => 'edit', 'type' => $mybb->get_input('type'), 'showcase_id' => $showcaseID]
+                            ['action' => 'edit', 'type' => $mybb->get_input('type'), 'showcaseID' => $showcaseID]
                         ) . '#tab_' . $mybb->get_input('type')
                     );
                 }
@@ -301,28 +717,58 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
             case 'permissions':
                 $insertData = [];
 
-                $permissionsInput = $mybb->get_input('permissions', MyBB::INPUT_ARRAY);
+                if (!empty($mybb->input['default_permissions'])) {
+                    $inherit = $mybb->input['default_permissions'];
+                } else {
+                    $inherit = [];
+                }
 
-                foreach ($groupsCache as $groupData) {
-                    $groupID = (int)$groupData['gid'];
+                foreach ($mybb->input as $permissionName => $permissionValue) {
+                    // Make sure we're only skipping inputs that don't start with "fields_" and aren't fields_default_ or fields_inherit_
+                    if (!str_contains($permissionName, 'fields_') ||
+                        (str_contains($permissionName, 'fields_default_') ||
+                            str_contains($permissionName, 'fields_inherit_'))) {
+                        continue;
+                    }
 
-                    $permissionsData = [];
+                    $groupID = (int)str_replace('fields_', '', $permissionName);
 
-                    foreach ($defaultPermissions as $permissionKey => $fieldDefinition) {
-                        if (isset($permissionsInput[$groupID][$permissionKey])) {
-                            $permissionsData[$permissionKey] = castTableFieldValue(
-                                $permissionsInput[$groupID][$permissionKey],
-                                $fieldDefinition['type']
-                            );
-                        } else {
-                            $permissionsData[$permissionKey] = $fieldDefinition['default'];
+                    if ($mybb->input['fields_default_' . $groupID] == $permissionValue && $mybb->input['fields_inherit_' . $groupID]) {
+                        $inherit[$groupID] = 1;
+
+                        continue;
+                    }
+
+                    $inherit[$groupID] = 0;
+
+                    // If it isn't an array then it came from the javascript form
+                    if (!is_array($permissionValue)) {
+                        $permissionValue = explode(',', $permissionValue);
+
+                        $permissionValue = array_flip($permissionValue);
+
+                        foreach ($permissionValue as $fieldName => $value) {
+                            $permissionValue[$fieldName] = 1;
                         }
                     }
 
-                    hooksRun('admin_summary_add_edit_post_permissions');
+                    foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+                        if (!isset($fieldData['isPermission']) || empty($fieldData['draggingPermission'])) {
+                            continue;
+                        }
 
-                    permissionsUpdate($permissionsData, $groupID, $showcaseID);
+                        if (isset($permissionValue[$fieldName])) {
+                            $insertData[$fieldName][$groupID] = castTableFieldValue(
+                                $permissionValue[$fieldName],
+                                $fieldData['type']
+                            );
+                        } else {
+                            $insertData[$fieldName][$groupID] = $fieldData['default'];
+                        }
+                    }
                 }
+
+                saveQuickPermissions($showcaseID, $insertData);
 
                 cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
@@ -332,7 +778,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                 admin_redirect(
                     urlHandlerBuild(
-                        ['action' => 'edit', 'type' => 'permissions', 'showcase_id' => $showcaseID]
+                        ['action' => 'edit', 'type' => 'permissions', 'showcaseID' => $showcaseID]
                     ) . '#tab_permissions'
                 );
 
@@ -364,7 +810,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                         admin_redirect(
                             urlHandlerBuild(
-                                ['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+                                ['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
                             ) . '#tab_moderators'
                         );
                     }
@@ -400,7 +846,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                         admin_redirect(
                             urlHandlerBuild(
-                                ['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+                                ['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
                             ) . '#tab_moderators'
                         );
                     }
@@ -437,7 +883,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                 flash_message($lang->myShowcaseAdminSuccessShowcaseEditModerators, 'success');
 
                 admin_redirect(
-                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
                     ) . '#tab_moderators'
                 );
 
@@ -452,7 +898,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                 flash_message($lang->myShowcaseAdminSuccessShowcaseEditModeratorDelete, 'success');
 
                 admin_redirect(
-                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+                    urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
                     ) . '#tab_moderators'
                 );
                 break;
@@ -461,8 +907,10 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
     $page->add_breadcrumb_item(
         $lang->myShowcaseAdminSummaryEdit,
-        urlHandlerBuild(['action' => $isAddPage ? 'add' : 'edit', 'showcase_id' => $showcaseID])
+        urlHandlerBuild(['action' => $isAddPage ? 'add' : 'edit', 'showcaseID' => $showcaseID])
     );
+
+    $page->extra_header .= "<script src=\"jscripts/quick_perm_editor.js\" type=\"text/javascript\"></script>\n";
 
     $page->output_header($lang->myShowcaseAdminSummaryEdit);
 
@@ -509,116 +957,23 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
     ];
 
     foreach ($tablesData['myshowcase_config'] as $fieldName => $fieldData) {
-        if (!isset($fieldData['form_category'])) {
+        if (!isset($fieldData['formCategory'])) {
             continue;
         }
 
-        if (isset($fieldData['form_section'])) {
-            $rowObjects[$fieldData['form_category']]['grouped'][$fieldData['form_section']][$fieldName] = $fieldData;
+        if (isset($fieldData['formSection'])) {
+            $rowObjects[$fieldData['formCategory']]['grouped'][$fieldData['formSection']][$fieldName] = $fieldData;
         } else {
-            $rowObjects[$fieldData['form_category']]['single'][$fieldName] = $fieldData;
+            $rowObjects[$fieldData['formCategory']]['single'][$fieldName] = $fieldData;
         }
     }
-
-    $buildRow = function (
-        Form $form,
-        string $fieldName,
-        array $fieldData,
-        string $key,
-        string $section = 'Main',
-        bool $extraText = false
-    ) use ($mybb, $lang): string {
-        $formInput = '';
-
-        switch ($fieldData['form_type']) {
-            case 'text':
-                if ($extraText) {
-                    $formInput .= '<div class="group_settings_bit">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key};
-                    $formInput .= '<br /><small class="input">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key . 'Description'};
-                    $formInput .= '</small><br />';
-                }
-
-                $formInput .= $form->generate_text_box(
-                    $fieldName,
-                    $mybb->get_input($fieldName),
-                    ['id' => $fieldName, 'max' => $fieldData['size']]
-                );
-
-                if ($extraText) {
-                    $formInput .= '</div>';
-                }
-                break;
-            case 'numeric':
-                if ($extraText) {
-                    $formInput .= '<div class="group_settings_bit">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key};
-                    $formInput .= '<br /><small class="input">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key . 'Description'};
-                    $formInput .= '</small><br />';
-                }
-
-                $formInput .= $form->generate_numeric_field(
-                    $fieldName,
-                    $mybb->get_input($fieldName, MyBB::INPUT_INT),
-                    ['id' => $fieldName, 'class' => $fieldData['form_class'] ?? '']
-                );
-
-                if ($extraText) {
-                    $formInput .= '</div>';
-                }
-                break;
-            case 'yes_no':
-                $formInput .= $form->generate_yes_no_radio(
-                    $fieldName,
-                    $mybb->get_input($fieldName, MyBB::INPUT_INT),
-                    ['id' => $fieldName]
-                );
-                break;
-            case 'select':
-                if ($extraText) {
-                    $formInput .= '<div class="group_settings_bit">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key};
-                    $formInput .= '<br /><small class="input">';
-                    $formInput .= $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key . 'Description'};
-                    $formInput .= '</small><br />';
-                }
-
-                $formInput .= $form->generate_select_box(
-                    $fieldName,
-                    isset($fieldData['form_function']) ? $fieldData['form_function']() : $fieldData['form_array'],
-                    [$mybb->get_input($fieldName, MyBB::INPUT_INT)],
-                    ['id' => $fieldName]
-                );
-
-                if ($extraText) {
-                    $formInput .= '</div>';
-                }
-                break;
-            case 'check_box':
-                $formInput .= '<div class="group_settings_bit">';
-
-                $formInput .= $form->generate_check_box(
-                    $fieldName,
-                    1,
-                    $lang->{'myShowcaseAdminSummaryAddEdit' . $section . $key},
-                    ['checked' => $mybb->get_input($fieldName, MyBB::INPUT_INT)]
-                );
-
-                $formInput .= '</div>';
-                break;
-        }
-
-        return $formInput;
-    };
 
     //main options tab
     echo "<div id=\"tab_main\">\n";
 
     $form = new Form(
         urlHandlerBuild(
-            ['action' => $isAddPage ? 'add' : 'edit', 'type' => 'main', 'showcase_id' => $showcaseID]
+            ['action' => $isAddPage ? 'add' : 'edit', 'type' => 'main', 'showcaseID' => $showcaseID]
         ) . '#tab_main',
         'post',
         $isAddPage ? 'add' : 'edit'
@@ -630,9 +985,9 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
         $formContainer->output_row(
-            $lang->{'myShowcaseAdminSummaryAddEditMain' . $key},
-            $lang->{'myShowcaseAdminSummaryAddEditMain' . $key . 'Description'},
-            $buildRow($form, $fieldName, $fieldData, $key, 'Main')
+            $lang->{'myShowcaseAdminSummaryAddEdit' . $key},
+            $lang->{'myShowcaseAdminSummaryAddEdit' . $key . 'Description'},
+            buildPermissionsRow($form, $fieldName, $fieldData, $key, 'Main')
         );
     }
 
@@ -644,11 +999,11 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         foreach ($fieldObjects as $fieldName => $fieldData) {
             $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
-            $settingCode .= $buildRow($form, $fieldName, $fieldData, $key, 'Main', true);
+            $settingCode .= buildPermissionsRow($form, $fieldName, $fieldData, $key, 'Main', true);
         }
 
         $formContainer->output_row(
-            $lang->{'myShowcaseAdminSummaryAddEditMain' . $sectionKey},
+            $lang->{'myShowcaseAdminSummaryAddEdit' . $sectionKey},
             '',
             $settingCode
         );
@@ -670,7 +1025,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         echo "<div id=\"tab_other\">\n";
 
         $form = new Form(
-            urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'showcase_id' => $showcaseID]) . '#tab_other',
+            urlHandlerBuild(['action' => 'edit', 'type' => 'other', 'showcaseID' => $showcaseID]) . '#tab_other',
             'post',
             'edit'
         );
@@ -681,9 +1036,9 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
             $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
             $formContainer->output_row(
-                $lang->{'myShowcaseAdminSummaryAddEditOther' . $key},
-                $lang->{'myShowcaseAdminSummaryAddEditOther' . $key . 'Description'},
-                $buildRow($form, $fieldName, $fieldData, $key, 'Other')
+                $lang->{'myShowcaseAdminSummaryAddEdit' . $key},
+                $lang->{'myShowcaseAdminSummaryAddEdit' . $key . 'Description'},
+                buildPermissionsRow($form, $fieldName, $fieldData, $key, 'Other')
             );
         }
 
@@ -695,11 +1050,18 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
             foreach ($fieldObjects as $fieldName => $fieldData) {
                 $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
-                $settingCode .= $buildRow($form, $fieldName, $fieldData, $key, $sectionKey, true);
+                $settingCode .= buildPermissionsRow(
+                    $form,
+                    $fieldName,
+                    $fieldData,
+                    $key,
+                    $sectionKey,
+                    true
+                );
             }
 
             $formContainer->output_row(
-                $lang->{'myShowcaseAdminSummaryAddEditOther' . $sectionKey},
+                $lang->{'myShowcaseAdminSummaryAddEdit' . $sectionKey},
                 '',
                 $settingCode
             );
@@ -720,133 +1082,315 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         echo "<div id=\"tab_permissions\">\n";
 
         $form = new Form(
-            urlHandlerBuild(['action' => 'edit', 'type' => 'permissions', 'showcase_id' => $showcaseID]
+            urlHandlerBuild(
+                ['action' => 'edit', 'type' => 'permissions', 'showcaseID' => $showcaseID]
             ) . '#tab_permissions',
             'post',
             'edit'
         );
 
-        $formContainer = new FormContainer($lang->myshowcase_admin_permissions);
+        echo $form->generate_hidden_field('showcaseID', $showcaseID);
 
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsGroup,
-            ['width' => '23%', 'class' => 'align_center']
+        foreach (
+            permissionsGet(
+                ["showcase_id='{$showcaseID}'"],
+                array_keys($tablesData['myshowcase_permissions'])
+            ) as $existing
+        ) {
+            $existing_permissions[$existing['group_id']] = $existing;
+        }
+
+        $cachedPermissions = cacheGet(CACHE_TYPE_PERMISSIONS);
+
+        $field_list = [];
+
+        foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+            if (!isset($fieldData['isPermission']) || empty($fieldData['draggingPermission'])) {
+                continue;
+            }
+
+            $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
+
+            $field_list[$fieldName] = $lang->{'myShowcaseAdminSummaryPermissionsField' . $key};
+        }
+
+        $groupIDs = [];
+
+        $form_container = new FormContainer(
+            $lang->myShowcaseAdminSummaryPermissionsFormPermissions
         );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanAdd,
-            ['width' => '6%', 'class' => 'align_center']
+        $form_container->output_row_header(
+            $lang->myShowcaseAdminSummaryPermissionsFormGroup,
+            ['class' => 'align_center', 'style' => 'width: 30%']
         );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanEdit,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanAttach,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanView,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanViewComments,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanViewAttachments,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanComment,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanDeleteOwnComment,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanDeleteAuthorComment,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanSearch,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsCanWatermark,
-            ['width' => '6%', 'class' => 'align_center']
-        );
-
-        $formContainer->output_row_header(
-            $lang->myShowcaseAdminSummaryEditPermissionsAttachmentLimit,
+        $form_container->output_row_header(
+            $lang->myShowcaseAdminSummaryPermissionsFormAllowedActions,
             ['class' => 'align_center']
         );
+        $form_container->output_row_header(
+            $lang->myShowcaseAdminSummaryPermissionsFormDisallowedActions,
+            ['class' => 'align_center']
+        );
+        $form_container->output_row_header(
+            $lang->controls,
+            ['class' => 'align_center', 'style' => 'width: 120px', 'colspan' => 2]
+        );
 
-        $defaultShowcasePermissions = showcaseDefaultPermissions();
+        $inputPermissions = $mybb->get_input('permissions', MyBB::INPUT_ARRAY);
 
-        foreach ($groupsCache as $group) {
-            $formContainer->output_cell(
-                '<strong>' . $group['title'] . '</strong>',
-                ['class' => 'align_left']
-            );
+        if ($mybb->request_method == 'post') {
+            foreach ($groupsCache as $groupData) {
+                $groupID = (int)$groupData['gid'];
 
-            foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
-                $lang_field = 'myshowcase_' . $permissionKey;
+                if (isset($mybb->input['fields_' . $groupID])) {
+                    $input_permissions = $mybb->input['fields_' . $groupID];
 
-                if ($permissionKey == UserPermissions::AttachmentsLimit) {
-                    $formContainer->output_cell(
-                        $form->generate_numeric_field(
-                            "permissions[{$group['gid']}][{$permissionKey}]",
-                            $groupPermissions[$group['gid']][$permissionKey] ?? 0,
-                            ['id' => $permissionKey . $group['gid'], 'class' => 'field50', 'min' => 0]
-                        ),
-                        ['class' => 'align_center']
-                    );
-                } else {
-                    $formContainer->output_cell(
-                        $form->generate_check_box(
-                            "permissions[{$group['gid']}][{$permissionKey}]",
-                            1,
-                            '',
-                            [
-                                'checked' => $groupPermissions[$group['gid']][$permissionKey] ?? 0,
-                                'id' => $permissionKey . $group['gid']
-                            ]
-                        ),
-                        ['class' => 'align_center']
-                    );
+                    if (!is_array($input_permissions)) {
+                        // Converting the comma separated list from Javascript form into a variable
+                        $input_permissions = explode(',', $input_permissions);
+                    }
+                    foreach ($input_permissions as $input_permission) {
+                        $inputPermissions[$groupID][$input_permission] = 1;
+                    }
+                }
+            }
+        }
+
+        foreach ($groupsCache as $groupData) {
+            $groupID = (int)$groupData['gid'];
+
+            $perms = [];
+
+            if (isset($mybb->input['default_permissions'])) {
+                if ($mybb->input['default_permissions'][$groupID]) {
+                    if ($existing_permissions[$groupID]) {
+                        $perms = $existing_permissions[$groupID];
+
+                        $default_checked = false;
+                    } elseif (is_array(
+                            $cachedPermissions
+                        ) && $cachedPermissions[$showcaseID][$groupID]) {
+                        $perms = $cachedPermissions[$showcaseID][$groupID];
+
+                        $default_checked = true;
+                    } elseif (is_array(
+                            $cachedPermissions
+                        ) && $cachedPermissions[$showcaseID][$groupID]) {
+                        $perms = $cachedPermissions[$showcaseID][$groupID];
+
+                        $default_checked = true;
+                    }
+                }
+
+                if (!$perms) {
+                    $default_checked = true;
+                }
+            } else {
+                if (isset($existing_permissions) &&
+                    is_array($existing_permissions) &&
+                    !empty($existing_permissions[$groupID])) {
+                    $perms = $existing_permissions[$groupID];
+
+                    $default_checked = false;
+                } elseif (is_array(
+                        $cachedPermissions
+                    ) && !empty($cachedPermissions[$showcaseID][$groupID])) {
+                    $perms = $cachedPermissions[$showcaseID][$groupID];
+
+                    $default_checked = true;
+                } elseif (is_array(
+                        $cachedPermissions
+                    ) && !empty($cachedPermissions[$showcaseID][$groupID])) {
+                    $perms = $cachedPermissions[$showcaseID][$groupID];
+
+                    $default_checked = true;
+                }
+
+                if (!$perms) {
+                    $perms = $groupData;
+
+                    foreach ($perms as $permissionKey => $permissionValue) {
+                        if (str_starts_with($permissionKey, 'myshowcase_')) {
+                            $perms[str_replace('myshowcase_', '', $permissionKey)] = $permissionValue;
+                        }
+
+                        unset($perms[$permissionKey]);
+                    }
+
+                    $default_checked = true;
                 }
             }
 
-            $formContainer->construct_row();
+            if ($groupID === 3) {
+                //_dump($perms);
+            }
+
+            $checkedPermissions = [];
+
+            foreach ($field_list as $permissionName => $permissionTitle) {
+                if ($inputPermissions) {
+                    if (isset($inputPermissions[$groupID][$permissionName])) {
+                        $checkedPermissions[$permissionName] = 1;
+                    } else {
+                        $checkedPermissions[$permissionName] = 0;
+                    }
+                } elseif (!empty($perms[$permissionName])) {
+                    $checkedPermissions[$permissionName] = 1;
+                } else {
+                    $checkedPermissions[$permissionName] = 0;
+                }
+            }
+
+            $groupTitle = htmlspecialchars_uni($groupData['title']);
+
+            if (!empty($default_checked)) {
+                $inheritedText = $lang->myShowcaseAdminSummaryPermissionsFormInherited;
+            } else {
+                $inheritedText = $lang->myShowcaseAdminSummaryPermissionsFormCustom;
+            }
+
+            $form_container->output_cell(
+                "<strong>{$groupTitle}</strong> <small style=\"vertical-align: middle;\">({$inheritedText})</small>"
+            );
+
+            $field_select = "<div class=\"quick_perm_fields\">\n";
+
+            $field_select .= "<div class=\"enabled\"><ul id=\"fields_enabled_{$groupID}\">\n";
+
+            foreach ($checkedPermissions as $permissionName => $permissionValue) {
+                if ($permissionValue) {
+                    $field_select .= "<li id=\"field-{$permissionName}\">{$field_list[$permissionName]}</li>";
+                }
+            }
+
+            $field_select .= "</ul></div>\n";
+
+            $field_select .= "<div class=\"disabled\"><ul id=\"fields_disabled_{$groupID}\">\n";
+
+            foreach ($checkedPermissions as $permissionName => $permissionValue) {
+                if (!$permissionValue) {
+                    $field_select .= "<li id=\"field-{$permissionName}\">{$field_list[$permissionName]}</li>";
+                }
+            }
+            $field_select .= "</ul></div></div>\n";
+            $field_select .= $form->generate_hidden_field(
+                'fields_' . $groupID,
+                implode(',', array_keys($checkedPermissions, '1')),
+                ['id' => 'fields_' . $groupID]
+            );
+            $field_select .= $form->generate_hidden_field(
+                'fields_inherit_' . $groupID,
+                isset($default_checked) ? (int)$default_checked : 0,
+                ['id' => 'fields_inherit_' . $groupID]
+            );
+            $field_select .= $form->generate_hidden_field(
+                'fields_default_' . $groupID,
+                implode(',', array_keys($checkedPermissions, '1')),
+                ['id' => 'fields_default_' . $groupID]
+            );
+            $field_select = str_replace("'", "\\'", $field_select);
+            $field_select = str_replace("\n", '', $field_select);
+
+            $field_select = "<script type=\"text/javascript\">
+//<![CDATA[
+document.write('" . str_replace('/', '\/', $field_select) . "');
+//]]>
+</script>\n";
+
+            $field_options = $field_selected = [];
+
+            foreach ($field_list as $permissionName => $permissionTitle) {
+                $field_options[$permissionName] = $permissionTitle;
+
+                if ($checkedPermissions[$permissionName]) {
+                    $field_selected[] = $permissionName;
+                }
+            }
+
+            $field_select .= '<noscript>' . $form->generate_select_box(
+                    'fields_' . $groupID . '[]',
+                    $field_options,
+                    $field_selected,
+                    ['id' => 'fields_' . $groupID . '[]', 'multiple' => true]
+                ) . "</noscript>\n";
+
+            $form_container->output_cell($field_select, ['colspan' => 2]);
+
+            if ($groupID === 4) {
+                //_dump($field_options, $field_selected, $checkedPermissions);
+            }
+
+            $permissionsUrl = urlHandlerBuild(
+                [
+                    'action' => 'permissions',
+                    'showcaseID' => $showcaseID,
+                    'permissionID' => $perms['permission_id'] ?? 0,
+                    'groupID' => $groupID
+                ]
+            );
+
+            $permissionsModalUrl = urlHandlerBuild(
+                [
+                    'action' => 'permissions',
+                    'showcaseID' => $showcaseID,
+                    'permissionID' => $perms['permission_id'] ?? 0,
+                    'groupID' => $groupID,
+                    'ajax' => 1
+                ]
+            );
+
+            if (empty($default_checked)) {
+                $form_container->output_cell(
+                    "<a href=\"{$permissionsUrl}\" onclick=\"MyBB.popupWindow('{$permissionsModalUrl}', null, true); return false;\">{$lang->myShowcaseAdminSummaryPermissionsFormEdit}</a>",
+                    ['class' => 'align_center']
+                );
+
+                $clearPermissionsUrl = urlHandlerBuild(
+                    [
+                        'action' => 'clear_permission',
+                        'showcaseID' => $showcaseID,
+                        'permissionID' => $perms['permission_id'],
+                        'my_post_key' => $mybb->post_code
+                    ]
+                );
+
+                $form_container->output_cell(
+                    "<a href=\"{$clearPermissionsUrl}\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myShowcaseAdminSummaryPermissionsFormConfirmClear}')\">{$lang->myShowcaseAdminSummaryPermissionsFormClear}</a>",
+                    ['class' => 'align_center']
+                );
+            } else {
+                $form_container->output_cell(
+                    "<a href=\"{$permissionsUrl}\" onclick=\"MyBB.popupWindow('{$permissionsModalUrl}', null, true); return false;\">{$lang->myShowcaseAdminSummaryPermissionsFormSet}</a>",
+                    ['class' => 'align_center', 'colspan' => 2]
+                );
+            }
+
+            $form_container->construct_row(['id' => 'row_' . $groupID]);
+
+            $groupIDs[] = $groupID;
+
+            unset($default_checked);
         }
 
-        $formContainer->end();
+        $form_container->end();
 
-        $form->output_submit_wrapper([
-            $form->generate_submit_button($lang->myShowcaseAdminButtonSubmitPermissions),
-            $form->generate_reset_button($lang->myShowcaseAdminButtonReset)
-        ]);
-
+        $buttons[] = $form->generate_submit_button($lang->myShowcaseAdminSummaryPermissionsFormButtonSubmit);
+        $form->output_submit_wrapper($buttons);
         $form->end();
+
+        // Write in our JS based field selector
+        echo "<script type=\"text/javascript\">\n<!--\n";
+        foreach ($groupIDs as $groupID) {
+            echo '$(function() { QuickPermEditor.init(' . $groupID . "); });\n";
+        }
+        echo "// -->\n</script>\n";
 
         echo "</div>\n";
 
         echo "<div id=\"tab_moderators\">\n";
 
         $form = new Form(
-            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
             ) . '#tab_moderators',
             'post',
             'management'
@@ -981,7 +1525,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
             $deleteModeratorUrl = urlHandlerBuild([
                     'action' => 'edit',
                     'type' => 'delete',
-                    'showcase_id' => $showcaseID,
+                    'showcaseID' => $showcaseID,
                     'moderator_id' => $moderatorData['moderator_id'],
                     'my_post_key' => $mybb->post_code
                 ]) . '#tab_moderators';
@@ -1015,7 +1559,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
         // Add Usergropups
         $form = new Form(
-            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
             ) . '#tab_moderators',
             'post',
             'management'
@@ -1034,9 +1578,11 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                     $groupObjects = [];
 
                     foreach ($groupsCache as $groupData) {
-                        $groupObjects[(int)$groupData['gid']] = $lang->myShowcaseAdminUserGroup . ' ' . $groupData['gid'] . ': ' . htmlspecialchars_uni(
-                                $groupData['title']
-                            );
+                        $groupID = $groupData['gid'];
+
+                        $groupTitle = htmlspecialchars_uni($groupData['title']);
+
+                        $groupObjects[$groupID] = $lang->myShowcaseAdminUserGroup . ' ' . $groupID . ': ' . $groupTitle;
                     }
 
                     return $groupObjects;
@@ -1095,7 +1641,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
         //add Users
         $form = new Form(
-            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcase_id' => $showcaseID]
+            urlHandlerBuild(['action' => 'edit', 'type' => 'moderators', 'showcaseID' => $showcaseID]
             ) . '#tab_moderators',
             'post',
             'management'
@@ -1220,7 +1766,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
         admin_redirect($pageTabs['myShowcaseAdminSummary']['link']);
     }
 
-    $showcaseData = ['enabled' => $enableShowcase ? SHOWCASE_STATUS_ENABLED : SHOWCASE_STATUS_DISABLED];
+    $insertData = ['enabled' => $enableShowcase ? SHOWCASE_STATUS_ENABLED : SHOWCASE_STATUS_DISABLED];
 
     hooksRun('admin_summary_enable_disable');
 
@@ -1310,7 +1856,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'tableDrop', 'showcase_id' => $showcaseID]),
+        urlHandlerBuild(['action' => 'tableDrop', 'showcaseID' => $showcaseID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmTableDrop, $showcaseName)
     );
 } elseif ($mybb->get_input('action') === 'viewRewrites') {
@@ -1326,7 +1872,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
     $page->add_breadcrumb_item(
         $lang->myshowcase_admin_show_seo,
-        urlHandlerBuild(['action' => 'viewRewrites', 'showcase_id' => $showcaseID])
+        urlHandlerBuild(['action' => 'viewRewrites', 'showcaseID' => $showcaseID])
     );
 
     $page->output_header($lang->myShowcaseAdminSummary);
@@ -1456,7 +2002,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
     }
 
     $page->output_confirm_action(
-        urlHandlerBuild(['action' => 'delete', 'showcase_id' => $showcaseID]),
+        urlHandlerBuild(['action' => 'delete', 'showcaseID' => $showcaseID]),
         $lang->sprintf($lang->myShowcaseAdminConfirmShowcaseDelete, $showcaseName)
     );
 } else {
@@ -1527,7 +2073,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
     $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
-    $showcaseObjects = showcaseGet([], array_keys(TABLES_DATA['myshowcase_config']));
+    $showcaseObjects = showcaseGet([], array_keys($tablesData['myshowcase_config']));
 
     if (!$showcaseObjects) {
         $formContainer->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
@@ -1573,7 +2119,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
             $popup->add_item(
                 $lang->myshowcase_summary_edit,
-                urlHandlerBuild(['action' => 'edit', 'showcase_id' => $showcaseID])
+                urlHandlerBuild(['action' => 'edit', 'showcaseID' => $showcaseID])
             );
 
             //grab status images at same time
@@ -1585,7 +2131,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                 if ($showcaseDataTableExists) {
                     $popup->add_item(
                         $lang->myshowcase_summary_disable,
-                        urlHandlerBuild(['action' => 'disable', 'showcase_id' => $showcaseID])
+                        urlHandlerBuild(['action' => 'disable', 'showcaseID' => $showcaseID])
                     );
                 }
             } else {
@@ -1596,7 +2142,7 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
                 if ($showcaseDataTableExists) {
                     $popup->add_item(
                         $lang->myshowcase_summary_enable,
-                        urlHandlerBuild(['action' => 'enable', 'showcase_id' => $showcaseID])
+                        urlHandlerBuild(['action' => 'enable', 'showcaseID' => $showcaseID])
                     );
                 }
             }
@@ -1609,29 +2155,29 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
 
                 $popup->add_item(
                     $lang->myshowcase_summary_createtable,
-                    urlHandlerBuild(['action' => 'tableCreate', 'showcase_id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableCreate', 'showcaseID' => $showcaseID])
                 );
             } else //add delete table popup item
             {
                 $popup->add_item(
                     $lang->myshowcase_summary_rebuildtable,
-                    urlHandlerBuild(['action' => 'tableRebuild', 'showcase_id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableRebuild', 'showcaseID' => $showcaseID])
                 );
 
                 $popup->add_item(
                     $lang->myshowcase_summary_deletetable,
-                    urlHandlerBuild(['action' => 'tableDrop', 'showcase_id' => $showcaseID])
+                    urlHandlerBuild(['action' => 'tableDrop', 'showcaseID' => $showcaseID])
                 );
             }
 
             $popup->add_item(
                 $lang->myshowcase_summary_seo,
-                urlHandlerBuild(['action' => 'viewRewrites', 'showcase_id' => $showcaseData['showcase_id']])
+                urlHandlerBuild(['action' => 'viewRewrites', 'showcaseID' => $showcaseData['showcase_id']])
             );
 
             $popup->add_item(
                 $lang->myshowcase_summary_delete,
-                urlHandlerBuild(['action' => 'delete', 'showcase_id' => $showcaseID])
+                urlHandlerBuild(['action' => 'delete', 'showcaseID' => $showcaseID])
             );
 
             $showcaseData['attachments_uploads_path'] = $showcaseData['attachments_uploads_path'] ?? $lang->myshowcase_summary_not_specified;
@@ -1684,4 +2230,228 @@ if ($mybb->get_input('action') === 'add' || $mybb->get_input('action') === 'edit
     hooksRun('admin_summary_main_end');
 
     $page->output_footer();
+}
+
+/**
+ * @param int $groupID
+ *
+ * @return string
+ */
+function retrieveSinglePermissionsRow(int $groupID): string
+{
+    global $mybb, $lang;
+    global $tablesData, $showcaseID, $groupsCache;
+
+    $groupData = $groupsCache[$groupID];
+
+    foreach (
+        permissionsGet(
+            ["showcase_id='{$showcaseID}'"],
+            array_keys($tablesData['myshowcase_permissions'])
+        ) as $existing
+    ) {
+        $existing_permissions[$existing['group_id']] = $existing;
+    }
+
+    $cachedPermissions = cacheGet(CACHE_TYPE_PERMISSIONS);
+
+    $field_list = [];
+
+    foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+        if (!isset($fieldData['isPermission'])) {
+            continue;
+        }
+
+        $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
+
+        $field_list[$fieldName] = $lang->{'myShowcaseAdminSummaryPermissionsField' . $key};
+    }
+
+    $form = new Form('', '', '', 0, '', true);
+
+    $form_container = new FormContainer();
+
+    $perms = [];
+
+    if ($existing_permissions[$groupID]) {
+        $perms = $existing_permissions[$groupID];
+
+        $default_checked = false;
+    } elseif ($cachedPermissions[$showcaseID][$groupID]) {
+        $perms = $cachedPermissions[$showcaseID][$groupID];
+
+        $default_checked = true;
+    }
+
+    if (!$perms) {
+        $perms = $groupData;
+
+        $default_checked = true;
+    }
+
+    foreach ($field_list as $forum_permission => $forum_perm_title) {
+        if ($perms[$forum_permission] == 1) {
+            $perms_checked[$forum_permission] = 1;
+        } else {
+            $perms_checked[$forum_permission] = 0;
+        }
+    }
+
+    $groupTitle = htmlspecialchars_uni($groupData['title']);
+
+    if (!empty($default_checked)) {
+        $inherited_text = $lang->myShowcaseAdminSummaryPermissionsFormInherited;
+    } else {
+        $inherited_text = $lang->myShowcaseAdminSummaryPermissionsFormCustom;
+    }
+
+    $form_container->output_cell(
+        "<strong>{$groupTitle}</strong> <small style=\"vertical-align: middle;\">({$inherited_text})</small>"
+    );
+
+    $field_select = "<div class=\"quick_perm_fields\">\n";
+
+    $field_select .= "<div class=\"enabled\"><ul id=\"fields_enabled_{$groupID}\">\n";
+
+    foreach ($perms_checked as $perm => $value) {
+        if ($value == 1) {
+            $field_select .= "<li id=\"field-{$perm}\">{$field_list[$perm]}</li>";
+        }
+    }
+
+    $field_select .= "</ul></div>\n";
+
+    $field_select .= "<div class=\"disabled\"><ul id=\"fields_disabled_{$groupID}\">\n";
+
+    foreach ($perms_checked as $perm => $value) {
+        if ($value == 0) {
+            $field_select .= "<li id=\"field-{$perm}\">{$field_list[$perm]}</li>";
+        }
+    }
+
+    $field_select .= "</ul></div></div>\n";
+
+    $field_select .= $form->generate_hidden_field(
+        'fields_' . $groupID,
+        implode(',', array_keys($perms_checked, 1)),
+        ['id' => 'fields_' . $groupID]
+    );
+
+    $field_select = str_replace("\n", '', $field_select);
+
+    $form_container->output_cell($field_select, ['colspan' => 2]);
+
+    $permissionsUrl = urlHandlerBuild(
+        [
+            'action' => 'permissions',
+            'showcaseID' => $showcaseID,
+            'permissionID' => $perms['permission_id'] ?? 0,
+            'groupID' => $groupID
+        ]
+    );
+
+    $permissionsModalUrl = urlHandlerBuild(
+        [
+            'action' => 'permissions',
+            'showcaseID' => $showcaseID,
+            'permissionID' => $perms['permission_id'] ?? 0,
+            'groupID' => $groupID,
+            'ajax' => 1
+        ]
+    );
+
+    if (empty($default_checked)) {
+        $form_container->output_cell(
+            "<a href=\"{$permissionsUrl}\" onclick=\"MyBB.popupWindow('{$permissionsModalUrl}', null, true); return false;\">{$lang->myShowcaseAdminSummaryPermissionsFormEdit}</a>",
+            ['class' => 'align_center']
+        );
+
+        $clearPermissionsUrl = urlHandlerBuild(
+            [
+                'action' => 'clear_permission',
+                'showcaseID' => $showcaseID,
+                'permissionID' => $perms['permission_id'],
+                'my_post_key' => $mybb->post_code
+            ]
+        );
+
+        $form_container->output_cell(
+            "<a href=\"{$clearPermissionsUrl}\" onclick=\"return AdminCP.deleteConfirmation(this, '{$lang->myShowcaseAdminSummaryPermissionsFormConfirmClear}')\">{$lang->myShowcaseAdminSummaryPermissionsFormClear}</a>",
+            ['class' => 'align_center']
+        );
+    } else {
+        $form_container->output_cell(
+            "<a href=\"{$permissionsUrl}\" onclick=\"MyBB.popupWindow('{$permissionsModalUrl}', null, true); return false;\">{$lang->myShowcaseAdminSummaryPermissionsFormSet}</a>",
+            ['class' => 'align_center', 'colspan' => 2]
+        );
+    }
+
+    $form_container->construct_row();
+
+    return $form_container->output_row_cells(0, true);
+}
+
+/**
+ * @param int $fid
+ */
+function saveQuickPermissions(int $showcaseID, array $permissionsData): void
+{
+    global $db, $inherit, $cache;
+    global $tablesData, $showcaseID, $groupsCache, $cachedPermissions;
+
+    $permission_fields = [];
+
+    foreach ($tablesData['myshowcase_permissions'] as $fieldName => $fieldData) {
+        if (!isset($fieldData['isPermission']) || empty($fieldData['draggingPermission'])) {
+            continue;
+        }
+
+        $permission_fields[$fieldName] = $fieldData['default'];
+    }
+
+    $groupPermissionFields = $permission_fields;
+
+    foreach ($groupsCache as $groupData) {
+        $groupID = (int)$groupData['gid'];
+
+        $existing_permissions = [];
+
+        foreach ($cachedPermissions[$showcaseID] as $showcasePermissions) {
+            $existing_permissions[$showcasePermissions['group_id']] = $showcasePermissions;
+        }
+
+        if (!$existing_permissions) {
+            foreach ($permission_fields as $field => $value) {
+                $existing_permissions[$field] = $groupData['myshowcase_' . $field];
+            }
+        }
+
+        permissionsDelete(["showcase_id='{$showcaseID}'", "group_id='{$groupID}'"]);
+
+        // Only insert the new ones if we're using custom permissions
+        if (empty($inherit[$groupID])) {
+            $insertData = [
+                'showcase_id' => $showcaseID,
+                'group_id' => $groupID,
+            ];
+
+            foreach ($permissionsData as $permissionsName => $permissionsDataValue) {
+                if (isset($permissionsDataValue[$groupID])) {
+                    $insertData[$permissionsName] = $permissionsDataValue[$groupID];
+                }
+            }
+
+            foreach ($permission_fields as $permissionsName => $value) {
+                if (isset($insertData[$permissionsName])) {
+                    continue;
+                }
+
+                $insertData[$permissionsName] = isset($existing_permissions[$permissionsName]) ? (int)$existing_permissions[$permissionsName] : 0;
+            }
+
+            permissionsInsert($insertData);
+        }
+    }
+
+    $cache->update_forumpermissions();
 }

@@ -27,6 +27,7 @@ use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\postParser;
+use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\entryDataUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
@@ -44,6 +45,7 @@ use const MyShowcase\Core\GUEST_GROUP_ID;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 use const MyShowcase\Core\REPORT_STATUS_PENDING;
+use const MyShowcase\Core\TABLES_DATA;
 
 class Showcase
 {
@@ -366,52 +368,47 @@ class Showcase
      */
     public function groupPermissionsGet(int $groupID = GUEST_GROUP_ID): array
     {
-        static $showcaseGroupPermissions = null;
+        static $showcaseGroupPermissions = [];
 
-        if ($showcaseGroupPermissions === null) {
+        if (!isset($showcaseGroupPermissions[$groupID])) {
+            $showcaseGroupPermissions[$groupID] = [];
+
+            $dataFields = TABLES_DATA['myshowcase_permissions'];
+
+            foreach ($dataFields as $dataFieldKey => $dataFieldData) {
+                if (!isset($dataFieldData['isPermission'])) {
+                    continue;
+                }
+
+                $showcaseGroupPermissions[$groupID][$dataFieldKey] = $dataFieldData['default'];
+            }
+
             global $cache;
 
-            //require_once MYBB_ROOT . $config['admin_dir'] . '/modules/myshowcase/module_meta.php';
-            $defaultShowcasePermissions = showcaseDefaultPermissions();
+            $groupsCache = $cache->read('usergroups') ?? [];
 
-            $showcaseGroupPermissions = [];
+            foreach ($groupsCache[$groupID] as $permissionKey => $permissionValue) {
+                if (str_starts_with($permissionKey, 'myshowcase_')) {
+                    $permissionName = str_replace('myshowcase_', '', $permissionKey);
 
-            $groupsCache = (array)$cache->read('usergroups');
-
-            foreach (cacheGet(CACHE_TYPE_PERMISSIONS)[$this->showcase_id] as $showcasePermissions) {
-                $groupID = (int)$showcasePermissions['group_id'];
-
-                $showcaseGroupPermissions[$groupID]['showcase_id'] = $groupID;
-                $showcaseGroupPermissions[$groupID]['name'] = $groupsCache[$groupID]['title'] ?? '';
-                //$showcaseGroupPermissions[$groupID]['intable'] = 1;
-
-                foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
-                    $showcaseGroupPermissions[$groupID][$permissionKey] = $permissionValue;
-                    $showcaseGroupPermissions[$groupID][$permissionKey] = $showcasePermissions[$permissionKey];
+                    $showcaseGroupPermissions[$groupID][$permissionName] = sanitizeTableFieldValue(
+                        $permissionValue,
+                        $dataFields[$permissionName]['type']
+                    );
                 }
             }
 
-            //load defaults if group not already in cache (e.g. group added since myshowcase created)
-            foreach ($groupsCache as $groupData) {
-                $groupID = (int)$groupData['gid'];
+            $permissionsCache = cacheGet(CACHE_TYPE_PERMISSIONS);
 
-                if (!array_key_exists($groupID, $showcaseGroupPermissions)) {
-                    $showcaseGroupPermissions[$groupID]['showcase_id'] = $groupID;
-                    $showcaseGroupPermissions[$groupID]['name'] = $groupData['title'] ?? '';
-                    //$showcaseGroupPermissions[$groupID]['intable'] = 0;
-
-                    foreach ($defaultShowcasePermissions as $permissionKey => $permissionValue) {
-                        $showcaseGroupPermissions[$groupID][$permissionKey] = $permissionValue;
-                    }
-                }
+            if (!empty($permissionsCache[$this->showcase_id][$groupID])) {
+                $showcaseGroupPermissions[$groupID] = array_merge(
+                    $showcaseGroupPermissions[$groupID],
+                    $permissionsCache[$this->showcase_id][$groupID]
+                );
             }
         }
 
-        if ($groupID) {
-            return $showcaseGroupPermissions[$groupID] ?? [];
-        } else {
-            return $showcaseGroupPermissions;
-        }
+        return $showcaseGroupPermissions[$groupID];
     }
 
     /**
@@ -422,35 +419,63 @@ class Showcase
      */
     public function userPermissionsGet(int $userID): array
     {
-        $userData = get_user($userID);
+        static $userPermissions = [];
 
-        $guestGroupPermissions = $this->groupPermissionsGet();
+        if (!isset($userPermissions[$userID])) {
+            $userPermissions[$userID] = [];
 
-        $userPermissions = [];
+            $userData = get_user($userID);
 
-        foreach (showcaseDefaultPermissions() as $permissionKey => $permissionValue) {
-            $userPermissions[$permissionKey] = $guestGroupPermissions[$permissionKey];
-        }
+            if (!empty($userData['uid'])) {
+                $userGroupsIDs = array_filter(
+                    array_map(
+                        'intval',
+                        explode(',', "{$userData['usergroup']},{$userData['additionalgroups']}")
+                    )
+                );
 
-        if (!empty($userData['uid'])) {
-            $userGroupsIDs = array_filter(
-                array_map(
-                    'intval',
-                    explode(',', "{$userData['usergroup']},{$userData['additionalgroups']}")
-                )
-            );
+                $dataFields = TABLES_DATA['myshowcase_permissions'];
 
-            foreach (array_keys($userPermissions) as $permissionKey) {
-                foreach ($userGroupsIDs as $groupID) {
-                    $groupPermissions = $this->groupPermissionsGet($groupID);
+                foreach ($dataFields as $permissionName => $dataFieldData) {
+                    if (!isset($dataFieldData['isPermission'])) {
+                        continue;
+                    }
 
-                    $userPermissions[$permissionKey] = ((int)$groupPermissions[$permissionKey] === ALL_UNLIMITED_VALUE ? -1 :
-                        max($userPermissions[$permissionKey], $groupPermissions[$permissionKey]));
+                    foreach ($userGroupsIDs as $groupID) {
+                        $groupPermissions = $this->groupPermissionsGet($groupID);
+
+                        if (!empty($dataFieldData['zeroUnlimited']) && empty($groupPermissions[$permissionName]) ||
+                            !empty($dataFieldData['zeroUnlimited']) && isset($userPermissions[$userID][$permissionName]) && empty($userPermissions[$userID][$permissionName])) {
+                            $userPermissions[$userID][$permissionName] = ALL_UNLIMITED_VALUE;
+
+                            continue 2;
+                        }
+
+                        if (isset($userPermissions[$userID][$permissionName])) {
+                            if (empty($dataFieldData['lowest'])) {
+                                $userPermissions[$userID][$permissionName] = max(
+                                    $userPermissions[$userID][$permissionName],
+                                    $groupPermissions[$permissionName]
+                                );
+                            } else {
+                                $userPermissions[$userID][$permissionName] = min(
+                                    $userPermissions[$userID][$permissionName],
+                                    $groupPermissions[$permissionName]
+                                );
+                            }
+                        } else {
+                            $userPermissions[$userID][$permissionName] = $groupPermissions[$permissionName];
+                        }
+                    }
                 }
+            } else {
+                $userPermissions[$userID] = $this->groupPermissionsGet();
             }
+
+            $userPermissions[$userID] = array_merge($userPermissions[$userID], $this->moderatorPermissionsGet($userID));
         }
 
-        return array_merge($userPermissions, $this->moderatorPermissionsGet($userID));
+        return $userPermissions[$userID];
     }
 
     public function moderatorPermissionsGet(int $userID): array

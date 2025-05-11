@@ -106,7 +106,7 @@ class Output
                 }
             } else {
                 // Get a listing of the current attachments.
-                if (!empty($showcaseUserPermissions[UserPermissions::CanCreateAttachments])) {
+                if (!empty($showcaseUserPermissions[UserPermissions::CanUploadAttachments])) {
                     $attachcount = 0;
 
                     $attachments = '';
@@ -140,9 +140,9 @@ class Output
                     $lang->myshowcase_attach_quota = $lang->sprintf(
                             $lang->myshowcase_attach_quota,
                             $attachcount,
-                            ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
+                            ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])
                         ) . '<br>';
-                    if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit]))) {
+                    if ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] !== ATTACHMENT_ZERO && ($attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit]))) {
                         if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments]) {
                             $showcase_watermark = eval(getTemplate('watermark'));
                         }
@@ -184,7 +184,7 @@ class Output
         $attachmentsTable = '';
 
         // Get a listing of the current attachments.
-        if (!empty($showcaseUserPermissions[UserPermissions::CanCreateAttachments])) {
+        if (!empty($showcaseUserPermissions[UserPermissions::CanUploadAttachments])) {
             $attachcount = 0;
 
             $attachments = '';
@@ -214,9 +214,9 @@ class Output
             $lang->myshowcase_attach_quota = $lang->sprintf(
                     $lang->myshowcase_attach_quota,
                     $attachcount,
-                    ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsLimit])
+                    ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED ? $lang->myshowcase_unlimited : $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])
                 ) . '<br>';
-            if ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsLimit] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsLimit])) {
+            if ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] === ATTACHMENT_UNLIMITED || ($showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit] !== ATTACHMENT_UNLIMITED && $attachcount < $showcaseUserPermissions[UserPermissions::AttachmentsFilesLimit])) {
                 if ($this->showcaseObject->userPermissions[UserPermissions::CanWaterMarkAttachments] && $this->showcaseObject->config['attachments_watermark_file'] !== '' && file_exists(
                         $this->showcaseObject->config['attachments_watermark_file']
                     )) {

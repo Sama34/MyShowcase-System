@@ -13,22 +13,13 @@
 
 declare(strict_types=1);
 
+use MyShowcase\System\Router;
+
+use const MyShowcase\ROOT;
+
 /*
  * Only user edits required
 */
-
-use MyShowcase\System\ModeratorPermissions;
-use MyShowcase\System\Router;
-use MyShowcase\System\UserPermissions;
-
-use function MyShowcase\Core\attachmentGet;
-use function MyShowcase\Core\attachmentUpload;
-use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\Core\urlHandlerGet;
-use function MyShowcase\Core\urlHandlerSet;
-
-use const MyShowcase\ROOT;
-use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 
 $forumDirectoryPath = ''; //no trailing slash
 
@@ -59,7 +50,6 @@ if (!chdir($forumDirectoryPath) && !empty($forumDirectoryPath)) {
 //change working directory to allow board includes to work
 $forumDirectoryPathTrailing = ($forumDirectoryPath === '' ? '' : $forumDirectoryPath . '/');
 
-//setup templates
 $templatelist = '';
 
 //get MyBB stuff
@@ -126,4 +116,3 @@ $router->post('/{showcase_slug}/view/{entry_slug}/comment/{comment_id}/delete', 
 $router->get('/{showcase_slug}/search', 'Search', 'searchForm');
 
 $router->run();
-
