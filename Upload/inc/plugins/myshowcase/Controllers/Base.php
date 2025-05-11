@@ -40,16 +40,19 @@ use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\outputGetObject;
 use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
+use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_MAIN;
 use const MyShowcase\Core\VERSION_CODE;
 
 abstract class Base
 {
     public function __construct(
-        public Router $router,
+        public ?Router $router = null,
         public ?Showcase &$showcaseObject = null,
         public ?Render &$renderObject = null,
         public ?Output &$outputObject = null,
@@ -113,6 +116,8 @@ abstract class Base
         global $mybb, $lang;
         global $headerinclude, $header, $footer;
 
+        $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+
         $pageTitle = $this->showcaseObject->config['name'];
 
         $errorMessages = empty($this->showcaseObject->errorMessages) ? '' : inline_error(
@@ -130,10 +135,10 @@ abstract class Base
         $showcaseDescription = htmlspecialchars_uni($this->showcaseObject->config['description']);
 
         if ($this->showcaseObject->entryID) {
-            $entryUrl = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            );
+            $entryUrl = url(
+                URL_TYPE_ENTRY_VIEW,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            )->getRelativeUrl();
 
             $metaData .= eval($this->renderObject->templateGet('pageMetaCanonical'));
         }

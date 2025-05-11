@@ -17,23 +17,19 @@ namespace MyShowcase\System;
 
 use MyBB;
 use JetBrains\PhpStorm\NoReturn;
-use inc\datahandlers\MyShowcaseDataHandler;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
-use function MyShowcase\Core\dataHandlerGetObject;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
-use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\entryDataGet;
-use function MyShowcase\Core\cacheUpdate;
-use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\entryDataUpdate;
+use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\Core\ATTACHMENT_UNLIMITED;
 use const MyShowcase\Core\ATTACHMENT_ZERO;
-use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
 use const MyShowcase\Core\TABLES_DATA;
+use const MyShowcase\Core\URL_TYPE_MAIN;
 
 class Output
 {
@@ -153,20 +149,6 @@ class Output
             }
         }
 
-        if ($mybb->get_input('action') === 'new') {
-            add_breadcrumb(
-                $lang->myShowcaseButtonEntryCreate,
-                $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
-            );
-        } elseif ($mybb->get_input('action') === 'edit') {
-            $showcase_editing_user = str_replace(
-                '{username}',
-                $entryUserData['username'],
-                $lang->myshowcase_editing_user
-            );
-            add_breadcrumb($showcase_editing_user, $this->showcaseObject->urlBuild($this->showcaseObject->urlMain));
-        }
-
         if ($isEditPage) {
             if (!$this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries]) {
                 error($lang->myshowcase_not_authorized);
@@ -240,6 +222,8 @@ class Output
 
         $pageContents = eval(getTemplate('pageEntryCreateUpdateContents'));
 
+        $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+
         $pageContents = eval(getTemplate('page'));
 
         $hookArguments = hooksRun('output_new_end', $hookArguments);
@@ -312,17 +296,13 @@ class Output
                     $url_params[] = 'page=' . $this->pageCurrent;
                 }
 
-                $url = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain) . (count(
-                        $url_params
-                    ) > 0 ? '?' . implode(
-                            '&amp;',
-                            $url_params
-                        ) : '');
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
                 $redirtext = ($mybb->get_input(
                     'action'
                 ) === 'multiapprove' ? $lang->redirect_myshowcase_approve : $lang->redirect_myshowcase_unapprove);
-                redirect($url, $redirtext);
+
+                redirect($mainUrl, $redirtext);
                 exit;
                 break;
             }
@@ -362,14 +342,10 @@ class Output
                     $url_params[] = 'page=' . $this->pageCurrent;
                 }
 
-                $return_url = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain) . (count(
-                        $url_params
-                    ) > 0 ? '?' . implode(
-                            '&amp;',
-                            $url_params
-                        ) : '');
-                //$return_url = htmlspecialchars_uni($mybb->get_input('url'));
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+
                 $multidelete = eval(getTemplate('inline_deleteshowcases'));
+
                 output_page($multidelete);
                 break;
             }
@@ -407,14 +383,9 @@ class Output
                     $url_params[] = 'page=' . $this->pageCurrent;
                 }
 
-                $url = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain) . (count(
-                        $url_params
-                    ) > 0 ? '?' . implode(
-                            '&amp;',
-                            $url_params
-                        ) : '');
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
-                redirect($url, $lang->redirect_myshowcase_delete);
+                redirect($mainUrl, $lang->redirect_myshowcase_delete);
                 exit;
                 break;
             }

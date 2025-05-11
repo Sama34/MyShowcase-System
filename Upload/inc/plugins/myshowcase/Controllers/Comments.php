@@ -38,23 +38,28 @@ use MyShowcase\System\UserPermissions;
 
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\dataHandlerGetObject;
-use function MyShowcase\Core\dataTableStructureGet;
-
 use function MyShowcase\Core\hooksRun;
+use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\ROOT;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
-use const MyShowcase\ROOT;
+use const MyShowcase\Core\FILTER_TYPE_USER_ID;
+use const MyShowcase\Core\URL_TYPE_COMMENT_CREATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_MAIN;
+use const MyShowcase\Core\URL_TYPE_MAIN_USER;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
-use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 
 class Comments extends Base
 {
     public function __construct(
-        public Router $router,
+        public ?Router $router = null,
         protected ?CommentsModel $commentsModel = null,
     ) {
         require_once ROOT . '/Models/Comments.php';
@@ -65,24 +70,12 @@ class Comments extends Base
     }
 
     public function setEntry(
-        string $entrySlug
+        string $entrySlug,
+        bool $loadFields = false
     ) {
-        $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
+        require_once ROOT . '/Controllers/Entries.php';
 
-        $queryFields = array_merge(
-            array_map(function (string $columnName): string {
-                return 'entryData.' . $columnName;
-            }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])),
-            [
-                'userData.username',
-            ]
-        );
-
-        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
-
-        $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet(["entry_slug='{$entrySlug}'"], $queryFields, ['limit' => 1], $queryTables)
-        );
+        (new Entries())->setEntry($entrySlug, $loadFields);
     }
 
     public function updateEntryCommentsCount(): void
@@ -172,7 +165,7 @@ class Comments extends Base
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $this->setEntry($entrySlug);
+        $this->setEntry($entrySlug, true);
 
         if (!$this->showcaseObject->config['comments_allow'] ||
             !$this->showcaseObject->entryID) {
@@ -183,16 +176,16 @@ class Comments extends Base
             !$isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanCreateComments]) {
             error_no_permission();
         }
-
-        if (empty($commentData) ||
-            !(
-                $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments] ||
-                ((int)$commentData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments])/* ||
-                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])*/
+        /*
+                if ($isEditPage && empty($commentData) ||
+                    !(
+                        $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments] ||
+                        ((int)$commentData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments])/* ||
+                        ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])*//*
             ) ||
             !$this->showcaseObject->entryID) {
             error_no_permission();
-        }
+        }*/
 
         $plugins->run_hooks('myshowcase_add_comment_start');
 
@@ -208,18 +201,25 @@ class Comments extends Base
             $insertData = [
                 'comment' => $mybb->get_input('comment'),
                 'status' => COMMENT_STATUS_VISIBLE,
-                'dateline' => TIME_NOW
             ];
 
             if (!$isEditPage) {
                 $insertData['user_id'] = $currentUserID;
 
                 $insertData['ipaddress'] = $mybb->session->packedip;
+
+                $insertData['dateline'] = TIME_NOW;
             }
 
-            if ($isEditPage && $this->showcaseObject->config['moderate_comments_update']) {
+            if ($isEditPage && (
+                    $this->showcaseObject->config['moderate_comments_update'] ||
+                    $this->showcaseObject->userPermissions[UserPermissions::ModerateCommentsUpdate]
+                )) {
                 $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
-            } elseif (!$isEditPage && $this->showcaseObject->config['moderate_comments_create']) {
+            } elseif (!$isEditPage && $this->showcaseObject->config['moderate_comments_create'] && (
+                    $this->showcaseObject->config['moderate_comments_update'] ||
+                    $this->showcaseObject->userPermissions[UserPermissions::ModerateCommentsCreate]
+                )) {
                 $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
             }
 
@@ -246,18 +246,20 @@ class Comments extends Base
                 $this->updateEntryCommentsCount();
 
                 if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
-                    $entryUrl = $this->showcaseObject->urlGetEntry();
+                    $entryUrl = url(
+                        URL_TYPE_ENTRY_VIEW,
+                        ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    )->getRelativeUrl();
 
                     redirect(
                         $entryUrl,
                         $isEditPage ? $lang->myShowcaseEntryCommentUpdatedStatus : $lang->myShowcaseEntryCommentCreatedStatus
                     );
                 } else {
-                    $commentUrl = $this->showcaseObject->urlBuild(
-                            $this->showcaseObject->urlViewComment,
-                            $this->showcaseObject->entryData['entry_slug'],
-                            $commentID
-                        ) . '#commentID' . $commentID;
+                    $commentUrl = url(
+                            URL_TYPE_COMMENT_VIEW,
+                            ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                        )->getRelativeUrl() . '#commentID' . $commentID;
 
                     redirect(
                         $commentUrl,
@@ -273,19 +275,50 @@ class Comments extends Base
 
         global $theme;
 
+        switch ($this->showcaseObject->config['filter_force_field']) {
+            case FILTER_TYPE_USER_ID:
+                $userData = get_user($this->showcaseObject->entryUserID);
+
+                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                    error_no_permission();
+                }
+
+                $lang->load('member');
+
+                $userName = htmlspecialchars_uni($userData['username']);
+
+                add_breadcrumb(
+                    $lang->sprintf($lang->nav_profile, $userName),
+                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                );
+
+                $mainUrl = str_replace(
+                    '/user/',
+                    '/user/' . $this->showcaseObject->entryUserID,
+                    url(URL_TYPE_MAIN_USER)->getRelativeUrl()
+                );
+
+                break;
+            default:
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+                break;
+        }
+
         add_breadcrumb(
             $this->showcaseObject->config['name_friendly'],
-            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+            $mainUrl
         );
 
         $entrySubject = $this->renderObject->buildEntrySubject();
 
+        $entryUrl = url(
+            URL_TYPE_ENTRY_VIEW,
+            ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+        )->getRelativeUrl();
+
         add_breadcrumb(
             $entrySubject,
-            $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            )
+            $entryUrl
         );
 
         if ($isEditPage) {
@@ -315,16 +348,15 @@ class Comments extends Base
         $alternativeBackground = alt_trow(true);
 
         if ($isEditPage) {
-            $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlUpdateComment,
-                $this->showcaseObject->entryData['entry_slug'],
-                $commentID
-            );
+            $createUpdateUrl = url(
+                URL_TYPE_COMMENT_UPDATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+            )->getRelativeUrl();
         } else {
-            $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlCreateComment,
-                $this->showcaseObject->entryData['entry_slug'],
-            );
+            $createUpdateUrl = url(
+                URL_TYPE_COMMENT_CREATE,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            )->getRelativeUrl();
         }
 
         $commentMessage = htmlspecialchars_uni($mybb->get_input('comment'));
@@ -374,11 +406,10 @@ class Comments extends Base
 
             $this->updateEntryCommentsCount();
 
-            $commentUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlViewComment,
-                    $this->showcaseObject->entryData['entry_slug'],
-                    $commentID
-                ) . '#commentID' . $commentID;
+            $commentUrl = url(
+                    URL_TYPE_COMMENT_VIEW,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                )->getRelativeUrl() . '#commentID' . $commentID;
 
             switch ($status) {
                 case COMMENT_STATUS_PENDING_APPROVAL:
@@ -460,10 +491,10 @@ class Comments extends Base
 
         $this->updateEntryCommentsCount();
 
-        $entryUrl = $this->showcaseObject->urlBuild(
-            $this->showcaseObject->urlViewEntry,
-            $this->showcaseObject->entryData['entry_slug']
-        );
+        $entryUrl = url(
+            URL_TYPE_ENTRY_VIEW,
+            ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+        )->getRelativeUrl();
 
         redirect($entryUrl, $lang->myShowcaseEntryCommentDeleted);
     }

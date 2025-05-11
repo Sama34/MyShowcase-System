@@ -149,8 +149,9 @@ $l = array_merge([
     'myShowcaseAdminSummaryAddEditCustomThemeTemplatePrefixDescription' => 'Template prefix to fetch custom templates.',
     'myShowcaseAdminSummaryAddEditOrderDefaultField' => 'Entries Order Default Field',
     'myShowcaseAdminSummaryAddEditOrderDefaultFieldDescription' => 'Order entries in the main page using a default field.',
-    'myShowcaseAdminSummaryAddEditFilterDefaultField' => 'Force Default Filter',
-    'myShowcaseAdminSummaryAddEditFilterDefaultFieldDescription' => 'Force a filter field to view entries.',
+    'myShowcaseAdminSummaryAddEditFilterForceField' => 'Force Default Filter',
+    'myShowcaseAdminSummaryAddEditFilterForceFieldDescription' => 'Force a filter field to view entries.',
+    'myShowcaseAdminSummaryAddEditFilterForceFieldUserID' => 'User ID (profile showcase)',
 
     'myShowcaseAdminSummaryAddEditEntriesEntriesPerPage' => 'Entries Options',
     'myShowcaseAdminSummaryAddEditEntriesEntriesPerPageDescription' => 'Entries Per Page',

@@ -2,7 +2,7 @@
     {$pagination}
 </div>
 <div class="float_right">
-    {$buttonNewEntry}
+    {$entryCreateButton}
 </div>
 <table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder clear">
     <tr>
@@ -43,7 +43,7 @@
     {$showcaseEntriesList}
     <tr>
         <td class="tfoot" align="right" colspan="{$showcaseColumnsCount}">
-            <form action="{$this->showcaseObject->urlBase}/{$baseUrl}" method="post">
+            <form action="{$this->showcaseObject->urlBase}/{$mainUrl}" method="post">
                 <input type="hidden" name="page" value="{$this->outputObject->pageCurrent}"/>
                 {$selectFieldCode}
                 <select name="order_by">
@@ -75,7 +75,7 @@
     {$pagination}
 </div>
 <div class="float_right" style="margin-top: 4px;">
-    {$buttonNewEntry}
+    {$entryCreateButton}
 </div>
 <br class="clear"/>
 <br/>

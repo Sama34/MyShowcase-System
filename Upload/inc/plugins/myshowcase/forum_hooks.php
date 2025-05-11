@@ -27,7 +27,6 @@ use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\entryDataGet;
 use function MyShowcase\Core\showcaseGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
-use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerGet;
 use function MyShowcase\Core\urlHandlerSet;
 
@@ -211,7 +210,13 @@ function global_intermediate(): bool
 
             //awaiting approval
             if ($showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
-                $unapprovedEntriesUrl = $showcaseObject->urlBuild($showcaseObject->urlMainUnapproved);
+                /*
+                 $unapprovedEntriesUrl = url(
+                    URL_TYPE_MAIN,
+                    getParams: array_merge($showcaseObject->urlParams, ['unapproved' => 1])
+                )->getRelativeUrl();
+                */
+                $unapprovedEntriesUrl = '';
 
                 $totalUnapprovedEntries = $showcaseObject->entriesGetUnapprovedCount();
 

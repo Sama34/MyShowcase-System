@@ -31,7 +31,6 @@ use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\entryDataUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
-use function MyShowcase\Core\showcaseDefaultPermissions;
 
 use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
@@ -41,10 +40,10 @@ use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
+use const MyShowcase\Core\FILTER_TYPE_USER_ID;
 use const MyShowcase\Core\GUEST_GROUP_ID;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
-use const MyShowcase\Core\REPORT_STATUS_PENDING;
 use const MyShowcase\Core\TABLES_DATA;
 
 class Showcase
@@ -112,6 +111,8 @@ class Showcase
         public string $urlViewAttachment = '',
         public string $urlViewAttachmentItem = '',
         public array $config = [],
+        public array $urlParams = [],
+        public array $whereClauses = [],
     ) {
         global $db, $mybb, $cache;
 
@@ -255,7 +256,11 @@ class Showcase
             $this->sortByField = 'dateline';
         }
 
-        $this->urlBase = $mybb->settings['bburl'];
+        $this->urlBase = $mybb->settings['homeurl'];
+
+        if (str_ends_with($this->urlBase, '/')) {
+            $this->urlBase = rtrim($this->urlBase, '/');
+        }
 
         $this->showcaseSlug = str_replace('.php', '', $this->scriptName);
 
@@ -323,20 +328,6 @@ class Showcase
         }
 
         return $this;
-    }
-
-    public function urlGetEntry(): string
-    {
-        return $this->urlBuild($this->urlViewEntry, $this->entryData['entry_slug']);
-    }
-
-    public function urlGetEntryPage(int $currentPage = 0, string $pagePlaceholder = ''): string
-    {
-        return $this->urlBuild(
-            $this->urlViewEntryPage,
-            $this->entryData['entry_slug'],
-            currentPage: $pagePlaceholder ?? $currentPage
-        );
     }
 
     public function urlGetCreateEntry(): string
@@ -649,7 +640,7 @@ class Showcase
         if ($this->config['relative_path']) {
             return $this->config['relative_path'] . '/' . $this->config['script_name'];
         } else {
-            return $mybb->settings['bburl'] . '/' . $this->config['script_name'];
+            return $this->urlBase . '/' . $this->config['script_name'];
         }
     }
 
@@ -752,5 +743,27 @@ class Showcase
     public function urlSet(string $showcaseUrl): void
     {
         $this->showcaseUrl = $showcaseUrl;
+    }
+
+    public function getDefaultFilter(): void
+    {
+        if (!$this->config['filter_force_field']) {
+            return;
+        }
+
+        global $mybb;
+
+        switch ($this->config['filter_force_field']) {
+            case FILTER_TYPE_USER_ID:
+                if (!isset($mybb->input['user_id'])) {
+                    error_no_permission();
+                }
+
+                //$this->urlParams['user_id'] = $mybb->get_input('user_id', MyBB::INPUT_INT);
+
+                //$this->whereClauses[] = "user_id='{$this->urlParams['user_id']}'";
+
+                break;
+        }
     }
 }

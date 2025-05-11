@@ -13,9 +13,34 @@
 
 declare(strict_types=1);
 
-use MyShowcase\System\Router;
+use Pecee\Http\Middleware\Exceptions\TokenMismatchException;
+use Pecee\SimpleRouter\Exceptions\NotFoundHttpException;
+use Pecee\SimpleRouter\SimpleRouter;
+
+use function MyShowcase\Core\outputGetObject;
+use function MyShowcase\Core\renderGetObject;
+use function MyShowcase\Core\showcaseGetObjectByScriptName;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\FILTER_TYPE_USER_ID;
+use const MyShowcase\Core\URL_TYPE_COMMENT_APPROVE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_CREATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_DELETE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_RESTORE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_SOFT_DELETE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UNAPPROVE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
+use const MyShowcase\Core\URL_TYPE_ENTRY_APPROVE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_CREATE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_DELETE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_RESTORE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_SOFT_DELETE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_UNAPPROVE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_MAIN;
+use const MyShowcase\Core\URL_TYPE_MAIN_USER;
 
 /*
  * Only user edits required
@@ -62,57 +87,139 @@ chdir($currentWorkingDirectoryPath);
 require_once ROOT . '/System/Router.php';
 require_once ROOT . '/Controllers/Base.php';
 require_once ROOT . '/Models/Base.php';
+require_once ROOT . '/vendor/autoload.php'; // router
+require_once ROOT . '/vendor/pecee/simple-router/helpers.php';
 
-$router = new Router();
+require_once ROOT . '/Controllers/Entries.php';
+require_once ROOT . '/Controllers/Comments.php';
 
-$router->get('/', 'Entries', 'listEntries');
+$showcaseObject = showcaseGetObjectByScriptName(THIS_SCRIPT);
 
-$router->get('/user/{user_id}', 'Entries', 'listEntriesUser');
+$renderObject = renderGetObject($showcaseObject);
 
-$router->get('/unapproved', 'Entries', 'listEntriesUnapproved');
+$outputObject = outputGetObject($showcaseObject, $renderObject);
 
-$router->get('/create', 'Entries', 'createEntry');
+if ($showcaseObject->friendlyUrlsEnabled) {
+    $requestBaseUri = str_replace('.php', '/', $_SERVER['PHP_SELF']);
+} else {
+    $requestBaseUri = $_SERVER['PHP_SELF'];
+}
 
-$router->post('/create', 'Entries', 'createEntry');
+$requestBaseUriExtra = '';
 
-$router->get('/view/{entry_slug}', 'Entries', 'viewEntry');
+switch ($showcaseObject->config['filter_force_field']) {
+    case FILTER_TYPE_USER_ID:
+        $requestBaseUriExtra = '/user/{user_id}';
 
-$router->get('/view/{entry_slug}/page/{current_page}', 'Entries', 'viewEntryPage');
+        break;
+    default:
+        break;
+}
 
-$router->get('/view/{entry_slug}/update', 'Entries', 'updateEntry');
+SimpleRouter::get(
+    $requestBaseUri . $requestBaseUriExtra . '/',
+    ['MyShowcase\Controllers\Entries', 'listEntries']
+)->name(URL_TYPE_MAIN);
 
-$router->post('/view/{entry_slug}/update', 'Entries', 'updateEntry');
+SimpleRouter::get(
+    $requestBaseUri . '/user/{user_id}',
+    ['MyShowcase\Controllers\Entries', 'listEntriesUser']
+)->name(URL_TYPE_MAIN_USER)->where(['id' => '[0-9]+']);
 
-$router->post('/view/{entry_slug}/approve', 'Entries', 'approveEntry');
+SimpleRouter::get(
+    $requestBaseUri . $requestBaseUriExtra . '/unapproved',
+    ['MyShowcase\Controllers\Entries', 'listEntriesUnapproved']
+)->name('main_unapproved');
 
-$router->post('/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
+SimpleRouter::form(
+    $requestBaseUri . '/create',
+    ['MyShowcase\Controllers\Entries', 'createEntry']
+)->name(URL_TYPE_ENTRY_CREATE);
 
-$router->post('/view/{entry_slug}/soft_delete', 'Entries', 'softDeleteEntry');
+SimpleRouter::get(
+    $requestBaseUri . '/view/{entry_slug}',
+    ['MyShowcase\Controllers\Entries', 'viewEntry']
+)->name(URL_TYPE_ENTRY_VIEW);
 
-$router->post('/view/{entry_slug}/restore', 'Entries', 'restoreEntry');
+SimpleRouter::form(
+    $requestBaseUri . '/view/{entry_slug}/update',
+    ['MyShowcase\Controllers\Entries', 'updateEntry']
+)->name(URL_TYPE_ENTRY_UPDATE);
 
-$router->post('/view/{entry_slug}/delete', 'Entries', 'deleteEntry');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/approve',
+    ['MyShowcase\Controllers\Entries', 'approveEntry']
+)->name(URL_TYPE_ENTRY_UNAPPROVE);
 
-$router->post('/view/{entry_slug}/unapprove', 'Entries', 'unapproveEntry');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/unapprove',
+    ['MyShowcase\Controllers\Entries', 'unapproveEntry']
+)->name(URL_TYPE_ENTRY_APPROVE);
 
-$router->post('/view/{entry_slug}/comment/create', 'Comments', 'createComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/soft_delete',
+    ['MyShowcase\Controllers\Entries', 'softDeleteEntry']
+)->name(URL_TYPE_ENTRY_SOFT_DELETE);
 
-$router->get('/view/{entry_slug}/comment/{comment_id}', 'Comments', 'viewComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/restore',
+    ['MyShowcase\Controllers\Entries', 'restoreEntry']
+)->name(URL_TYPE_ENTRY_RESTORE);
 
-$router->get('/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/delete',
+    ['MyShowcase\Controllers\Entries', 'deleteEntry']
+)->name(URL_TYPE_ENTRY_DELETE);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/update', 'Comments', 'updateComment');
+SimpleRouter::get(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}',
+    ['MyShowcase\Controllers\Comments', 'viewComment']
+)->name(URL_TYPE_COMMENT_VIEW);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/approve', 'Comments', 'approveComment');
+SimpleRouter::form(
+    $requestBaseUri . '/view/{entry_slug}/comment/create',
+    ['MyShowcase\Controllers\Comments', 'createComment']
+)->name(URL_TYPE_COMMENT_CREATE);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/unapprove', 'Comments', 'unapproveComment');
+SimpleRouter::form(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/update',
+    ['MyShowcase\Controllers\Comments', 'updateComment']
+)->name(URL_TYPE_COMMENT_UPDATE);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/soft_delete', 'Comments', 'SoftDeleteComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/approve',
+    ['MyShowcase\Controllers\Comments', 'approveComment']
+)->name(URL_TYPE_COMMENT_APPROVE);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/restore', 'Comments', 'restoreComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/unapprove',
+    ['MyShowcase\Controllers\Comments', 'unapproveComment']
+)->name(URL_TYPE_COMMENT_UNAPPROVE);
 
-$router->post('/view/{entry_slug}/comment/{comment_id}/delete', 'Comments', 'deleteComment');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/soft_delete',
+    ['MyShowcase\Controllers\Comments', 'SoftDeleteComment']
+)->name(URL_TYPE_COMMENT_SOFT_DELETE);
 
-$router->get('/search', 'Search', 'searchForm');
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/restore',
+    ['MyShowcase\Controllers\Comments', 'restoreComment']
+)->name(URL_TYPE_COMMENT_RESTORE);
 
-$router->run();
+SimpleRouter::post(
+    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/delete',
+    ['MyShowcase\Controllers\Comments', 'deleteComment']
+)->name(URL_TYPE_COMMENT_DELETE);
+
+SimpleRouter::form(
+    $requestBaseUri . $requestBaseUriExtra . '/search',
+    ['MyShowcase\Controllers\Search', 'searchForm']
+)->name(URL_TYPE_MAIN_USER);
+
+try {
+    SimpleRouter::start();
+} catch (TokenMismatchException|NotFoundHttpException|\Pecee\SimpleRouter\Exceptions\HttpException|Exception $e) {
+    error($e->getMessage());
+}
+
+exit;

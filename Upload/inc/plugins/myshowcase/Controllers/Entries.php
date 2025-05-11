@@ -37,6 +37,7 @@ use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\Router;
 use MyShowcase\System\UserPermissions;
+use Pecee\SimpleRouter\SimpleRouter;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cleanSlug;
@@ -48,11 +49,18 @@ use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
+use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\ROOT;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
-use const MyShowcase\ROOT;
+use const MyShowcase\Core\FILTER_TYPE_USER_ID;
+use const MyShowcase\Core\URL_TYPE_COMMENT_CREATE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_CREATE;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_MAIN;
+use const MyShowcase\Core\URL_TYPE_MAIN_USER;
 use const MyShowcase\Core\ATTACHMENT_UNLIMITED;
 use const MyShowcase\Core\ATTACHMENT_ZERO;
 use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
@@ -67,7 +75,7 @@ use const MyShowcase\Core\TABLES_DATA;
 class Entries extends Base
 {
     public function __construct(
-        public Router $router,
+        public ?Router $router = null,
         protected ?EntriesModel $entriesModel = null,
     ) {
         require_once ROOT . '/Models/Entries.php';
@@ -129,6 +137,7 @@ class Entries extends Base
     }
 
     #[NoReturn] public function listEntries(
+        int $userID = 0,
         int $limit = 0,
         int $limitStart = 0,
         string $groupBy = '',
@@ -141,39 +150,75 @@ class Entries extends Base
         global $lang, $mybb, $db;
         global $theme;
 
+        $currentUserID = (int)$mybb->user['uid'];
+
+        /*
+                _dump(
+                    url(URL_TYPE_ENTRY_CREATE)->getRelativeUrl(),
+                    url(URL_TYPE_ENTRY_CREATE)->getRelativeUrl(),
+                    url(URL_TYPE_ENTRY_CREATE)->getOriginalPath(),
+                    url(URL_TYPE_ENTRY_CREATE)->getOriginalUrl(),
+                    url(URL_TYPE_ENTRY_CREATE)->contains('/user'),
+                );
+        */
+        //$this->showcaseObject->getDefaultFilter();
+
         if ($limit < 1) {
             $limit = $this->showcaseObject->config['entries_per_page'];
         }
 
-        if ($this->showcaseObject->config['filter_default_field']) {
-            switch ($this->showcaseObject->config['filter_default_field']) {
-                case 1:
-                    if ($filterField !== 'user_id') {
-                        error_no_permission();
-                    }
-                    break;
-            }
-        }
-
-        if ($filterField) {
-            $whereClauses[] = "{$filterField}='{$db->escape_string($filterValue)}'";
+        if ($limit < 2) {
+            $limit = 2;
         }
 
         $hookArguments = [];
 
         $hookArguments = hooksRun('output_main_start', $hookArguments);
 
+        $entryCreateButton = '';
+
+        $displayCreateButton = $this->showcaseObject->userPermissions[UserPermissions::CanCreateEntries];
+
+        switch ($this->showcaseObject->config['filter_force_field']) {
+            case FILTER_TYPE_USER_ID:
+                $displayCreateButton = $displayCreateButton && $userID === $currentUserID;
+
+                $whereClauses[] = "user_id='{$userID}'";
+
+                //$this->showcaseObject->urlParams['user_id'] = $userID;
+
+                $userData = get_user($userID);
+
+                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                    error_no_permission();
+                }
+
+                $lang->load('member');
+
+                $userName = htmlspecialchars_uni($userData['username']);
+
+                add_breadcrumb(
+                    $lang->sprintf($lang->nav_profile, $userName),
+                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                );
+
+                break;
+        }
+
+        $mainUrl = url(
+            URL_TYPE_MAIN,
+            getParams: $this->showcaseObject->urlParams
+        )->getRelativeUrl();
+
         add_breadcrumb(
             $this->showcaseObject->config['name_friendly'],
-            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+            $mainUrl
         );
 
-        $buttonNewEntry = '';
+        if ($displayCreateButton) {
+            $entryCreateUrl = url(URL_TYPE_ENTRY_CREATE, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
-        if ($this->showcaseObject->userPermissions[UserPermissions::CanCreateEntries]) {
-            $urlEntryCreate = $this->showcaseObject->urlBuild($this->showcaseObject->urlCreateEntry);
-
-            $buttonNewEntry = eval($this->renderObject->templateGet('buttonNewEntry'));
+            $entryCreateButton = eval($this->renderObject->templateGet('buttonNewEntry'));
         }
 
         $showcaseSelectOrderAscendingSelectedElement = $showcaseSelectOrderDescendingSelectedElement = '';
@@ -281,6 +326,8 @@ class Entries extends Base
         ]);
 
         $searchDone = false;
+
+        $whereClauses = array_merge($whereClauses, $this->showcaseObject->whereClauses);
 
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
             $fieldKey = $fieldData['field_key'];
@@ -486,10 +533,11 @@ class Entries extends Base
 
                 $viewLastCommenter = $entryUsernameFormatted; // todo, show last commenter in the list view
 
-                $entryUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlViewEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $entryUrl = url(
+                    URL_TYPE_ENTRY_VIEW,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                    $this->showcaseObject->urlParams
+                )->getRelativeUrl();
 
                 $viewLastCommentID = 0; // todo, show last comment ID in the list view
 
@@ -718,8 +766,6 @@ class Entries extends Base
             $inlineModeration = eval($this->renderObject->templateGet('pageMainInlineModeration'));
         }
 
-        $baseUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
-
         $this->outputSuccess(eval($this->renderObject->templateGet('pageMainContents')));
     }
 
@@ -732,6 +778,7 @@ class Entries extends Base
         string $orderDirection = ORDER_DIRECTION_ASCENDING
     ): void {
         $this->listEntries(
+            $userID,
             $limit,
             $limitStart,
             $groupBy,
@@ -743,6 +790,7 @@ class Entries extends Base
     }
 
     #[NoReturn] public function listEntriesUnapproved(
+        int $userID = 0,
         int $limit = 10,
         int $limitStart = 0,
         string $groupBy = '',
@@ -752,6 +800,7 @@ class Entries extends Base
         $statusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
 
         $this->listEntries(
+            $userID,
             $limit,
             $limitStart,
             $groupBy,
@@ -770,7 +819,6 @@ class Entries extends Base
     ): void {
         global $lang, $mybb, $db;
         global $header, $headerinclude, $footer, $theme;
-        global $plugins;
 
         $hookArguments = [
             'this' => &$this,
@@ -789,9 +837,43 @@ class Entries extends Base
 
         $showcase_watermark = '';
 
+        if ($isEditPage) {
+            $this->setEntry($entrySlug, true);
+        }
+
+        switch ($this->showcaseObject->config['filter_force_field']) {
+            case FILTER_TYPE_USER_ID:
+                $userData = get_user($this->showcaseObject->entryUserID);
+
+                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                    error_no_permission();
+                }
+
+                $lang->load('member');
+
+                $userName = htmlspecialchars_uni($userData['username']);
+
+                add_breadcrumb(
+                    $lang->sprintf($lang->nav_profile, $userName),
+                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                );
+
+                $mainUrl = str_replace(
+                    '/user/',
+                    '/user/' . $this->showcaseObject->entryUserID,
+                    url(URL_TYPE_MAIN_USER)->getRelativeUrl()
+                );
+
+                break;
+            default:
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+
+                break;
+        }
+
         add_breadcrumb(
             $this->showcaseObject->config['name_friendly'],
-            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+            $mainUrl
         );
 
         if ($isEditPage) {
@@ -804,10 +886,6 @@ class Entries extends Base
                 $lang->myShowcaseButtonEntryCreate,
                 $this->showcaseObject->urlBuild($this->showcaseObject->urlCreateEntry)
             );
-        }
-
-        if ($isEditPage) {
-            $this->setEntry($entrySlug, true);
         }
 
         if ($mybb->request_method === 'post') {
@@ -871,8 +949,7 @@ class Entries extends Base
             }
 
             $insertData = [
-                'user_id' => $currentUserID,
-                'dateline' => TIME_NOW
+                'user_id' => $currentUserID
             ];
 
             if ($this->showcaseObject->config['moderate_entries_update'] &&
@@ -890,6 +967,8 @@ class Entries extends Base
             if ($isEditPage) {
                 $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
             } else {
+                $insertData['dateline'] = TIME_NOW;
+
                 $dataHandler = dataHandlerGetObject($this->showcaseObject);
             }
 
@@ -959,21 +1038,17 @@ class Entries extends Base
                 }
 
                 if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
-                    $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
+                    $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
                     redirect(
                         $mainUrl,
                         $isEditPage ? $lang->myShowcaseEntryEntryUpdatedStatus : $lang->myShowcaseEntryEntryCreatedStatus
                     );
                 } else {
-                    $entryUrl = $this->showcaseObject->urlBuild(
-                        $this->showcaseObject->urlViewEntry,
-                        $insertResult['entry_slug']
-                    );
-
-                    $this->setEntry($insertResult['entry_slug']);
-
-                    $entryUrl = $this->showcaseObject->urlGetEntry();
+                    $entryUrl = url(
+                        URL_TYPE_ENTRY_VIEW,
+                        ['entry_slug' => $insertResult['entry_slug']]
+                    )->getRelativeUrl();
 
                     redirect(
                         $entryUrl,
@@ -1361,20 +1436,23 @@ class Entries extends Base
         $this->createEntry(true, $entrySlug);
     }
 
-    #[NoReturn] public function viewEntryPage(
-        string $entrySlug,
-        int $currentPage
-    ): void {
-        $this->viewEntry($entrySlug, $currentPage);
-    }
-
     #[NoReturn] public function viewEntry(
         string $entrySlug,
-        int $currentPage = 1,
         int $commentID = 0,
         array $commentData = []
     ): void {
-        global $mybb, $plugins, $lang, $db, $theme;
+        global $mybb, $lang, $db, $theme;
+
+        if ($mybb->request_method === 'post') {
+        }
+
+        /*if ($mybb->get_input('action') === 'comment_create') {
+            require_once ROOT . '/Controllers/Comments.php';
+
+            (new \MyShowcase\Controllers\Comments())->
+            $controlelr = ;
+            _dump($controlelr);
+        }*/
 
         $hookArguments = [
             'this' => &$this
@@ -1394,19 +1472,50 @@ class Entries extends Base
             error($lang->myshowcase_invalid_id);
         }
 
+        switch ($this->showcaseObject->config['filter_force_field']) {
+            case FILTER_TYPE_USER_ID:
+                $userData = get_user($this->showcaseObject->entryUserID);
+
+                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                    error_no_permission();
+                }
+
+                $lang->load('member');
+
+                $userName = htmlspecialchars_uni($userData['username']);
+
+                add_breadcrumb(
+                    $lang->sprintf($lang->nav_profile, $userName),
+                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                );
+
+                $mainUrl = str_replace(
+                    '/user/',
+                    '/user/' . $this->showcaseObject->entryUserID,
+                    url(URL_TYPE_MAIN_USER)->getRelativeUrl()
+                );
+
+                break;
+            default:
+                $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
+                break;
+        }
+
         add_breadcrumb(
             $this->showcaseObject->config['name_friendly'],
-            $this->showcaseObject->urlBuild($this->showcaseObject->urlMain)
+            $mainUrl
         );
 
         $entrySubject = $this->renderObject->buildEntrySubject();
 
+        $entryUrl = url(
+            URL_TYPE_ENTRY_VIEW,
+            ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+        )->getRelativeUrl();
+
         add_breadcrumb(
             $entrySubject,
-            $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlViewEntry,
-                $this->showcaseObject->entryData['entry_slug']
-            )
+            $entryUrl
         );
 
         if ($this->showcaseObject->entryData['username'] === '') {
@@ -1421,23 +1530,6 @@ class Entries extends Base
         );
 
         //$entryHash = $this->showcaseObject->entryData['entry_hash'];
-
-        $showcase_views = $this->showcaseObject->entryData['views'];
-        $showcase_numcomments = $this->showcaseObject->entryData['comments'];
-
-        $showcase_admin_url = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
-
-        $showcase_view_admin_edit = '';
-
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] || ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries])) {
-            $showcase_view_admin_edit = eval($this->renderObject->templateGet('view_admin_edit'));
-        }
-
-        $showcase_view_admin_delete = '';
-
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] || ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries])) {
-            $showcase_view_admin_delete = eval($this->renderObject->templateGet('view_admin_delete'));
-        }
 
         //trick MyBB into thinking its in archive so it adds bburl to smile link inside parser
         //doing this now should not impact anyhting. no issues with gomobile beta4
@@ -1486,6 +1578,8 @@ class Entries extends Base
                 ['limit' => 1]
             )['total_comments'] ?? 0);
 
+            $currentPage = $mybb->get_input('page', MyBB::INPUT_INT);
+
             if ($commentID) {
                 $commentTimeStamp = (int)$commentData['dateline'];
 
@@ -1501,8 +1595,6 @@ class Entries extends Base
                     $currentPage = (int)($totalCommentsBeforeMainComment / $this->showcaseObject->config['comments_per_page']) + 1;
                 }
             }
-
-            //$currentPage = $mybb->get_input('page', MyBB::INPUT_INT);
 
             $totalPages = $totalComments / $this->showcaseObject->config['comments_per_page'];
 
@@ -1528,11 +1620,32 @@ class Entries extends Base
                 $commentsCounter += ($currentPage - 1) * $this->showcaseObject->config['comments_per_page'];
             }
 
+            $urlParams = [
+                //'page' => '{page}'
+            ];
+
+            SimpleRouter::get('/product-view/{id}', 'ProductsController@show', ['as' => 'product']);
+
+            $entryUrl = url(
+                URL_TYPE_ENTRY_VIEW,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']], ['category' => 'shoes']
+            )->getRelativeUrl();
+            /*
+
+                \MyShowcase\SimpleRouter123\url('product', ['id' => 22], ['category' => 'shoes'])->getParam('category'),
+
+                \MyShowcase\SimpleRouter123\url('product', ['id' => 22], ['category' => 'shoes'])->getParams(),
+            */
+
             $commentsPagination = multipage(
                 $totalComments,
                 $this->showcaseObject->config['comments_per_page'],
                 $currentPage,
-                $this->showcaseObject->urlGetEntryPage(pagePlaceholder: '{page}')
+                url(
+                    URL_TYPE_ENTRY_VIEW,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                    $urlParams
+                )->getRelativeUrl()
             ) ?? '';
 
             extract($hookArguments['extractVariables']);
@@ -1560,10 +1673,6 @@ class Entries extends Base
 
                 $alternativeBackground = alt_trow();
             }
-
-            $showcase_comment_form_url = $this->showcaseObject->urlBuild(
-                $this->showcaseObject->urlMain
-            );//.'?action=view&entry_id='.$mybb->get_input('entry_id', \MyBB::INPUT_INT);
 
             if (!$commentsList) {
                 $commentsEmpty = eval($this->renderObject->templateGet('pageViewCommentsNone'));
@@ -1595,10 +1704,10 @@ class Entries extends Base
 
                 $alternativeBackground = alt_trow(true);
 
-                $urlCommentCreateUpdate = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlCreateComment,
-                    $this->showcaseObject->entryData['entry_slug']
-                );
+                $createUpdateUrl = url(
+                    URL_TYPE_COMMENT_CREATE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl();
 
                 $commentMessage = htmlspecialchars_uni($mybb->get_input('comment'));
 
@@ -1626,7 +1735,7 @@ class Entries extends Base
         string $entrySlug,
         int $status = ENTRY_STATUS_VISIBLE
     ): void {
-        global $mybb, $lang, $plugins;
+        global $lang;
 
         $this->setEntry($entrySlug);
 
@@ -1642,10 +1751,10 @@ class Entries extends Base
         if ($dataHandler->entryValidateData()) {
             $dataHandler->entryUpdate();
 
-            $entryUrl = $this->showcaseObject->urlBuild(
-                    $this->showcaseObject->urlViewEntry,
-                    $this->showcaseObject->entryData['entry_slug']
-                ) . '#entryID' . $this->showcaseObject->entryID;
+            $entryUrl = url(
+                    URL_TYPE_ENTRY_VIEW,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                )->getRelativeUrl() . '#entryID' . $this->showcaseObject->entryID;
 
             switch ($status) {
                 case ENTRY_STATUS_PENDING_APPROVAL:
@@ -1692,7 +1801,7 @@ class Entries extends Base
     #[NoReturn] public function deleteEntry(
         string $entrySlug
     ): void {
-        global $mybb, $lang, $plugins;
+        global $mybb, $lang;
 
         $currentUserID = (int)$mybb->user['uid'];
 
@@ -1710,7 +1819,7 @@ class Entries extends Base
 
         $dataHandler->entryDelete();
 
-        $mainUrl = $this->showcaseObject->urlBuild($this->showcaseObject->urlMain);
+        $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
         redirect($mainUrl, $lang->myShowcaseEntryEntryDeleted);
 
