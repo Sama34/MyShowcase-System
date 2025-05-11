@@ -255,6 +255,21 @@ const TABLES_DATA = [
             'size' => 120,
             'default' => ''
         ],
+        'thumbnail_dimensions' => [
+            'type' => 'VARCHAR',
+            'size' => 20,
+            'default' => ''
+        ],
+        'dimensions' => [
+            'type' => 'VARCHAR',
+            'size' => 20,
+            'default' => ''
+        ],
+        'edit_stamp' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
         'status' => [
             'type' => 'TINYINT',
             'unsigned' => true,
@@ -656,6 +671,21 @@ const TABLES_DATA = [
             'formSection' => 'moderation',
             'formType' => FORM_TYPE_CHECK_BOX,
         ],
+        'moderate_attachments_upload' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'moderation',
+            'formType' => FORM_TYPE_CHECK_BOX,
+        ],
+        'moderate_attachments_update' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'moderation',
+            'formType' => FORM_TYPE_CHECK_BOX,
         ],
         'comments_allow' => [
             'type' => 'TINYINT',
@@ -733,6 +763,13 @@ const TABLES_DATA = [
             'formSection' => 'comments',,
             'formType' => FORM_TYPE_CHECK_BOX,
         ],*/
+        'attachments_allow_entries' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_CHECK_BOX,
         ],
         /*'attachments_allow_comments' => [
             'type' => 'TINYINT',
@@ -742,6 +779,15 @@ const TABLES_DATA = [
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_CHECK_BOX,
         ],*/
+        'attachments_uploads_path' => [
+            'type' => 'VARCHAR',
+            'size' => 255,
+            'default' => '',
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+            'form_class' => 'field150',
+        ],
         /*'attachments_limit_comments' => [
             'type' => 'INT',
             'unsigned' => true,
@@ -760,6 +806,23 @@ const TABLES_DATA = [
             'formType' => FORM_TYPE_NUMERIC_FIELD,
             'form_class' => 'field150',
         ],*/
+        'attachments_grouping' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
+            'form_class' => 'field150',
+        ],
+        'attachments_main_render_first' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_CHECK_BOX,
+        ],
         /*'attachments_main_render_default_image' => [
             'type' => 'VARCHAR',
             'null' => true,
@@ -770,6 +833,24 @@ const TABLES_DATA = [
             'formType' => FORM_TYPE_TEXT_FIELD,
             'form_class' => 'field150',
         ],*/
+        'attachments_watermark_file' => [
+            'type' => 'VARCHAR',
+            'null' => true,
+            'size' => 50,
+            'default' => '',
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+            'form_class' => 'field150',
+        ],
+        'attachments_watermark_location' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'form_function' => '\MyShowcase\Core\generateWatermarkLocationsSelectArray',
         ],
         /*'attachments_portal_build_widget' => [
             'type' => 'TINYINT',
@@ -788,6 +869,24 @@ const TABLES_DATA = [
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_CHECK_BOX,
         ],*/
+        'attachments_thumbnails_width' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
+            'form_class' => 'field150',
+        ],
+        'attachments_thumbnails_height' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
+            'form_class' => 'field150',
+        ],
     ],
     'myshowcase_fieldsets' => [
         'set_id' => [
@@ -1252,7 +1351,7 @@ const TABLES_DATA = [
 // todo, Extra Forum Permissions integration
 // todo, integrate to Forum Logo plugin
 // todo, integrate with ougc Online Users List
-// todo, attachment display type, thumbnail, full, link
+// todo, attachment display type, thumbnail_name, full, link
 
 const FIELDS_DATA = [
     'usergroups' => [
@@ -2948,6 +3047,8 @@ function attachmentUpload(
         'attachment_name' => $fileDataResult['original_filename'],
         'dateline' => TIME_NOW,
         'status' => ATTACHMENT_STATUS_VISIBLE,
+        /*'cdn_file' => 0,*/
+
     ];
 
     if ($isUpdate) {
@@ -3109,7 +3210,7 @@ function attachmentUpload(
             }
 
             if ($thumbnailImage['code'] === ATTACHMENT_IMAGE_TOO_SMALL_FOR_THUMBNAIL) {
-                $insertData['thumbnail_name'] = $returnData['thumbnail_name'] = ATTACHMENT_THUMBNAIL_SMALL;
+                $insertData['thumbnail_dimensions'] = $returnData['thumbnail_dimensions'] = ATTACHMENT_THUMBNAIL_SMALL;
             }
         }
 
@@ -3242,6 +3343,8 @@ function attachmentUpload(
                 }
             }
         }
+
+        $returnData['dimensions'] = $insertData['dimensions'] = "{$fullImageDimensions[0]}x{$fullImageDimensions[1]}";
     }
 
     $insertData = hooksRun('upload_attachment_do_insert', $insertData);
@@ -3430,7 +3533,7 @@ function entryGetRandom(): string
 
         $alternativeBackground = ($alternativeBackground == 'trow1' ? 'trow2' : 'trow1');
 
-        if ($rand_entry_thumb == 'SMALL') {
+        if ((int)$rand_entry_thumb === ATTACHMENT_THUMBNAIL_SMALL) {
             $rand_img = $rand_showcase['attachments_uploads_path'] . '/' . $rand_entry_img;
         } else {
             $rand_img = $rand_showcase['attachments_uploads_path'] . '/' . $rand_entry_thumb;

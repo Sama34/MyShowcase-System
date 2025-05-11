@@ -22,6 +22,8 @@ use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\URL_TYPE_MAIN_UNAPPROVED;
+use const MyShowcase\Core\URL_TYPE_SEARCH;
 use const MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW;
 use const MyShowcase\Core\URL_TYPE_THUMBNAIL_VIEW;
 use const MyShowcase\Core\FILTER_TYPE_USER_ID;
@@ -187,7 +189,7 @@ if ($minimalLoad) {
     SimpleRouter::get(
         $showcaseObject->selfPhpScript . $requestBaseUriExtra . '/unapproved',
         ['MyShowcase\Controllers\Entries', 'listEntriesUnapproved']
-    )->name(\MyShowcase\Core\URL_TYPE_MAIN_UNAPPROVED);
+    )->name(URL_TYPE_MAIN_UNAPPROVED);
 
     SimpleRouter::get(
         $showcaseObject->selfPhpScript . '/user/{user_id}',
@@ -197,7 +199,7 @@ if ($minimalLoad) {
     SimpleRouter::form(
         $showcaseObject->selfPhpScript . $requestBaseUriExtra . '/search',
         ['MyShowcase\Controllers\Search', 'searchForm']
-    )->name(\MyShowcase\Core\URL_TYPE_SEARCH);
+    )->name(URL_TYPE_SEARCH);
 
     SimpleRouter::form(
         $showcaseObject->selfPhpScript . '/create',

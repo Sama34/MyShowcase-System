@@ -24,6 +24,7 @@ use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\templateGetCachedName;
 use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
 use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
@@ -32,6 +33,7 @@ use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
+use const MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW;
 use const MyShowcase\Core\URL_TYPE_COMMENT_APPROVE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_DELETE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_RESTORE;
@@ -866,6 +868,7 @@ class Render
                 'downloads',
                 'dateline',
                 'thumbnail_name',
+                'thumbnail_dimensions',
                 'attachment_hash'
             ]
         );
@@ -886,7 +889,7 @@ class Render
 
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
             $attachmentUrl = url(
-                \MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW,
+                URL_TYPE_ATTACHMENT_VIEW,
                 [
                     'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
                     'attachment_hash' => $attachmentData['attachment_hash']
@@ -930,11 +933,11 @@ class Render
                         // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
                         // Show as full size image IF setting=='fullsize' || (image is small && permissions allow)
                         // Show as download for all other cases
-                        if ($attachmentData['thumbnail'] !== 'SMALL' &&
+                        if ((int)$attachmentData['thumbnail_dimensions'] !== ATTACHMENT_THUMBNAIL_SMALL &&
                             $attachmentData['thumbnail_name'] !== '' &&
                             $this->showcaseObject->attachmentsDisplayThumbnails) {
                             $attachmentBit = eval($this->templateGet('pageViewEntryAttachmentsThumbnailsItem'));
-                        } elseif ((($attachmentData['thumbnail'] === 'SMALL' &&
+                        } elseif ((((int)$attachmentData['thumbnail_dimensions'] === ATTACHMENT_THUMBNAIL_SMALL &&
                                     $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
                                 $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
                             $isImageAttachment) {
@@ -951,8 +954,9 @@ class Render
                     }
                 }
 
+                _dump($attachmentData);
                 if (!$attachmentInField &&
-                    $attachmentData['thumbnail'] !== 'SMALL' &&
+                    (int)$attachmentData['thumbnail_dimensions'] !== ATTACHMENT_THUMBNAIL_SMALL &&
                     $attachmentData['thumbnail_name'] !== '' &&
                     $this->showcaseObject->attachmentsDisplayThumbnails) {
                     // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
@@ -967,7 +971,7 @@ class Render
                     }
 
                     ++$thumbnailsCount;
-                } elseif (!$attachmentInField && (($attachmentData['thumbnail'] === 'SMALL' &&
+                } elseif (!$attachmentInField && (((int)$attachmentData['thumbnail_dimensions'] === ATTACHMENT_THUMBNAIL_SMALL &&
                             $this->showcaseObject->userPermissions[UserPermissions::CanDownloadAttachments]) ||
                         $this->showcaseObject->attachmentsDisplayFullSizeImage) &&
                     $isImageAttachment) {

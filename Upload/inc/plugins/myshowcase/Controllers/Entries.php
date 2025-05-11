@@ -38,6 +38,7 @@ use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\ROOT;
+use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
 use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
@@ -573,7 +574,7 @@ class Entries extends Base
                         if ($entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_id'] && file_exists(
                                 $imagePath
                             )) {
-                            if ($entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_dimensions'] === 'SMALL') {
+                            if ((int)$entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_dimensions'] === ATTACHMENT_THUMBNAIL_SMALL) {
                                 $urlImage = $mybb->get_asset_url($imagePath);
 
                                 $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
