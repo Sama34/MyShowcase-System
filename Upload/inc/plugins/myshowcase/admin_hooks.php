@@ -15,8 +15,8 @@ declare(strict_types=1);
 
 namespace MyShowcase\Hooks\Admin;
 
-use FormContainer;
 use MyBB;
+use FormContainer;
 
 use function MyShowcase\Admin\buildPermissionsRow;
 use function MyShowcase\Core\cacheUpdate;
@@ -24,7 +24,9 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\permissionsDelete;
 use function MyShowcase\Core\sanitizeTableFieldValue;
+use function MyShowcase\Core\showcaseGet;
 
+use const MyShowcase\Core\CACHE_TYPE_ATTACHMENT_TYPES;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\TABLES_DATA;
@@ -202,4 +204,86 @@ function admin_user_groups_edit_commit(): bool
     }
 
     return true;
+}
+
+function admin_config_attachment_types_add_commit(): void
+{
+    global $mybb, $db;
+    global $atid;
+
+    $atid = (int)$atid;
+
+    if (!is_array($mybb->input['myshowcase_ids'])) {
+        $mybb->input['myshowcase_ids'] = explode(',', $mybb->input['myshowcase_ids']);
+    }
+
+    $db->update_query(
+        'attachtypes',
+        [
+            'myshowcase_ids' => $db->escape_string(
+                implode(',', array_map('intval', $mybb->input['myshowcase_ids']))
+            )
+        ],
+        "atid='{$atid}'"
+    );
+}
+
+function admin_config_attachment_types_edit_commit20(): void
+{
+    global $mybb, $db;
+    global $updated_type, $attachment_type;
+
+    if (!is_array($mybb->input['myshowcase_ids'])) {
+        $mybb->input['myshowcase_ids'] = explode(',', $mybb->input['myshowcase_ids']);
+    }
+
+    $updated_type['myshowcase_ids'] = $db->escape_string(
+        implode(',', array_map('intval', $mybb->input['myshowcase_ids']))
+    );
+
+    $db->update_query('attachtypes', $updated_type, "atid='{$attachment_type['atid']}'");
+
+    cacheUpdate(CACHE_TYPE_ATTACHMENT_TYPES);
+}
+
+function admin_config_attachment_types_delete_commit(): void
+{
+    cacheUpdate(CACHE_TYPE_ATTACHMENT_TYPES);
+}
+
+function admin_formcontainer_output_row(array &$hookArguments): array
+{
+    global $lang;
+
+    if (!isset($lang->avatar_file) || !isset($lang->avatar_file_desc) || $hookArguments['label_for'] !== 'avatarfile') {
+        return $hookArguments;
+    }
+
+    global $mybb;
+    global $form;
+
+    loadLanguage();
+
+    $selectOptions = array_map(function ($showcaseData) {
+        return htmlspecialchars_uni($showcaseData['name']);
+    }, showcaseGet(queryFields: ['name']));
+
+    $hookArguments['this']->output_row(
+        $lang->MyShowcaseAttachmentTypesAllowedShowcases,
+        $lang->MyShowcaseAttachmentTypesAllowedShowcasesDescription,
+        $form->generate_select_box(
+            'myshowcase_ids[]',
+            $selectOptions,
+            isset($mybb->input['myshowcase_ids']) ? is_array(
+                $mybb->input['myshowcase_ids']
+            ) ? $mybb->input['myshowcase_ids'] : explode(
+                ',',
+                $mybb->get_input('myshowcase_ids')
+            ) : [],
+            ['multiple' => 5]
+        ),
+        'myshowcase_ids'
+    );
+
+    return $hookArguments;
 }

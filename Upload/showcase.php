@@ -99,12 +99,6 @@ $renderObject = renderGetObject($showcaseObject);
 
 $outputObject = outputGetObject($showcaseObject, $renderObject);
 
-if ($showcaseObject->friendlyUrlsEnabled) {
-    $requestBaseUri = str_replace('.php', '/', $_SERVER['PHP_SELF']);
-} else {
-    $requestBaseUri = $_SERVER['PHP_SELF'];
-}
-
 $requestBaseUriExtra = '';
 
 switch ($showcaseObject->config['filter_force_field']) {
@@ -117,102 +111,102 @@ switch ($showcaseObject->config['filter_force_field']) {
 }
 
 SimpleRouter::get(
-    $requestBaseUri . $requestBaseUriExtra . '/',
+    $showcaseObject->selfPhpScript . $requestBaseUriExtra . '/',
     ['MyShowcase\Controllers\Entries', 'listEntries']
 )->name(URL_TYPE_MAIN);
 
 SimpleRouter::get(
-    $requestBaseUri . '/user/{user_id}',
+    $showcaseObject->selfPhpScript . '/user/{user_id}',
     ['MyShowcase\Controllers\Entries', 'listEntriesUser']
 )->name(URL_TYPE_MAIN_USER)->where(['id' => '[0-9]+']);
 
 SimpleRouter::get(
-    $requestBaseUri . $requestBaseUriExtra . '/unapproved',
+    $showcaseObject->selfPhpScript . $requestBaseUriExtra . '/unapproved',
     ['MyShowcase\Controllers\Entries', 'listEntriesUnapproved']
 )->name('main_unapproved');
 
 SimpleRouter::form(
-    $requestBaseUri . '/create',
+    $showcaseObject->selfPhpScript . '/create',
     ['MyShowcase\Controllers\Entries', 'createEntry']
 )->name(URL_TYPE_ENTRY_CREATE);
 
 SimpleRouter::get(
-    $requestBaseUri . '/view/{entry_slug}',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}',
     ['MyShowcase\Controllers\Entries', 'viewEntry']
 )->name(URL_TYPE_ENTRY_VIEW);
 
 SimpleRouter::form(
-    $requestBaseUri . '/view/{entry_slug}/update',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/update',
     ['MyShowcase\Controllers\Entries', 'updateEntry']
 )->name(URL_TYPE_ENTRY_UPDATE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/approve',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/approve',
     ['MyShowcase\Controllers\Entries', 'approveEntry']
 )->name(URL_TYPE_ENTRY_UNAPPROVE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/unapprove',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/unapprove',
     ['MyShowcase\Controllers\Entries', 'unapproveEntry']
 )->name(URL_TYPE_ENTRY_APPROVE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/soft_delete',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/soft_delete',
     ['MyShowcase\Controllers\Entries', 'softDeleteEntry']
 )->name(URL_TYPE_ENTRY_SOFT_DELETE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/restore',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/restore',
     ['MyShowcase\Controllers\Entries', 'restoreEntry']
 )->name(URL_TYPE_ENTRY_RESTORE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/delete',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/delete',
     ['MyShowcase\Controllers\Entries', 'deleteEntry']
 )->name(URL_TYPE_ENTRY_DELETE);
 
 SimpleRouter::get(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}',
     ['MyShowcase\Controllers\Comments', 'viewComment']
 )->name(URL_TYPE_COMMENT_VIEW);
 
 SimpleRouter::form(
-    $requestBaseUri . '/view/{entry_slug}/comment/create',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/create',
     ['MyShowcase\Controllers\Comments', 'createComment']
 )->name(URL_TYPE_COMMENT_CREATE);
 
 SimpleRouter::form(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/update',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/update',
     ['MyShowcase\Controllers\Comments', 'updateComment']
 )->name(URL_TYPE_COMMENT_UPDATE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/approve',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/approve',
     ['MyShowcase\Controllers\Comments', 'approveComment']
 )->name(URL_TYPE_COMMENT_APPROVE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/unapprove',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/unapprove',
     ['MyShowcase\Controllers\Comments', 'unapproveComment']
 )->name(URL_TYPE_COMMENT_UNAPPROVE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/soft_delete',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/soft_delete',
     ['MyShowcase\Controllers\Comments', 'SoftDeleteComment']
 )->name(URL_TYPE_COMMENT_SOFT_DELETE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/restore',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/restore',
     ['MyShowcase\Controllers\Comments', 'restoreComment']
 )->name(URL_TYPE_COMMENT_RESTORE);
 
 SimpleRouter::post(
-    $requestBaseUri . '/view/{entry_slug}/comment/{comment_id}/delete',
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/delete',
     ['MyShowcase\Controllers\Comments', 'deleteComment']
 )->name(URL_TYPE_COMMENT_DELETE);
 
 SimpleRouter::form(
-    $requestBaseUri . $requestBaseUriExtra . '/search',
+    $showcaseObject->selfPhpScript . $requestBaseUriExtra . '/search',
     ['MyShowcase\Controllers\Search', 'searchForm']
 )->name(URL_TYPE_MAIN_USER);
 

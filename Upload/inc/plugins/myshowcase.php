@@ -38,7 +38,7 @@ define('MyShowcase\Core\SETTINGS', [
 define('MyShowcase\Core\DEBUG', false);
 
 
-define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/myshowcase');
+define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/MyShowcase');
 
 require_once ROOT . '/System/FieldDefaultTypes.php';
 require_once ROOT . '/System/FieldHtmlTypes.php';

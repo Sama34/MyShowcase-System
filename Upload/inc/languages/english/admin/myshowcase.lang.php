@@ -32,4 +32,7 @@ $l = [
     'report_content_showcase_comments' => 'Showcase comments',
 
     'MyShowcaseGroupsTab' => 'MyShowcase',
+
+    'MyShowcaseAttachmentTypesAllowedShowcases' => 'Enabled Showcase Attachment Types',
+    'MyShowcaseAttachmentTypesAllowedShowcasesDescription' => 'Enable this attachment type for specific showcases. The "Enabled?" setting above does not apply to showcases.',
 ];

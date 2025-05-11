@@ -55,11 +55,11 @@ class Showcase
      */
     public function __construct(
         public string $scriptName,
+        public string $selfPhpScript = '',
         public string $dataTableName = '',
         public string $prefix = '',
         public string $cleanName = '',
         public array $userPermissions = [],
-        public bool $friendlyUrlsEnabled = false,
         public array $parserOptions = [
             'filter_badwords' => true,
             'highlight' => '',
@@ -115,9 +115,6 @@ class Showcase
         public array $whereClauses = [],
     ) {
         global $db, $mybb, $cache;
-
-        $this->friendlyUrlsEnabled = $mybb->settings['seourls'] === 'yes' ||
-            ($mybb->settings['seourls'] === 'auto' && isset($_SERVER['SEO_SUPPORT']) && (int)$_SERVER['SEO_SUPPORT'] === 1);
 
         //make sure plugin is installed and active
         $plugin_cache = $cache->read('plugins');
@@ -262,9 +259,17 @@ class Showcase
             $this->urlBase = rtrim($this->urlBase, '/');
         }
 
-        $this->showcaseSlug = str_replace('.php', '', $this->scriptName);
+        if ($this->config['enable_friendly_urls']) {
+            $this->selfPhpScript = str_replace('.php', '/', $_SERVER['PHP_SELF']);
+        } else {
+            $this->selfPhpScript = $_SERVER['PHP_SELF'];
+        }
 
-        if ($this->friendlyUrlsEnabled) {
+        if (str_ends_with($this->selfPhpScript, '/')) {
+            $this->selfPhpScript = rtrim($this->selfPhpScript, '/');
+        }
+
+        if ($this->config['enable_friendly_urls']) {
             //$showcase_name = strtolower($showcaseObject->config['name']);
             $this->urlMain = $this->cleanName . '.html';
 
@@ -280,47 +285,47 @@ class Showcase
 
             $this->urlViewAttachmentItem = $this->cleanName . '-item-{attachment_id}.php';
         } else {
-            $this->urlMain = $this->showcaseSlug;
+            $this->urlMain = $this->selfPhpScript;
 
-            $this->urlMainUnapproved = $this->showcaseSlug . '/unapproved';
+            $this->urlMainUnapproved = $this->selfPhpScript . '/unapproved';
 
             $this->urlPaged = $this->prefix . '.php?page={page}';
 
-            $this->urlViewEntry = $this->showcaseSlug . '/view/{entry_slug}';
+            $this->urlViewEntry = $this->selfPhpScript . '/view/{entry_slug}';
 
-            $this->urlViewEntryPage = $this->showcaseSlug . '/view/{entry_slug}/page/{current_page}';
+            $this->urlViewEntryPage = $this->selfPhpScript . '/view/{entry_slug}/page/{current_page}';
 
-            $this->urlViewComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}';
+            $this->urlViewComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}';
 
-            $this->urlCreateEntry = $this->showcaseSlug . '/create';
+            $this->urlCreateEntry = $this->selfPhpScript . '/create';
 
-            $this->urlUpdateEntry = $this->showcaseSlug . '/view/{entry_slug}/update';
+            $this->urlUpdateEntry = $this->selfPhpScript . '/view/{entry_slug}/update';
 
-            $this->urlApproveEntry = $this->showcaseSlug . '/view/{entry_slug}/approve';
+            $this->urlApproveEntry = $this->selfPhpScript . '/view/{entry_slug}/approve';
 
-            $this->urlUnapproveEntry = $this->showcaseSlug . '/view/{entry_slug}/unapprove';
+            $this->urlUnapproveEntry = $this->selfPhpScript . '/view/{entry_slug}/unapprove';
 
-            $this->urlSoftDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/soft_delete';
+            $this->urlSoftDeleteEntry = $this->selfPhpScript . '/view/{entry_slug}/soft_delete';
 
-            $this->urlRestoreEntry = $this->showcaseSlug . '/view/{entry_slug}/restore';
+            $this->urlRestoreEntry = $this->selfPhpScript . '/view/{entry_slug}/restore';
 
-            $this->urlDeleteEntry = $this->showcaseSlug . '/view/{entry_slug}/delete';
+            $this->urlDeleteEntry = $this->selfPhpScript . '/view/{entry_slug}/delete';
 
-            $this->urlCreateComment = $this->showcaseSlug . '/view/{entry_slug}/comment/create';
+            $this->urlCreateComment = $this->selfPhpScript . '/view/{entry_slug}/comment/create';
 
-            $this->urlUpdateComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/update';
+            $this->urlUpdateComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/update';
 
-            $this->urlApproveComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/approve';
+            $this->urlApproveComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/approve';
 
-            $this->urlUnapproveComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/unapprove';
+            $this->urlUnapproveComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/unapprove';
 
-            $this->urlRestoreComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/restore';
+            $this->urlRestoreComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/restore';
 
-            $this->urlSoftDeleteComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/soft_delete';
+            $this->urlSoftDeleteComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/soft_delete';
 
-            $this->urlDeleteComment = $this->showcaseSlug . '/view/{entry_slug}/comment/{comment_id}/delete';
+            $this->urlDeleteComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/delete';
 
-            $this->urlViewAttachment = $this->showcaseSlug . '/view/{entry_slug}/attachment/{attachment_id}';
+            $this->urlViewAttachment = $this->selfPhpScript . '/view/{entry_slug}/attachment/{attachment_id}';
 
             //$this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_slug}/attachment/{thumbnail_id}/thumbnail';
 

@@ -309,7 +309,14 @@ const TABLES_DATA = [
             'formType' => FORM_TYPE_TEXT_FIELD,
         ],*/
         'enabled' => [
-            'type' => 'INT',
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'main',
+            'formType' => FORM_TYPE_YES_NO_FIELD,
+        ],
+        'enable_friendly_urls' => [
+            'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0,
             'formCategory' => 'main',
@@ -365,7 +372,7 @@ const TABLES_DATA = [
             'formType' => \MyShowcase\Core\FORM_TYPE_SELECT_FIELD,
             'form_function' => '\MyShowcase\Core\generateFilterFieldsSelectArray',
         ],*/
-        'filter_default_field' => [ // force view entries by uid, etc
+        'filter_force_field' => [ // force view entries by uid, etc
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0,
@@ -728,6 +735,14 @@ const TABLES_DATA = [
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
             'form_class' => 'field150',
+        ],
+        'attachments_parse_in_content' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_CHECK_BOX,
         ],*/
     ],
     'myshowcase_fieldsets' => [
@@ -1202,11 +1217,6 @@ const FIELDS_DATA = [
             'unsigned' => true,
             'default' => 0,
         ],
-        'myshowcase_' . UserPermissions::CanView => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0,
-        ],
         'myshowcase_' . UserPermissions::CanSearch => [
             'type' => 'TINYINT',
             'unsigned' => true,
@@ -1328,6 +1338,12 @@ const FIELDS_DATA = [
             'default' => 0,
         ],
     ],
+    'attachtypes' => [
+        'myshowcase_ids' => [
+            'type' => 'TEXT',
+            'null' => true
+        ],
+    ]
 ];
 
 // todo, add field setting to order entries by (i.e: sticky)
@@ -1796,11 +1812,37 @@ function cacheUpdate(string $cacheKey): array
             }
 
             break;
+        case CACHE_TYPE_ATTACHMENT_TYPES;
+            $query = $db->simple_select(
+                'attachtypes',
+                'atid AS attachment_type_id, name AS type_name, mimetype AS mime_type, extension AS file_extension, maxsize AS maximum_size, icon AS type_icon, forcedownload AS force_download, groups AS allowed_groups, myshowcase_ids',
+                "myshowcase_ids!=''"
+            );
+
+            while ($attachmentTypeData = $db->fetch_array($query)) {
+                $attachmentTypeData['file_extension'] = my_strtolower($attachmentTypeData['file_extension']);
+
+                $attachmentTypeID = (int)$attachmentTypeData['attachment_type_id'];
+
+                foreach (explode(',', $attachmentTypeData['myshowcase_ids']) as $showcaseID) {
+                    $showcaseID = (int)$showcaseID;
+
+                    $cacheData[$showcaseID][$attachmentTypeID] = [
+                        'type_name' => $attachmentTypeData['type_name'],
+                        'mime_type' => $attachmentTypeData['mime_type'],
+                        'file_extension' => $attachmentTypeData['file_extension'],
+                        'maximum_size' => (int)$attachmentTypeData['maximum_size'],
+                        'type_icon' => $attachmentTypeData['type_icon'],
+                        'force_download' => (int)$attachmentTypeData['force_download'],
+                        'allowed_groups' => $attachmentTypeData['allowed_groups'],
+                    ];
+                }
+            }
+
+            break;
     }
 
-    if ($cacheData) {
-        $cache->update("myshowcase_{$cacheKey}", $cacheData);
-    }
+    $cache->update("myshowcase_{$cacheKey}", $cacheData);
 
     return $cacheData;
 }
