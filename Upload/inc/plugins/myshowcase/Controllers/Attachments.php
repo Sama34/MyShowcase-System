@@ -17,10 +17,8 @@ namespace MyShowcase\Controllers;
 
 use MyBB;
 use JetBrains\PhpStorm\NoReturn;
-use MyShowcase\Models\Entries as EntriesModel;
 use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\ModeratorPermissions;
-use MyShowcase\System\Router;
 use MyShowcase\System\UserPermissions;
 
 use function MyShowcase\Core\attachmentGet;
@@ -29,7 +27,6 @@ use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\hooksRun;
 
-use const MyShowcase\ROOT;
 use const MyShowcase\Core\ATTACHMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\CACHE_TYPE_ATTACHMENT_TYPES;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
@@ -38,67 +35,6 @@ use const MyShowcase\Core\TABLES_DATA;
 
 class Attachments extends Base
 {
-    public function __construct(
-        public ?Router $router = null,
-        protected ?EntriesModel $entriesModel = null,
-    ) {
-        require_once ROOT . '/Models/Entries.php';
-
-        $this->entriesModel = new EntriesModel();
-
-        parent::__construct($router);
-    }
-
-    public function setEntry(
-        string $entrySlug,
-        bool $loadFields = false
-    ): void {
-        global $db;
-
-        $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
-
-        $whereClauses = ["entryData.entry_slug='{$db->escape_string($entrySlug)}'"];
-
-        $queryFields = array_merge(
-            array_map(function (string $columnName): string {
-                return 'entryData.' . $columnName;
-            }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])),
-            [
-                'userData.username',
-            ]
-        );
-
-        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
-
-        if ($loadFields) {
-            foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-                $fieldKey = $fieldData['field_key'];
-
-                $htmlType = $fieldData['html_type'];
-
-                $fieldID = (int)$fieldData['field_id'];
-
-                if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
-                    $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id=entryData.{$fieldKey} AND table_{$fieldKey}.field_id='{$fieldID}')";
-
-                    //$queryFields[] = "table_{$fieldKey}.value AS {$fieldKey}";
-
-                    $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
-
-                    // todo, I don't understand the purpose of this now
-                    // the condition after OR seems to fix it for now
-                    //$whereClauses[] = "(table_{$fieldKey}.set_id='{$this->showcaseObject->config['field_set_id']}' OR entryData.{$fieldKey}=0)";
-                } else {
-                    $queryFields[] = $fieldKey;
-                }
-            }
-        }
-
-        $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet($whereClauses, $queryFields, ['limit' => 1], $queryTables)
-        );
-    }
-
     #[NoReturn] public function viewAttachment(
         string $entrySlug,
         string $attachmentHash
@@ -138,23 +74,30 @@ class Attachments extends Base
             $whereClauses[] = "thumbnail_name!=''";
         }
 
+        $incrementDownloadCount = 1;
+
+        $hookArguments = [
+            'attachmentsController' => &$this,
+            'attachmentData' => &$attachmentData,
+            'isThumbnail' => $isThumbnail,
+            'tableFields' => &$tableFields,
+            'whereClauses' => &$whereClauses,
+            'incrementDownloadCount' => &$incrementDownloadCount,
+        ];
+
+        $hookArguments = hooksRun('controller_attachments_download_start', $hookArguments);
+
         $attachmentData = attachmentGet(
             $whereClauses,
             array_keys($tableFields),
             queryOptions: ['limit' => 1]
         );
 
-        $hookArguments = [
-            'this' => &$this,
-            'attachmentData' => &$attachmentData,
-            'isThumbnail' => $isThumbnail
-        ];
-
-        $hookArguments = hooksRun('attachment_thumbnail_start', $hookArguments);
-
         if (empty($attachmentData['attachment_name'])) {
             $this->error($lang->error_invalidattachment);
         }
+
+        $hookArguments['attachmentData'] = &$attachmentData;
 
         $attachmentID = (int)$attachmentData['attachment_id'];
 
@@ -177,20 +120,18 @@ class Attachments extends Base
 
         $attachmentMimeType = my_strtolower($attachmentData['mime_type']);
 
-        $attachmentType = false;
-
         foreach ($attachmentTypes as $attachmentTypeID => $attachmentTypeData) {
-            if ($attachmentTypeData['file_extension'] === $attachmentFileExtension &&
-                $attachmentTypeData['mime_type'] === $attachmentMimeType) {
-                $attachmentType = $attachmentTypeData;
-
-                break;
+            if (!($attachmentTypeData['file_extension'] === $attachmentFileExtension &&
+                $attachmentTypeData['mime_type'] === $attachmentMimeType)) {
+                unset($attachmentTypeData);
             }
         }
 
-        if ($attachmentType === false) {
+        if (empty($attachmentTypeData)) {
             $this->error($lang->error_invalidattachment);
         }
+
+        $hookArguments['attachmentTypeData'] = &$attachmentTypeData;
 
         $attachmentStatus = (int)$attachmentData['status'];
 
@@ -212,12 +153,12 @@ class Attachments extends Base
         }
 
         // Only increment the download count if this is not a thumbnail
-        if (!$isThumbnail && $currentUserID !== $attachmentUserID) {
-            if (!is_member($attachmentType['allowed_groups'])) {
+        if ($incrementDownloadCount && !$isThumbnail && $currentUserID !== $attachmentUserID) {
+            if (!is_member($attachmentTypeData['allowed_groups'])) {
                 $this->errorNoPermission();
             }
 
-            attachmentUpdate(['downloads' => $attachmentData['downloads'] + 1,], $attachmentID);
+            attachmentUpdate(['downloads' => $attachmentData['downloads'] + $incrementDownloadCount], $attachmentID);
         }
 
         // basename isn't UTF-8 safe. This is a workaround.
@@ -225,7 +166,7 @@ class Attachments extends Base
 
         $absoluteUploadsPath = mk_path_abs($this->showcaseObject->config['attachments_uploads_path']);
 
-        $hookArguments = hooksRun('attachment_thumbnail_end', $hookArguments);
+        $hookArguments = hooksRun('controller_attachments_download_intermediate', $hookArguments);
 
         if ($isThumbnail) {
             if (!file_exists($absoluteUploadsPath . '/' . $attachmentData['thumbnail_name'])) {
@@ -247,12 +188,6 @@ class Attachments extends Base
             header('Content-length: ' . filesize($absoluteUploadsPath . '/' . $attachmentData['thumbnail_name']));
 
             $handle = fopen($absoluteUploadsPath . '/' . $attachmentData['thumbnail_name'], 'rb');
-
-            while (!feof($handle)) {
-                echo fread($handle, 8192);
-            }
-
-            fclose($handle);
         } else {
             if (!file_exists($absoluteUploadsPath . '/' . $attachmentData['file_name'])) {
                 $this->error($lang->error_invalidattachment);
@@ -268,7 +203,7 @@ class Attachments extends Base
                 case 'text/plain':
                     header("Content-type: {$attachmentMimeType}");
 
-                    if (!empty($attachmentType['force_download'])) {
+                    if (!empty($attachmentTypeData['force_download'])) {
                         $disposition = 'attachment';
                     } else {
                         $disposition = 'inline';
@@ -303,13 +238,13 @@ class Attachments extends Base
             header('Content-range: bytes=0-' . ($attachmentData['file_size'] - 1) . '/' . $attachmentData['file_size']);
 
             $handle = fopen($absoluteUploadsPath . '/' . $attachmentData['file_name'], 'rb');
-
-            while (!feof($handle)) {
-                echo fread($handle, 8192);
-            }
-
-            fclose($handle);
         }
+
+        while (!feof($handle)) {
+            echo fread($handle, 8192);
+        }
+        
+        fclose($handle);
 
         exit;
     }

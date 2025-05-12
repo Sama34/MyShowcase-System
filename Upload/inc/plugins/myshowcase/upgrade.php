@@ -142,18 +142,6 @@ function myshowcase_upgrade_activate(array $need_upgrade): bool
             ];
 
             $db->insert_query('templates', $insert_array);
-
-            //insert missing template
-            $db->delete_query('templates', 'title=\'myshowcase_allreports\' and sid=-2');
-            $insert_array = [
-                'title' => 'myshowcase_allreports',
-                'template' => $db->escape_string($myshowcase_templates['myshowcase_allreports']),
-                'sid' => -2,
-                'version' => 1600,
-                'dateline' => TIME_NOW
-            ];
-
-            $db->insert_query('templates', $insert_array);
         }
         if (version_compare($need_upgrade['prev'], '2.2.0', '<')) {
             //increase size of comment field

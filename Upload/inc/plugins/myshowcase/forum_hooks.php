@@ -24,7 +24,7 @@ use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\entryGetRandom;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\renderGetObject;
-use function MyShowcase\Core\entryDataGet;
+use function MyShowcase\Core\entryGet;
 use function MyShowcase\Core\showcaseGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
 use function MyShowcase\Core\urlHandlerGet;
@@ -39,6 +39,7 @@ use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
  */
 function global_start(): bool
 {
+    return false;
     global $templatelist;
 
     if (isset($templatelist)) {
@@ -55,12 +56,16 @@ function global_start(): bool
         $showcaseObjects = cacheGet(CACHE_TYPE_CONFIG);
 
         foreach ($showcaseObjects as $showcaseID => $showcaseData) {
-            $showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
+            //$showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
+            $showcaseObject = showcaseGetObjectByScriptName(THIS_SCRIPT);
 
             if (THIS_SCRIPT === 'showcase.php') {
                 $templateObjects = array_merge($templateObjects, [
+                    'pageEntryCommentCreateUpdateAttachmentsBox',
+                    'pageEntryCommentCreateUpdateAttachmentsBoxViewLink',
                     'pageEntryCommentCreateUpdateContents',
                     'pageEntryCreateUpdateContents',
+                    'pageEntryCreateUpdateContentsPreview',
                     'pageEntryCreateUpdateDataFieldCheckBox',
                     'pageEntryCreateUpdateDataFieldDataBase',
                     'pageEntryCreateUpdateDataFieldDataBaseOption',
@@ -190,12 +195,15 @@ function global_intermediate(): bool
 
     $myShowcaseGlobalMessagesUnapprovedEntries = $myShowcaseGlobalMessagesReportedEntries = '';
 
+    return false;
+
     $moderatorsCache = cacheGet(CACHE_TYPE_MODERATORS);
 
     $unapprovedEntriesNotices = $reportedEntriesNotices = [];
 
     foreach (cacheGet(CACHE_TYPE_CONFIG) as $showcaseID => $showcaseData) {
-        $showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
+        //$showcaseObject = showcaseGetObjectByScriptName($showcaseData['script_name']);
+        $showcaseObject = showcaseGetObjectByScriptName(THIS_SCRIPT);
 
         //if showcase is enabled...
         if ($showcaseObject->config['enabled']) {
@@ -382,7 +390,7 @@ function build_friendly_wol_location_end(array &$plugin_array): array
 
                 $entryID = $plugin_array['user_activity']['entry_id'];
 
-                $showcaseObjects = entryDataGet($showcaseID, ["entry_id='{$entryID}'"], ['user_id']);
+                $showcaseObjects = entryGet($showcaseID, ["entry_id='{$entryID}'"], ['user_id']);
 
                 foreach ($showcaseObjects as $entryID => $entryData) {
                     $uid = $entryData['user_id'];
@@ -487,7 +495,7 @@ function showthread_start(): bool
         //get myshowcase counts for users in thread
         if (count($uids)) {
             foreach ($myshowcase_uids as $gid => $data) {
-                $entryFieldObjects = entryDataGet(
+                $entryFieldObjects = entryGet(
                     $gid,
                     ["user_id IN ('{$userIDs}')", "approved='1'"],
                     ['user_id', 'COUNT(user_id) AS total'],
@@ -574,7 +582,7 @@ function report_type(): void
 
         $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
 
-        $entryData = entryDataGet(
+        $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
             ['user_id'],
@@ -617,7 +625,7 @@ function report_type(): void
             ['limit' => 1]
         );
 
-        $entryData = entryDataGet(
+        $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$commentData['entry_id']}'"],
             ['user_id'],
@@ -644,7 +652,7 @@ function report_type(): void
     }
 }
 
-function modcp_reports_report()
+function modcp_reports_report(): void
 {
     global $mybb, $lang;
     global $report, $usercache, $report_data;
@@ -654,7 +662,7 @@ function modcp_reports_report()
 
         $entryID = (int)$report['id'];
 
-        $entryData = entryDataGet(
+        $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
             ['showcase_id', 'user_id', 'entry_slug'],
@@ -693,7 +701,7 @@ function modcp_reports_report()
 
         $entryID = (int)$commentData['entry_id'];
 
-        $entryData = entryDataGet(
+        $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
             ['user_id', 'entry_slug'],

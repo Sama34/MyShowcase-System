@@ -16,13 +16,10 @@ declare(strict_types=1);
 namespace MyShowcase\Controllers;
 
 use JetBrains\PhpStorm\NoReturn;
-use MyShowcase\System\Output;
 use MyShowcase\System\Render;
-use MyShowcase\System\Router;
 use MyShowcase\System\Showcase;
 
 use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\Core\outputGetObject;
 use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
 use function MyShowcase\SimpleRouter\url;
@@ -37,10 +34,8 @@ use const MyShowcase\Core\VERSION_CODE;
 abstract class Base
 {
     public function __construct(
-        public ?Router $router = null,
         public ?Showcase &$showcaseObject = null,
         public ?Render &$renderObject = null,
-        public ?Output &$outputObject = null,
     ) {
 //make sure this file is current
         if (SHOWCASE_FILE_VERSION_CODE < VERSION_CODE) {
@@ -61,15 +56,11 @@ abstract class Base
             $theme['imglangdir'] = $forumDirectoryPathTrailing . substr($theme['imglangdir'], 0);
         }
 
-        global $mybb;
-
         //\MyShowcase\Core\cacheUpdate(\MyShowcase\Core\CACHE_TYPE_CONFIG);
 //start by constructing the showcase
         $this->showcaseObject = showcaseGetObjectByScriptName(THIS_SCRIPT);
 
         $this->renderObject = renderGetObject($this->showcaseObject);
-
-        $this->outputObject = outputGetObject($this->showcaseObject, $this->renderObject);
 
         if (!$this->showcaseObject->config['enabled']) {
             match ($this->showcaseObject->errorType) {
@@ -171,3 +162,5 @@ abstract class Base
         exit($data);
     }
 }
+
+//todo review hooks here

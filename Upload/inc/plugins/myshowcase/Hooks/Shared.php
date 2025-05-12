@@ -17,7 +17,29 @@ namespace MyShowcase\Hooks\Shared;
 
 use UserDataHandler;
 
+use function MyShowcase\Core\entryDelete;
+use function MyShowcase\Core\entryGet;
+use function MyShowcase\Core\showcaseGet;
+
 function datahandler_user_delete_content(UserDataHandler &$dataHandler): UserDataHandler
 {
+    if (is_array($dataHandler->delete_uids)) {
+        $userIDs = $dataHandler->delete_uids;
+    } else {
+        $userIDs = explode(',', (string)$dataHandler->delete_uids);
+    }
+
+    if (!$userIDs) {
+        return $dataHandler;
+    }
+
+    foreach (showcaseGet() as $showcaseID => $showcaseData) {
+        foreach ($userIDs as $userID) {
+            foreach (entryGet($showcaseID, ["user_id={$userID}"]) as $entryID => $entryData) {
+                entryDelete($showcaseID, $entryID);
+            }
+        }
+    }
+
     return $dataHandler;
 }

@@ -40,7 +40,7 @@ use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseDelete;
 use function MyShowcase\Core\showcaseGet;
-use function MyShowcase\Core\entryDataGet;
+use function MyShowcase\Core\entryGet;
 use function MyShowcase\Core\showcaseInsert;
 use function MyShowcase\Core\showcaseUpdate;
 use function MyShowcase\Core\urlHandlerBuild;
@@ -134,7 +134,7 @@ if ($mybb->input['action'] == 'clear_permission') {
     $plugins->run_hooks('admin_forum_management_clear_permission');
 
     if ($mybb->request_method === 'post') {
-        permissionsDelete(["showcase_id='{$showcaseID}'", "permission_id='{$permissionID}'"]);
+        permissionsDelete($permissionID);
 
         hooksRun('admin_summary_clear_permissions_post');
 
@@ -240,9 +240,9 @@ if ($mybb->input['action'] == 'clear_permission') {
         $plugins->run_hooks('admin_forum_management_permissions_commit');
 
         if ($permissionID) {
-            permissionsUpdate($insertData, $permissionID);
+            permissionsUpdate($showcaseID, $insertData, $permissionID);
         } else {
-            permissionsInsert($insertData);
+            permissionsInsert($showcaseID, $insertData);
         }
 
         cacheUpdate(CACHE_TYPE_PERMISSIONS);
@@ -618,6 +618,14 @@ $(function() {
                     $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedScriptFile;
                 }
 
+                if (isset($insertData['custom_theme_template_prefix'])) {
+                    $insertData['custom_theme_template_prefix'] = preg_replace(
+                        '/[^\da-z]/i',
+                        '',
+                        my_strtolower($insertData['custom_theme_template_prefix'])
+                    );
+                }
+
                 if (isset($insertData['custom_theme_template_prefix']) && (!$insertData['custom_theme_template_prefix'] || in_array(
                             $insertData['custom_theme_template_prefix'],
                             array_column($existingShowcases, 'custom_theme_template_prefix')
@@ -644,28 +652,6 @@ $(function() {
                 if (!$errorMessages) {
                     if ($isAddPage) {
                         $showcaseID = showcaseInsert($insertData);
-
-                        foreach ($groupsCache as $groupData) {
-                            $groupID = (int)$groupData['gid'];
-
-                            $permissionsData = [];
-
-                            foreach ($defaultPermissions as $permissionKey => $fieldDefinition) {
-                                if (isset($permissionsInput[$groupID][$permissionKey])) {
-                                    $permissionsData[$permissionKey] = castTableFieldValue(
-                                        $permissionsInput[$groupID][$permissionKey],
-                                        $fieldDefinition['type']
-                                    );
-                                } else {
-                                    $permissionsData[$permissionKey] = $fieldDefinition['default'];
-                                }
-                            }
-
-                            hooksRun('admin_summary_add_edit_post_permissions');
-
-                            _dump(777);
-                            permissionsUpdate($permissionsData, $showcaseID, $groupID);
-                        }
                     } else {
                         showcaseUpdate($insertData, $showcaseID);
                     }
@@ -772,8 +758,7 @@ $(function() {
                             ModeratorPermissions::CanManageComments => $permissions[ModeratorPermissions::CanManageComments] ?? 0,
                         ];
 
-                        moderatorsUpdate(["showcase_id='{$showcaseID}'", "moderator_id='{$moderatorID}'"],
-                            $moderatorData);
+                        moderatorsUpdate($showcaseID, $moderatorData, $moderatorID);
                     }
                 } elseif ($mybb->get_input('add') == 'group') {
                     $groupID = $mybb->get_input('usergroup', MyBB::INPUT_INT);
@@ -864,7 +849,7 @@ $(function() {
 
                 break;
             case 'delete':
-                moderatorsDelete(["moderator_id={$mybb->get_input('moderator_id', MyBB::INPUT_INT)}"]);
+                moderatorsDelete($mybb->get_input('moderator_id', MyBB::INPUT_INT));
 
                 cacheUpdate(CACHE_TYPE_MODERATORS);
 
@@ -1196,10 +1181,6 @@ $(function() {
                 }
             }
 
-            if ($groupID === 3) {
-                //_dump($perms);
-            }
-
             $checkedPermissions = [];
 
             foreach ($field_list as $permissionName => $permissionTitle) {
@@ -1290,10 +1271,6 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
                 ) . "</noscript>\n";
 
             $form_container->output_cell($field_select, ['colspan' => 2]);
-
-            if ($groupID === 4) {
-                //_dump($field_options, $field_selected, $checkedPermissions);
-            }
 
             $permissionsUrl = urlHandlerBuild(
                 [
@@ -1800,7 +1777,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
 
     $showcaseName = $showcaseData['name'];
 
-    if (entryDataGet($showcaseID)) {
+    if (entryGet($showcaseID)) {
         flash_message($lang->myShowcaseAdminErrorTableDrop, 'error');
 
         admin_redirect(urlHandlerBuild());
@@ -1947,19 +1924,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
 
         hooksRun('admin_summary_delete_post');
 
-        commentsDelete(["showcase_id='{$showcaseID}'"]);
-
-        attachmentDelete(["showcase_id='{$showcaseID}'"]);
-
-        permissionsDelete(["showcase_id='{$showcaseID}'"]);
-
-        moderatorsDelete(["showcase_id='{$showcaseID}'"]);
-
-        if (showcaseDataTableExists($showcaseID)) {
-            showcaseDataTableDrop($showcaseID);
-        }
-
-        showcaseDelete(["showcase_id='{$showcaseID}'"]);
+        showcaseDelete($showcaseID);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -2063,7 +2028,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
             $showcaseDataTableExists = showcaseDataTableExists($showcaseID);
 
             if ($showcaseDataTableExists) {
-                $showcaseTotalEntries = entryDataGet(
+                $showcaseTotalEntries = entryGet(
                     $showcaseID,
                     [],
                     ['COUNT(entry_id) AS showcaseTotalEntries'],
@@ -2401,7 +2366,12 @@ function saveQuickPermissions(int $showcaseID, array $permissionsData): void
             }
         }
 
-        permissionsDelete(["showcase_id='{$showcaseID}'", "group_id='{$groupID}'"]);
+        permissionsDelete(
+            (int)(permissionsGet(
+                ["showcase_id='{$showcaseID}'", "group_id='{$groupID}'"],
+                queryOptions: ['limit' => 1]
+            )['permission_id'] ?? 0)
+        );
 
         // Only insert the new ones if we're using custom permissions
         if (empty($inherit[$groupID])) {
@@ -2424,9 +2394,11 @@ function saveQuickPermissions(int $showcaseID, array $permissionsData): void
                 $insertData[$permissionsName] = isset($existing_permissions[$permissionsName]) ? (int)$existing_permissions[$permissionsName] : 0;
             }
 
-            permissionsInsert($insertData);
+            permissionsInsert($showcaseID, $insertData);
         }
     }
 
     $cache->update_forumpermissions();
 }
+
+//todo review hooks here

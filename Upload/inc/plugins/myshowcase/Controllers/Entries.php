@@ -17,12 +17,9 @@ namespace MyShowcase\Controllers;
 
 use MyBB;
 use JetBrains\PhpStorm\NoReturn;
-use MyShowcase\Models\Entries as EntriesModel;
 use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\ModeratorPermissions;
-use MyShowcase\System\Router;
 use MyShowcase\System\UserPermissions;
-use Pecee\SimpleRouter\SimpleRouter;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpload;
@@ -31,13 +28,15 @@ use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\createUUIDv4;
 use function MyShowcase\Core\dataHandlerGetObject;
 use function MyShowcase\Core\dataTableStructureGet;
+use function MyShowcase\Core\entryGet;
 use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\SimpleRouter\url;
 
-use const MyShowcase\ROOT;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW_PAGE;
+use const MyShowcase\Core\URL_TYPE_MAIN_PAGE;
 use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
 use const MyShowcase\Core\URL_TYPE_ENTRY_UPDATE;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
@@ -59,15 +58,9 @@ use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 
 class Entries extends Base
 {
-    public function __construct(
-        public ?Router $router = null,
-        protected ?EntriesModel $entriesModel = null,
-    ) {
-        require_once ROOT . '/Models/Entries.php';
-
-        $this->entriesModel = new EntriesModel();
-
-        parent::__construct($router);
+    public function __construct()
+    {
+        parent::__construct();
 
         if (!$this->showcaseObject->userPermissions[UserPermissions::CanView]) {
             error_no_permission();
@@ -121,8 +114,9 @@ class Entries extends Base
         );
     }
 
-    #[NoReturn] public function listEntries(
+    #[NoReturn] public function mainPage(
         int $userID = 0,
+        int $currentPage = 1,
         int $limit = 0,
         int $limitStart = 0,
         string $groupBy = '',
@@ -132,21 +126,25 @@ class Entries extends Base
         mixed $filterValue = '',
         array $whereClauses = []
     ): void {
+        $this->mainView(userID: $userID, currentPage: $currentPage);
+    }
+
+    #[NoReturn] public function mainView(
+        int $userID = 0,
+        int $limit = 0,
+        int $limitStart = 0,
+        string $groupBy = '',
+        string $orderBy = 'user_id',
+        string $orderDirection = ORDER_DIRECTION_ASCENDING,
+        string $filterField = '',
+        mixed $filterValue = '',
+        array $whereClauses = [],
+        int $currentPage = 1,
+    ): void {
         global $lang, $mybb, $db;
         global $theme;
 
         $currentUserID = (int)$mybb->user['uid'];
-
-        /*
-                _dump(
-                    url(URL_TYPE_ENTRY_CREATE)->getRelativeUrl(),
-                    url(URL_TYPE_ENTRY_CREATE)->getRelativeUrl(),
-                    url(URL_TYPE_ENTRY_CREATE)->getOriginalPath(),
-                    url(URL_TYPE_ENTRY_CREATE)->getOriginalUrl(),
-                    url(URL_TYPE_ENTRY_CREATE)->contains('/user'),
-                );
-        */
-        //$this->showcaseObject->getDefaultFilter();
 
         if ($limit < 1) {
             $limit = $this->showcaseObject->config['entries_per_page'];
@@ -262,7 +260,7 @@ class Entries extends Base
         }
 
         $urlSortRow = urlHandlerBuild(
-            array_merge($this->outputObject->urlParams, ['order_by' => $this->showcaseObject->orderBy])
+            array_merge($this->renderObject->urlParams, ['order_by' => $this->showcaseObject->orderBy])
         );
 
         $orderInputs = array_map(function (string $value): string {
@@ -288,7 +286,6 @@ class Entries extends Base
 
             $showcaseTableTheadExtraFieldTitle = $lang->{"myshowcase_field_{$fieldKey}"} ?? ucfirst($fieldKey);
 
-            //_dump($this->showcaseObject->fieldSetFieldsDisplayFields);
             //$showcaseTableTheadExtraFieldOrder = $this->showcaseObject->fieldSetFieldsDisplayFields[$fieldKey];
 
             $showcaseTableTheadExtra .= eval($this->renderObject->templateGet('pageMainTableTheadRowField'));
@@ -298,9 +295,7 @@ class Entries extends Base
 
         //setup joins for query and build where clause based on search_field terms
 
-        $queryTables = ["{$this->showcaseObject->dataTableName} entryData"];
-
-        $queryTables [] = 'users userData ON (userData.uid = entryData.user_id)';
+        $queryTables = ['users userData ON (userData.uid = entryData.user_id)'];
 
         $queryFields = array_merge(array_map(function (string $columnName): string {
             return 'entryData.' . $columnName;
@@ -371,16 +366,17 @@ class Entries extends Base
             $queryOptions['order_dir'] = $this->showcaseObject->orderBy;
         }
 
-        $totalEntries = (int)($this->entriesModel->getEntries(
-            $queryTables,
-            ['COUNT(entryData.entry_id) AS total_entries'],
+        $totalEntries = (int)(entryGet(
+            $this->showcaseObject->showcase_id,
             $whereClauses,
-            array_merge(['limit' => 1], $queryOptions)
+            ['COUNT(entryData.entry_id) AS total_entries'],
+            array_merge(['limit' => 1], $queryOptions),
+            $queryTables
         )['total_entries'] ?? 0);
 
         $showcaseEntriesList = '';
 
-        $pagination = '';
+        $entriesPagination = '';
 
         $alternativeBackground = alt_trow(true);
 
@@ -389,24 +385,24 @@ class Entries extends Base
         if ($totalEntries) {
             $entriesPerPage = $limit;
 
-            if ($this->outputObject->pageCurrent > 0) {
-                $pageCurrent = $this->outputObject->pageCurrent;
+            if ($currentPage > 0) {
+                $currentPage = $currentPage;
 
-                $pageStart = ($pageCurrent - 1) * $entriesPerPage;
+                $pageStart = ($currentPage - 1) * $entriesPerPage;
 
                 $pageTotal = $totalEntries / $entriesPerPage;
 
                 $pageTotal = ceil($pageTotal);
 
-                if ($pageCurrent > $pageTotal) {
+                if ($currentPage > $pageTotal) {
                     $pageStart = 0;
 
-                    $pageCurrent = 1;
+                    $currentPage = 1;
                 }
             } else {
                 $pageStart = 0;
 
-                $pageCurrent = 1;
+                $currentPage = 1;
             }
 
             $upper = $pageStart + $entriesPerPage;
@@ -419,18 +415,28 @@ class Entries extends Base
 
             $queryOptions['limit_start'] = $pageStart;
 
-            $pagination = multipage(
+            $urlParams = [];
+
+            $entriesPagination = multipage(
                 $totalEntries,
-                $entriesPerPage,
-                $pageCurrent,
-                urlHandlerBuild(array_merge($this->outputObject->urlParams, ['page' => '{page}']), '&amp;', false)
+                $this->showcaseObject->config['entries_per_page'],
+                $currentPage,
+                url(
+                    URL_TYPE_MAIN_PAGE,
+                    [
+                        'user_id' => $userID,
+                        'page_id' => '{page}'
+                    ],
+                    $urlParams
+                )->getRelativeUrl()
             );
 
-            $entriesObjects = $this->entriesModel->getEntries(
-                $queryTables,
-                $queryFields,
+            $entriesObjects = entryGet(
+                $this->showcaseObject->showcase_id,
                 $whereClauses,
-                $queryOptions
+                $queryFields,
+                $queryOptions,
+                $queryTables
             );
 
             // get first attachment for each showcase on this page
@@ -730,13 +736,13 @@ class Entries extends Base
 
         $pageTitle = $this->showcaseObject->config['name'];
 
-        $urlSortByUsername = urlHandlerBuild(array_merge($this->outputObject->urlParams, ['sort_by' => 'username']));
+        $urlSortByUsername = urlHandlerBuild(array_merge($this->renderObject->urlParams, ['sort_by' => 'username']));
 
-        $urlSortByComments = urlHandlerBuild(array_merge($this->outputObject->urlParams, ['sort_by' => 'comments']));
+        $urlSortByComments = urlHandlerBuild(array_merge($this->renderObject->urlParams, ['sort_by' => 'comments']));
 
-        $urlSortByViews = urlHandlerBuild(array_merge($this->outputObject->urlParams, ['sort_by' => 'views']));
+        $urlSortByViews = urlHandlerBuild(array_merge($this->renderObject->urlParams, ['sort_by' => 'views']));
 
-        $urlSortByDateline = urlHandlerBuild(array_merge($this->outputObject->urlParams, ['sort_by' => 'dateline']));
+        $urlSortByDateline = urlHandlerBuild(array_merge($this->renderObject->urlParams, ['sort_by' => 'dateline']));
 
         if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] || $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
             ++$showcaseColumnsCount;
@@ -759,7 +765,7 @@ class Entries extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageMainContents')));
     }
 
-    #[NoReturn] public function listEntriesUser(
+    #[NoReturn] public function mainUser(
         int $userID,
         int $limit = 10,
         int $limitStart = 0,
@@ -767,7 +773,7 @@ class Entries extends Base
         string $orderBy = 'user_id',
         string $orderDirection = ORDER_DIRECTION_ASCENDING
     ): void {
-        $this->listEntries(
+        $this->mainView(
             $userID,
             $limit,
             $limitStart,
@@ -779,7 +785,7 @@ class Entries extends Base
         );
     }
 
-    #[NoReturn] public function listEntriesUnapproved(
+    #[NoReturn] public function mainUnapproved(
         int $userID = 0,
         int $limit = 10,
         int $limitStart = 0,
@@ -789,7 +795,7 @@ class Entries extends Base
     ): void {
         $statusUnapproved = ENTRY_STATUS_PENDING_APPROVAL;
 
-        $this->listEntries(
+        $this->mainView(
             $userID,
             $limit,
             $limitStart,
@@ -892,16 +898,30 @@ class Entries extends Base
             }
 
             $insertData = [
-                'user_id' => $currentUserID
             ];
 
-            if ($this->showcaseObject->config['moderate_entries_update'] &&
-                !$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
-                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
+            if (!$isEditPage) {
+                $insertData['user_id'] = $currentUserID;
+
+                $insertData['ipaddress'] = $mybb->session->packedip;
+
+                $insertData['dateline'] = TIME_NOW;
+
+                if ($this->showcaseObject->entryHash) {
+                    $insertData['entry_hash'] = $this->showcaseObject->entryHash;
+                }
             }
 
-            if ($this->showcaseObject->entryHash) {
-                $insertData['entry_hash'] = $this->showcaseObject->entryHash;
+            if ($isEditPage && (
+                    $this->showcaseObject->config['moderate_entries_update'] ||
+                    $this->showcaseObject->userPermissions[UserPermissions::ModerateEntryUpdate]
+                )) {
+                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
+            } elseif (!$isEditPage && $this->showcaseObject->config['moderate_entries_create'] && (
+                    $this->showcaseObject->config['moderate_entries_create'] ||
+                    $this->showcaseObject->userPermissions[UserPermissions::ModerateEntryCreate]
+                )) {
+                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
             }
 
             // Set up showcase handler.
@@ -958,15 +978,9 @@ class Entries extends Base
                 $insertData['entry_slug'] = $entrySlug;
             }
 
-            if ($isEditPage && $this->showcaseObject->config['moderate_entries_update']) {
-                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
-            } elseif (!$isEditPage && $this->showcaseObject->config['moderate_entries_create']) {
-                $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
-            }
-
             $dataHandler->set_data($insertData);
 
-            if (!$dataHandler->entryValidateData()) {
+            if (!$dataHandler->entryValidate()) {
                 $this->showcaseObject->errorMessages = array_merge(
                     $this->showcaseObject->errorMessages,
                     $dataHandler->get_friendly_errors()
@@ -980,7 +994,7 @@ class Entries extends Base
                     $insertResult = $dataHandler->entryInsert();
                 }
 
-                if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
+                if (isset($insertResult['status']) && $insertResult['status'] === ENTRY_STATUS_SOFT_DELETED) {
                     $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
                     switch ($this->showcaseObject->config['filter_force_field']) {
@@ -1368,20 +1382,10 @@ class Entries extends Base
     #[NoReturn] public function viewEntry(
         string $entrySlug,
         int $commentID = 0,
-        array $commentData = []
+        array $commentData = [],
+        int $currentPage = 1,
     ): void {
         global $mybb, $lang, $db, $theme;
-
-        if ($mybb->request_method === 'post') {
-        }
-
-        /*if ($mybb->get_input('action') === 'comment_create') {
-            require_once ROOT . '/Controllers/Comments.php';
-
-            (new \MyShowcase\Controllers\Comments())->
-            $controlelr = ;
-            _dump($controlelr);
-        }*/
 
         $hookArguments = [
             'this' => &$this
@@ -1507,7 +1511,7 @@ class Entries extends Base
                 ['limit' => 1]
             )['total_comments'] ?? 0);
 
-            $currentPage = $mybb->get_input('page', MyBB::INPUT_INT);
+            //$currentPage = $mybb->get_input('page', MyBB::INPUT_INT);
 
             if ($commentID) {
                 $commentTimeStamp = (int)$commentData['dateline'];
@@ -1553,7 +1557,7 @@ class Entries extends Base
                 //'page' => '{page}'
             ];
 
-            SimpleRouter::get('/product-view/{id}', 'ProductsController@show', ['as' => 'product']);
+            //SimpleRouter::get('/product-view/{id}', 'ProductsController@show', ['as' => 'product']);
 
             $entryUrl = url(
                 URL_TYPE_ENTRY_VIEW,
@@ -1571,8 +1575,8 @@ class Entries extends Base
                 $this->showcaseObject->config['comments_per_page'],
                 $currentPage,
                 url(
-                    URL_TYPE_ENTRY_VIEW,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                    URL_TYPE_ENTRY_VIEW_PAGE,
+                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'page_id' => '{page}'],
                     $urlParams
                 )->getRelativeUrl()
             ) ?? '';
@@ -1660,6 +1664,13 @@ class Entries extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageView')));
     }
 
+    #[NoReturn] public function viewEntryPage(
+        string $entrySlug,
+        int $currentPage = 0,
+    ): void {
+        $this->viewEntry($entrySlug, currentPage: $currentPage);
+    }
+
     #[NoReturn] public function approveEntry(
         string $entrySlug,
         int $status = ENTRY_STATUS_VISIBLE
@@ -1673,32 +1684,26 @@ class Entries extends Base
             error_no_permission();
         }
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject, DATA_HANDLER_METHOD_UPDATE);
+        $this->showcaseObject->dataUpdate(['status' => $status]);
 
-        $dataHandler->set_data(['status' => $status]);
+        $entryUrl = url(
+                URL_TYPE_ENTRY_VIEW,
+                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            )->getRelativeUrl() . '#entryID' . $this->showcaseObject->entryID;
 
-        if ($dataHandler->entryValidateData()) {
-            $dataHandler->entryUpdate();
-
-            $entryUrl = url(
-                    URL_TYPE_ENTRY_VIEW,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
-                )->getRelativeUrl() . '#entryID' . $this->showcaseObject->entryID;
-
-            switch ($status) {
-                case ENTRY_STATUS_PENDING_APPROVAL:
-                    $redirectMessage = $lang->myShowcaseEntryEntryUnapproved;
-                    break;
-                case ENTRY_STATUS_VISIBLE:
-                    $redirectMessage = $lang->myShowcaseEntryEntryApproved;
-                    break;
-                case ENTRY_STATUS_SOFT_DELETED:
-                    $redirectMessage = $lang->myShowcaseEntryEntrySoftDeleted;
-                    break;
-            }
-
-            redirect($entryUrl, $redirectMessage);
+        switch ($status) {
+            case ENTRY_STATUS_PENDING_APPROVAL:
+                $redirectMessage = $lang->myShowcaseEntryEntryUnapproved;
+                break;
+            case ENTRY_STATUS_VISIBLE:
+                $redirectMessage = $lang->myShowcaseEntryEntryApproved;
+                break;
+            case ENTRY_STATUS_SOFT_DELETED:
+                $redirectMessage = $lang->myShowcaseEntryEntrySoftDeleted;
+                break;
         }
+
+        redirect($entryUrl, $redirectMessage);
     }
 
     #[NoReturn] public function unapproveEntry(
@@ -1744,9 +1749,7 @@ class Entries extends Base
             error_no_permission();
         }
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject);
-
-        $dataHandler->entryDelete();
+        $this->showcaseObject->entryDelete();
 
         $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
@@ -1790,3 +1793,5 @@ class Entries extends Base
         }
     }
 }
+
+//todo review hooks here

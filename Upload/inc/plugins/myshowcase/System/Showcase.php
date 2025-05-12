@@ -22,14 +22,15 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\commentsDelete;
-use function MyShowcase\Core\entryDataInsert;
+use function MyShowcase\Core\entryDelete;
+use function MyShowcase\Core\entryInsert;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseDataTableExists;
-use function MyShowcase\Core\entryDataUpdate;
+use function MyShowcase\Core\entryUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
 
 use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
@@ -334,6 +335,12 @@ class Showcase
             $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&attachment_id={attachment_id}';
         }
 
+        $hookArguments = [
+            'showcaseObject' => &$this,
+        ];
+
+        $hookArguments = hooksRun('system_showcase_construct_end', $hookArguments);
+
         return $this;
     }
 
@@ -542,11 +549,9 @@ class Showcase
         return $newIDs;
     }
 
-    public function showcaseDataDelete(array $whereClauses = []): void
+    public function showcaseDataDelete(int $entryID): void
     {
-        global $db;
-
-        $db->delete_query($this->dataTableName, implode(' AND ', $whereClauses));
+        entryDelete($this->showcase_id, $entryID);
     }
 
     /**
@@ -555,10 +560,11 @@ class Showcase
     public function attachmentsDelete(int $entryID): bool
     {
         foreach (
-            attachmentGet(["entry_id='{$entryID}'", "showcase_id='{$this->showcase_id}'"]
+            attachmentGet(
+                ["entry_id='{$entryID}'", "showcase_id='{$this->showcase_id}'"]
             ) as $attachmentID => $attachmentData
         ) {
-            attachmentDelete(["attachment_id='{$attachmentID}'"]);
+            attachmentDelete($attachmentID);
         }
 
         return true;
@@ -618,7 +624,7 @@ class Showcase
         $attachmentObjects = hooksRun('remove_attachment_do_delete', $attachmentObjects);
 
         foreach ($attachmentObjects as $attachmentID => $attachmentData) {
-            attachmentDelete(["attachment_id='{$attachmentID}'"]);
+            attachmentDelete($attachmentID);
 
             if (file_exists($this->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name'])) {
                 unlink($this->config['attachments_uploads_path'] . '/' . $attachmentData['attachment_name']);
@@ -707,13 +713,13 @@ class Showcase
     public function dataInsert(
         array $insertData
     ): int {
-        return entryDataInsert($this->showcase_id, $insertData);
+        return entryInsert($this->showcase_id, $insertData);
     }
 
     public function dataUpdate(
         array $updateData
     ): int {
-        return entryDataUpdate(
+        return entryUpdate(
             $this->showcase_id,
             $this->entryID,
             $updateData
@@ -776,5 +782,19 @@ class Showcase
 
                 break;
         }
+    }
+
+    public function entryDelete(): void
+    {
+        $this->attachmentsDelete($this->entryID);
+
+        $this->commentsDelete($this->entryID);
+
+        $this->showcaseDataDelete($this->entryID);
+    }
+
+    public function commentDelete(int $commentID): void
+    {
+        commentsDelete($commentID);
     }
 }

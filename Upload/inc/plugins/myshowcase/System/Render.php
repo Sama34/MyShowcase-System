@@ -15,6 +15,8 @@ declare(strict_types=1);
 
 namespace MyShowcase\System;
 
+use MyBB;
+
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\getTemplate;
@@ -24,6 +26,7 @@ use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\templateGetCachedName;
 use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
 use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
@@ -64,6 +67,9 @@ class Render
         public int $searchExactMatch = 0,
         public array $parserOptions = [],
         public array $fieldSetFieldsSearchFields = [],
+        public array $urlParams = [],
+        public int $page = 0,
+        public int $pageCurrent = 0,
     ) {
         global $mybb;
 
@@ -100,6 +106,48 @@ class Render
 
             $this->fieldSetFieldsSearchFields[$fieldKey] = $lang->{"myShowcaseMainSort{$fieldKeyUpper}"} ?? $lang->{"myshowcase_field_{$fieldKey}"} ?? $fieldKeyUpper;
         }
+
+        global $mybb;
+
+        $this->urlParams = [];
+
+        if ($mybb->get_input('unapproved', MyBB::INPUT_INT)) {
+            $this->urlParams['unapproved'] = $mybb->get_input('unapproved', MyBB::INPUT_INT);
+        }
+
+        if (array_key_exists($this->showcaseObject->sortByField, $this->showcaseObject->fieldSetFieldsDisplayFields)) {
+            $this->urlParams['sort_by'] = $this->showcaseObject->sortByField;
+        }
+
+        if ($this->searchExactMatch) {
+            $this->urlParams['exact_match'] = $this->searchExactMatch;
+        }
+
+        if ($this->searchKeyWords) {
+            $this->urlParams['keywords'] = $this->searchKeyWords;
+        }
+
+        if (in_array($this->showcaseObject->searchField, array_keys($this->showcaseObject->fieldSetSearchableFields))) {
+            $this->urlParams['search_field'] = $this->showcaseObject->searchField;
+        }
+
+        if ($this->showcaseObject->orderBy) {
+            $this->urlParams['order_by'] = $this->showcaseObject->orderBy;
+        }
+
+        if ($mybb->get_input('page', MyBB::INPUT_INT) > 0) {
+            $this->pageCurrent = $mybb->get_input('page', MyBB::INPUT_INT);
+        }
+
+        if ($this->pageCurrent) {
+            $this->urlParams['page'] = $this->pageCurrent;
+        }
+
+        $hookArguments = [
+            'renderObject' => &$this,
+        ];
+
+        $hookArguments = hooksRun('system_render_construct_end', $hookArguments);
     }
 
     public function templateGet(string $templateName = '', bool $enableHTMLComments = true): string
@@ -135,7 +183,6 @@ class Render
         if ($currentUserIgnoredUsers === null) {
             $currentUserIgnoredUsers = [];
 
-            $mybb->user['ignorelist'] = '4,7';
             if ($currentUserID > 0 && !empty($mybb->user['ignorelist'])) {
                 $currentUserIgnoredUsers = array_flip(explode(',', $mybb->user['ignorelist']));
             }
@@ -853,7 +900,6 @@ class Render
         return $entryFieldsList;
     }
 
-    // todo, add support for fancy box for attachment images
     public function entryBuildAttachments(
         array &$entryFields,
         int $postType = self::POST_TYPE_ENTRY,
@@ -954,7 +1000,6 @@ class Render
                     }
                 }
 
-                _dump($attachmentData);
                 if (!$attachmentInField &&
                     (int)$attachmentData['thumbnail_dimensions'] !== ATTACHMENT_THUMBNAIL_SMALL &&
                     $attachmentData['thumbnail_name'] !== '' &&
@@ -1074,6 +1119,37 @@ class Render
             $watermarkSelectedElement = 'checked="checked"';
         }
 
+        $currentUserID = (int)$mybb->user['uid'];
+
+        if ($this->showcaseObject->userPermissions['attachments_upload_quote'] === ALL_UNLIMITED_VALUE) {
+            $usageQuoteNote = $lang->sprintf(
+                $lang->myShowcaseAttachmentsUsageQuote,
+                $lang->myShowcaseAttachmentsUsageQuoteUnlimited
+            );
+        } else {
+            $usageQuoteNote = $lang->sprintf(
+                $lang->myShowcaseAttachmentsUsageQuote,
+                get_friendly_size($this->showcaseObject->userPermissions['attachments_upload_quote'] * 1024)
+            );
+        }
+
+        $totalUserUsage = (int)(attachmentGet(
+            ["showcase_id='{$this->showcaseObject->showcase_id}'", "user_id='{$currentUserID}'"],
+            ['SUM(file_size) AS total_user_usage'],
+            ['limit' => 1]
+        )['total_user_usage'] ?? 0);
+
+        $usageDetails = $viewMyAttachmentsLink = '';
+
+        if ($totalUserUsage > 0) {
+            $usageDetails = $lang->sprintf(
+                $lang->myShowcaseAttachmentsUsageDetails,
+                get_friendly_size($totalUserUsage)
+            );
+
+            $viewMyAttachmentsLink = eval($this->templateGet('pageEntryCommentCreateUpdateAttachmentsBoxViewLink'));
+        }
+
         return eval($this->templateGet('pageEntryCommentCreateUpdateAttachmentsBox'));
     }
 
@@ -1166,7 +1242,7 @@ class Render
         }
     }
 
-    public function buildEditor(string &$code_buttons, string &$smile_inserter, string $editorID = 'comment')
+    public function buildEditor(string &$code_buttons, string &$smile_inserter, string $editorID = 'comment'): void
     {
         global $mybb;
 

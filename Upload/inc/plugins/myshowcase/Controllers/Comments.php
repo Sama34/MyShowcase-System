@@ -16,9 +16,7 @@ declare(strict_types=1);
 namespace MyShowcase\Controllers;
 
 use JetBrains\PhpStorm\NoReturn;
-use MyShowcase\Models\Comments as CommentsModel;
 use MyShowcase\System\ModeratorPermissions;
-use MyShowcase\System\Router;
 use MyShowcase\System\UserPermissions;
 
 use function MyShowcase\Core\commentsGet;
@@ -28,7 +26,6 @@ use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\ROOT;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
-use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\FILTER_TYPE_USER_ID;
 use const MyShowcase\Core\URL_TYPE_COMMENT_CREATE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
@@ -43,21 +40,10 @@ use const MyShowcase\Core\DATA_HANDLER_METHOD_UPDATE;
 
 class Comments extends Base
 {
-    public function __construct(
-        public ?Router $router = null,
-        protected ?CommentsModel $commentsModel = null,
-    ) {
-        require_once ROOT . '/Models/Comments.php';
-
-        $this->commentsModel = new CommentsModel();
-
-        parent::__construct($router);
-    }
-
     public function setEntry(
         string $entrySlug,
         bool $loadFields = false
-    ) {
+    ): void {
         require_once ROOT . '/Controllers/Entries.php';
 
         (new Entries())->setEntry($entrySlug, $loadFields);
@@ -86,7 +72,7 @@ class Comments extends Base
 
         require_once ROOT . '/Controllers/Entries.php';
 
-        $entriesController = new Entries($this->router);
+        $entriesController = new Entries();
 
         $entriesController->setEntry($entrySlug, true);
 
@@ -201,7 +187,7 @@ class Comments extends Base
                 )) {
                 $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
             } elseif (!$isEditPage && $this->showcaseObject->config['moderate_comments_create'] && (
-                    $this->showcaseObject->config['moderate_comments_update'] ||
+                    $this->showcaseObject->config['moderate_comments_create'] ||
                     $this->showcaseObject->userPermissions[UserPermissions::ModerateCommentsCreate]
                 )) {
                 $insertData['status'] = ENTRY_STATUS_PENDING_APPROVAL;
@@ -209,7 +195,7 @@ class Comments extends Base
 
             $dataHandler->set_data($insertData);
 
-            if (!$dataHandler->commentValidateData()) {
+            if (!$dataHandler->commentValidate()) {
                 $this->showcaseObject->errorMessages = array_merge(
                     $this->showcaseObject->errorMessages,
                     $dataHandler->get_friendly_errors()
@@ -229,7 +215,7 @@ class Comments extends Base
 
                 $this->updateEntryCommentsCount();
 
-                if (isset($insertResult['status']) && $insertResult['status'] !== ENTRY_STATUS_VISIBLE) {
+                if (isset($insertResult['status']) && $insertResult['status'] === COMMENT_STATUS_SOFT_DELETED) {
                     $entryUrl = url(
                         URL_TYPE_ENTRY_VIEW,
                         ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
@@ -252,7 +238,7 @@ class Comments extends Base
                 }
             }
         } elseif ($isEditPage) {
-            $commentData = $this->commentsModel->getComment($commentID, ['comment']);
+            $commentData = commentsGet(["comment_id='{$commentID}'"], ['comment'], ['limit' => 1]);
 
             $mybb->input = array_merge($commentData, $mybb->input);
         }
@@ -385,7 +371,7 @@ class Comments extends Base
 
         $dataHandler->set_data(['status' => $status]);
 
-        if ($dataHandler->commentValidateData()) {
+        if ($dataHandler->commentValidate()) {
             $dataHandler->commentUpdate($commentID);
 
             $this->updateEntryCommentsCount();
@@ -457,7 +443,7 @@ class Comments extends Base
 
         $this->setEntry($entrySlug);
 
-        $commentData = $this->commentsModel->getComment($commentID, ['user_id']);
+        $commentData = commentsGet(["comment_id='{$commentID}'"], ['user_id'], ['limit' => 1]);
 
         if (empty($commentData) ||
             !(
@@ -469,9 +455,7 @@ class Comments extends Base
             error_no_permission();
         }
 
-        $dataHandler = dataHandlerGetObject($this->showcaseObject);
-
-        $dataHandler->commentDelete($commentID);
+        $this->showcaseObject->commentDelete($commentID);
 
         $this->updateEntryCommentsCount();
 
@@ -483,3 +467,5 @@ class Comments extends Base
         redirect($entryUrl, $lang->myShowcaseEntryCommentDeleted);
     }
 }
+
+//todo review hooks here

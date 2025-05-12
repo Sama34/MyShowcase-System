@@ -20,7 +20,6 @@ use DataHandler as CoreDataHandler;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\commentInsert;
-use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentUpdate;
 use function MyShowcase\Core\fieldTypeMatchChar;
 use function MyShowcase\Core\fieldTypeMatchInt;
@@ -81,8 +80,15 @@ class DataHandler extends CoreDataHandler
         public array $updateData = [],
         public int $entry_id = 0,
         public int $comment_id = 0,
+        public array $returnData = [],
     ) {
+        $hookArguments = [
+            'dataHandler' => &$this,
+        ];
+
         parent::__construct($method);
+
+        $hookArguments = hooksRun('data_handler_construct_end', $hookArguments);
     }
 
     /**
@@ -90,9 +96,13 @@ class DataHandler extends CoreDataHandler
      *
      * @return bool True when valid, false when invalid.
      */
-    public function entryValidateData(): bool
+    public function entryValidate(): bool
     {
-        hooksRun('data_handler_entry_validate_start', $this);
+        $hookArguments = [
+            'dataHandler' => &$this,
+        ];
+
+        $hookArguments = hooksRun('data_handler_entry_validate_start', $hookArguments);
 
         $entryData = $this->data;
 
@@ -205,7 +215,9 @@ class DataHandler extends CoreDataHandler
             }
         }
 
-        $this->set_validated(true);
+        $this->set_validated();
+
+        $hookArguments = hooksRun('data_handler_entry_validate_end', $hookArguments);
 
         if ($this->get_errors()) {
             return false;
@@ -223,6 +235,11 @@ class DataHandler extends CoreDataHandler
     {
         global $db;
 
+        $hookArguments = [
+            'dataHandler' => &$this,
+            'isUpdate' => &$isUpdate,
+        ];
+
         $entryData = &$this->data;
 
         if (!$this->get_validated()) {
@@ -237,7 +254,7 @@ class DataHandler extends CoreDataHandler
             $this->insertData[$key] = $db->escape_string($value);
         }
 
-        hooksRun('data_handler_entry_insert_update_start', $this);
+        $hookArguments = hooksRun('data_handler_entry_insert_update_start', $hookArguments);
 
         if ($isUpdate) {
             $this->entry_id = $this->showcaseObject->dataUpdate($this->insertData);
@@ -256,14 +273,12 @@ class DataHandler extends CoreDataHandler
             }
         }
 
-        $returnData = [
-            'entry_id' => $this->entry_id
-        ];
+        $this->returnData['entry_id'] = $this->entry_id;
 
         if (isset($this->insertData['entry_slug'])) {
-            $returnData['entry_slug'] = $entryData['entry_slug'];
+            $this->returnData['entry_slug'] = $entryData['entry_slug'];
         } else {
-            $returnData['entry_slug'] = $this->showcaseObject->dataGet(
+            $this->returnData['entry_slug'] = $this->showcaseObject->dataGet(
                 ["entry_id='{$this->entry_id}'"],
                 ['entry_slug'],
                 ['limit' => 1]
@@ -271,10 +286,12 @@ class DataHandler extends CoreDataHandler
         }
 
         if (isset($this->insertData['status'])) {
-            $returnData['status'] = $entryData['status'];
+            $this->returnData['status'] = $entryData['status'];
         }
 
-        return $returnData;
+        $hookArguments = hooksRun('data_handler_entry_insert_update_end', $hookArguments);
+
+        return $this->returnData;
     }
 
     /**
@@ -286,23 +303,13 @@ class DataHandler extends CoreDataHandler
         return $this->entryInsert(true);
     }
 
-    public function entryUpdate(): int
+    public function commentValidate(): bool
     {
-        return $this->showcaseObject->dataUpdate($this->data);
-    }
+        $hookArguments = [
+            'dataHandler' => &$this,
+        ];
 
-    public function entryDelete(): void
-    {
-        $this->showcaseObject->attachmentsDelete($this->showcaseObject->entryID);
-
-        $this->showcaseObject->commentsDelete($this->showcaseObject->entryID);
-
-        $this->showcaseObject->showcaseDataDelete(["entry_id='{$this->showcaseObject->entryID}'"]);
-    }
-
-    public function commentValidateData(): bool
-    {
-        hooksRun('data_handler_comment_validate_start', $this);
+        $hookArguments = hooksRun('data_handler_comment_validate_start', $hookArguments);
 
         $commentData = $this->data;
 
@@ -345,7 +352,9 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid moderator identifier');
         }
 
-        $this->set_validated(true);
+        $this->set_validated();
+
+        $hookArguments = hooksRun('data_handler_comment_validate_end', $hookArguments);
 
         if ($this->get_errors()) {
             return false;
@@ -357,6 +366,12 @@ class DataHandler extends CoreDataHandler
     public function commentInsert(bool $isUpdate = false, int $commentID = 0): array
     {
         global $db;
+
+        $hookArguments = [
+            'dataHandler' => &$this,
+            'isUpdate' => &$isUpdate,
+            'commentID' => &$commentID,
+        ];
 
         $commentData = &$this->data;
 
@@ -372,7 +387,7 @@ class DataHandler extends CoreDataHandler
             $this->insertData[$key] = $db->escape_string($value);
         }
 
-        hooksRun('data_handler_comment_insert_update_start', $this);
+        $hookArguments = hooksRun('data_handler_comment_insert_update_start', $hookArguments);
 
         if ($isUpdate) {
             commentUpdate($this->insertData, $commentID);
@@ -398,24 +413,19 @@ class DataHandler extends CoreDataHandler
             }
         }
 
-        $returnData = [
-            'comment_id' => $this->comment_id
-        ];
+        $this->returnData['comment_id'] = $this->comment_id;
 
         if (isset($this->insertData['status'])) {
-            $returnData['status'] = $commentData['status'];
+            $this->returnData['status'] = $commentData['status'];
         }
 
-        return $returnData;
+        $hookArguments = hooksRun('data_handler_comment_insert_update_end', $hookArguments);
+
+        return $this->returnData;
     }
 
     public function commentUpdate(int $commentID): array
     {
         return $this->commentInsert(true, $commentID);
-    }
-
-    public function commentDelete(int $commentID): void
-    {
-        commentsDelete(["comment_id='{$commentID}'"]);
     }
 }

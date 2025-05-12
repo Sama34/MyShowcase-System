@@ -1,5 +1,5 @@
 <div class="float_left">
-    {$pagination}
+    {$entriesPagination}
 </div>
 <div class="float_right">
     {$entryCreateButton}
@@ -44,7 +44,7 @@
     <tr>
         <td class="tfoot" align="right" colspan="{$showcaseColumnsCount}">
             <form action="{$this->showcaseObject->urlBase}/{$mainUrl}" method="post">
-                <input type="hidden" name="page" value="{$this->outputObject->pageCurrent}"/>
+                <input type="hidden" name="page" value="{$this->renderObject->pageCurrent}"/>
                 {$selectFieldCode}
                 <select name="order_by">
                     <option value="asc" {$showcaseSelectOrderAscendingSelectedElement}>
@@ -72,7 +72,7 @@
     </tr>
 </table>
 <div class="float_left">
-    {$pagination}
+    {$entriesPagination}
 </div>
 <div class="float_right" style="margin-top: 4px;">
     {$entryCreateButton}

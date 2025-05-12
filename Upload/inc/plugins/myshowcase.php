@@ -18,7 +18,7 @@ use function MyShowcase\Admin\pluginDeactivation;
 use function MyShowcase\Admin\pluginInformation;
 use function MyShowcase\Admin\pluginIsInstalled;
 use function MyShowcase\Admin\pluginUninstallation;
-use function MyShowcase\Core\addHooks;
+use function MyShowcase\Core\hooksAdd;
 use function MyShowcase\Core\cacheUpdate;
 
 use const MyShowcase\ROOT;
@@ -56,16 +56,16 @@ if (defined('IN_ADMINCP')) {
 
     require_once ROOT . '/admin_hooks.php';
 
-    addHooks('MyShowcase\Hooks\Admin');
+    hooksAdd('MyShowcase\Hooks\Admin');
 } else {
     require_once ROOT . '/forum_hooks.php';
 
-    addHooks('MyShowcase\Hooks\Forum');
+    hooksAdd('MyShowcase\Hooks\Forum');
 }
 
 require_once ROOT . '/Hooks/Shared.php';
 
-addHooks('MyShowcase\Hooks\Shared');
+hooksAdd('MyShowcase\Hooks\Shared');
 
 function myshowcase_info(): array
 {

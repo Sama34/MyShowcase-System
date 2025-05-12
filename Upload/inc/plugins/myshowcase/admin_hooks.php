@@ -22,6 +22,7 @@ use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\permissionsDelete;
+use function MyShowcase\Core\permissionsGet;
 use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Admin\buildPermissionsRow;
@@ -63,7 +64,9 @@ function admin_user_groups_delete_commit(): bool
 {
     global $usergroup;
 
-    permissionsDelete(["group_id='{$usergroup['gid']}'"]);
+    foreach (permissionsGet(["group_id='{$usergroup['gid']}'"]) as $permissionID => $permissionData) {
+        permissionsDelete($permissionID);
+    }
 
     cacheUpdate(CACHE_TYPE_PERMISSIONS);
 
@@ -126,8 +129,6 @@ function admin_user_groups_edit_graph(): bool
         if (!isset($fieldData['isPermission'])) {
             continue;
         }
-
-        //_dump($fieldData['formCategory']);
 
         //$sectionKey = ucfirst($formSection);
         //formSection

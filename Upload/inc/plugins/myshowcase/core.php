@@ -22,7 +22,6 @@ use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\FieldTypes;
 use MyShowcase\System\FormatTypes;
 use MyShowcase\System\DataHandler;
-use MyShowcase\System\Output;
 use MyShowcase\System\Render;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
@@ -59,10 +58,6 @@ const CACHE_TYPE_ATTACHMENT_TYPES = 'attachment_types';
 const MODERATOR_TYPE_USER = 0;
 
 const MODERATOR_TYPE_GROUP = 1;
-
-const ATTACHMENT_UNLIMITED = -1;
-
-const ATTACHMENT_ZERO = 0;
 
 const ATTACHMENT_THUMBNAIL_ERROR = 3;
 
@@ -126,29 +121,43 @@ const URL_TYPE_MAIN = 'main';
 
 const URL_TYPE_MAIN_UNAPPROVED = 'main_unapproved';
 
+const URL_TYPE_SEARCH = 'main_search';
+
 const URL_TYPE_MAIN_USER = 'main_user';
 
-const URL_TYPE_SEARCH = 'search';
+const URL_TYPE_MAIN_PAGE = 'main_page';
 
-const URL_TYPE_ENTRY_VIEW = 'entry_view';
+const URL_TYPE_MAIN_APPROVE = 'main_approve';
+
+const URL_TYPE_MAIN_UNAPPROVE = 'main_unapprove';
+
+const URL_TYPE_MAIN_SOFT_DELETE = 'main_soft_delete';
+
+const URL_TYPE_MAIN_RESTORE = 'main_restore';
+
+const URL_TYPE_MAIN_DELETE = 'main_delete';
 
 const URL_TYPE_ENTRY_CREATE = 'entry_create';
 
+const URL_TYPE_ENTRY_VIEW = 'entry_view';
+
 const URL_TYPE_ENTRY_UPDATE = 'entry_update';
+
+const URL_TYPE_ENTRY_VIEW_PAGE = 'entry_view_page';
 
 const URL_TYPE_ENTRY_APPROVE = 'entry_approve';
 
 const URL_TYPE_ENTRY_UNAPPROVE = 'entry_unapprove';
 
-const URL_TYPE_ENTRY_SOFT_DELETE = 'entry__soft_delete';
+const URL_TYPE_ENTRY_SOFT_DELETE = 'entry_soft_delete';
 
 const URL_TYPE_ENTRY_RESTORE = 'entry_restore';
 
 const URL_TYPE_ENTRY_DELETE = 'entry_delete';
 
-const URL_TYPE_COMMENT_VIEW = 'comment_view';
-
 const URL_TYPE_COMMENT_CREATE = 'comment_create';
+
+const URL_TYPE_COMMENT_VIEW = 'comment_view';
 
 const URL_TYPE_COMMENT_UPDATE = 'comment_update';
 
@@ -1612,7 +1621,7 @@ function loadLanguage(
     return true;
 }
 
-function addHooks(string $namespace): bool
+function hooksAdd(string $namespace): bool
 {
     global $plugins;
 
@@ -1640,7 +1649,7 @@ function addHooks(string $namespace): bool
     return true;
 }
 
-function hooksRun(string $hookName, array|object &$hookArguments = []): array|object
+function hooksRun(string $hookName, array &$hookArguments = []): array
 {
     global $plugins;
 
@@ -1832,6 +1841,12 @@ function cacheUpdate(string $cacheKey): array
 
     $tableFields = TABLES_DATA;
 
+    $hookArguments = [
+        'cacheKey' => $cacheKey,
+        'cacheData' => &$cacheData,
+        'tableFields' => &$tableFields,
+    ];
+
     switch ($cacheKey) {
         case CACHE_TYPE_CONFIG:
             $showcaseObjects = showcaseGet(
@@ -2022,6 +2037,8 @@ function cacheUpdate(string $cacheKey): array
             break;
     }
 
+    $hookArguments = hooksRun('cache_update_end', $hookArguments);
+
     $cache->update("myshowcase_{$cacheKey}", $cacheData);
 
     return $cacheData;
@@ -2040,7 +2057,7 @@ function cacheGet(string $cacheKey, bool $forceReload = false): array
     return $cacheData ?? [];
 }
 
-function showcaseInsert(array $showcaseData, bool $isUpdate, int $showcaseID = 0): int
+function showcaseInsert(array $showcaseData, bool $isUpdate = false, int $showcaseID = 0): int
 {
     global $db;
 
@@ -2048,11 +2065,21 @@ function showcaseInsert(array $showcaseData, bool $isUpdate, int $showcaseID = 0
 
     $insertData = [];
 
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'showcaseData' => &$showcaseData,
+        'isUpdate' => $isUpdate,
+        'showcaseID' => &$showcaseID,
+        'tableFields' => &$tableFields,
+    ];
+
     foreach ($tableFields as $fieldName => $fieldDefinition) {
         if (isset($showcaseData[$fieldName])) {
             $insertData[$fieldName] = sanitizeTableFieldValue($showcaseData[$fieldName], $fieldDefinition['type']);
         }
     }
+
+    $hookArguments = hooksRun('showcase_insert_update_end', $hookArguments);
 
     if ($isUpdate) {
         $db->update_query('myshowcase_config', $insertData, "showcase_id='{$showcaseID}'");
@@ -2068,11 +2095,37 @@ function showcaseUpdate(array $showcaseData, int $showcaseID): int
     return showcaseInsert($showcaseData, true, $showcaseID);
 }
 
-function showcaseDelete(array $whereClauses = []): bool
+function showcaseDelete(int $showcaseID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_config', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'showcaseID' => &$showcaseID,
+    ];
+
+    $hookArguments = hooksRun('showcase_delete_start', $hookArguments);
+
+    foreach (permissionsGet(["showcase_id='{$showcaseID}'"]) as $permissionID => $permissionData) {
+        permissionsDelete($permissionID);
+    }
+
+    foreach (moderatorGet(["showcase_id='{$showcaseID}'"]) as $moderatorID => $moderatorData) {
+        moderatorsDelete($moderatorID);
+    }
+
+    foreach (commentsGet(["showcase_id='{$showcaseID}'"]) as $commentID => $commentData) {
+        commentsDelete($commentID);
+    }
+
+    foreach (attachmentGet(["showcase_id='{$showcaseID}'"]) as $attachmentID => $attachmentData) {
+        attachmentDelete($attachmentID);
+    }
+
+    if (showcaseDataTableExists($showcaseID)) {
+        showcaseDataTableDrop($showcaseID);
+    }
+
+    $db->delete_query('myshowcase_config', "showcase_id='{$showcaseID}'");
 
     return true;
 }
@@ -2135,6 +2188,12 @@ function showcaseDataTableDrop(int $showcaseID): bool
 {
     global $db;
 
+    $hookArguments = [
+        'showcaseID' => &$showcaseID,
+    ];
+
+    $hookArguments = hooksRun('showcase_data_table_drop_start', $hookArguments);
+
     $db->drop_table('myshowcase_data' . $showcaseID);
 
     return true;
@@ -2144,20 +2203,53 @@ function showcaseDataTableFieldDrop(int $showcaseID, string $fieldName): bool
 {
     global $db;
 
+    $hookArguments = [
+        'showcaseID' => &$showcaseID,
+        'fieldName' => &$fieldName,
+    ];
+
+    $hookArguments = hooksRun('showcase_data_table_field_drop_start', $hookArguments);
+
+    foreach (entryGet($showcaseID) as $entryID => $entryData) {
+        entryDelete($showcaseID, $entryID);
+    }
+
     $db->drop_column('myshowcase_data' . $showcaseID, $fieldName);
 
     return true;
 }
 
-function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = false, int $entryID = 0): int
+function entryInsert(int $showcaseID, array $entryData, bool $isUpdate = false, int $entryID = 0): int
 {
     global $db;
 
-    $showcaseFieldSetID = (int)(showcaseGet(["showcase_id='{$showcaseID}'"], ['field_set_id'], ['limit' => 1]
+    $tableFields = DATA_TABLE_STRUCTURE['myshowcase_data'];
+
+    $insertData = [];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'entryData' => &$entryData,
+        'isUpdate' => $isUpdate,
+        'showcaseID' => &$showcaseID,
+        'entryID' => &$entryID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($entryData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($entryData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    $fieldSetID = (int)(showcaseGet(
+        ["showcase_id='{$showcaseID}'"],
+        ['field_set_id'],
+        ['limit' => 1]
     )['field_set_id'] ?? 0);
 
     $fieldObjects = fieldsGet(
-        ["set_id='{$showcaseFieldSetID}'", "enabled='1'"],
+        ["set_id='{$fieldSetID}'", "enabled='1'"],
         [
             'field_id',
             'field_key',
@@ -2165,102 +2257,55 @@ function entryDataInsert(int $showcaseID, array $entryData, bool $isUpdate = fal
         ]
     );
 
-    $showcaseInsertData = [];
+    $hookArguments['showcaseFieldSetID'] = &$fieldSetID;
 
-    if (isset($entryData['entry_slug'])) {
-        $showcaseInsertData['entry_slug'] = $db->escape_string($entryData['entry_slug']);
-    }
-
-    if (isset($entryData['user_id'])) {
-        $showcaseInsertData['user_id'] = (int)$entryData['user_id'];
-    }
-
-    if (isset($entryData['views'])) {
-        $showcaseInsertData['views'] = (int)$entryData['views'];
-    }
-
-    if (isset($entryData['comments'])) {
-        $showcaseInsertData['comments'] = (int)$entryData['comments'];
-    }
-
-    if (isset($entryData['submit_data'])) {
-        $showcaseInsertData['submit_data'] = (int)$entryData['submit_data'];
-    }
-
-    if (isset($entryData['dateline'])) {
-        $showcaseInsertData['dateline'] = (int)$entryData['dateline'];
-    } elseif (!$isUpdate) {
-        $showcaseInsertData['dateline'] = TIME_NOW;
-    }
-
-    if (isset($entryData['status'])) {
-        $showcaseInsertData['status'] = (int)$entryData['status'];
-    }
-
-    if (isset($entryData['moderator_user_id'])) {
-        $showcaseInsertData['moderator_user_id'] = (int)$entryData['moderator_user_id'];
-    }
-
-    if (isset($entryData['dateline'])) {
-        $showcaseInsertData['dateline'] = (int)$entryData['dateline'];
-    }
-
-    if (isset($entryData['edit_stamp'])) {
-        $showcaseInsertData['edit_stamp'] = (int)$entryData['edit_stamp'];
-    }
-
-    if (isset($entryData['approved'])) {
-        $showcaseInsertData['approved'] = (int)$entryData['approved'];
-    }
-
-    if (isset($entryData['approved_by'])) {
-        $showcaseInsertData['approved_by'] = (int)$entryData['approved_by'];
-    }
-
-    if (isset($entryData['entry_hash'])) {
-        $showcaseInsertData['entry_hash'] = $db->escape_string($entryData['entry_hash']);
-    }
+    $hookArguments['fieldObjects'] = &$fieldObjects;
 
     foreach ($fieldObjects as $fieldID => $fieldData) {
         if (isset($entryData[$fieldData['field_key']])) {
             if (fieldTypeMatchInt($fieldData['field_type'])) {
-                $showcaseInsertData[$fieldData['field_key']] = (int)$entryData[$fieldData['field_key']];
+                $insertData[$fieldData['field_key']] = (int)$entryData[$fieldData['field_key']];
             } elseif (fieldTypeMatchFloat($fieldData['field_type'])) {
-                $showcaseInsertData[$fieldData['field_key']] = (float)$entryData[$fieldData['field_key']];
+                $insertData[$fieldData['field_key']] = (float)$entryData[$fieldData['field_key']];
             } elseif (fieldTypeMatchChar($fieldData['field_type']) ||
                 fieldTypeMatchText($fieldData['field_type']) ||
                 fieldTypeMatchDateTime($fieldData['field_type'])) {
-                $showcaseInsertData[$fieldData['field_key']] = $db->escape_string($entryData[$fieldData['field_key']]);
+                $insertData[$fieldData['field_key']] = $db->escape_string($entryData[$fieldData['field_key']]);
             } elseif (fieldTypeMatchBinary($fieldData['field_type'])) {
-                $showcaseInsertData[$fieldData['field_key']] = $db->escape_binary($entryData[$fieldData['field_key']]);
+                $insertData[$fieldData['field_key']] = $db->escape_binary($entryData[$fieldData['field_key']]);
             }
         }
     }
 
+    $hookArguments = hooksRun('entry_insert_update_end', $hookArguments);
+
     if ($isUpdate) {
-        $db->update_query('myshowcase_data' . $showcaseID, $showcaseInsertData, "entry_id='{$entryID}'");
-    } elseif ($showcaseInsertData) {
-        $entryID = $db->insert_query('myshowcase_data' . $showcaseID, $showcaseInsertData);
+        $db->update_query('myshowcase_data' . $showcaseID, $insertData, "entry_id='{$entryID}'");
+    } else {
+        $entryID = $db->insert_query('myshowcase_data' . $showcaseID, $insertData);
     }
 
     return $entryID;
 }
 
-function entryDataUpdate(int $showcaseID, int $entryID, array $entryData): int
+function entryUpdate(int $showcaseID, int $entryID, array $entryData): int
 {
-    return entryDataInsert($showcaseID, $entryData, true, $entryID);
+    return entryInsert($showcaseID, $entryData, true, $entryID);
 }
 
-function entryDataGet(
+function entryGet(
     int $showcaseID,
     array $whereClauses = [],
     array $queryFields = [],
-    array $queryOptions = []
+    array $queryOptions = [],
+    array $queryTables = []
 ): array {
     global $db;
 
+    $queryTables = array_merge(["myshowcase_data{$showcaseID} entryData"], $queryTables);
+
     $query = $db->simple_select(
-        'myshowcase_data' . $showcaseID,
+        implode(" LEFT JOIN {$db->table_prefix}", $queryTables),
         implode(',', array_merge(['entry_id'], $queryFields)),
         implode(' AND ', $whereClauses),
         $queryOptions
@@ -2274,20 +2319,23 @@ function entryDataGet(
 
     while ($fieldValueData = $db->fetch_array($query)) {
         $entriesObjects[(int)$fieldValueData['entry_id']] = $fieldValueData;
-
-        foreach (DATA_TABLE_STRUCTURE['myshowcase_data'] as $defaultFieldKey => $defaultFieldData) {
-            if (isset($entriesObjects[(int)$fieldValueData['entry_id']][$defaultFieldKey])) {
-                //$entriesObjects[(int)$fieldValueData['entry_id']][$defaultFieldKey] = 123;
-            }
-        }
     }
 
     return $entriesObjects;
 }
 
-function permissionsInsert(array $permissionData, bool $isUpdate = false, int $permissionID = 0): int
+function permissionsInsert(int $showcaseID, array $permissionData, bool $isUpdate = false, int $permissionID = 0): int
 {
     $tableFields = TABLES_DATA['myshowcase_permissions'];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'permissionData' => &$permissionData,
+        'isUpdate' => $isUpdate,
+        'showcaseID' => &$showcaseID,
+        'permissionID' => &$permissionID,
+        'tableFields' => &$tableFields,
+    ];
 
     $insertData = [];
 
@@ -2299,6 +2347,8 @@ function permissionsInsert(array $permissionData, bool $isUpdate = false, int $p
 
     global $db;
 
+    $hookArguments = hooksRun('permissions_insert_update_end', $hookArguments);
+
     if ($isUpdate) {
         $db->update_query('myshowcase_permissions', $insertData, "permission_id='{$permissionID}'");
     } else {
@@ -2308,16 +2358,22 @@ function permissionsInsert(array $permissionData, bool $isUpdate = false, int $p
     return $permissionID;
 }
 
-function permissionsUpdate(array $permissionData, int $permissionID): int
+function permissionsUpdate(int $showcaseID, array $permissionData, int $permissionID): int
 {
-    return permissionsInsert($permissionData, true, $permissionID);
+    return permissionsInsert($showcaseID, $permissionData, true, $permissionID);
 }
 
-function permissionsDelete(array $whereClauses = []): bool
+function permissionsDelete(int $permissionID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_permissions', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'permissionID' => &$permissionID,
+    ];
+
+    $hookArguments = hooksRun('permissions_delete_start', $hookArguments);
+
+    $db->delete_query('myshowcase_permissions', "permission_id='{$permissionID}'");
 
     return true;
 }
@@ -2346,26 +2402,43 @@ function permissionsGet(array $whereClauses = [], array $queryFields = [], array
     return $permissionData;
 }
 
-function moderatorsInsert(array $moderatorData): bool
+function moderatorsInsert(int $showcaseID, array $moderatorData, bool $isUpdate = false, int $moderatorID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_moderators', $moderatorData);
+    $tableFields = TABLES_DATA['myshowcase_moderators'];
 
-    return true;
+    $insertData = [];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'moderatorData' => &$moderatorData,
+        'isUpdate' => $isUpdate,
+        'showcaseID' => &$showcaseID,
+        'moderatorID' => &$moderatorID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($moderatorData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($moderatorData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    $hookArguments = hooksRun('moderator_insert_update_end', $hookArguments);
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_moderators', $insertData, "moderator_id='{$moderatorID}'");
+    } else {
+        $moderatorID = (int)$db->insert_query('myshowcase_moderators', $insertData);
+    }
+
+    return $moderatorID;
 }
 
-function moderatorsUpdate(array $whereClauses = [], array $moderatorData = []): bool
+function moderatorsUpdate(int $showcaseID, array $moderatorData, int $moderatorID): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_moderators',
-        $moderatorData,
-        implode(' AND ', $whereClauses)
-    );
-
-    return true;
+    return moderatorsInsert($showcaseID, $moderatorData, true, $moderatorID);
 }
 
 function moderatorGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -2392,35 +2465,59 @@ function moderatorGet(array $whereClauses = [], array $queryFields = [], array $
     return $moderatorData;
 }
 
-function moderatorsDelete(array $whereClauses = []): bool
+function moderatorsDelete(int $moderatorID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_moderators', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'moderatorID' => &$moderatorID,
+    ];
+
+    $hookArguments = hooksRun('moderator_delete_start', $hookArguments);
+
+    $db->delete_query('myshowcase_moderators', "moderator_id='{$moderatorID}'");
 
     return true;
 }
 
-function fieldsetInsert(array $fieldsetData): int
+function fieldsetInsert(array $fieldsetData, bool $isUpdate = false, $fieldsetID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_fieldsets', $fieldsetData);
+    $tableFields = TABLES_DATA['myshowcase_fieldsets'];
 
-    return (int)$db->insert_id();
+    $insertData = [];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'fieldsetData' => &$fieldsetData,
+        'isUpdate' => $isUpdate,
+        'fieldsetID' => &$fieldsetID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($fieldsetData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($fieldsetData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    $hookArguments = hooksRun('fieldset_insert_update_end', $hookArguments);
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_fieldsets', $insertData, "set_id='{$fieldsetID}'");
+    } else {
+        $db->insert_query('myshowcase_fieldsets', $insertData);
+
+        $fieldsetID = (int)$db->insert_id();
+    }
+
+    return $fieldsetID;
 }
 
-function fieldsetUpdate(int $fieldsetID, array $fieldsetData): bool
+function fieldsetUpdate(int $fieldsetID, array $fieldsetData): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_fieldsets',
-        $fieldsetData,
-        "set_id='{$fieldsetID}'"
-    );
-
-    return true;
+    return fieldsetInsert($fieldsetData, true, $fieldsetID);
 }
 
 function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $queryOptions = []): array
@@ -2447,11 +2544,21 @@ function fieldsetGet(array $whereClauses = [], array $queryFields = [], array $q
     return $fieldsetData;
 }
 
-function fieldsetDelete(array $whereClauses = []): bool
+function fieldsetDelete(int $fieldsetID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_fieldsets', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'fieldsetID' => &$fieldsetID,
+    ];
+
+    $hookArguments = hooksRun('fieldset_delete_start', $hookArguments);
+
+    foreach (fieldDataGet(["set_id='{$fieldsetID}'"]) as $fieldDataID => $fieldDataData) {
+        fieldDataDelete($fieldDataID);
+    }
+
+    $db->delete_query('myshowcase_fieldsets', "set_id='{$fieldsetID}'");
 
     return true;
 }
@@ -2460,109 +2567,25 @@ function fieldsInsert(array $fieldData, bool $isUpdate = false, int $fieldID = 0
 {
     global $db;
 
+    $tableFields = TABLES_DATA['myshowcase_fields'];
+
     $insertData = [];
 
-    if (isset($fieldData['set_id'])) {
-        $insertData['set_id'] = (int)$fieldData['set_id'];
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'fieldData' => &$fieldData,
+        'isUpdate' => $isUpdate,
+        'fieldID' => &$fieldID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($fieldData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($fieldData[$fieldName], $fieldDefinition['type']);
+        }
     }
 
-    if (isset($fieldData['field_key'])) {
-        $insertData['field_key'] = $db->escape_string($fieldData['field_key']);
-    }
-
-    if (isset($fieldData['html_type'])) {
-        $insertData['html_type'] = $db->escape_string($fieldData['html_type']);
-    }
-
-    if (isset($fieldData['enabled'])) {
-        $insertData['enabled'] = (int)$fieldData['enabled'];
-    }
-
-    if (isset($fieldData['field_type'])) {
-        $insertData['field_type'] = $db->escape_string($fieldData['field_type']);
-    }
-
-    if (isset($fieldData['display_in_create_update_page'])) {
-        $insertData['display_in_create_update_page'] = $db->escape_string($fieldData['display_in_create_update_page']);
-    }
-
-    if (isset($fieldData['display_in_view_page'])) {
-        $insertData['display_in_view_page'] = $db->escape_string($fieldData['display_in_view_page']);
-    }
-
-    if (isset($fieldData['display_in_main_page'])) {
-        $insertData['display_in_main_page'] = $db->escape_string($fieldData['display_in_main_page']);
-    }
-
-    if (isset($fieldData['minimum_length'])) {
-        $insertData['minimum_length'] = (int)$fieldData['minimum_length'];
-    }
-
-    if (isset($fieldData['maximum_length'])) {
-        $insertData['maximum_length'] = (int)$fieldData['maximum_length'];
-    }
-
-    if (isset($fieldData['is_required'])) {
-        $insertData['is_required'] = (int)$fieldData['is_required'];
-    }
-
-    if (isset($fieldData['allowed_groups_fill'])) {
-        $insertData['allowed_groups_fill'] = $db->escape_string(
-            is_array($fieldData['allowed_groups_fill']) ? implode(
-                ',',
-                $fieldData['allowed_groups_fill']
-            ) : $fieldData['allowed_groups_fill']
-        );
-    }
-
-    if (isset($fieldData['allowed_groups_view'])) {
-        $insertData['allowed_groups_view'] = $db->escape_string(
-            is_array($fieldData['allowed_groups_view']) ? implode(
-                ',',
-                $fieldData['allowed_groups_view']
-            ) : $fieldData['allowed_groups_view']
-        );
-    }
-
-    if (isset($fieldData['default_value'])) {
-        $insertData['default_value'] = $db->escape_string($fieldData['default_value']);
-    }
-
-    if (isset($fieldData['default_type'])) {
-        $insertData['default_type'] = (int)$fieldData['default_type'];
-    }
-
-    if (isset($fieldData['parse'])) {
-        $insertData['parse'] = (int)$fieldData['parse'];
-    }
-
-    if (isset($fieldData['display_order'])) {
-        $insertData['display_order'] = (int)$fieldData['display_order'];
-    }
-
-    if (isset($fieldData['render_order'])) {
-        $insertData['render_order'] = (int)$fieldData['render_order'];
-    }
-
-    if (isset($fieldData['enable_search'])) {
-        $insertData['enable_search'] = (int)$fieldData['enable_search'];
-    }
-
-    if (isset($fieldData['enable_slug'])) {
-        $insertData['enable_slug'] = (int)$fieldData['enable_slug'];
-    }
-
-    if (isset($fieldData['enable_subject'])) {
-        $insertData['enable_subject'] = (int)$fieldData['enable_subject'];
-    }
-
-    if (isset($fieldData['format'])) {
-        $insertData['format'] = $db->escape_string($fieldData['format']);
-    }
-
-    if (isset($fieldData['enable_editor'])) {
-        $insertData['enable_editor'] = (int)$fieldData['enable_editor'];
-    }
+    $hookArguments = hooksRun('field_insert_update_end', $hookArguments);
 
     if ($isUpdate) {
         $db->update_query('myshowcase_fields', $insertData, "field_id='{$fieldID}'");
@@ -2602,34 +2625,62 @@ function fieldsGet(array $whereClauses = [], array $queryFields = [], array $que
     return $fieldData;
 }
 
-function fieldsDelete(array $whereClauses = []): bool
+function fieldsDelete(int $fieldID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_fields', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'fieldID' => &$fieldID,
+    ];
+
+    $hookArguments = hooksRun('field_delete_start', $hookArguments);
+
+    foreach (fieldDataGet(["field_id='{$fieldID}'"]) as $fieldDataID => $fieldDataData) {
+        fieldDataDelete($fieldDataID);
+    }
+
+    $db->delete_query('myshowcase_fields', "field_id='{$fieldID}'");
 
     return true;
 }
 
-function fieldDataInsert(array $fieldData, bool $isUpdate = false, int $fieldDataID): int
+function fieldDataInsert(array $fieldData, bool $isUpdate = false, int $fieldDataID = 0): int
 {
     global $db;
 
-    $db->insert_query('myshowcase_field_data', $fieldData);
+    $tableFields = TABLES_DATA['myshowcase_fields'];
 
-    return (int)$db->insert_id();
+    $insertData = [];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'fieldData' => &$fieldData,
+        'isUpdate' => $isUpdate,
+        'fieldID' => &$fieldID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($fieldData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($fieldData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    $hookArguments = hooksRun('field_data_insert_update_end', $hookArguments);
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_field_data', $fieldData, "field_data_id='{$fieldDataID}'");
+    } else {
+        $db->insert_query('myshowcase_field_data', $fieldData);
+
+        $fieldDataID = (int)$db->insert_id();
+    }
+
+    return $fieldDataID;
 }
 
-function fieldDataUpdate(array $whereClauses, array $fieldData): int
+function fieldDataUpdate(array $fieldData, int $fieldDataID): int
 {
-    global $db;
-
-    $db->update_query(
-        'myshowcase_field_data',
-        $fieldData,
-        implode(' AND ', $whereClauses)
-    );
-
     return fieldDataInsert($fieldData, true, $fieldDataID);
 }
 
@@ -2657,11 +2708,41 @@ function fieldDataGet(array $whereClauses = [], array $queryFields = [], array $
     return $fieldData;
 }
 
-function fieldDataDelete(array $whereClauses = []): bool
+function fieldDataDelete(int $fieldDataID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_field_data', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'fieldDataID' => &$fieldDataID,
+    ];
+
+    $hookArguments = hooksRun('field_data_delete_start', $hookArguments);
+
+    $db->delete_query('myshowcase_field_data', "field_data_id='{$fieldDataID}'");
+
+    return true;
+}
+
+function entryDelete(int $showcaseID, int $entryID): bool
+{
+    global $db;
+
+    $hookArguments = [
+        'entryID' => &$entryID,
+        'showcaseID' => &$showcaseID,
+    ];
+
+    $hookArguments = hooksRun('entry_delete_start', $hookArguments);
+
+    foreach (commentsGet(["entry_id='{$entryID}'"]) as $commentID => $commentData) {
+        commentsDelete($commentID);
+    }
+
+    foreach (attachmentGet(["entry_id='{$entryID}'"]) as $attachmentID => $attachmentData) {
+        attachmentDelete($attachmentID);
+    }
+
+    $db->delete_query('myshowcase_data' . $showcaseID, "entry_id='{$entryID}'");
 
     return true;
 }
@@ -2674,11 +2755,21 @@ function attachmentInsert(array $attachmentData, bool $isUpdate = false, int $at
 
     $insertData = [];
 
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'attachmentData' => &$attachmentData,
+        'isUpdate' => $isUpdate,
+        'attachmentID' => &$attachmentID,
+        'tableFields' => &$tableFields,
+    ];
+
     foreach ($tableFields as $fieldName => $fieldDefinition) {
         if (isset($attachmentData[$fieldName])) {
             $insertData[$fieldName] = sanitizeTableFieldValue($attachmentData[$fieldName], $fieldDefinition['type']);
         }
     }
+
+    $hookArguments = hooksRun('attachment_insert_update_end', $hookArguments);
 
     if ($isUpdate) {
         $db->update_query('myshowcase_attachments', $insertData, "attachment_id='{$attachmentID}'");
@@ -2718,11 +2809,17 @@ function attachmentGet(array $whereClauses = [], array $queryFields = [], array 
     return $attachmentObjects;
 }
 
-function attachmentDelete(array $whereClauses = []): bool
+function attachmentDelete(int $attachmentID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_attachments', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'attachmentID' => &$attachmentID,
+    ];
+
+    $hookArguments = hooksRun('attachment_delete_start', $hookArguments);
+
+    $db->delete_query('myshowcase_attachments', "attachment_id='{$attachmentID}'");
 
     return true;
 }
@@ -2731,39 +2828,25 @@ function commentInsert(array $commentData, bool $isUpdate = false, int $commentI
 {
     global $db;
 
+    $tableFields = TABLES_DATA['myshowcase_comments'];
+
     $insertData = [];
 
-    if (isset($commentData['showcase_id'])) {
-        $insertData['showcase_id'] = (int)$commentData['showcase_id'];
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'commentData' => &$commentData,
+        'isUpdate' => $isUpdate,
+        'commentID' => &$commentID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($commentData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($commentData[$fieldName], $fieldDefinition['type']);
+        }
     }
 
-    if (isset($commentData['entry_id'])) {
-        $insertData['entry_id'] = (int)$commentData['entry_id'];
-    }
-
-    if (isset($commentData['user_id'])) {
-        $insertData['user_id'] = (int)$commentData['user_id'];
-    }
-
-    if (isset($commentData['ipaddress'])) {
-        $insertData['ipaddress'] = $db->escape_string($commentData['ipaddress']);
-    }
-
-    if (isset($commentData['comment'])) {
-        $insertData['comment'] = $db->escape_string($commentData['comment']);
-    }
-
-    if (isset($commentData['dateline'])) {
-        $insertData['dateline'] = (int)$commentData['dateline'];
-    }
-
-    if (isset($commentData['status'])) {
-        $insertData['status'] = (int)$commentData['status'];
-    }
-
-    if (isset($commentData['moderator_user_id'])) {
-        $insertData['moderator_user_id'] = (int)$commentData['moderator_user_id'];
-    }
+    $hookArguments = hooksRun('comment_insert_update_end', $hookArguments);
 
     if ($isUpdate) {
         $db->update_query('myshowcase_comments', $insertData, "comment_id='{$commentID}'");
@@ -2803,11 +2886,17 @@ function commentsGet(array $whereClauses = [], array $queryFields = [], array $q
     return $commentObjects;
 }
 
-function commentsDelete(array $whereClauses = []): bool
+function commentsDelete(int $commentID): bool
 {
     global $db;
 
-    $db->delete_query('myshowcase_comments', implode(' AND ', $whereClauses));
+    $hookArguments = [
+        'commentID' => &$commentID,
+    ];
+
+    $hookArguments = hooksRun('comment_delete_start', $hookArguments);
+
+    $db->delete_query('myshowcase_comments', "comment_id='{$commentID}'");
 
     return true;
 }
@@ -2839,7 +2928,7 @@ function attachmentRemove(
 
     $attachmentData = hooksRun('remove_attachment_do_delete', $attachmentData);
 
-    attachmentDelete(["attachment_id='{$attachmentID}'"]);
+    attachmentDelete($attachmentID);
 
     unlink($showcase->attachments_uploads_path . '/' . $attachmentData['attachment_name']);
 
@@ -3187,7 +3276,7 @@ function attachmentUpload(
                 if (empty($thumbnailImage['filename'])) {
                     delete_uploaded_file($showcase->config['attachments_uploads_path'] . '/' . $fileName);
 
-                    $returnData['error'] = $lang->ougc_fileprofilefields_errors_upload_failed_thumbnail_creation;
+                    $returnData['error'] = $lang->myShowcaseAttachmentsUploadErrorThumbnailFailure;
 
                     return $returnData;
                 }
@@ -3360,6 +3449,7 @@ function attachmentUpload(
     return $returnData;
 }
 
+//todo review hooks here
 /**
  * Actually move a file to the uploads directory
  *
@@ -3553,8 +3643,6 @@ function dataTableStructureGet(int $showcaseID = 0): array
         ($showcaseData = showcaseGet(["showcase_id='{$showcaseID}'"], ['field_set_id'], ['limit' => 1]))) {
         $fieldsetID = (int)$showcaseData['field_set_id'];
 
-        hooksRun('admin_summary_table_create_rebuild_start');
-
         foreach (
             fieldsGet(
                 ["set_id='{$fieldsetID}'"],
@@ -3659,7 +3747,7 @@ function dataTableStructureGet(int $showcaseID = 0): array
         }
     }
 
-    return hooksRun('admin_data_table_structure', $dataTableStructure);
+    return hooksRun('data_table_structure_end', $dataTableStructure);
 }
 
 function postParser(): postParser
@@ -3732,20 +3820,7 @@ function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HA
     return $dataHandlerObjects[$showcaseObject->showcase_id];
 }
 
-function outputGetObject(Showcase $showcaseObject, Render $renderObject): Output
-{
-    require_once ROOT . '/System/Output.php';
-
-    static $outputObjects = [];
-
-    if (!isset($outputObjects[$showcaseObject->showcase_id])) {
-        $outputObjects[$showcaseObject->showcase_id] = new Output($showcaseObject, $renderObject);
-    }
-
-    return $outputObjects[$showcaseObject->showcase_id];
-}
-
-function formatTypes()
+function formatTypes(): array
 {
     return [
         FormatTypes::noFormat => '',

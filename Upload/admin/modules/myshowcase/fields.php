@@ -347,14 +347,14 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 fieldsUpdate($insertData, $fieldID);
 
                 if (isset($fieldData['field_key']) &&
-                    in_array(
-                        $fieldData['html_type'],
-                        [FieldHtmlTypes::SelectSingle, FieldHtmlTypes::Radio]
-                    )) {
-                    fieldDataUpdate(
-                        ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"],
-                        ['field_key' => $fieldData['field_key']]
-                    );
+                    in_array($fieldData['html_type'], [FieldHtmlTypes::SelectSingle, FieldHtmlTypes::Radio])) {
+                    foreach (
+                        fieldDataGet(
+                            ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"]
+                        ) as $fieldDataID => $fieldDataData
+                    ) {
+                        fieldDataUpdate(['field_key' => $fieldData['field_key']], $fieldDataID);
+                    }
                 }
             }
 
@@ -767,7 +767,7 @@ EOL;
             if ($newPage) {
                 $fieldsetID = fieldsetInsert($fieldsetData);
             } else {
-                fieldsetUpdate($fieldsetID, $fieldsetData);
+                fieldsetUpdate($fieldsetData, $fieldsetID);
             }
 
             cacheUpdate(CACHE_TYPE_CONFIG);
@@ -1083,11 +1083,11 @@ EOL;
 
         hooksRun('admin_fieldset_delete_post');
 
-        fieldsDelete(["set_id='{$fieldsetID}'"]);
+        foreach (fieldsGet(["set_id='{$fieldsetID}'"]) as $fieldID => $fieldData) {
+            fieldsDelete($fieldsetID);
+        }
 
-        fieldDataDelete(["set_id='{$fieldsetID}'"]);
-
-        fieldsetDelete(["set_id='{$fieldsetID}'"]);
+        fieldsetDelete($fieldsetID);
 
         foreach ((array)$lang->get_languages() as $langfolder => $langname) {
             $languageFile = $lang->path . '/' . $langfolder . '/myshowcase_fs' . $fieldsetID . '.lang.php';
@@ -1185,10 +1185,7 @@ EOL;
                 $updateData['display_order'] = $displayOrderInput[$fieldDataID];
             }
 
-            fieldDataUpdate(
-                ["field_data_id='{$fieldDataID}'"],
-                $updateData
-            );
+            fieldDataUpdate($updateData, $fieldDataID);
         }
 
         if ($mybb->get_input('value') &&
@@ -1438,7 +1435,7 @@ EOL;
 
         hooksRun('admin_option_delete_post');
 
-        fieldDataDelete(["field_data_id='{$fieldDataID}'"]);
+        fieldDataDelete($fieldDataID);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -1533,11 +1530,7 @@ EOL;
             }
         }
 
-        if (fieldDataGet(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"])) {
-            fieldDataDelete(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"]);
-        }
-
-        fieldsDelete(["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"]);
+        fieldsDelete($fieldID);
 
         cacheUpdate(CACHE_TYPE_CONFIG);
 
@@ -1703,3 +1696,5 @@ EOL;
 
     $page->output_footer();
 }
+
+//todo review hooks here

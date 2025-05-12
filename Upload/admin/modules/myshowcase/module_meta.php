@@ -114,3 +114,5 @@ function myshowcase_admin_permissions(): array
 
     return ['name' => $lang->myshowcase_admin_myshowcase, 'permissions' => $admin_permissions, 'display_order' => 60];
 }
+
+//todo review hooks here

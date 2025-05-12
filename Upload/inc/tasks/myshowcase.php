@@ -14,7 +14,7 @@
 declare(strict_types=1);
 
 use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\entryDataGet;
+use function MyShowcase\Core\entryGet;
 use function MyShowcase\Core\showcaseGetObject;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;

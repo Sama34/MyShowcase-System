@@ -72,3 +72,5 @@ $plugins->run_hooks('admin_myshowcase_help_end');
 $showcase_info = myshowcase_info();
 echo '<p /><small>' . $showcase_info['name'] . ' version ' . $showcase_info['version'] . ' &copy; 2006-' . COPY_YEAR . ' <a href="' . $showcase_info['website'] . '">' . $showcase_info['author'] . '</a>.</small>';
 $page->output_footer();
+
+//todo review hooks here

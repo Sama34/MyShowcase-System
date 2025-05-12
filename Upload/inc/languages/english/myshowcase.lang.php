@@ -323,4 +323,9 @@ $l = array_merge($l, [
     'myShowcaseAttachmentsUploadErrorUploadFailed' => 'Upload failed. Please try again.',
     'myShowcaseAttachmentsUploadErrorInvalidType' => 'The attachment file type is invalid.',
     'myShowcaseAttachmentsUploadErrorThumbnailFailure' => 'There was an problem generating a thumbnail for the selected attachment.',
+
+    'myShowcaseAttachmentsUsageQuote' => 'Your allocated attachment usage quota is {1}.',
+    'myShowcaseAttachmentsUsageQuoteUnlimited' => 'Unlimited',
+    'myShowcaseAttachmentsUsageDetails' => 'You are currently using <strong>{1}</strong>.',
+    'myShowcaseAttachmentsViewMyAttachments' => '[View My Attachments]',
 ]);
