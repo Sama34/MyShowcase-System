@@ -3022,7 +3022,11 @@ function attachmentUpload(
     }
 
     if ($attachmentData['size'] > $attachmentType['maximum_size'] * 1024 && !empty($attachmentType['maximum_size'])) {
-        $returnData['error'] = $lang->sprintf($lang->error_attachsize, $attachmentType['maximum_size']);
+        $returnData['error'] = $lang->sprintf(
+            $lang->error_attachsize,
+            htmlspecialchars_uni($attachmentData['name']),
+            $attachmentType['maximum_size']
+        );
 
         return $returnData;
     }

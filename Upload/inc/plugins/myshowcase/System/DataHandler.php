@@ -35,10 +35,6 @@ use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 
-if (!defined('IN_MYBB')) {
-    die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
-}
-
 /**
  * MyShowcase handling class, provides common structure to handle post data.
  *

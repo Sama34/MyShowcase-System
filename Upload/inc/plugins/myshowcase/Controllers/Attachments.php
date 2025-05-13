@@ -17,21 +17,25 @@ namespace MyShowcase\Controllers;
 
 use MyBB;
 use JetBrains\PhpStorm\NoReturn;
-use MyShowcase\System\FieldHtmlTypes;
-use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
+use MyShowcase\System\ModeratorPermissions;
+use MyShowcase\System\ExceptionInvalidRangeHeader;
+use MyShowcase\System\ExceptionNonExistentFile;
+use MyShowcase\System\ExceptionUnreadableFile;
+use MyShowcase\System\ExceptionUnsatisfiableRange;
+use MyShowcase\System\PartialFileServlet;
+use MyShowcase\System\RangeHeader;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
-use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\hooksRun;
 
+use const MyShowcase\ROOT;
+use const MyShowcase\Core\TABLES_DATA;
 use const MyShowcase\Core\ATTACHMENT_STATUS_VISIBLE;
 use const MyShowcase\Core\CACHE_TYPE_ATTACHMENT_TYPES;
-use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
-use const MyShowcase\Core\TABLES_DATA;
 
 class Attachments extends Base
 {
@@ -47,7 +51,7 @@ class Attachments extends Base
         string $attachmentHash,
         bool $isThumbnail = true,
     ): void {
-        global $mybb, $db, $theme;
+        global $mybb, $db;
         global $lang;
 
         $lang->load('messages');
@@ -124,6 +128,8 @@ class Attachments extends Base
             if (!($attachmentTypeData['file_extension'] === $attachmentFileExtension &&
                 $attachmentTypeData['mime_type'] === $attachmentMimeType)) {
                 unset($attachmentTypeData);
+            } else {
+                break;
             }
         }
 
@@ -188,10 +194,20 @@ class Attachments extends Base
             header('Content-length: ' . filesize($absoluteUploadsPath . '/' . $attachmentData['thumbnail_name']));
 
             $handle = fopen($absoluteUploadsPath . '/' . $attachmentData['thumbnail_name'], 'rb');
+
+            while (!feof($handle)) {
+                echo fread($handle, 8192);
+            }
+
+            fclose($handle);
+
+            exit;
         } else {
             if (!file_exists($absoluteUploadsPath . '/' . $attachmentData['file_name'])) {
                 $this->error($lang->error_invalidattachment);
             }
+
+            $filetype = $attachmentMimeType;
 
             switch ($attachmentMimeType) {
                 case 'application/pdf':
@@ -201,8 +217,6 @@ class Attachments extends Base
                 case 'image/pjpeg':
                 case 'image/png':
                 case 'text/plain':
-                    header("Content-type: {$attachmentMimeType}");
-
                     if (!empty($attachmentTypeData['force_download'])) {
                         $disposition = 'attachment';
                     } else {
@@ -212,44 +226,49 @@ class Attachments extends Base
                     break;
 
                 default:
-                    $filetype = $attachmentMimeType;
-
                     if (!$filetype) {
                         $filetype = 'application/force-download';
                     }
 
-                    header("Content-type: {$filetype}");
-
                     $disposition = 'attachment';
             }
 
-            if (str_contains(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie')) {
-                header("Content-disposition: attachment; filename=\"{$attachmentName}\"");
-            } else {
-                header("Content-disposition: {$disposition}; filename=\"{$attachmentName}\"");
+            ini_set('display_errors', 0);
+
+            require_once ROOT . '/System/ExceptionInvalidRangeHeader.php';
+            require_once ROOT . '/System/ExceptionNonExistentFile.php';
+            require_once ROOT . '/System/ExceptionUnreadableFile.php';
+            require_once ROOT . '/System/ExceptionUnsatisfiableRange.php';
+            require_once ROOT . '/System/PartialFileServlet.php';
+            require_once ROOT . '/System/RangeHeader.php';
+
+            try {
+                $rangeHeader = RangeHeader::createFromHeaderString(
+                    RangeHeader::getRequestHeader('Range')
+                );
+
+                (new PartialFileServlet($rangeHeader))->sendFile(
+                    $absoluteUploadsPath . '/' . $attachmentData['file_name'],
+                    $filetype,
+                    (int)$attachmentData['file_size'],
+                    $attachmentName,
+                    $disposition
+                );
+            } catch (ExceptionInvalidRangeHeader $e) {
+                header('HTTP/1.1 400 Bad Request');
+            } catch (ExceptionUnsatisfiableRange $e) {
+                header('HTTP/1.1 416 Range Not Satisfiable');
+            } catch (ExceptionNonExistentFile $e) {
+                header('HTTP/1.1 404 Not Found');
+            } catch (ExceptionUnreadableFile $e) {
+                header('HTTP/1.1 500 Internal Server Error');
             }
 
-            if (str_contains(strtolower($_SERVER['HTTP_USER_AGENT']), 'msie 6.0')) {
-                header('Expires: -1');
-            }
-
-            header("Content-length: {$attachmentData['file_size']}");
-
-            header('Content-range: bytes=0-' . ($attachmentData['file_size'] - 1) . '/' . $attachmentData['file_size']);
-
-            $handle = fopen($absoluteUploadsPath . '/' . $attachmentData['file_name'], 'rb');
+            exit;
         }
-
-        while (!feof($handle)) {
-            echo fread($handle, 8192);
-        }
-        
-        fclose($handle);
-
-        exit;
     }
 
-    #[NoReturn] public function error(string $error = '', string $title = ''): void
+    #[NoReturn] public function error(string $error = ''): void
     {
         global $mybb, $lang;
 
@@ -263,7 +282,9 @@ class Attachments extends Base
             exit;
         }
 
-        exit($error);
+        echo $error;
+
+        exit;
     }
 
     #[NoReturn] public function errorNoPermission(): void
