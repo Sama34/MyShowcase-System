@@ -335,6 +335,8 @@ class Showcase
             $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&attachment_id={attachment_id}';
         }
 
+        $mybb->binary_fields[$this->dataTableName]['ipaddress'] = true;
+
         $hookArguments = [
             'showcaseObject' => &$this,
         ];

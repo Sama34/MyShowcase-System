@@ -247,7 +247,7 @@ class DataHandler extends CoreDataHandler
         }
 
         foreach ($entryData as $key => $value) {
-            $this->insertData[$key] = $db->escape_string($value);
+            $this->insertData[$key] = $value;
         }
 
         $hookArguments = hooksRun('data_handler_entry_insert_update_start', $hookArguments);
@@ -380,7 +380,7 @@ class DataHandler extends CoreDataHandler
         }
 
         foreach ($commentData as $key => $value) {
-            $this->insertData[$key] = $db->escape_string($value);
+            $this->insertData[$key] = $value;
         }
 
         $hookArguments = hooksRun('data_handler_comment_insert_update_start', $hookArguments);

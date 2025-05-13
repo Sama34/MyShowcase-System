@@ -942,13 +942,17 @@ class Render
                 ]
             )->getRelativeUrl();
 
-            $attachmentThumbnailUrl = url(
-                URL_TYPE_THUMBNAIL_VIEW,
-                [
-                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
-                    'attachment_hash' => $attachmentData['attachment_hash']
-                ]
-            )->getRelativeUrl();
+            if (empty($attachmentData['thumbnail_name'])) {
+                $attachmentThumbnailUrl = $attachmentUrl;
+            } else {
+                $attachmentThumbnailUrl = url(
+                    URL_TYPE_THUMBNAIL_VIEW,
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'attachment_hash' => $attachmentData['attachment_hash']
+                    ]
+                )->getRelativeUrl();
+            }
 
             if ($attachmentData['status']) { // There is an attachment thats status!
                 $attachmentFileName = htmlspecialchars_uni($attachmentData['attachment_name']);

@@ -27,6 +27,7 @@ use MyShowcase\System\PartialFileServlet;
 use MyShowcase\System\RangeHeader;
 
 use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\attachmentLogInsert;
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\hooksRun;
@@ -262,6 +263,13 @@ class Attachments extends Base
                 header('HTTP/1.1 404 Not Found');
             } catch (ExceptionUnreadableFile $e) {
                 header('HTTP/1.1 500 Internal Server Error');
+            } finally {
+                attachmentLogInsert([
+                    'user_id' => $currentUserID,
+                    'attachment_id' => $attachmentID,
+                    'ipaddress' => $mybb->session->packedip,
+                    'dateline' => TIME_NOW,
+                ]);
             }
 
             exit;

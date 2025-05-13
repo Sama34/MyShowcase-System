@@ -129,4 +129,6 @@ function update_myshowcase_permissions(): bool
 
 global $mybb;
 
+$mybb->binary_fields['myshowcase_attachments_download_logs']['ipaddress'] = true;
+
 $mybb->binary_fields['myshowcase_comments']['ipaddress'] = true;

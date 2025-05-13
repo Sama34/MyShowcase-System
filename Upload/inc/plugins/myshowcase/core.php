@@ -285,6 +285,32 @@ const TABLES_DATA = [
             'default' => 0
         ],
     ],
+    'myshowcase_attachments_download_logs' => [
+        'log_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'user_id' => [
+            'type' => 'INT',
+            'unsigned' => true
+        ],
+        'attachment_id' => [
+            'type' => 'INT',
+            'unsigned' => true
+        ],
+        'ipaddress' => [
+            'type' => 'VARBINARY',
+            'size' => 16,
+            'default' => ''
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ]
+    ],
     'myshowcase_comments' => [
         'comment_id' => [
             'type' => 'INT',
@@ -4058,4 +4084,37 @@ function generateWatermarkLocationsSelectArray(): array
         WATERMARK_LOCATION_UPPER_LEFT => 'upper-left',
         WATERMARK_LOCATION_UPPER_RIGHT => 'upper-right',
     ];
+}
+
+function attachmentLogInsert(array $logData, bool $isUpdate = false, int $logID = 0)
+{
+    global $db;
+
+    $tableFields = TABLES_DATA['myshowcase_attachments_download_logs'];
+
+    $insertData = [];
+
+    $hookArguments = [
+        'insertData' => &$insertData,
+        'logData' => &$logData,
+        'isUpdate' => $isUpdate,
+        'logID' => &$logID,
+        'tableFields' => &$tableFields,
+    ];
+
+    foreach ($tableFields as $fieldName => $fieldDefinition) {
+        if (isset($logData[$fieldName])) {
+            $insertData[$fieldName] = sanitizeTableFieldValue($logData[$fieldName], $fieldDefinition['type']);
+        }
+    }
+
+    $hookArguments = hooksRun('attachment_log_insert_update_end', $hookArguments);
+
+    if ($isUpdate) {
+        $db->update_query('myshowcase_attachments_download_logs', $insertData, "log_id='{$logID}'");
+    } else {
+        $logID = (int)$db->insert_query('myshowcase_attachments_download_logs', $insertData);
+    }
+
+    return $logID;
 }

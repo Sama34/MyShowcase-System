@@ -90,23 +90,26 @@ $templatelist = '';
 
 if (str_contains($_SERVER['REQUEST_URI'] ?? '', '/attachment/') ||
     str_contains($_SERVER['REQUEST_URI'] ?? '', '/thumbnail/')) {
+    define('NO_ONLINE', 1);
+
     $minimalLoad = true;
 
     require_once $change_dir . '/inc/init.php';
-    require_once MYBB_ROOT . 'inc/class_session.php';
 
     $shutdown_queries = $shutdown_functions = [];
-
-    global $mybb, $lang, $db, $templates;
 
     header('Expires: Sat, 1 Jan 2000 01:00:00 GMT');
     header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
 
+    require_once MYBB_ROOT . 'inc/class_session.php';
+
     $session = new session();
 
     $session->init();
+
+    $mybb->session = &$session;
 
     if (!isset($mybb->settings['bblanguage'])) {
         $mybb->settings['bblanguage'] = 'english';
@@ -134,11 +137,7 @@ if (str_contains($_SERVER['REQUEST_URI'] ?? '', '/attachment/') ||
 
     $lang->load('global');
 
-    $lang->load('xmlhttp');
-
     $closed_bypass = ['refresh_captcha', 'validate_captcha'];
-
-    $mybb->input['action'] = $mybb->get_input('action');
 } else {
     $minimalLoad = false;
 
