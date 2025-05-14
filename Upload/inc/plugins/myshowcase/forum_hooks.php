@@ -693,7 +693,7 @@ function modcp_reports_report(): void
 
         $commentData = commentsGet(
             ["comment_id='{$commentID}'"],
-            ['showcase_id', 'entry_id', 'user_id'],
+            ['showcase_id', 'entry_id', 'user_id', 'comment_slug'],
             ['limit' => 1]
         );
 
@@ -712,11 +712,8 @@ function modcp_reports_report(): void
 
         $report_data['content'] = $lang->sprintf(
             $lang->myShowcaseReportCommentContent,
-            $showcaseObject->urlBuild(
-                $showcaseObject->urlViewComment,
-                $entryData['entry_slug'],
-                $commentID
-            ) . '#commentID' . $commentID,
+            $showcaseObject->getBasicUrl(
+            ) . "/view/{$entryData['entry_slug']}/comment/{$commentData['comment_slug']}" . '#commentID' . $commentData['comment_slug'],
             build_profile_link(
                 htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
                 $report['id2'] ?? 0

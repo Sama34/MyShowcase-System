@@ -20,11 +20,16 @@ use DataHandler as CoreDataHandler;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpdate;
 use function MyShowcase\Core\commentInsert;
+use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\commentUpdate;
+use function MyShowcase\Core\generateUUIDv4;
+use function MyShowcase\Core\entryGet;
 use function MyShowcase\Core\fieldTypeMatchChar;
 use function MyShowcase\Core\fieldTypeMatchInt;
 use function MyShowcase\Core\fieldTypeMatchText;
 use function MyShowcase\Core\hooksRun;
+
+use function MyShowcase\Core\slugGenerateComment;
 
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
@@ -42,7 +47,7 @@ use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 class DataHandler extends CoreDataHandler
 {
     public function __construct(
-        protected Showcase $showcaseObject,
+        protected Showcase &$showcaseObject,
         public $method = DATA_HANDLER_METHOD_INSERT,
         /**
          * The language file used in the data handler.
@@ -85,6 +90,23 @@ class DataHandler extends CoreDataHandler
         parent::__construct($method);
 
         $hookArguments = hooksRun('data_handler_construct_end', $hookArguments);
+    }
+
+    /**
+     * Sets the data to be used for the data handler
+     *
+     * @param array $data The data.
+     * @return void
+     */
+    public function dataSet(array $data): void
+    {
+        $hookArguments = [
+            'dataHandler' => &$this,
+        ];
+
+        $this->data = $data;
+
+        $hookArguments = hooksRun('data_handler_data_set_end', $hookArguments);
     }
 
     /**
@@ -250,23 +272,37 @@ class DataHandler extends CoreDataHandler
             $this->insertData[$key] = $value;
         }
 
+        if (!$isUpdate && empty($this->insertData['entry_hash'])) {
+            $this->insertData['entry_hash'] = generateUUIDv4();
+        }
+
         $hookArguments = hooksRun('data_handler_entry_insert_update_start', $hookArguments);
 
         if ($isUpdate) {
             $this->entry_id = $this->showcaseObject->dataUpdate($this->insertData);
+
+            if (!isset($this->insertData['entry_hash'])) {
+                $commentData = entryGet(
+                    $this->showcaseObject->showcase_id,
+                    ["entry_id='{$this->entry_id}'"],
+                    ['entry_hash']
+                );
+
+                $this->returnData['entry_hash'] = $commentData['entry_hash'];
+            }
         } else {
             $this->entry_id = $this->showcaseObject->dataInsert($this->insertData);
+
+            $this->returnData['entry_hash'] = $this->insertData['entry_hash'];
         }
 
         // Assign any uploaded attachments with the specific entry_hash to the newly created entry.
-        if (isset($entryData['entry_hash'])) {
-            foreach (
-                attachmentGet(
-                    ["entry_hash='{$db->escape_string($entryData['entry_hash'])}'"]
-                ) as $attachmentID => $attachmentData
-            ) {
-                attachmentUpdate(['entry_id' => $this->entry_id], $attachmentID);
-            }
+        foreach (
+            attachmentGet(
+                ["entry_hash='{$db->escape_string($this->returnData['entry_hash'])}'"]
+            ) as $attachmentID => $attachmentData
+        ) {
+            attachmentUpdate(['entry_id' => $this->entry_id, 'entry_hash' => ''], $attachmentID);
         }
 
         $this->returnData['entry_id'] = $this->entry_id;
@@ -363,14 +399,6 @@ class DataHandler extends CoreDataHandler
     {
         global $db;
 
-        $hookArguments = [
-            'dataHandler' => &$this,
-            'isUpdate' => &$isUpdate,
-            'commentID' => &$commentID,
-        ];
-
-        $commentData = &$this->data;
-
         if (!$this->get_validated()) {
             die('The comment needs to be validated before inserting it into the DB.');
         }
@@ -379,16 +407,30 @@ class DataHandler extends CoreDataHandler
             die('The comment is not valid.');
         }
 
-        foreach ($commentData as $key => $value) {
+        $this->comment_id = $commentID;
+
+        $hookArguments = [
+            'dataHandler' => &$this,
+            'isUpdate' => &$isUpdate,
+        ];
+
+        if ($isUpdate && !isset($this->returnData['comment_slug'])) {
+            $this->returnData['comment_slug'] = commentsGet(
+                ["comment_id='{$this->comment_id}'"],
+                ['comment_slug']
+            )['comment_slug'];
+        } elseif (!$isUpdate) {
+            $this->returnData['comment_slug'] = $this->data['comment_slug'] = slugGenerateComment();
+        }
+
+        foreach ($this->data as $key => $value) {
             $this->insertData[$key] = $value;
         }
 
         $hookArguments = hooksRun('data_handler_comment_insert_update_start', $hookArguments);
 
         if ($isUpdate) {
-            commentUpdate($this->insertData, $commentID);
-
-            $this->comment_id = $commentID;
+            commentUpdate($this->insertData, $this->comment_id);
         } else {
             $this->comment_id = commentInsert(
                 array_merge($this->insertData, [
@@ -398,21 +440,21 @@ class DataHandler extends CoreDataHandler
             );
         }
 
-        // Assign any uploaded attachments with the specific comment_hash to the newly created comment.
-        if (isset($commentData['comment_hash'])) {
+        $this->returnData['comment_id'] = $this->comment_id;
+
+        // Assign any uploaded attachments with the specific post_hash to the newly created comment.
+        if (isset($this->data['post_hash'])) {
             foreach (
                 attachmentGet(
-                    ["comment_hash='{$db->escape_string($commentData['comment_hash'])}'"]
+                    ["post_hash='{$db->escape_string($this->data['post_hash'])}'"]
                 ) as $attachmentID => $attachmentData
             ) {
-                attachmentUpdate(['comment_id' => $this->comment_id], $attachmentID);
+                attachmentUpdate(['comment_id' => $this->comment_id, 'post_hash' => ''], $attachmentID);
             }
         }
 
-        $this->returnData['comment_id'] = $this->comment_id;
-
-        if (isset($this->insertData['status'])) {
-            $this->returnData['status'] = $commentData['status'];
+        if (isset($this->data['status'])) {
+            $this->returnData['status'] = $this->data['status'];
         }
 
         $hookArguments = hooksRun('data_handler_comment_insert_update_end', $hookArguments);

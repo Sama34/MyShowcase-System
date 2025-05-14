@@ -22,6 +22,7 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\commentsDelete;
+use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\entryDelete;
 use function MyShowcase\Core\entryInsert;
 use function MyShowcase\Core\getSetting;
@@ -32,12 +33,17 @@ use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\entryUpdate;
 use function MyShowcase\Core\showcaseDefaultModeratorPermissions;
+use function MyShowcase\SimpleRouter\url;
 
 use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
+use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
+use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
+use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
+use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
@@ -46,6 +52,13 @@ use const MyShowcase\Core\GUEST_GROUP_ID;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 use const MyShowcase\Core\TABLES_DATA;
+use const MyShowcase\Core\URL_TYPE_COMMENT;
+use const MyShowcase\Core\URL_TYPE_COMMENT_APPROVE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_CREATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
+use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
+use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW;
+use const MyShowcase\Core\URL_TYPE_MAIN;
 
 class Showcase
 {
@@ -71,8 +84,8 @@ class Showcase
         public array $entryData = [],
         public int $entryID = 0,
         public int $entryUserID = 0,
-        public string $entryHash = '',
-        public string $commentHash = '',
+        //public string $entryHash = '',
+        //public string $commentHash = '',
         public array $fieldSetFieldsDisplayFields = [],
         public string $searchField = '',
         public string $sortByField = '',
@@ -314,7 +327,7 @@ class Showcase
 
             $this->urlDeleteEntry = $this->selfPhpScript . '/view/{entry_slug}/delete';
 
-            $this->urlCreateComment = $this->selfPhpScript . '/view/{entry_slug}/comment/create';
+            $this->urlCreateComment = $this->selfPhpScript . '/view/{entry_slug}/comment';
 
             $this->urlUpdateComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/update';
 
@@ -755,7 +768,7 @@ class Showcase
         }
 
         if (isset($this->entryData['entry_hash'])) {
-            $this->entryHash = (string)$this->entryData['entry_hash'];
+            //$this->entryHash = (string)$this->entryData['entry_hash'];
         }
     }
 
@@ -798,5 +811,146 @@ class Showcase
     public function commentDelete(int $commentID): void
     {
         commentsDelete($commentID);
+    }
+
+    public function getBasicUrl(): string
+    {
+        if ($this->config['enable_friendly_urls']) {
+            $scriptBasicUrl = str_replace('.php', '/', $this->scriptName);
+        } else {
+            $scriptBasicUrl = $this->scriptName;
+        }
+
+        if (str_ends_with($scriptBasicUrl, '/')) {
+            return rtrim($scriptBasicUrl, '/');
+        }
+
+        return $scriptBasicUrl;
+    }
+
+    public function urlGetMain(): string
+    {
+        return url(URL_TYPE_MAIN)->getRelativeUrl();
+    }
+
+    public function urlGetEntry(string $entrySlug, bool $addAnchor = true): string
+    {
+        return url(
+                URL_TYPE_ENTRY_VIEW,
+                ['entry_slug' => $entrySlug]
+            )->getRelativeUrl() . ($addAnchor ? '#' . $entrySlug : '');
+    }
+
+    public function urlGetComment(string $commentSlug, bool $addAnchor = true): string
+    {
+        return url(URL_TYPE_COMMENT, ['entry_slug' => $commentSlug])->getRelativeUrl();
+    }
+
+    public function urlGetEntryComment(string $entrySlug, string $commentSlug, bool $addAnchor = true): string
+    {
+        return url(
+                URL_TYPE_COMMENT_VIEW,
+                ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+            )->getRelativeUrl() . ($addAnchor ? '#' . $commentSlug : '');
+    }
+
+    public function urlGetCommentCreate(string $entrySlug): string
+    {
+        return url(URL_TYPE_COMMENT_CREATE, ['entry_slug' => $entrySlug])->getRelativeUrl();
+    }
+
+    public function urlGetCommentUpdate(string $entrySlug, string $commentSlug): string
+    {
+        return url(
+            URL_TYPE_COMMENT_UPDATE,
+            ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+        )->getRelativeUrl();
+    }
+
+    public function urlGetCommentApprove(string $entrySlug, string $commentSlug): string
+    {
+        return url(
+            URL_TYPE_COMMENT_APPROVE,
+            ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+        )->getRelativeUrl();
+    }
+
+    public function whereClauseStatusComment(): string
+    {
+        global $mybb;
+
+        $currentUserID = (int)$mybb->user['uid'];
+
+        $statusVisible = COMMENT_STATUS_VISIBLE;
+
+        $statusPendingApproval = COMMENT_STATUS_PENDING_APPROVAL;
+
+        $statusSoftDeleted = COMMENT_STATUS_SOFT_DELETED;
+
+        $whereClausesStatus = [
+            "status='{$statusVisible}'",
+        ];
+
+        if ($this->userPermissions[ModeratorPermissions::CanManageComments]) {
+            $whereClausesStatus[] = "status='{$statusPendingApproval}'";
+
+            $whereClausesStatus[] = "status='{$statusSoftDeleted}'";
+        } else {
+            $whereClausesStatus[] = "(user_id='{$currentUserID}' AND status='{$statusPendingApproval}')";
+        }
+
+        $whereClausesStatus = implode(' OR ', $whereClausesStatus);
+
+        return "({$whereClausesStatus})";
+    }
+
+    public function setEntry(
+        string $entrySlug,
+        bool $loadFields = false
+    ): void {
+        global $db;
+
+        $dataTableStructure = dataTableStructureGet($this->showcase_id);
+
+        $whereClauses = ["entryData.entry_slug='{$db->escape_string($entrySlug)}'"];
+
+        $queryFields = array_merge(
+            array_map(function (string $columnName): string {
+                return 'entryData.' . $columnName;
+            }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])),
+            [
+                'userData.username',
+            ]
+        );
+
+        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
+
+        if ($loadFields) {
+            foreach ($this->fieldSetCache as $fieldID => $fieldData) {
+                $fieldKey = $fieldData['field_key'];
+
+                $htmlType = $fieldData['html_type'];
+
+                $fieldID = (int)$fieldData['field_id'];
+
+                if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
+                    $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id=entryData.{$fieldKey} AND table_{$fieldKey}.field_id='{$fieldID}')";
+
+                    //$queryFields[] = "table_{$fieldKey}.value AS {$fieldKey}";
+
+                    $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
+
+                    // todo, I don't understand the purpose of this now
+                    // the condition after OR seems to fix it for now
+                    //$whereClauses[] = "(table_{$fieldKey}.set_id='{$this->config['field_set_id']}' OR entryData.{$fieldKey}=0)";
+                } else {
+                    $queryFields[] = $fieldKey;
+                }
+            }
+        }
+
+        $this->entryDataSet(
+            $this->dataGet($whereClauses, $queryFields, ['limit' => 1], $queryTables)
+        );
     }
 }

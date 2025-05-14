@@ -155,6 +155,8 @@ const URL_TYPE_ENTRY_RESTORE = 'entry_restore';
 
 const URL_TYPE_ENTRY_DELETE = 'entry_delete';
 
+const URL_TYPE_COMMENT = 'comment';
+
 const URL_TYPE_COMMENT_CREATE = 'comment_create';
 
 const URL_TYPE_COMMENT_VIEW = 'comment_view';
@@ -191,6 +193,8 @@ const WATERMARK_LOCATION_UPPER_LEFT = 4;
 
 const WATERMARK_LOCATION_UPPER_RIGHT = 5;
 
+const HTTP_CODE_PERMANENT_REDIRECT = 301;
+
 const TABLES_DATA = [
     'myshowcase_attachments' => [
         'attachment_id' => [
@@ -214,12 +218,7 @@ const TABLES_DATA = [
             'size' => 36,
             'default' => '',
         ],
-        'entry_hash' => [
-            'type' => 'VARCHAR',
-            'size' => 36,
-            'default' => '',
-        ],
-        'comment_hash' => [
+        'post_hash' => [
             'type' => 'VARCHAR',
             'size' => 36,
             'default' => '',
@@ -318,6 +317,10 @@ const TABLES_DATA = [
             'auto_increment' => true,
             'primary_key' => true
         ],
+        'comment_slug' => [
+            'type' => 'VARCHAR',
+            'size' => SETTINGS['slugLength'] * 2,
+        ],
         'showcase_id' => [
             'type' => 'INT',
             'unsigned' => true,
@@ -332,6 +335,11 @@ const TABLES_DATA = [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0
+        ],
+        'post_hash' => [
+            'type' => 'VARCHAR',
+            'size' => 36,
+            'default' => '',
         ],
         // todo, update old data from varchar to varbinary
         'ipaddress' => [
@@ -465,7 +473,7 @@ const TABLES_DATA = [
             'formCategory' => 'main',
             'formType' => \MyShowcase\Core\FORM_TYPE_SELECT_FIELD,
             'form_function' => '\MyShowcase\Core\generateFilterFieldsSelectArray',
-        ],*/
+        ],
         'filter_force_field' => [ // force view entries by uid, etc
             'type' => 'TINYINT',
             'unsigned' => true,
@@ -474,7 +482,7 @@ const TABLES_DATA = [
             'formType' => FORM_TYPE_SELECT_FIELD,
             'form_function' => '\MyShowcase\Core\generateFilterFieldsSelectArray',
         ],
-        /*'order_default_direction' => [ // asc, desc
+        'order_default_direction' => [ // asc, desc
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0,
@@ -3112,7 +3120,7 @@ function attachmentUpload(
     // All seems to be good, lets move the attachment!
     $timeNow = TIME_NOW;
 
-    $attachmentHas = createUUIDv4();
+    $attachmentHas = generateUUIDv4();
 
     $fileName = "attachment_{$showcase->entryUserID}_{$showcase->entryID}_{$timeNow}_{$attachmentHas}.attach";
 
@@ -3156,9 +3164,9 @@ function attachmentUpload(
     $insertData = [
         'showcase_id' => $showcase->showcase_id,
         'entry_id' => $showcase->entryID,
-        'attachment_hash' => createUUIDv4(),
+        'attachment_hash' => generateUUIDv4(),
         'entry_hash' => $showcase->entryHash,
-        //'comment_hash' => $showcase->commentHash,
+        //'post_hash' => $showcase->commentHash,
         'user_id' => $showcase->entryUserID,
         'file_name' => $fileName,
         'mime_type' => my_strtolower($fileDataResult['type']),
@@ -3998,18 +4006,37 @@ function fieldDefaultTypes(): array
     ];
 }
 
-/**
- * @throws RandomException
- */
 //https://stackoverflow.com/a/15875555
-function createUUIDv4(): string
+function generateUUIDv4(): string
 {
     $data = random_bytes(16);
 
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
 
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
+function slugGenerateComment(?int $length = null): string
+{
+    if (empty($length)) {
+        $length = getSetting('slugLength');
+    }
+
+    global $db;
+
+    $generatedSlug = $clientIDHashed = '';
+
+    $uniqueFound = false;
+
+    while (!$uniqueFound) {
+        $generatedSlug = my_strtolower(bin2hex(random_bytes($length)));
+
+        $uniqueFound = !commentsGet(["comment_slug='{$db->escape_string($generatedSlug)}'"]);
+    }
+
+    return $generatedSlug;
 }
 
 function castTableFieldValue(mixed $value, string $fieldType): mixed
@@ -4073,7 +4100,6 @@ function generateFilterFieldsSelectArray(): array
         FILTER_TYPE_USER_ID => $lang->myShowcaseAdminSummaryAddEditFilterForceFieldUserID,
     ];
 }
-
 
 function generateWatermarkLocationsSelectArray(): array
 {

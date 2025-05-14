@@ -9,6 +9,7 @@
 .idea/**
 .obsidian/**
 Upload/inc/plugins/MyShowcase/vendor/**
+Upload/vendor/**
 
 # AWS User-specific
 .idea/**/aws.xml

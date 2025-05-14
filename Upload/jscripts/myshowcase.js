@@ -39,8 +39,8 @@ var Showcase = {
 		MyBB.popupWindow("/report.php?modal=1&type=showcase_entries&pid=" + entryID + "&showcaseID=" + showcaseID);
 	},
 
-	reportComment: function(commentID, showcaseID) {
-		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentID + "&showcaseID=" + showcaseID);
+	reportComment: function(commentSlug, showcaseID) {
+		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentSlug + "&showcaseID=" + showcaseID);
 	},
 
 	showDeletedEntry: function(entryID)
@@ -49,10 +49,10 @@ var Showcase = {
 		$('#entryBody' + entryID).slideToggle("slow");
 	},
 
-	showDeletedComment: function(commentID)
+	showDeletedComment: function(commentSlug)
 	{
-		$('#deleted_comment_' + commentID).slideToggle("slow");
-		$('#commentBody' + commentID).slideToggle("slow");
+		$('#deleted_comment_' + commentSlug).slideToggle("slow");
+		$('#commentBody' + commentSlug).slideToggle("slow");
 	},
 
 	showIgnoredEntry: function(entryID)
@@ -61,10 +61,10 @@ var Showcase = {
 		$('#entryBody' + entryID).slideToggle("slow");
 	},
 
-	showIgnoredComment: function(commentID)
+	showIgnoredComment: function(commentSlug)
 	{
-		$('#ignored_comment_' + commentID).slideToggle("slow");
-		$('#commentBody' + commentID).slideToggle("slow");
+		$('#ignored_comment_' + commentSlug).slideToggle("slow");
+		$('#commentBody' + commentSlug).slideToggle("slow");
 	},
 
 };

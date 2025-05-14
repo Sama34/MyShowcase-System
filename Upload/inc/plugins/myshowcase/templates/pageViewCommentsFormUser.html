@@ -8,21 +8,21 @@
                     <img src="{$theme['imgdir']}/collapse{$collapsedimg['quickreply']}.png" id="quickreply_img"
                          class="expander" alt="{$expaltext}" title="{$expaltext}"/>
                 </div>
-                <div><strong>{$lang->myShowcaseEntryCommentCreateTitle}</strong></div>
+                <div><strong>{$lang->myShowcaseCommentCreateTitle}</strong></div>
             </td>
         </tr>
         </thead>
         <tbody style="{$collapsed['quickreply_e']}" id="quickreply_e">
         <tr>
             <td class="{$alternativeBackground}" valign="top" width="22%">
-                <strong>{$lang->myShowcaseEntryCommentCreateMessage}</strong><br/>
-                <span class="smalltext">{$lang->myShowcaseEntryCommentCreateMessageNote}</span>
+                <strong>{$lang->myShowcaseCommentCreateMessage}</strong><br/>
+                <span class="smalltext">{$lang->myShowcaseCommentCreateMessageNote}</span>
             </td>
             <td class="{$alternativeBackground}">
                 <div style="width: 95%">
                     <textarea style="width: 100%; padding: 4px; margin: 0;" rows="8" cols="80" name="comment"
                               id="comment" tabindex="1">{$commentMessage}</textarea>
-                    {$code_buttons}
+                    {$editorCodeButtons}
                 </div>
                 <div class="editor_control_bar" style="width: 95%; padding: 4px; margin-top: 3px;">
 						<span class="smalltext">
@@ -33,12 +33,15 @@
         </tr>
         <tr>
             <td colspan="2" align="center" class="tfoot">
-                <input type="submit" class="button" value="{$lang->myShowcaseEntryCommentCreateButton}" tabindex="2"
+                <input type="submit" class="button" value="{$lang->myShowcaseCommentCreateUpdateFormButtonCreate}"
+                       tabindex="2"
                        accesskey="s"/>
+                <input type="submit" class="button" name="preview"
+                       value="{$lang->myShowcaseCommentCreateUpdateFormButtonPreview}"
+                       tabindex="3" accesskey="s"/>
             </td>
         </tr>
         </tbody>
     </table>
     <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
-    <input type="hidden" name="entry_hash" value="{$this->showcaseObject->entryData['entry_hash']}"/>
 </form>

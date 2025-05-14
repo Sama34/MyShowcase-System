@@ -21,6 +21,7 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\showcaseGetObjectByScriptName;
 
+use const MyShowcase\Core\URL_TYPE_COMMENT;
 use const MyShowcase\ROOT;
 use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW_PAGE;
 use const MyShowcase\Core\URL_TYPE_MAIN_APPROVE;
@@ -91,6 +92,8 @@ $templatelist = '';
 if (str_contains($_SERVER['REQUEST_URI'] ?? '', '/attachment/') ||
     str_contains($_SERVER['REQUEST_URI'] ?? '', '/thumbnail/')) {
     define('NO_ONLINE', 1);
+
+    global $mybb, $lang, $db, $cache, $templates;
 
     $minimalLoad = true;
 
@@ -258,7 +261,7 @@ SimpleRouter::form(
 
 SimpleRouter::get(
     $showcaseObject->selfPhpScript . '/view/{entry_slug}/page/{page_id}',
-    ['MyShowcase\Controllers\Entries', 'viewEntryPage']
+    ['MyShowcase\Controllers\Entries', 'viewEntry']
 )->name(URL_TYPE_ENTRY_VIEW_PAGE);
 
 SimpleRouter::post(
@@ -287,43 +290,48 @@ SimpleRouter::post(
 )->name(URL_TYPE_ENTRY_DELETE);
 
 SimpleRouter::form(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/create',
-    ['MyShowcase\Controllers\Comments', 'createComment']
+    $showcaseObject->selfPhpScript . '/comment/{comment_slug}',
+    ['MyShowcase\Controllers\Comments', 'redirect']
+)->name(URL_TYPE_COMMENT);
+
+SimpleRouter::form(
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment',
+    ['MyShowcase\Controllers\Comments', 'create']
 )->name(URL_TYPE_COMMENT_CREATE);
 
 SimpleRouter::get(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}',
-    ['MyShowcase\Controllers\Comments', 'viewComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}',
+    ['MyShowcase\Controllers\Comments', 'view']
 )->name(URL_TYPE_COMMENT_VIEW);
 
 SimpleRouter::form(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/update',
-    ['MyShowcase\Controllers\Comments', 'updateComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/update',
+    ['MyShowcase\Controllers\Comments', 'update']
 )->name(URL_TYPE_COMMENT_UPDATE);
 
 SimpleRouter::post(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/approve',
-    ['MyShowcase\Controllers\Comments', 'approveComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/approve',
+    ['MyShowcase\Controllers\Comments', 'approve']
 )->name(URL_TYPE_COMMENT_APPROVE);
 
 SimpleRouter::post(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/unapprove',
-    ['MyShowcase\Controllers\Comments', 'unapproveComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/unapprove',
+    ['MyShowcase\Controllers\Comments', 'unapprove']
 )->name(URL_TYPE_COMMENT_UNAPPROVE);
 
 SimpleRouter::post(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/soft_delete',
-    ['MyShowcase\Controllers\Comments', 'softDeleteComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/soft_delete',
+    ['MyShowcase\Controllers\Comments', 'softDelete']
 )->name(URL_TYPE_COMMENT_SOFT_DELETE);
 
 SimpleRouter::post(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/restore',
-    ['MyShowcase\Controllers\Comments', 'restoreComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/restore',
+    ['MyShowcase\Controllers\Comments', 'restore']
 )->name(URL_TYPE_COMMENT_RESTORE);
 
 SimpleRouter::post(
-    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/delete',
-    ['MyShowcase\Controllers\Comments', 'deleteComment']
+    $showcaseObject->selfPhpScript . '/view/{entry_slug}/comment/{comment_slug}/delete',
+    ['MyShowcase\Controllers\Comments', 'delete']
 )->name(URL_TYPE_COMMENT_DELETE);
 
 SimpleRouter::get(

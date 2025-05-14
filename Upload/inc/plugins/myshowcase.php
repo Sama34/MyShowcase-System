@@ -34,6 +34,8 @@ defined('IN_MYBB') || die('This file cannot be accessed directly.');
 define('MyShowcase\Core\SETTINGS', [
     //'key' => '',
     'superModeratorGroups' => '3,4',
+    'slugLength' => 5,
+    'slugBcryptCost' => 10,
 ]);
 define('MyShowcase\Core\DEBUG', false);
 

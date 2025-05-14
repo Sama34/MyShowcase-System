@@ -19,6 +19,9 @@ use Form;
 use MyBB;
 
 use function MyShowcase\Core\cacheUpdate;
+use function MyShowcase\Core\commentsGet;
+use function MyShowcase\Core\commentUpdate;
+use function MyShowcase\Core\generateUUIDv4;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldTypeMatchBinary;
 use function MyShowcase\Core\fieldTypeMatchChar;
@@ -29,6 +32,8 @@ use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
+
+use function MyShowcase\Core\slugGenerateComment;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
@@ -282,6 +287,14 @@ function pluginActivation(): bool
     dbVerifyTables();
 
     dbVerifyColumns();
+
+    /*~*~* RUN UPDATES START *~*~*/
+
+    foreach (commentsGet(["comment_slug=''"]) as $commentID => $commentData) {
+        commentUpdate(['comment_slug' => slugGenerateComment()], $commentID);
+    }
+
+    /*~*~* RUN UPDATES END *~*~*/
 
     foreach (showcaseGet() as $showcaseID => $showcaseData) {
         $dataTableStructure = dataTableStructureGet($showcaseID);

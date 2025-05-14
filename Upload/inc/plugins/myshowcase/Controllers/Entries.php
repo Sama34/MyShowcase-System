@@ -25,7 +25,7 @@ use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpload;
 use function MyShowcase\Core\cleanSlug;
 use function MyShowcase\Core\commentsGet;
-use function MyShowcase\Core\createUUIDv4;
+use function MyShowcase\Core\generateUUIDv4;
 use function MyShowcase\Core\dataHandlerGetObject;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\entryGet;
@@ -35,6 +35,7 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\HTTP_CODE_PERMANENT_REDIRECT;
 use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW_PAGE;
 use const MyShowcase\Core\URL_TYPE_MAIN_PAGE;
 use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
@@ -58,6 +59,20 @@ use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
 
 class Entries extends Base
 {
+    public const NO_PERMISSION = 1;
+
+    public const INVALID_ENTRY = 2;
+
+    public const HAS_PERMISSION = 3;
+
+    public const STATUS_PENDING_APPROVAL = 0;
+
+    public const STATUS_VISIBLE = 1;
+
+    public const STATUS_SOFT_DELETE = 2;
+
+    public const STATUS_DELETE = 3;
+
     public function __construct()
     {
         parent::__construct();
@@ -67,56 +82,75 @@ class Entries extends Base
         }
     }
 
-    public function setEntry(
-        string $entrySlug,
-        bool $loadFields = false
-    ): void {
+    public int $entryID = 0;
+
+    public array $entryData = [];
+
+    public function verifyPermission(string $entrySlug, array $entryFields = []): int
+    {
         global $db;
 
-        $dataTableStructure = dataTableStructureGet($this->showcaseObject->showcase_id);
-
-        $whereClauses = ["entryData.entry_slug='{$db->escape_string($entrySlug)}'"];
-
-        $queryFields = array_merge(array_map(function (string $columnName): string {
-            return 'entryData.' . $columnName;
-        }, array_keys(DATA_TABLE_STRUCTURE['myshowcase_data'])), [
-            'userData.username',
-        ]);
-
-        $queryTables = ['users userData ON (userData.uid=entryData.user_id)'];
-
-        if ($loadFields) {
-            foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-                $fieldKey = $fieldData['field_key'];
-
-                $htmlType = $fieldData['html_type'];
-
-                $fieldID = (int)$fieldData['field_id'];
-
-                if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
-                    $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id=entryData.{$fieldKey} AND table_{$fieldKey}.field_id='{$fieldID}')";
-
-                    //$queryFields[] = "table_{$fieldKey}.value AS {$fieldKey}";
-
-                    $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
-
-                    // todo, I don't understand the purpose of this now
-                    // the condition after OR seems to fix it for now
-                    //$whereClauses[] = "(table_{$fieldKey}.set_id='{$this->showcaseObject->config['field_set_id']}' OR entryData.{$fieldKey}=0)";
-                } else {
-                    $queryFields[] = $fieldKey;
-                }
-            }
+        if (!(
+            $this->showcaseObject->userPermissions[UserPermissions::CanViewEntries] ||
+            $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]
+        )) {
+            return self::NO_PERMISSION;
         }
 
-        $this->showcaseObject->entryDataSet(
-            $this->showcaseObject->dataGet($whereClauses, $queryFields, ['limit' => 1], $queryTables)
+        global $mybb;
+
+        $currentUserID = (int)$mybb->user['uid'];
+
+        $entryData = entryGet(
+            $this->showcaseObject->showcase_id,
+            ["entry_slug='{$db->escape_string($entrySlug)}'"],
+            array_merge(['entry_id', 'status', 'user_id'], $entryFields),
+            ['limit' => 1]
         );
+
+        if (empty($entryData)) {
+            return self::INVALID_ENTRY;
+        }
+
+        $entryStatus = (int)$entryData['status'];
+
+        $entryUserID = (int)$entryData['user_id'];
+
+        if ($entryStatus === ENTRY_STATUS_PENDING_APPROVAL && $currentUserID !== $entryUserID ||
+            $entryStatus === ENTRY_STATUS_SOFT_DELETED && !$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
+            return self::INVALID_ENTRY;
+        }
+
+        $this->entryID = (int)$entryData['entry_id'];
+
+        $this->entryData = $entryData;
+
+        return self::HAS_PERMISSION;
+    }
+
+    #[NoReturn] public function redirect(string $entrySlug): void
+    {
+        switch ($this->verifyPermission($entrySlug)) {
+            case self::NO_PERMISSION:
+                error_no_permission();
+
+                break;
+            case self::INVALID_ENTRY:
+                global $lang;
+
+                error($lang->myShowcaseReportErrorInvalidEntry);
+        }
+
+        $entryUrl = $this->showcaseObject->urlGetEntry($entrySlug);
+
+        \MyShowcase\SimpleRouter\redirect($entryUrl, HTTP_CODE_PERMANENT_REDIRECT);
+
+        exit;
     }
 
     #[NoReturn] public function mainPage(
-        int $userID = 0,
         int $currentPage = 1,
+        int $userID = 0,
         int $limit = 0,
         int $limitStart = 0,
         string $groupBy = '',
@@ -146,12 +180,8 @@ class Entries extends Base
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        if ($limit < 1) {
-            $limit = $this->showcaseObject->config['entries_per_page'];
-        }
-
-        if ($limit < 2) {
-            $limit = 2;
+        if ($this->showcaseObject->config['entries_per_page'] < 1) {
+            $this->showcaseObject->config['entries_per_page'] = $this->showcaseObject->config['entries_per_page'];
         }
 
         $hookArguments = [];
@@ -307,6 +337,24 @@ class Entries extends Base
 
         $searchDone = false;
 
+        $allowedStatuses = [ENTRY_STATUS_VISIBLE];
+
+        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
+            $allowedStatuses[] = ENTRY_STATUS_SOFT_DELETED;
+        }
+
+        $allowedStatuses = implode("','", $allowedStatuses);
+
+        $whereClauseStatus = ["entryData.status IN ('{$allowedStatuses}')"];
+
+        $statusPendingApproval = ENTRY_STATUS_PENDING_APPROVAL;
+
+        $whereClauseStatus[] = "(entryData.user_id='{$currentUserID}' AND entryData.status='{$statusPendingApproval}')";
+
+        $whereClauseStatus = implode(' OR ', $whereClauseStatus);
+
+        $whereClauses[] = "({$whereClauseStatus})";
+
         $whereClauses = array_merge($whereClauses, $this->showcaseObject->whereClauses);
 
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
@@ -383,11 +431,9 @@ class Entries extends Base
         $hookArguments = hooksRun('output_main_intermediate', $hookArguments);
 
         if ($totalEntries) {
-            $entriesPerPage = $limit;
+            $entriesPerPage = $this->showcaseObject->config['entries_per_page'];
 
             if ($currentPage > 0) {
-                $currentPage = $currentPage;
-
                 $pageStart = ($currentPage - 1) * $entriesPerPage;
 
                 $pageTotal = $totalEntries / $entriesPerPage;
@@ -472,6 +518,10 @@ class Entries extends Base
 
             $inlineModerationCount = 0;
 
+            if ($this->showcaseObject->config['entries_per_page'] === 1) {
+                $entriesObjects = [$entriesObjects];
+            }
+
             foreach ($entriesObjects as $entryFieldData) {
                 $this->showcaseObject->entryDataSet($entryFieldData);
 
@@ -490,7 +540,7 @@ class Entries extends Base
 
                 //change style is unapproved
                 if (empty($entryFieldData['approved'])) {
-                    $alternativeBackground .= ' trow_shaded';
+                    //$alternativeBackground .= ' trow_shaded';
                 }
 
                 $entryID = (int)$entryFieldData['entry_id'];
@@ -683,7 +733,7 @@ class Entries extends Base
                     $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
                     $this->renderObject->entryBuildAttachments(
                         $showcaseTableRowExtra,
-                        $this->renderObject::POST_TYPE_COMMENT
+                        $this->renderObject::POST_TYPE_ENTRY
                     );
                 }
 
@@ -806,9 +856,6 @@ class Entries extends Base
         );
     }
 
-    /**
-     * @throws RandomException
-     */
     #[NoReturn] public function createEntry(
         bool $isEditPage = false,
         string $entrySlug = '',
@@ -834,7 +881,7 @@ class Entries extends Base
         $showcase_watermark = '';
 
         if ($isEditPage) {
-            $this->setEntry($entrySlug, true);
+            $this->showcaseObject->setEntry($entrySlug, true);
         }
 
         switch ($this->showcaseObject->config['filter_force_field']) {
@@ -891,14 +938,15 @@ class Entries extends Base
 
             $this->showcaseObject->entryHash = $mybb->get_input('entry_hash');
 
-            $isPreview = isset($mybb->input['preview']);
-
             if ($this->showcaseObject->config['attachments_allow_entries']) {
                 $this->uploadAttachment();
             }
 
-            $insertData = [
-            ];
+            $isPreview = isset($mybb->input['preview']);
+
+            $insertData = [];
+
+            $insertData['ipaddress'] = $mybb->session->packedip;
 
             if (!$isEditPage) {
                 $insertData['user_id'] = $currentUserID;
@@ -978,7 +1026,7 @@ class Entries extends Base
                 $insertData['entry_slug'] = $entrySlug;
             }
 
-            $dataHandler->set_data($insertData);
+            $dataHandler->dataSet($insertData);
 
             if (!$dataHandler->entryValidate()) {
                 $this->showcaseObject->errorMessages = array_merge(
@@ -989,12 +1037,12 @@ class Entries extends Base
 
             if (!$isPreview && !$this->showcaseObject->errorMessages) {
                 if ($isEditPage) {
-                    $insertResult = $dataHandler->updateEntry();
+                    $dataHandler->updateEntry();
                 } else {
-                    $insertResult = $dataHandler->entryInsert();
+                    $dataHandler->entryInsert();
                 }
 
-                if (isset($insertResult['status']) && $insertResult['status'] === ENTRY_STATUS_SOFT_DELETED) {
+                if (isset($dataHandler->returnData['status']) && $dataHandler->returnData['status'] === ENTRY_STATUS_SOFT_DELETED) {
                     $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
                     switch ($this->showcaseObject->config['filter_force_field']) {
@@ -1021,7 +1069,7 @@ class Entries extends Base
                 } else {
                     $entryUrl = url(
                         URL_TYPE_ENTRY_VIEW,
-                        ['entry_slug' => $insertResult['entry_slug']]
+                        ['entry_slug' => $dataHandler->returnData['entry_slug']]
                     )->getRelativeUrl();
 
                     redirect(
@@ -1036,14 +1084,14 @@ class Entries extends Base
             if ($isPreview) {
                 $this->showcaseObject->entryData = array_merge($this->showcaseObject->entryData, $mybb->input);
 
-                $entryPreview = $this->renderObject->buildEntry($this->showcaseObject->entryData, true);
+                $entryPreview = $this->renderObject->buildEntry(true);
             }
         } elseif ($isEditPage) {
             $mybb->input = array_merge($this->showcaseObject->entryData, $mybb->input);
         }
 
         if (!$this->showcaseObject->entryHash) {
-            $this->showcaseObject->entryHash = createUUIDv4();
+            $this->showcaseObject->entryHash = generateUUIDv4();
         }
 
         if ($isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries]) {
@@ -1053,10 +1101,6 @@ class Entries extends Base
         }
 
         $hookArguments = hooksRun('output_new_start', $hookArguments);
-
-        global $errorsAttachments;
-
-        $errorsAttachments ??= '';
 
         $alternativeBackground = alt_trow(true);
 
@@ -1095,9 +1139,9 @@ class Entries extends Base
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataTextUrl'));
                     break;
                 case FieldHtmlTypes::TextArea:
-                    $code_buttons = $smile_inserter = '';
+                    $editorCodeButtons = $editorSmilesInserter = '';
 
-                    $this->renderObject->buildEditor($code_buttons, $smile_inserter, $fieldKey);
+                    $this->renderObject->buildEditor($editorCodeButtons, $editorSmilesInserter, $fieldKey);
 
                     $fieldValue = htmlspecialchars_uni($mybb->get_input($fieldKey));
 
@@ -1370,6 +1414,8 @@ class Entries extends Base
             $entryPreview = eval($this->renderObject->templateGet('pageEntryCreateUpdateContentsPreview'));
         }
 
+        $postHash = htmlspecialchars_uni($mybb->get_input('post_hash'));
+
         $this->outputSuccess(eval($this->renderObject->templateGet('pageEntryCreateUpdateContents')));
     }
 
@@ -1381,10 +1427,10 @@ class Entries extends Base
 
     #[NoReturn] public function viewEntry(
         string $entrySlug,
-        int $commentID = 0,
-        array $commentData = [],
         int $currentPage = 1,
     ): void {
+        $this->showcaseObject->setEntry($entrySlug, true);
+
         global $mybb, $lang, $db, $theme;
 
         $hookArguments = [
@@ -1398,10 +1444,17 @@ class Entries extends Base
         $currentUserID = (int)$mybb->user['uid'];
 
         if (empty($this->showcaseObject->entryID)) {
-            $this->setEntry($entrySlug, true);
+            $this->showcaseObject->setEntry($entrySlug, true);
         }
 
         if (!$this->showcaseObject->entryID || empty($this->showcaseObject->entryData)) {
+            error($lang->myshowcase_invalid_id);
+        }
+
+        if ($currentUserID !== $this->showcaseObject->entryUserID &&
+            !$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] &&
+            (int)$this->showcaseObject->entryData['status'] !== ENTRY_STATUS_VISIBLE
+        ) {
             error($lang->myshowcase_invalid_id);
         }
 
@@ -1468,7 +1521,7 @@ class Entries extends Base
         //doing this now should not impact anyhting. no issues with gomobile beta4
         define('IN_ARCHIVE', 1);
 
-        $entryPost = $this->renderObject->buildEntry($this->showcaseObject->entryData);
+        $entryPost = $this->renderObject->buildEntry();
 
         $commentsList = $commentsEmpty = $commentsForm = '';
 
@@ -1512,22 +1565,6 @@ class Entries extends Base
             )['total_comments'] ?? 0);
 
             //$currentPage = $mybb->get_input('page', MyBB::INPUT_INT);
-
-            if ($commentID) {
-                $commentTimeStamp = (int)$commentData['dateline'];
-
-                $totalCommentsBeforeMainComment = (int)(commentsGet(
-                    array_merge($whereClauses, ["dateline<='{$commentTimeStamp}'"]),
-                    ['COUNT(comment_id) AS total_comments'],
-                    ['limit' => 1]
-                )['total_comments'] ?? 0);
-
-                if (($totalCommentsBeforeMainComment % $this->showcaseObject->config['comments_per_page']) == 0) {
-                    $currentPage = $totalCommentsBeforeMainComment / $this->showcaseObject->config['comments_per_page'];
-                } else {
-                    $currentPage = (int)($totalCommentsBeforeMainComment / $this->showcaseObject->config['comments_per_page']) + 1;
-                }
-            }
 
             $totalPages = $totalComments / $this->showcaseObject->config['comments_per_page'];
 
@@ -1589,7 +1626,7 @@ class Entries extends Base
 
             $commentObjects = commentsGet(
                 $whereClauses,
-                ['user_id', 'comment', 'dateline', 'ipaddress', 'status', 'moderator_user_id'],
+                ['user_id', 'comment', 'dateline', 'ipaddress', 'status', 'moderator_user_id', 'comment_slug'],
                 $queryOptions
             );
 
@@ -1599,9 +1636,9 @@ class Entries extends Base
                 ++$commentsCounter;
 
                 $commentsList .= $this->renderObject->buildComment(
-                    $commentsCounter,
                     $commentData,
-                    $alternativeBackground
+                    $alternativeBackground,
+                    $commentsCounter,
                 );
 
                 $alternativeBackground = alt_trow();
@@ -1613,9 +1650,7 @@ class Entries extends Base
 
             $hookArguments = hooksRun('entry_view_comment_form_end', $hookArguments);
 
-            if (!$currentUserID) {
-                $commentsForm = eval($this->renderObject->templateGet('pageViewCommentsFormGuest'));
-            } elseif ($this->showcaseObject->userPermissions[UserPermissions::CanCreateComments]) {
+            if ($this->showcaseObject->userPermissions[UserPermissions::CanCreateComments]) {
                 global $collapsedthead, $collapsedimg, $expaltext, $collapsed;
 
                 isset($collapsedthead) || $collapsedthead = [];
@@ -1632,6 +1667,7 @@ class Entries extends Base
 
                 $commentLengthLimitNote = $lang->sprintf(
                     $lang->myshowcase_comment_text_limit,
+                    my_number_format($this->showcaseObject->config['comments_minimum_length']),
                     my_number_format($this->showcaseObject->config['comments_maximum_length'])
                 );
 
@@ -1644,11 +1680,13 @@ class Entries extends Base
 
                 $commentMessage = htmlspecialchars_uni($mybb->get_input('comment'));
 
-                $code_buttons = $smile_inserter = '';
+                $editorCodeButtons = $editorSmilesInserter = '';
 
-                $this->renderObject->buildCommentsFormEditor($code_buttons, $smile_inserter);
+                $this->renderObject->buildCommentsFormEditor($editorCodeButtons, $editorSmilesInserter);
 
                 $commentsForm = eval($this->renderObject->templateGet('pageViewCommentsFormUser'));
+            } elseif (!$currentUserID) {
+                $commentsForm = eval($this->renderObject->templateGet('pageViewCommentsFormGuest'));
             }
         }
 
@@ -1664,20 +1702,13 @@ class Entries extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageView')));
     }
 
-    #[NoReturn] public function viewEntryPage(
-        string $entrySlug,
-        int $currentPage = 0,
-    ): void {
-        $this->viewEntry($entrySlug, currentPage: $currentPage);
-    }
-
     #[NoReturn] public function approveEntry(
         string $entrySlug,
         int $status = ENTRY_STATUS_VISIBLE
     ): void {
         global $lang;
 
-        $this->setEntry($entrySlug);
+        $this->showcaseObject->setEntry($entrySlug);
 
         if (!$this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
             !$this->showcaseObject->entryID) {
@@ -1739,7 +1770,7 @@ class Entries extends Base
 
         $currentUserID = (int)$mybb->user['uid'];
 
-        $this->setEntry($entrySlug);
+        $this->showcaseObject->setEntry($entrySlug);
 
         if (!$this->showcaseObject->entryID ||
             !(
@@ -1774,6 +1805,8 @@ class Entries extends Base
         }
 
         global $mybb, $lang;
+
+        $mybb->input['preview'] = true;
 
         $currentUserID = (int)$mybb->user['uid'];
 

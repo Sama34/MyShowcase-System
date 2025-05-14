@@ -37,13 +37,12 @@ use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW;
-use const MyShowcase\Core\URL_TYPE_COMMENT_APPROVE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_DELETE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_RESTORE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_SOFT_DELETE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_UNAPPROVE;
 use const MyShowcase\Core\URL_TYPE_COMMENT_UPDATE;
-use const MyShowcase\Core\URL_TYPE_COMMENT_VIEW;
+use const MyShowcase\Core\URL_TYPE_COMMENT;
 use const MyShowcase\Core\URL_TYPE_ENTRY_APPROVE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_CREATE;
 use const MyShowcase\Core\URL_TYPE_ENTRY_DELETE;
@@ -168,11 +167,11 @@ class Render
     }
 
     private function buildPost(
-        int $commentsCounter,
-        array $postData,
         string $alternativeBackground,
-        int $postType = self::POST_TYPE_COMMENT,
         bool $isPreview = false,
+        int $postType = self::POST_TYPE_COMMENT,
+        int $commentsCounter = 0,
+        array $commentData = [],
     ): string {
         global $mybb, $lang, $theme;
 
@@ -188,13 +187,19 @@ class Render
             }
         }
 
-        $userID = (int)$postData['user_id'];
+        if ($postType === self::POST_TYPE_ENTRY) {
+            $userID = $this->showcaseObject->entryUserID;
+        } else {
+            $userID = (int)$commentData['user_id'];
+
+            $commentSlug = $commentData['comment_slug'];
+        }
 
         $userData = get_user($userID);
 
         $hookArguments = [
-            'this' => &$this,
-            'postData' => &$postData,
+            'renderObject' => &$this,
+            'commentData' => &$commentData,
             'alternativeBackground' => $alternativeBackground,
             'postType' => $postType,
             'userID' => &$userID,
@@ -220,18 +225,19 @@ class Render
         }
 
         if ($postType === self::POST_TYPE_COMMENT) {
-            $commentMessage = $this->showcaseObject->parseMessage($postData['message'], $this->parserOptions);
+            $commentMessage = $this->showcaseObject->parseMessage($commentData['comment'], $this->parserOptions);
 
-            $commentID = (int)$postData['comment_id'];
+            $commentID = (int)$commentData['comment_id'];
 
-            $commentNumber = my_number_format($commentsCounter);
+            $commentUrl = '';
 
-            $commentUrl = url(
-                URL_TYPE_COMMENT_VIEW,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
-            )->getRelativeUrl();
+            if (!$isPreview) {
+                $commentNumber = my_number_format($commentsCounter);
 
-            $commentUrl = eval($this->templateGet($templatePrefix . 'Url'));
+                $commentUrl = url(URL_TYPE_COMMENT, ['comment_slug' => $commentSlug])->getRelativeUrl();
+
+                $commentUrl = eval($this->templateGet($templatePrefix . 'Url'));
+            }
         } else {
             $entryFields = $this->buildEntryFields();
 
@@ -248,7 +254,7 @@ class Render
 
             if ($this->showcaseObject->config['attachments_allow_entries'] &&
                 $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
-                $entryAttachments = $this->entryBuildAttachments($entryFields, $postType, $commentID ?? 0);
+                $entryAttachments = $this->entryBuildAttachments($entryFields, $postType, $commentSlug ?? '');
             }
 
             $entryFields = implode('', $entryFields);
@@ -356,19 +362,34 @@ class Render
             }
         }
 
+        $moderatorCanManageEntries = $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries];
+
+        $moderatorCanManageComments = $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments];
+
+        $userCanUpdateEntries = $userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries];
+
+        $userCanSoftDeleteEntries = $userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries];
+
+        $userCanUpdateComments = $userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanUpdateComments];
+
+        $userCanSoftDeleteComments = $userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments];
+
         $buttonEdit = '';
 
-        if ($postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
+        if (!$isPreview && $postType === self::POST_TYPE_ENTRY && ($moderatorCanManageEntries || $userCanUpdateEntries)) {
             $editUrl = url(
                 URL_TYPE_ENTRY_UPDATE,
                 ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
             )->getRelativeUrl();
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
-        } elseif ($postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]) {
+        } elseif (!$isPreview && $postType === self::POST_TYPE_COMMENT && ($moderatorCanManageComments || $userCanUpdateComments)) {
             $editUrl = url(
                 URL_TYPE_COMMENT_UPDATE,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                [
+                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'comment_slug' => $commentSlug
+                ]
             )->getRelativeUrl();
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
@@ -441,13 +462,21 @@ class Render
             $userSignature = eval($this->templateGet($templatePrefix . 'UserSignature'));
         }
 
-        $date = my_date('relative', $postData['dateline']);
+        if ($postType === self::POST_TYPE_ENTRY) {
+            $date = my_date('relative', $this->showcaseObject->entryData['dateline']);
+        } else {
+            $date = my_date('relative', $commentData['dateline']);
+        }
 
         $approvedByMessage = '';
 
-        if ($this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] &&
-            !empty($postData['moderator_user_id'])) {
-            $moderatorUserData = get_user($postData['moderator_user_id']);
+        if ($moderatorCanManageEntries && (
+                $postType === self::POST_TYPE_ENTRY && !empty($this->showcaseObject->entryData['moderator_user_id']) ||
+                $postType === self::POST_TYPE_COMMENT && !empty($commentData['moderator_user_id'])
+            )) {
+            $moderatorUserData = get_user(
+                $postType === self::POST_TYPE_ENTRY ? $this->showcaseObject->entryData['moderator_user_id'] : $commentData['moderator_user_id']
+            );
 
             $moderatorUserProfileLink = build_profile_link(
                 $moderatorUserData['username'],
@@ -494,7 +523,7 @@ class Render
 
         $buttonPurgeSpammer = '';
 
-        if ($userID && purgespammer_show($userData['postnum'], $userData['usergroup'], $userID)) {
+        if (!$isPreview && $userID && purgespammer_show($userData['postnum'], $userData['usergroup'], $userID)) {
             $buttonPurgeSpammer = eval($this->templateGet($templatePrefix . 'ButtonPurgeSpammer'));
         }
 
@@ -519,22 +548,23 @@ class Render
             if (!in_array($currentUserID, $reportUserIDs) && !empty($userPermissions['canbereported'])) {
                 $buttonReport = eval($this->templateGet($templatePrefix . 'ButtonReport'));
             }
-        }
 
-        $postStatus = (int)$postData['status'];
+            $postStatus = (int)$this->showcaseObject->entryData['status'];
+        } else {
+            $postStatus = (int)$commentData['status'];
+        }
 
         $buttonApprove = $buttonUnpprove = $buttonRestore = $buttonSoftDelete = $buttonDelete = '';
 
-        if ($postType === self::POST_TYPE_ENTRY &&
-            $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries]) {
-            if ($postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
+        if (!$isPreview && $postType === self::POST_TYPE_ENTRY && ($moderatorCanManageEntries || $userCanSoftDeleteEntries)) {
+            if ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
                 $approveUrl = url(
                     URL_TYPE_ENTRY_APPROVE,
                     ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
                 )->getRelativeUrl();
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
-            } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
+            } elseif ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_VISIBLE) {
                 $unapproveUrl = url(
                     URL_TYPE_ENTRY_UNAPPROVE,
                     ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
@@ -543,14 +573,14 @@ class Render
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
             }
 
-            if ($postStatus === ENTRY_STATUS_SOFT_DELETED) {
+            if ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_SOFT_DELETED) {
                 $restoreUrl = url(
                     URL_TYPE_ENTRY_RESTORE,
                     ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
                 )->getRelativeUrl();
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
-            } elseif ($postStatus === ENTRY_STATUS_VISIBLE) {
+            } elseif ($postStatus === ENTRY_STATUS_VISIBLE && $userCanSoftDeleteEntries) {
                 $softDeleteUrl = url(
                     URL_TYPE_ENTRY_SOFT_DELETE,
                     ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
@@ -560,10 +590,7 @@ class Render
             }
 
             //only mods, original author (if allowed) or owner (if allowed) can delete comments
-            if (
-                $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
-                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteEntries])
-            ) {
+            if ($moderatorCanManageEntries) {
                 $deleteUrl = url(
                     URL_TYPE_ENTRY_DELETE,
                     ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
@@ -573,49 +600,56 @@ class Render
             }
         }
 
-        if ($postType === self::POST_TYPE_COMMENT &&
-            $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]) {
-            if ($postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
-                $approveUrl = url(
-                    URL_TYPE_COMMENT_APPROVE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
-                )->getRelativeUrl();
+        if (!$isPreview && $postType === self::POST_TYPE_COMMENT && ($moderatorCanManageComments || $userCanSoftDeleteComments)) {
+            if ($moderatorCanManageComments && $postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
+                $approveUrl = $this->showcaseObject->urlGetCommentApprove(
+                    $this->showcaseObject->entryData['entry_slug'],
+                    $commentSlug
+                );
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
-            } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
+            } elseif ($moderatorCanManageComments && $postStatus === COMMENT_STATUS_VISIBLE) {
                 $unapproveUrl = url(
                     URL_TYPE_COMMENT_UNAPPROVE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'comment_slug' => $commentSlug
+                    ]
                 )->getRelativeUrl();
 
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
             }
 
-            if ($postStatus === COMMENT_STATUS_SOFT_DELETED) {
+            if ($moderatorCanManageComments && $postStatus === COMMENT_STATUS_SOFT_DELETED) {
                 $restoreUrl = url(
                     URL_TYPE_COMMENT_RESTORE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'comment_slug' => $commentSlug
+                    ]
                 )->getRelativeUrl();
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === COMMENT_STATUS_VISIBLE) {
                 $softDeleteUrl = url(
                     URL_TYPE_COMMENT_SOFT_DELETE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'comment_slug' => $commentSlug
+                    ]
                 )->getRelativeUrl();
 
                 $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
             }
 
             //only mods, original author (if allowed) or owner (if allowed) can delete comments
-            if (
-                $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments] ||
-                ($userID === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteComments])/* ||
-                ((int)$this->showcaseObject->entryData['user_id'] === $currentUserID && $this->showcaseObject->userPermissions[UserPermissions::CanDeleteAuthorComments])*/
-            ) {
+            if ($moderatorCanManageComments) {
                 $deleteUrl = url(
                     URL_TYPE_COMMENT_DELETE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'comment_id' => $commentID]
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'comment_slug' => $commentSlug
+                    ]
                 )->getRelativeUrl();
 
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
@@ -669,7 +703,7 @@ class Render
             if (self::POST_TYPE_ENTRY) {
                 $deletedMessage = $lang->sprintf($lang->myShowcaseEntryDeletedMessage, $userName);
             } else {
-                $deletedMessage = $lang->sprintf($lang->myShowcaseEntryCommentDeletedMessage, $userName);
+                $deletedMessage = $lang->sprintf($lang->myShowcaseCommentDeletedMessage, $userName);
             }
 
             $deletedBit = eval($this->templateGet($templatePrefix . 'DeletedBit'));
@@ -685,8 +719,8 @@ class Render
                 ) &&
                 $userID === $currentUserID &&
                 !(
-                    $postType === self::POST_TYPE_ENTRY && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageEntries] ||
-                    $postType === self::POST_TYPE_COMMENT && $this->showcaseObject->userPermissions[ModeratorPermissions::CanManageComments]
+                    $postType === self::POST_TYPE_ENTRY && $moderatorCanManageEntries ||
+                    $postType === self::POST_TYPE_COMMENT && $moderatorCanManageComments
                 ))) {
             $ignoredMessage = $lang->sprintf($lang->postbit_post_under_moderation, $userName);
 
@@ -696,7 +730,7 @@ class Render
         }
 
         // Is this author on the ignore list of the current user? Hide this post
-        if (is_array($currentUserIgnoredUsers) &&
+        if (!$isPreview && is_array($currentUserIgnoredUsers) &&
             $userID &&
             isset($currentUserIgnoredUsers[$userID]) &&
             empty($deletedBit)) {
@@ -714,28 +748,42 @@ class Render
         return eval($this->templateGet($templatePrefix));
     }
 
-    public function buildEntry(array $entryData, bool $isPreview = false): string
+    public function buildEntry(bool $isPreview = false): string
     {
-        return $this->buildPost(0, [
-            'user_id' => $this->showcaseObject->entryUserID,
-            'dateline' => $this->showcaseObject->entryData['dateline'],
-            //'ipaddress' => $this->showcaseObject->entryData['ipaddress'],
-            'status' => $this->showcaseObject->entryData['status'],
-            'moderator_user_id' => $this->showcaseObject->entryData['approved_by'],
-        ], alt_trow(true), self::POST_TYPE_ENTRY, $isPreview);
+        return $this->buildPost(
+            alt_trow(true),
+            $isPreview,
+            self::POST_TYPE_ENTRY,
+        );
     }
 
-    public function buildComment(int $commentsCounter, array $commentData, string $alternativeBackground): string
-    {
-        return $this->buildPost($commentsCounter, [
-            'comment_id' => $commentData['comment_id'],
-            'user_id' => $commentData['user_id'],
-            'message' => $commentData['comment'],
-            'dateline' => $commentData['dateline'],
-            'ipaddress' => $commentData['ipaddress'],
-            'status' => $commentData['status'],
-            'moderator_user_id' => $commentData['moderator_user_id'],
-        ], $alternativeBackground);
+    public function buildComment(
+        array $commentData,
+        string $alternativeBackground,
+        int $commentsCounter = 0,
+        bool $isPreview = false,
+        bool $isCreatePage = false
+    ): string {
+        if ($isCreatePage) {
+            global $mybb;
+
+            $currentUserID = (int)$mybb->user['uid'];
+
+            $commentData = array_merge([
+                'user_id' => $currentUserID,
+                'comment_slug' => '',
+                'comment_id' => 0,
+                'dateline' => TIME_NOW,
+                'status' => COMMENT_STATUS_VISIBLE,
+            ], $commentData);
+        }
+
+        return $this->buildPost(
+            $alternativeBackground,
+            isPreview: $isPreview,
+            commentsCounter: $commentsCounter,
+            commentData: $commentData,
+        );
     }
 
     public function buildEntryFields(): array
@@ -903,7 +951,7 @@ class Render
     public function entryBuildAttachments(
         array &$entryFields,
         int $postType = self::POST_TYPE_ENTRY,
-        int $commentID = 0
+        string $commentSlug = ''
     ): string {
         $attachmentObjects = attachmentGet(
             ["entry_id='{$this->showcaseObject->entryID}'", "showcase_id='{$this->showcaseObject->showcase_id}'"],
@@ -973,11 +1021,14 @@ class Render
 
                 $attachmentDate = my_date('normal', $attachmentData['dateline']);
 
-                // Support for [attachment=showcase_id] code
+                // Support for [attachment=attachment_hash] code
                 $attachmentInField = false;
 
                 foreach ($entryFields as $fieldKey => &$fieldValue) {
-                    if (str_contains($fieldValue, '[attachment=' . $attachmentID . ']') !== false) {
+                    if (str_contains(
+                        $fieldValue,
+                        '[attachment=' . $attachmentData['attachment_hash'] . ']'
+                    )) {
                         $attachmentInField = true;
 
                         // Show as thumbnail IF image is big && thumbnail exists && setting=='thumb'
@@ -997,7 +1048,7 @@ class Render
                         }
 
                         $fieldValue = preg_replace(
-                            '#\[attachment=' . $attachmentID . ']#si',
+                            '#\[attachment=' . $attachmentData['attachment_hash'] . ']#si',
                             $attachmentBit,
                             $fieldValue
                         );
@@ -1239,15 +1290,18 @@ class Render
         return $entrySubject;
     }
 
-    public function buildCommentsFormEditor(string &$code_buttons, string &$smile_inserter): void
+    public function buildCommentsFormEditor(string &$editorCodeButtons, string &$editorSmilesInserter): void
     {
         if ($this->showcaseObject->config['comments_build_editor']) {
-            $this->buildEditor($code_buttons, $smile_inserter);
+            $this->buildEditor($editorCodeButtons, $editorSmilesInserter);
         }
     }
 
-    public function buildEditor(string &$code_buttons, string &$smile_inserter, string $editorID = 'comment'): void
-    {
+    public function buildEditor(
+        string &$editorCodeButtons,
+        string &$editorSmilesInserter,
+        string $editorID = 'comment'
+    ): void {
         global $mybb;
 
         $currentUserID = (int)$mybb->user['uid'];
@@ -1255,13 +1309,13 @@ class Render
         if (!empty($mybb->settings['bbcodeinserter']) &&
             $this->showcaseObject->config['parser_allow_mycode'] &&
             (!$currentUserID || !empty($mybb->user['showcodebuttons']))) {
-            $code_buttons = build_mycode_inserter(
+            $editorCodeButtons = build_mycode_inserter(
                 $editorID,
                 $this->showcaseObject->config['parser_allow_smiles']
             );
 
             if ($this->showcaseObject->config['parser_allow_smiles']) {
-                $smile_inserter = build_clickable_smilies();
+                $editorSmilesInserter = build_clickable_smilies();
             }
         }
     }

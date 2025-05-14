@@ -1,39 +1,42 @@
-<form method="post" action="{$createUpdateUrl}" name="comment">
-    <table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
-        <thead>
-        <tr>
-            <td class="thead" colspan="2">
-                <div><strong>{$lang->myShowcaseEntryCommentCreateTitle}</strong></div>
-            </td>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <td class="{$alternativeBackground}" valign="top" width="22%">
-                <strong>{$lang->myShowcaseEntryCommentCreateMessage}</strong><br/>
-                <span class="smalltext">{$lang->myShowcaseEntryCommentCreateMessageNote}</span>
-            </td>
-            <td class="{$alternativeBackground}">
-                <div style="width: 95%">
+{$commentPreview}
+<table border="0" cellspacing="{$theme['borderwidth']}" cellpadding="{$theme['tablespace']}" class="tborder">
+    <thead>
+    <tr>
+        <td class="thead" colspan="2">
+            <div><strong>{$lang->myShowcaseCommentCreateTitle}</strong></div>
+        </td>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td class="{$alternativeBackground}" valign="top" width="22%">
+            <strong>{$lang->myShowcaseCommentCreateMessage}</strong><br/>
+            <span class="smalltext">{$lang->myShowcaseCommentCreateMessageNote}</span>
+        </td>
+        <td class="{$alternativeBackground}">
+            <div style="width: 95%">
                     <textarea style="width: 100%; padding: 4px; margin: 0;" rows="8" cols="80" name="comment"
-                              id="comment" tabindex="1">{$commentMessage}</textarea>
-                    {$code_buttons}
-                </div>
-                <div class="editor_control_bar" style="width: 95%; padding: 4px; margin-top: 3px;">
+                              id="comment" tabindex="1" form="contentForm">{$commentMessage}</textarea>
+                {$editorCodeButtons}
+            </div>
+            <div class="editor_control_bar" style="width: 95%; padding: 4px; margin-top: 3px;">
 						<span class="smalltext">
                             {$commentLengthLimitNote}
 						</span>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" align="center" class="tfoot">
-                <input type="submit" class="button" value="{$lang->myShowcaseEntryCommentCreateButton}" tabindex="2"
-                       accesskey="s"/>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-    <input type="hidden" name="my_post_key" value="{$mybb->post_code}"/>
-    <input type="hidden" name="entry_hash" value="{$this->showcaseObject->entryData['entry_hash']}"/>
-</form>
+            </div>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<br/>
+<div align="center">
+    <input type="submit" class="button" name="submit" value="{$buttonText}" tabindex="3" accesskey="s"
+           form="contentForm"/>
+    <input type="submit" class="button" name="preview" value="{$lang->myShowcaseCommentCreateUpdateFormButtonPreview}"
+           tabindex="3" accesskey="s" form="contentForm"/>
+</div>
+<input type="hidden" name="my_post_key" value="{$mybb->post_code}" form="contentForm"/>
+<input type="hidden" name="post_hash" value="{$postHash}" form="contentForm"/>
+<form action="{$this->showcaseObject->urlBase}{$createUpdateUrl}" method="post"
+      enctype="multipart/form-data" name="input" id="contentForm"></form>
+{$attachmentsUpload}
