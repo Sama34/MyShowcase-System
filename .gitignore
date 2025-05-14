@@ -10,6 +10,9 @@
 .obsidian/**
 Upload/inc/plugins/MyShowcase/vendor/**
 Upload/vendor/**
+package.xml
+Upload/composer.json
+Upload/composer.lock
 
 # AWS User-specific
 .idea/**/aws.xml
