@@ -64,6 +64,7 @@ function global_start(): bool
                     'pageEntryCommentCreateUpdateAttachmentsBox',
                     'pageEntryCommentCreateUpdateAttachmentsBoxViewLink',
                     'pageEntryCommentCreateUpdateContents',
+                    'pageEntryCommentCreateUpdateContentsPreview',
                     'pageEntryCreateUpdateContents',
                     'pageEntryCreateUpdateContentsPreview',
                     'pageEntryCreateUpdateDataFieldCheckBox',
