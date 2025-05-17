@@ -116,7 +116,10 @@ abstract class Base
         if ($this->showcaseObject->entryID) {
             $entryUrl = url(
                 URL_TYPE_ENTRY_VIEW,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                [
+                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom']
+                ]
             )->getRelativeUrl();
 
             $metaData .= eval($this->renderObject->templateGet('pageMetaCanonical'));

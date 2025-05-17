@@ -23,8 +23,10 @@ use MyShowcase\System\UserPermissions;
 
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\attachmentUpload;
+use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\cleanSlug;
 use function MyShowcase\Core\commentsGet;
+use function MyShowcase\Core\fieldGetObject;
 use function MyShowcase\Core\generateUUIDv4;
 use function MyShowcase\Core\dataHandlerGetObject;
 use function MyShowcase\Core\dataTableStructureGet;
@@ -35,7 +37,9 @@ use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\CACHE_TYPE_ATTACHMENT_TYPES;
 use const MyShowcase\Core\HTTP_CODE_PERMANENT_REDIRECT;
+use const MyShowcase\Core\URL_TYPE_ATTACHMENT_VIEW;
 use const MyShowcase\Core\URL_TYPE_ENTRY_VIEW_PAGE;
 use const MyShowcase\Core\URL_TYPE_MAIN_PAGE;
 use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
@@ -56,6 +60,7 @@ use const MyShowcase\Core\ENTRY_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
+use const MyShowcase\Core\URL_TYPE_THUMBNAIL_VIEW;
 
 class Entries extends Base
 {
@@ -141,7 +146,7 @@ class Entries extends Base
                 error($lang->myShowcaseReportErrorInvalidEntry);
         }
 
-        $entryUrl = $this->showcaseObject->urlGetEntry($entrySlug);
+        $entryUrl = $this->showcaseObject->urlGetEntry($entrySlug, $entrySlugCustom);
 
         \MyShowcase\SimpleRouter\redirect($entryUrl, HTTP_CODE_PERMANENT_REDIRECT);
 
@@ -191,33 +196,33 @@ class Entries extends Base
         $entryCreateButton = '';
 
         $displayCreateButton = $this->showcaseObject->userPermissions[UserPermissions::CanCreateEntries];
+        /*
+                switch ($this->showcaseObject->config['filter_force_field']) {
+                    case FILTER_TYPE_USER_ID:
+                        $displayCreateButton = $displayCreateButton && $userID === $currentUserID;
 
-        switch ($this->showcaseObject->config['filter_force_field']) {
-            case FILTER_TYPE_USER_ID:
-                $displayCreateButton = $displayCreateButton && $userID === $currentUserID;
+                        $whereClauses[] = "user_id='{$userID}'";
 
-                $whereClauses[] = "user_id='{$userID}'";
+                        //$this->showcaseObject->urlParams['user_id'] = $userID;
 
-                //$this->showcaseObject->urlParams['user_id'] = $userID;
+                        $userData = get_user($userID);
 
-                $userData = get_user($userID);
+                        if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                            error_no_permission();
+                        }
 
-                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
-                    error_no_permission();
+                        $lang->load('member');
+
+                        $userName = htmlspecialchars_uni($userData['username']);
+
+                        add_breadcrumb(
+                            $lang->sprintf($lang->nav_profile, $userName),
+                            $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                        );
+
+                        break;
                 }
-
-                $lang->load('member');
-
-                $userName = htmlspecialchars_uni($userData['username']);
-
-                add_breadcrumb(
-                    $lang->sprintf($lang->nav_profile, $userName),
-                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
-                );
-
-                break;
-        }
-
+        */
         $mainUrl = url(
             URL_TYPE_MAIN,
             getParams: $this->showcaseObject->urlParams
@@ -362,7 +367,7 @@ class Entries extends Base
 
             $htmlType = $fieldData['html_type'];
 
-            if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
+            if ($htmlType === FieldHtmlTypes::Select || $htmlType === FieldHtmlTypes::Radio) {
                 $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id = entryData.{$fieldKey} AND table_{$fieldKey}.field_id = '{$fieldData['field_id']}')";
 
                 $queryFields[] = "table_{$fieldKey}.display_style AS {$fieldKey}";
@@ -499,7 +504,9 @@ class Entries extends Base
                         'mime_type',
                         'file_name',
                         'attachment_name',
-                        'thumbnail_name'
+                        'thumbnail_name',
+                        'attachment_hash',
+                        'thumbnail_dimensions',
                     ],
                     // todo, seems like MIN(attachment_id) as attachment_id is unnecessary
                     ['group_by' => 'entry_id']
@@ -508,10 +515,12 @@ class Entries extends Base
                 foreach ($attachmentObjects as $attachmentID => $attachmentData) {
                     $entryAttachmentsCache[$attachmentData['entry_id']] = [
                         'attachment_id' => $attachmentID,
-                        'attachment_name' => $attachmentData['attachment_name'],
-                        'thumbnail_name' => $attachmentData['thumbnail_name'],
                         'mime_type' => $attachmentData['mime_type'],
                         'file_name' => $attachmentData['file_name'],
+                        'attachment_name' => $attachmentData['attachment_name'],
+                        'thumbnail_name' => $attachmentData['thumbnail_name'],
+                        'attachment_hash' => $attachmentData['attachment_hash'],
+                        'thumbnail_dimensions' => $attachmentData['thumbnail_dimensions'],
                     ];
                 }
             }
@@ -523,6 +532,8 @@ class Entries extends Base
             }
 
             foreach ($entriesObjects as $entryFieldData) {
+                $entrySlug = $entryFieldData['entry_slug'];
+
                 $this->showcaseObject->entryDataSet($entryFieldData);
 
                 $entryStatus = (int)$entryFieldData['status'];
@@ -576,7 +587,10 @@ class Entries extends Base
 
                 $entryUrl = url(
                     URL_TYPE_ENTRY_VIEW,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom']
+                    ],
                     $this->showcaseObject->urlParams
                 )->getRelativeUrl();
 
@@ -608,52 +622,38 @@ class Entries extends Base
 
                 $entryImage = '';
 
-                //use default image is specified
-                if ($this->showcaseObject->config['attachments_uploads_path'] !== '' && (file_exists(
-                            $theme['imgdir'] . '/' . $this->showcaseObject->config['attachments_uploads_path']
-                        ) || stristr(
-                            $theme['imgdir'],
-                            'http://'
-                        ))) {
-                    $urlImage = $mybb->get_asset_url(
-                        $theme['imgdir'] . '/' . $this->showcaseObject->config['attachments_uploads_path']
-                    );
-
-                    $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
-                }
-
                 //use showcase attachment if one exists, scaled of course
-                if ($this->showcaseObject->config['attachments_main_render_first']) {
-                    if (stristr($entryAttachmentsCache[$entryFieldData['entry_id']]['mime_type'], 'image/')) {
-                        $imagePath = $this->showcaseObject->config['attachments_uploads_path'] . '/' . $entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_name'];
+                if ($this->showcaseObject->config['attachments_main_render_first'] &&
+                    !empty($entryAttachmentsCache[$entryFieldData['entry_id']])) {
+                    $attachmentUrl = url(
+                        URL_TYPE_ATTACHMENT_VIEW,
+                        [
+                            'entry_slug' => $entrySlug,
+                            'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                            'attachment_hash' => $entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_hash']
+                        ]
+                    )->getRelativeUrl();
 
-                        if ($entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_id'] && file_exists(
-                                $imagePath
-                            )) {
-                            if ((int)$entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_dimensions'] === ATTACHMENT_THUMBNAIL_SMALL) {
-                                $urlImage = $mybb->get_asset_url($imagePath);
+                    $thumbnailUrl = url(
+                        URL_TYPE_THUMBNAIL_VIEW,
+                        [
+                            'entry_slug' => $entrySlug,
+                            'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                            'attachment_hash' => $entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_hash']
+                        ]
+                    )->getRelativeUrl();
 
-                                $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
-                            } else {
-                                $urlImage = $mybb->get_asset_url(
-                                    $this->showcaseObject->config['attachments_uploads_path'] . '/' . $entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_name']
-                                );
-
-                                $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
-                            }
+                    if (stristr(
+                            $entryAttachmentsCache[$entryFieldData['entry_id']]['mime_type'] ?? '',
+                            'image/'
+                        ) && $entryAttachmentsCache[$entryFieldData['entry_id']]['attachment_id']) {
+                        if ((int)$entryAttachmentsCache[$entryFieldData['entry_id']]['thumbnail_dimensions'] === ATTACHMENT_THUMBNAIL_SMALL) {
+                            $urlImage = $attachmentUrl;
+                        } else {
+                            $urlImage = $thumbnailUrl;
                         }
-                    } else {
-                        $attachmentTypes = (array)$mybb->cache->read('attachtypes');
 
-                        $attachmentExtension = get_extension(
-                            $entryAttachmentsCache[$entryFieldData['entry_id']]['file_name']
-                        );
-
-                        if (array_key_exists($attachmentExtension, $attachmentTypes)) {
-                            $urlImage = $mybb->get_asset_url($attachmentTypes[$attachmentExtension]['icon']);
-
-                            $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
-                        }
+                        $entryImage = eval($this->renderObject->templateGet('pageMainTableRowsImage'));
                     }
                 }
 
@@ -727,7 +727,7 @@ class Entries extends Base
                     }
                 }
 
-                $entrySubject = implode(' ', $entrySubject) ?? $lang->myShowcaseMainTableTheadView;
+                $entrySubject = trim(implode(' ', $entrySubject)) ?? $lang->myShowcaseMainTableTheadView;
 
                 if ($this->showcaseObject->config['attachments_allow_entries'] &&
                     $this->showcaseObject->userPermissions[UserPermissions::CanViewAttachments]) {
@@ -884,8 +884,8 @@ class Entries extends Base
             $this->showcaseObject->setEntry($entrySlug, true);
         }
 
-        switch ($this->showcaseObject->config['filter_force_field']) {
-            case FILTER_TYPE_USER_ID:
+        switch (1 || $this->showcaseObject->config['filter_force_field']) {
+            /*case FILTER_TYPE_USER_ID:
                 $userData = get_user($this->showcaseObject->entryUserID);
 
                 if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
@@ -907,7 +907,7 @@ class Entries extends Base
                     url(URL_TYPE_MAIN_USER)->getRelativeUrl()
                 );
 
-                break;
+                break;*/
             default:
                 $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
@@ -936,7 +936,7 @@ class Entries extends Base
         if ($mybb->request_method === 'post') {
             verify_post_check($mybb->get_input('my_post_key'));
 
-            $this->showcaseObject->entryHash = $mybb->get_input('entry_hash');
+            //$this->showcaseObject->entryHash = $mybb->get_input('entry_hash');
 
             if ($this->showcaseObject->config['attachments_allow_entries']) {
                 $this->uploadAttachment();
@@ -988,21 +988,13 @@ class Entries extends Base
             foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
                 $fieldKey = $fieldData['field_key'];
 
-                switch ($fieldData['html_type']) {
-                    case FieldHtmlTypes::SelectSingle;
-                    case FieldHtmlTypes::Radio;
-                    case FieldHtmlTypes::CheckBox;
-                        $insertData[$fieldKey] = $mybb->get_input($fieldKey, MyBB::INPUT_INT);
-                        break;
-                    case FieldHtmlTypes::Date;
-                        $insertData[$fieldKey] = $mybb->get_input($fieldKey . '_month', MyBB::INPUT_INT) . '|' .
-                            $mybb->get_input($fieldKey . '_day', MyBB::INPUT_INT) . '|' .
-                            $mybb->get_input($fieldKey . '_year', MyBB::INPUT_INT);
-                        break;
-                    default:
-                        $insertData[$fieldKey] = $mybb->get_input($fieldKey);
-                        break;
-                }
+                $insertData[$fieldKey] = match ($fieldData['html_type']) {
+                    FieldHtmlTypes::CheckBox, FieldHtmlTypes::Select => $mybb->get_input(
+                        $fieldKey,
+                        MyBB::INPUT_ARRAY
+                    ),
+                    default => $mybb->get_input($fieldKey),
+                };
 
                 if ($fieldData['enable_slug']) {
                     $entrySlug[] = $insertData[$fieldKey];
@@ -1025,6 +1017,7 @@ class Entries extends Base
             if (!$isEditPage) {
                 $insertData['entry_slug'] = $entrySlug;
             }
+            // todo, slug should load all field data after update/insert to build
 
             $dataHandler->dataSet($insertData);
 
@@ -1045,15 +1038,15 @@ class Entries extends Base
                 if (isset($dataHandler->returnData['status']) && $dataHandler->returnData['status'] === ENTRY_STATUS_SOFT_DELETED) {
                     $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
 
-                    switch ($this->showcaseObject->config['filter_force_field']) {
-                        case FILTER_TYPE_USER_ID:
+                    switch (1 || $this->showcaseObject->config['filter_force_field']) {
+                        /*case FILTER_TYPE_USER_ID:
                             $mainUrl = str_replace(
                                 '/user/',
                                 '/user/' . $this->showcaseObject->entryUserID,
                                 url(URL_TYPE_MAIN_USER)->getRelativeUrl()
                             );
 
-                            break;
+                            break;*/
                         default:
                             $mainUrl = url(
                                 URL_TYPE_MAIN,
@@ -1090,10 +1083,6 @@ class Entries extends Base
             $mybb->input = array_merge($this->showcaseObject->entryData, $mybb->input);
         }
 
-        if (!$this->showcaseObject->entryHash) {
-            $this->showcaseObject->entryHash = generateUUIDv4();
-        }
-
         if ($isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanUpdateEntries]) {
             error_no_permission();
         } elseif (!$isEditPage && !$this->showcaseObject->userPermissions[UserPermissions::CanCreateEntries]) {
@@ -1109,6 +1098,17 @@ class Entries extends Base
         $fieldTabIndex = 1;
 
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
+            $fieldObject = fieldGetObject($this->showcaseObject, $fieldData);
+
+            // todo, field data values shouldn't be NULL ?
+            if ($fieldData['html_type'] === FieldHtmlTypes::Radio) {
+                //$this->showcaseObject->entryData[$fieldData['field_key']] ??= '';
+            }
+
+            $showcaseFields .= $fieldObject->setUserValue(
+                $this->showcaseObject->entryData[$fieldData['field_key']] ?? ''
+            )->renderCreateUpdate($alternativeBackground, $fieldTabIndex);
+            /*
             $fieldKey = $fieldData['field_key'];
 
             $htmlType = $fieldData['html_type'];
@@ -1192,7 +1192,7 @@ class Entries extends Base
 
                     $fieldInput = eval($this->renderObject->templateGet('pageEntryCreateUpdateDataFieldCheckBox'));
                     break;
-                case FieldHtmlTypes::SelectSingle:
+                case FieldHtmlTypes::Select:
                     $fieldDataObjects = fieldDataGet(
                         [
                             "set_id='{$this->showcaseObject->config['field_set_id']}'",
@@ -1376,7 +1376,7 @@ class Entries extends Base
                     break;
             }
 
-            $showcaseFields .= eval($this->renderObject->templateGet('pageEntryCreateUpdateRow'));
+            $showcaseFields .= eval($this->renderObject->templateGet('pageEntryCreateUpdateDataField'));*/
 
             ++$fieldTabIndex;
 
@@ -1427,6 +1427,7 @@ class Entries extends Base
 
     #[NoReturn] public function viewEntry(
         string $entrySlug,
+        string $entrySlugCustom,
         int $currentPage = 1,
     ): void {
         $this->showcaseObject->setEntry($entrySlug, true);
@@ -1457,36 +1458,36 @@ class Entries extends Base
         ) {
             error($lang->myshowcase_invalid_id);
         }
+        switch (1 || $this->showcaseObject->config['filter_force_field']) {
+            /*
+                        case FILTER_TYPE_USER_ID:
+                            $userData = get_user($this->showcaseObject->entryUserID);
 
-        switch ($this->showcaseObject->config['filter_force_field']) {
-            case FILTER_TYPE_USER_ID:
-                $userData = get_user($this->showcaseObject->entryUserID);
+                            if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
+                                error_no_permission();
+                            }
 
-                if (empty($userData['uid']) || empty($mybb->usergroup['canviewprofiles'])) {
-                    error_no_permission();
-                }
+                            $lang->load('member');
 
-                $lang->load('member');
+                            $userName = htmlspecialchars_uni($userData['username']);
 
-                $userName = htmlspecialchars_uni($userData['username']);
+                            add_breadcrumb(
+                                $lang->sprintf($lang->nav_profile, $userName),
+                                $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
+                            );
 
-                add_breadcrumb(
-                    $lang->sprintf($lang->nav_profile, $userName),
-                    $mybb->settings['bburl'] . '/' . get_profile_link($userData['uid'])
-                );
+                            $mainUrl = str_replace(
+                                '/user/',
+                                '/user/' . $this->showcaseObject->entryUserID,
+                                url(URL_TYPE_MAIN_USER)->getRelativeUrl()
+                            );
 
-                $mainUrl = str_replace(
-                    '/user/',
-                    '/user/' . $this->showcaseObject->entryUserID,
-                    url(URL_TYPE_MAIN_USER)->getRelativeUrl()
-                );
-
-                break;
+                            break;
+            */
             default:
                 $mainUrl = url(URL_TYPE_MAIN, getParams: $this->showcaseObject->urlParams)->getRelativeUrl();
                 break;
         }
-
         add_breadcrumb(
             $this->showcaseObject->config['name_friendly'],
             $mainUrl
@@ -1613,10 +1614,14 @@ class Entries extends Base
                 $currentPage,
                 url(
                     URL_TYPE_ENTRY_VIEW_PAGE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug'], 'page_id' => '{page}'],
+                    [
+                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                        'page_id' => '{page}'
+                    ],
                     $urlParams
                 )->getRelativeUrl()
-            ) ?? '';
+            );
 
             extract($hookArguments['extractVariables']);
 

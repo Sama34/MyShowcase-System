@@ -21,7 +21,8 @@ use MyBB;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\commentUpdate;
-use function MyShowcase\Core\generateUUIDv4;
+use function MyShowcase\Core\entryGet;
+use function MyShowcase\Core\entryUpdate;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldTypeMatchBinary;
 use function MyShowcase\Core\fieldTypeMatchChar;
@@ -32,8 +33,8 @@ use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableDrop;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\showcaseGet;
-
 use function MyShowcase\Core\slugGenerateComment;
+use function MyShowcase\Core\slugGenerateEntry;
 
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
@@ -48,9 +49,6 @@ use const MyShowcase\Core\FORM_TYPE_NUMERIC_FIELD;
 use const MyShowcase\Core\FORM_TYPE_SELECT_FIELD;
 use const MyShowcase\Core\FORM_TYPE_TEXT_FIELD;
 use const MyShowcase\Core\FORM_TYPE_YES_NO_FIELD;
-use const MyShowcase\Core\TABLES_DATA;
-use const MyShowcase\Core\VERSION;
-use const MyShowcase\Core\VERSION_CODE;
 
 function pluginInformation(): array
 {
@@ -64,9 +62,9 @@ function pluginInformation(): array
     return [
         'name' => 'MyShowcase System',
         'description' => $donate_button . $lang->myShowcaseSystemDescription,
-        'website' => '',
-        'author' => 'CommunityPlugins.com',
-        'authorsite' => '',
+        'website' => 'https://ougc.network',
+        'author' => 'CommunityPlugins & Omar G.',
+        'authorsite' => 'https://ougc.network',
         'version' => VERSION,
         'versioncode' => VERSION_CODE,
         'compatibility' => '18*',
@@ -241,6 +239,7 @@ function pluginActivation(): bool
                 'gid' => 'entry_id',
                 'uid' => 'user_id',
                 'posthash' => 'entry_hash',
+                'entry_slug' => 'entry_slug_custom',
             ],
         ] as $tableName => $tableColumns
     ) {
@@ -279,7 +278,7 @@ function pluginActivation(): bool
     }
 
     if ($db->table_exists('myshowcase_reports')) {
-        $db->drop_table('myshowcase_reports');
+        //$db->drop_table('myshowcase_reports');
     }
 
     /*~*~* RUN UPDATES END *~*~*/
@@ -300,6 +299,10 @@ function pluginActivation(): bool
         $dataTableStructure = dataTableStructureGet($showcaseID);
 
         dbVerifyTables(["myshowcase_data{$showcaseID}" => $dataTableStructure]);
+
+        foreach (entryGet($showcaseID, ["entry_slug=''"]) as $entryID => $entryData) {
+            entryUpdate($showcaseID, ['entry_slug' => slugGenerateEntry($showcaseID)], $entryID);
+        }
     }
 
     $mybb->cache->update_usergroups();
@@ -881,7 +884,7 @@ function buildPermissionsRow(
             $formInput .= $form->generate_numeric_field(
                 $fieldName,
                 $mybb->get_input($fieldName, MyBB::INPUT_INT),
-                ['id' => $fieldName, 'class' => $fieldData['form_class'] ?? '']
+                ['id' => $fieldName, 'class' => $fieldData['formClass'] ?? '']
             );
 
             if ($extraText) {

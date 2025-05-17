@@ -17,6 +17,8 @@ namespace MyShowcase\Core;
 
 use Postparser;
 use DirectoryIterator;
+use ReflectionClass;
+use MyShowcase\System\FilterTypes;
 use MyShowcase\System\FieldDefaultTypes;
 use MyShowcase\System\FieldHtmlTypes;
 use MyShowcase\System\FieldTypes;
@@ -26,6 +28,29 @@ use MyShowcase\System\Render;
 use MyShowcase\System\ModeratorPermissions;
 use MyShowcase\System\UserPermissions;
 use MyShowcase\System\Showcase;
+use MyShowcase\Fields\CheckBoxField;
+use MyShowcase\Fields\ColorField;
+use MyShowcase\Fields\DateField;
+use MyShowcase\Fields\DateTimeLocalField;
+use MyShowcase\Fields\EmailField;
+use MyShowcase\Fields\FieldsInterface;
+use MyShowcase\Fields\FileField;
+use MyShowcase\Fields\MonthField;
+use MyShowcase\Fields\NumberField;
+use MyShowcase\Fields\PasswordField;
+use MyShowcase\Fields\RadioField;
+use MyShowcase\Fields\RangeField;
+use MyShowcase\Fields\SearchField;
+use MyShowcase\Fields\SelectEntriesField;
+use MyShowcase\Fields\SelectField;
+use MyShowcase\Fields\SelectThreadsField;
+use MyShowcase\Fields\SelectUsersField;
+use MyShowcase\Fields\TelephoneField;
+use MyShowcase\Fields\TextAreaField;
+use MyShowcase\Fields\TextField;
+use MyShowcase\Fields\TimeField;
+use MyShowcase\Fields\UrlField;
+use MyShowcase\Fields\WeekField;
 
 use const MyShowcase\ROOT;
 
@@ -110,6 +135,8 @@ const FORM_TYPE_CHECK_BOX = 'checkBox';
 const FORM_TYPE_NUMERIC_FIELD = 'numericField';
 
 const FORM_TYPE_SELECT_FIELD = 'selectField';
+
+const FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD = 'selectMultipleGroupField';
 
 const FORM_TYPE_TEXT_FIELD = 'textField';
 
@@ -217,6 +244,7 @@ const TABLES_DATA = [
             'type' => 'VARCHAR',
             'size' => 36,
             'default' => '',
+            'unique_key' => true
         ],
         'post_hash' => [
             'type' => 'VARCHAR',
@@ -227,6 +255,11 @@ const TABLES_DATA = [
             'type' => 'INT',
             'unsigned' => true,
             'default' => 0,
+        ],
+        'description' => [
+            'type' => 'VARCHAR',
+            'size' => 250,
+            'default' => ''
         ],
         'file_name' => [
             'type' => 'VARCHAR',
@@ -284,6 +317,52 @@ const TABLES_DATA = [
             'default' => 0
         ],
     ],
+    'myshowcase_attachments_cdn' => [
+        'log_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'session_id' => [
+            'type' => 'VARCHAR',
+            'size' => 32,
+            'default' => ''
+        ],
+        'attachment_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'cdn_url' => [
+            'type' => 'TEXT',
+            'null' => true
+        ],
+        'dateline' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_keys' => ['session_attachment_id' => ['session_id', 'attachment_id']],
+    ],
+    'myshowcase_attachments_shared' => [
+        'attachment_share_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'attachment_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 1
+        ],
+        'entry_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+        ]
+    ],
     'myshowcase_attachments_download_logs' => [
         'log_id' => [
             'type' => 'INT',
@@ -320,6 +399,7 @@ const TABLES_DATA = [
         'comment_slug' => [
             'type' => 'VARCHAR',
             'size' => SETTINGS['slugLength'] * 2,
+            'unique_key' => true
         ],
         'showcase_id' => [
             'type' => 'INT',
@@ -504,7 +584,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'entries',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'parser_allow_html' => [
             'type' => 'TINYINT',
@@ -778,7 +858,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'comments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'comments_maximum_length' => [
             'type' => 'INT',
@@ -787,7 +867,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'comments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'comments_per_page' => [
             'type' => 'TINYINT',
@@ -796,7 +876,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'comments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         /*'comments_direction' => [ // reverse order
             'type' => 'TINYINT',
@@ -829,7 +909,16 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_TEXT_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
+        ],
+        'attachments_limit_entries' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0,
+            'formCategory' => 'other',
+            'formSection' => 'attachments',
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
+            'formClass' => 'field150',
         ],
         /*'attachments_limit_comments' => [
             'type' => 'INT',
@@ -838,7 +927,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],*/
         /*'attachments_enable_sharing' => [ // allow using attachments from other entries
             'type' => 'TINYINT',
@@ -847,7 +936,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],*/
         'attachments_grouping' => [
             'type' => 'TINYINT',
@@ -856,7 +945,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'attachments_main_render_first' => [
             'type' => 'TINYINT',
@@ -874,7 +963,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_TEXT_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],*/
         'attachments_watermark_file' => [
             'type' => 'VARCHAR',
@@ -884,7 +973,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_TEXT_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'attachments_watermark_location' => [
             'type' => 'TINYINT',
@@ -902,7 +991,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'attachments_parse_in_content' => [
             'type' => 'TINYINT',
@@ -919,7 +1008,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
         'attachments_thumbnails_height' => [
             'type' => 'TINYINT',
@@ -928,7 +1017,7 @@ const TABLES_DATA = [
             'formCategory' => 'other',
             'formSection' => 'attachments',
             'formType' => FORM_TYPE_NUMERIC_FIELD,
-            'form_class' => 'field150',
+            'formClass' => 'field150',
         ],
     ],
     'myshowcase_fieldsets' => [
@@ -1205,17 +1294,12 @@ const TABLES_DATA = [
             'unsigned' => true,
             'default' => 0
         ],
-        ModeratorPermissions::CanManageEntries => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        ModeratorPermissions::CanManageEntries => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
         ModeratorPermissions::CanManageComments => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        ModeratorPermissions::CanManageAttachments => [
             'type' => 'TINYINT',
             'unsigned' => true,
             'default' => 0
@@ -1237,97 +1321,190 @@ const TABLES_DATA = [
         'field_key' => [
             'type' => 'VARCHAR',
             'size' => 30,
-            'default' => ''
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+            'formRequired' => true,
+        ],
+        'field_label' => [
+            'type' => 'VARCHAR',
+            'size' => 30,
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+        ],
+        'placeholder' => [
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+        ],
+        'description' => [
+            'type' => 'VARCHAR',
+            'size' => 250,
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
         ],
         'html_type' => [
             'type' => 'VARCHAR',
-            'size' => 10,
-            'default' => ''
-        ],
-        'enabled' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
+            'size' => 15,
+            'default' => '',
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\fieldHtmlTypes',
         ],
         'field_type' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => FieldTypes::VarChar
+            'default' => '',
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\fieldTypesGet',
+        ],
+        'file_capture' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\fileCaptureTypes',
+        ],
+        'allow_multiple_values' => [//checkbox, select, text area new line, text box comma
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formType' => FORM_TYPE_YES_NO_FIELD,
+        ],
+        'regular_expression' => [
+            'type' => 'VARCHAR',
+            'size' => 500,
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
+        ],
+        'display_in_create_update_page' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 1,
+            'formType' => FORM_TYPE_YES_NO_FIELD,
         ],
         'display_in_view_page' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 1
+            'default' => 1,
+            'formType' => FORM_TYPE_YES_NO_FIELD,
         ],
         'display_in_main_page' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 1
+            'default' => 1,
+            'formType' => FORM_TYPE_YES_NO_FIELD,
         ],
         'minimum_length' => [
             'type' => 'MEDIUMINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
         ],
         'maximum_length' => [
             'type' => 'MEDIUMINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
         ],
-        'is_required' => [
+        'step_size' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
+        ],
+        'allowed_groups_fill' => [
+            'type' => 'TEXT',
+            'null' => true,
+            'formType' => FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD,
+            'formMultiple' => true,
+        ],
+        'allowed_groups_view' => [
+            'type' => 'TEXT',
+            'null' => true,
+            'formType' => FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD,
+            'formMultiple' => true,
         ],
         'default_value' => [
             'type' => 'VARCHAR',
-            'size' => 10,
-            'default' => ''
+            'size' => 250,
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
         ],
         'default_type' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
-        ],
-        'parse' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\fieldDefaultTypes',
         ],
         'display_order' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
         ],
         'render_order' => [
-            'type' => 'SMALLINT',
-            'default' => ALL_UNLIMITED_VALUE
-        ],
-        'enable_search' => [
-            'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
-        ],
-        'enable_slug' => [
             'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
-        ],
-        'enable_subject' => [
-            'type' => 'TINYINT',
-            'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD,
         ],
         // todo, remove this legacy updating the database and updating the format field to TINYINT
         'format' => [
             'type' => 'VARCHAR',
             'size' => 10,
-            'default' => 0
+            'default' => 0,
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\formatTypes',
+        ],
+        'filter_on_save' => [ //uuid, etc
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'formType' => FORM_TYPE_SELECT_FIELD,
+            'formFunction' => '\MyShowcase\Core\filterTypes',
+        ],
+        'enabled' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
+        ],
+        'is_required' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
+        ],
+        'parse' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
+        ],
+        'enable_search' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
+        ],
+        'enable_slug' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
+        ],
+        'enable_subject' => [
+            'type' => 'TINYINT',
+            'unsigned' => true,
+            'default' => 0,
+            'quickSetting' => true,
         ],
         'enable_editor' => [
             'type' => 'TINYINT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
+            'quickSetting' => true,
         ],
         'unique_keys' => ['set_field_name' => ['set_id', 'field_key']]
         //'unique_keys' => ['setid_fid' => ['set_id', 'field_id']]
@@ -1349,35 +1526,75 @@ const TABLES_DATA = [
         'field_id' => [
             'type' => 'INT',
             'unsigned' => true,
-            'default' => 0
+            'default' => 0,
         ],
-        'name' => [
+        'field_key' => [
             'type' => 'VARCHAR',
-            'size' => 15,
+            'size' => 30,
             'default' => '',
-            //'unique_keys' => true
+            //'unique_keys' => true,
         ],
         'value_id' => [
-            'type' => 'SMALLINT',
-            'unsigned' => true,
-            'default' => 0
+            'type' => 'VARCHAR',
+            'size' => 120,
+            'default' => 0,
+            'formType' => FORM_TYPE_TEXT_FIELD,
         ],
         'value' => [
             'type' => 'VARCHAR',
             'size' => 120,
-            'default' => ''
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
         ],
         'display_style' => [
             'type' => 'VARCHAR',
             'size' => 200,
-            'default' => ''
+            'default' => '',
+            'formType' => FORM_TYPE_TEXT_FIELD,
         ],
         'display_order' => [
             'type' => 'SMALLINT',
             'unsigned' => true,
+            'default' => 0,
+            'formType' => FORM_TYPE_NUMERIC_FIELD
+        ],
+        'allowed_groups_fill' => [
+            'type' => 'TEXT',
+            'null' => true,
+            'formType' => FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD,
+            'formMultiple' => true,
+        ],
+        'allowed_groups_view' => [
+            'type' => 'TEXT',
+            'null' => true,
+            'formType' => FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD,
+            'formMultiple' => true,
+        ],
+        'unique_keys' => ['set_field_value_id' => ['set_id', 'field_id', 'value_id']]
+    ],
+    'myshowcase_logs' => [
+        'log_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
+            'auto_increment' => true,
+            'primary_key' => true
+        ],
+        'showcase_id' => [
+            'type' => 'INT',
+            'unsigned' => true,
             'default' => 0
         ],
-        'unique_key' => ['setid_fid_valueid' => 'set_id,field_id,value_id']
+        'type_id' => [ // entry, comment, attachment
+            'type' => 'INT',
+            'unsigned' => true,
+            'default' => 0
+        ],
+        'unique_id' => [
+            'type' => 'INT',
+            'unsigned' => true
+        ],
+        'user_id' => [
+            'type' => 'INT',
             'unsigned' => true
         ],
         'log_time' => [
@@ -1566,6 +1783,9 @@ const FIELDS_DATA = [
 // todo, Integrate to Rates, Feedback,
 // todo, build Pages menu as if inside a showcase (add_breadcrum, force theme, etc)
 // ougc Private Threads integration
+// todo, implement showcase subscription
+// todo, implement entry subscription
+// todo, implement
 const DATA_TABLE_STRUCTURE = [
     'myshowcase_data' => [
         'entry_id' => [
@@ -1576,9 +1796,13 @@ const DATA_TABLE_STRUCTURE = [
         ],
         'entry_slug' => [
             'type' => 'VARCHAR',
+            'size' => SETTINGS['slugLength'] * 2,
+            'unique_key' => true
+        ],
+        'entry_slug_custom' => [
+            'type' => 'VARCHAR',
             'size' => 250,
             'default' => '',
-            'unique_key' => true
         ],
         'user_id' => [
             'type' => 'INT',
@@ -1635,7 +1859,7 @@ const DATA_TABLE_STRUCTURE = [
             'size' => 16,
             'default' => ''
         ],
-        //'unique_keys' => ['entry_slug' => 'entry_slug']
+        //'unique_keys' => ['entry_slug_custom' => 'entry_slug_custom']
     ],
 ];
 
@@ -1952,32 +2176,14 @@ function cacheUpdate(string $cacheKey): array
             );
 
             foreach ($fieldObjects as $fieldID => $fieldData) {
-                $cacheData[(int)$fieldData['set_id']][$fieldID] = [
-                    'field_id' => (int)$fieldData['field_id'],
-                    'set_id' => (int)$fieldData['set_id'],
-                    'field_key' => (string)$fieldData['field_key'],
-                    'html_type' => (string)$fieldData['html_type'],
-                    'enabled' => (bool)$fieldData['enabled'],
-                    'field_type' => (string)$fieldData['field_type'],
-                    'display_in_create_update_page' => (bool)$fieldData['display_in_create_update_page'],
-                    'display_in_view_page' => (bool)$fieldData['display_in_view_page'],
-                    'display_in_main_page' => (bool)$fieldData['display_in_main_page'],
-                    'minimum_length' => (int)$fieldData['minimum_length'],
-                    'maximum_length' => (int)$fieldData['maximum_length'],
-                    'is_required' => (bool)$fieldData['is_required'],
-                    'allowed_groups_fill' => (string)$fieldData['allowed_groups_fill'],
-                    'allowed_groups_view' => (string)$fieldData['allowed_groups_view'],
-                    'default_value' => (string)$fieldData['default_value'],
-                    'default_type' => (int)$fieldData['default_type'],
-                    'parse' => (bool)$fieldData['parse'],
-                    'display_order' => (int)$fieldData['display_order'],
-                    'render_order' => (int)$fieldData['render_order'],
-                    'enable_search' => (bool)$fieldData['enable_search'],
-                    'enable_slug' => (bool)$fieldData['enable_slug'],
-                    'enable_subject' => (bool)$fieldData['enable_subject'],
-                    'format' => (string)$fieldData['format'],
-                    'enable_editor' => (bool)$fieldData['enable_editor'],
-                ];
+                foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldDefinition) {
+                    if (isset($fieldData[$fieldName])) {
+                        $cacheData[(int)$fieldData['set_id']][$fieldID][$fieldName] = castTableFieldValue(
+                            $fieldData[$fieldName],
+                            $fieldDefinition['type']
+                        );
+                    }
+                }
             }
 
             break;
@@ -2322,7 +2528,7 @@ function entryInsert(int $showcaseID, array $entryData, bool $isUpdate = false, 
     return $entryID;
 }
 
-function entryUpdate(int $showcaseID, int $entryID, array $entryData): int
+function entryUpdate(int $showcaseID, array $entryData, int $entryID): int
 {
     return entryInsert($showcaseID, $entryData, true, $entryID);
 }
@@ -2549,7 +2755,7 @@ function fieldsetInsert(array $fieldsetData, bool $isUpdate = false, $fieldsetID
     return $fieldsetID;
 }
 
-function fieldsetUpdate(int $fieldsetID, array $fieldsetData): int
+function fieldsetUpdate(array $fieldsetData, int $fieldsetID): int
 {
     return fieldsetInsert($fieldsetData, true, $fieldsetID);
 }
@@ -2615,6 +2821,10 @@ function fieldsInsert(array $fieldData, bool $isUpdate = false, int $fieldID = 0
 
     foreach ($tableFields as $fieldName => $fieldDefinition) {
         if (isset($fieldData[$fieldName])) {
+            if (is_array($fieldData[$fieldName])) {
+                $fieldData[$fieldName] = implode(',', $fieldData[$fieldName]);
+            }
+
             $insertData[$fieldName] = sanitizeTableFieldValue($fieldData[$fieldName], $fieldDefinition['type']);
         }
     }
@@ -3596,7 +3806,7 @@ function entryGetRandom(): string
         $addon_join = '';
         $addon_fields = '';
         foreach ($fields_for_search as $id => $field) {
-            if ($field['type'] == FieldHtmlTypes::SelectSingle || $field['type'] == FieldHtmlTypes::Radio) {
+            if ($field['type'] == FieldHtmlTypes::Select || $field['type'] == FieldHtmlTypes::Radio) {
                 $addon_join .= ' LEFT JOIN ' . TABLE_PREFIX . 'myshowcase_field_data tbl_' . $field['field_key'] . ' ON (tbl_' . $field['field_key'] . '.value_id = g.' . $field['field_key'] . ' AND tbl_' . $field['field_key'] . ".field_id = '" . $field['field_id'] . "') ";
                 $addon_fields .= ', tbl_' . $field['field_key'] . '.value AS ' . $field['field_key'];
             } else {
@@ -3858,6 +4068,179 @@ function dataHandlerGetObject(Showcase $showcaseObject, string $method = DATA_HA
     return $dataHandlerObjects[$showcaseObject->showcase_id];
 }
 
+function fieldGetObject(Showcase $showcaseObject, array $fieldData): FieldsInterface
+{
+    static $fieldObjects = [];
+
+    if (!isset($fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']])) {
+        require_once ROOT . '/Fields/FieldsInterface.php';
+        require_once ROOT . '/Fields/FieldTrait.php';
+        require_once ROOT . '/Fields/MultipleFieldTrait.php';
+        require_once ROOT . '/Fields/SingleFieldTrait.php';
+
+        switch ($fieldData['html_type']) {
+            case FieldHtmlTypes::CheckBox:
+                require_once ROOT . '/Fields/CheckBoxField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new CheckBoxField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Color:
+                require_once ROOT . '/Fields/ColorField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new ColorField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Date:
+                require_once ROOT . '/Fields/DateField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new DateField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::DateTimeLocal:
+                require_once ROOT . '/Fields/DateTimeLocalField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new DateTimeLocalField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Email:
+                require_once ROOT . '/Fields/EmailField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new EmailField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::File:
+                require_once ROOT . '/Fields/FileField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new FileField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Month:
+                require_once ROOT . '/Fields/MonthField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new MonthField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Number:
+                require_once ROOT . '/Fields/NumberField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new NumberField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Password:
+                require_once ROOT . '/Fields/PasswordField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new PasswordField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Radio:
+                require_once ROOT . '/Fields/RadioField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new RadioField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Range:
+                require_once ROOT . '/Fields/RangeField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new RangeField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Search:
+                require_once ROOT . '/Fields/SearchField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new SearchField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Telephone:
+                require_once ROOT . '/Fields/TelephoneField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new TelephoneField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Text:
+                require_once ROOT . '/Fields/TextField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new TextField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Time:
+                require_once ROOT . '/Fields/TimeField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new TimeField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Url:
+                require_once ROOT . '/Fields/UrlField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new UrlField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Week:
+                require_once ROOT . '/Fields/WeekField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new WeekField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::TextArea:
+                require_once ROOT . '/Fields/TextAreaField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new TextAreaField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::Select:
+                require_once ROOT . '/Fields/SelectField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new SelectField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::SelectUsers:
+                require_once ROOT . '/Fields/SelectUsersField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new SelectUsersField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::SelectEntries:
+                require_once ROOT . '/Fields/SelectEntriesField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new SelectEntriesField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            case FieldHtmlTypes::SelectThreads:
+                require_once ROOT . '/Fields/SelectThreadsField.php';
+
+                $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']] = new SelectThreadsField(
+                    $showcaseObject, $fieldData
+                );
+                break;
+            default:
+                _dump($fieldData['html_type']);
+        }
+    }
+
+    return $fieldObjects[$showcaseObject->showcase_id][$fieldData['field_key']];
+}
+
 function formatTypes(): array
 {
     return [
@@ -3867,6 +4250,14 @@ function formatTypes(): array
         FormatTypes::numberFormat2 => 'my_number_format(#,###.##)',
         FormatTypes::htmlSpecialCharactersUni => 'htmlspecialchars_uni',
         FormatTypes::stripTags => 'strip_tags',
+    ];
+}
+
+function FilterTypes(): array
+{
+    return [
+        FilterTypes::NoFilter => '',
+        FilterTypes::UUID => 'UUID',
     ];
 }
 
@@ -3886,32 +4277,7 @@ function formatField(int $formatType, string &$fieldValue): string|int
 
 function fieldTypesGet(): array
 {
-    return [
-        FieldTypes::TinyInteger => FieldTypes::TinyInteger,
-        FieldTypes::SmallInteger => FieldTypes::SmallInteger,
-        FieldTypes::MediumInteger => FieldTypes::MediumInteger,
-        FieldTypes::BigInteger => FieldTypes::BigInteger,
-        FieldTypes::Integer => FieldTypes::Integer,
-
-        FieldTypes::Decimal => FieldTypes::Decimal,
-        FieldTypes::Float => FieldTypes::Float,
-        FieldTypes::Double => FieldTypes::Double,
-
-        FieldTypes::Char => FieldTypes::Char,
-        FieldTypes::VarChar => FieldTypes::VarChar,
-
-        FieldTypes::TinyText => FieldTypes::TinyText,
-        FieldTypes::Text => FieldTypes::Text,
-        FieldTypes::MediumText => FieldTypes::MediumText,
-
-        FieldTypes::Date => FieldTypes::Date,
-        FieldTypes::Time => FieldTypes::Time,
-        FieldTypes::DateTime => FieldTypes::DateTime,
-        FieldTypes::TimeStamp => FieldTypes::TimeStamp,
-
-        FieldTypes::Binary => FieldTypes::Binary,
-        FieldTypes::VarBinary => FieldTypes::VarBinary,
-    ];
+    return array_flip((new ReflectionClass(FieldTypes::class))->getConstants());
 }
 
 function fieldTypeMatchInt(string $fieldType): bool
@@ -3979,17 +4345,20 @@ function fieldTypeSupportsFullText(string $fieldType): bool
     ], true);
 }
 
+function fileCaptureTypes(): array
+{
+    global $lang;
+
+    return [
+        0 => $lang->none,
+        1 => 'user',
+        2 => 'environment',
+    ];
+}
+
 function fieldHtmlTypes(): array
 {
-    return [
-        FieldHtmlTypes::Text => FieldHtmlTypes::Text,
-        FieldHtmlTypes::TextArea => FieldHtmlTypes::TextArea,
-        FieldHtmlTypes::Radio => FieldHtmlTypes::Radio,
-        FieldHtmlTypes::CheckBox => FieldHtmlTypes::CheckBox,
-        FieldHtmlTypes::Url => FieldHtmlTypes::Url,
-        FieldHtmlTypes::Date => FieldHtmlTypes::Date,
-        FieldHtmlTypes::SelectSingle => FieldHtmlTypes::SelectSingle,
-    ];
+    return array_flip((new ReflectionClass(FieldHtmlTypes::class))->getConstants());
 }
 
 function fieldDefaultTypes(): array
@@ -3999,10 +4368,10 @@ function fieldDefaultTypes(): array
     loadLanguage();
 
     return [
-        FieldDefaultTypes::AsDefined => $lang->myShowcaseAdminFieldsNewFormDefaultTypeAsDefined,
-        FieldDefaultTypes::IsNull => $lang->myShowcaseAdminFieldsNewFormDefaultTypeNull,
-        FieldDefaultTypes::CurrentTimestamp => $lang->myShowcaseAdminFieldsNewFormDefaultTypeTimeStamp,
-        FieldDefaultTypes::UUID => $lang->myShowcaseAdminFieldsNewFormDefaultTypeUUID,
+        FieldDefaultTypes::AsDefined => $lang->myShowcaseAdminFieldsCreateUpdateFormDefaultTypeAsDefined,
+        FieldDefaultTypes::IsNull => $lang->myShowcaseAdminFieldsCreateUpdateFormDefaultTypeNull,
+        FieldDefaultTypes::CurrentTimestamp => $lang->myShowcaseAdminFieldsCreateUpdateFormDefaultTypeTimeStamp,
+        FieldDefaultTypes::UUID => $lang->myShowcaseAdminFieldsCreateUpdateFormDefaultTypeUUID,
     ];
 }
 
@@ -4018,6 +4387,27 @@ function generateUUIDv4(): string
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
+function slugGenerateEntry(int $showcaseID, ?int $length = null): string
+{
+    if (empty($length)) {
+        $length = getSetting('slugLength');
+    }
+
+    global $db;
+
+    $generatedSlug = '';
+
+    $uniqueFound = false;
+
+    while (!$uniqueFound) {
+        $generatedSlug = my_strtolower(bin2hex(random_bytes($length)));
+
+        $uniqueFound = !entryGet($showcaseID, ["entry_slug='{$db->escape_string($generatedSlug)}'"]);
+    }
+
+    return $generatedSlug;
+}
+
 function slugGenerateComment(?int $length = null): string
 {
     if (empty($length)) {
@@ -4026,7 +4416,7 @@ function slugGenerateComment(?int $length = null): string
 
     global $db;
 
-    $generatedSlug = $clientIDHashed = '';
+    $generatedSlug = '';
 
     $uniqueFound = false;
 

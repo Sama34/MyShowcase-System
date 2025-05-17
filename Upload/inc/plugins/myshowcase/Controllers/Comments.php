@@ -58,8 +58,12 @@ class Comments extends Base
 
     public array $commentData = [];
 
-    public function verifyPermission(string $commentSlug, ?string $entrySlug = null, array $commentFields = []): int
-    {
+    public function verifyPermission(
+        string $commentSlug,
+        ?string $entrySlug = null,
+        ?string $entrySlugCustom = null,
+        array $commentFields = []
+    ): int {
         global $db;
 
         if (!$this->showcaseObject->config['comments_allow'] ||
@@ -101,9 +105,12 @@ class Comments extends Base
 
         $entryData = entryGet(
             $this->showcaseObject->showcase_id,
-            [$entrySlug !== null ? "entry_slug='{$db->escape_string($entrySlug)}'" : "entry_id='{$entryID}'"],
-            ['entry_slug', 'status', 'user_id'],
-            ['limit' => 1]
+            [
+                $entrySlug !== null ? "entry_slug='{$db->escape_string($entrySlug)}'" : "entry_id='{$entryID}'",
+                $entrySlugCustom !== null ? "entry_slug_custom='{$db->escape_string($entrySlugCustom)}'" : "entry_id='{$entryID}'"
+            ],
+            ['entry_slug', 'entry_slug_custom', 'status', 'user_id'],
+            ['limit' => 1],
         );
 
         if (empty($entryData)) {
@@ -156,7 +163,11 @@ class Comments extends Base
             'commentsController' => &$this,
         ];
 
-        $commentUrl = $this->showcaseObject->urlGetEntryComment($this->entryData['entry_slug'], $commentSlug);
+        $commentUrl = $this->showcaseObject->urlGetEntryComment(
+            $this->entryData['entry_slug'],
+            $this->entryData['entry_slug_custom'],
+            $commentSlug
+        );
 
         $hookArguments = hooksRun('controller_comments_redirect_end', $hookArguments);
 
@@ -165,9 +176,9 @@ class Comments extends Base
         exit;
     }
 
-    #[NoReturn] public function view(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function view(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        switch ($this->verifyPermission($commentSlug, $entrySlug, ['dateline'])) {
+        switch ($this->verifyPermission($commentSlug, $entrySlug, $entrySlugCustom, ['dateline'])) {
             case self::NO_PERMISSION:
                 error_no_permission();
 
@@ -217,7 +228,7 @@ class Comments extends Base
 
         require_once ROOT . '/Controllers/Entries.php';
 
-        (new Entries())->viewEntry($entrySlug, $currentPage);
+        (new Entries())->viewEntry($entrySlug, $entrySlugCustom, $currentPage);
     }
 
     public function updateEntryCommentsCount(): void
@@ -242,8 +253,12 @@ class Comments extends Base
         $this->showcaseObject->dataUpdate(['comments' => $totalComments]);
     }
 
-    #[NoReturn] public function create(string $entrySlug, bool $isUpdate = false, string $commentSlug = ''): void
-    {
+    #[NoReturn] public function create(
+        string $entrySlug,
+        string $entrySlugCustom,
+        bool $isUpdate = false,
+        string $commentSlug = ''
+    ): void {
         global $mybb, $lang;
 
         if ($isUpdate) {
@@ -254,7 +269,12 @@ class Comments extends Base
                 error_no_permission();
             }
 
-            switch ($this->verifyPermission($commentSlug, $entrySlug, ['comment_slug', 'dateline', 'comment'])) {
+            switch ($this->verifyPermission(
+                $commentSlug,
+                $entrySlug,
+                $entrySlugCustom,
+                ['comment_slug', 'dateline', 'comment']
+            )) {
                 case self::NO_PERMISSION:
                     error_no_permission();
 
@@ -352,7 +372,10 @@ class Comments extends Base
                 // we redirect only if soft-deleted (plugin?) because users can see their own unapproved content
                 if (isset($dataHandler->returnData['status']) &&
                     $dataHandler->returnData['status'] === self::STATUS_SOFT_DELETE) {
-                    $entryUrl = $this->showcaseObject->urlGetEntry($this->showcaseObject->entryData['entry_slug']);
+                    $entryUrl = $this->showcaseObject->urlGetEntry(
+                        $this->showcaseObject->entryData['entry_slug'],
+                        $this->showcaseObject->entryData['entry_slug_custom'],
+                    );
 
                     redirect(
                         $entryUrl,
@@ -418,15 +441,18 @@ class Comments extends Base
 
         $entryUrl = url(
             URL_TYPE_ENTRY_VIEW,
-            ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+            [
+                'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom']
+            ]
         )->getRelativeUrl();
 
         add_breadcrumb($entrySubject, $entryUrl);
 
         if ($isUpdate) {
-            $createUpdateUrl = $this->showcaseObject->urlGetCommentUpdate($entrySlug, $commentSlug);
+            $createUpdateUrl = $this->showcaseObject->urlGetCommentUpdate($entrySlug, $entrySlugCustom, $commentSlug);
         } else {
-            $createUpdateUrl = $this->showcaseObject->urlGetCommentCreate($entrySlug);
+            $createUpdateUrl = $this->showcaseObject->urlGetCommentCreate($entrySlug, $entrySlugCustom);
         }
 
         if ($isUpdate) {
@@ -470,17 +496,18 @@ class Comments extends Base
         $this->outputSuccess(eval($this->renderObject->templateGet('pageEntryCommentCreateUpdateContents')));
     }
 
-    #[NoReturn] public function update(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function update(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        $this->create($entrySlug, true, $commentSlug);
+        $this->create($entrySlug, $entrySlugCustom, true, $commentSlug);
     }
 
     #[NoReturn] public function approve(
         string $entrySlug,
+        string $entrySlugCustom,
         string $commentSlug,
         int $status = self::STATUS_VISIBLE
     ): void {
-        switch ($this->verifyPermission($commentSlug, $entrySlug)) {
+        switch ($this->verifyPermission($commentSlug, $entrySlug, $entrySlugCustom)) {
             case self::NO_PERMISSION:
                 error_no_permission();
 
@@ -522,23 +549,23 @@ class Comments extends Base
         }
     }
 
-    #[NoReturn] public function unapprove(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function unapprove(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        $this->approve($entrySlug, $commentSlug, self::STATUS_PENDING_APPROVAL);
+        $this->approve($entrySlug, $entrySlugCustom, $commentSlug, self::STATUS_PENDING_APPROVAL);
     }
 
-    #[NoReturn] public function softDelete(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function softDelete(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        $this->approve($entrySlug, $commentSlug, self::STATUS_SOFT_DELETE);
+        $this->approve($entrySlug, $entrySlugCustom, $commentSlug, self::STATUS_SOFT_DELETE);
     }
 
-    #[NoReturn] public function restore(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function restore(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        $this->approve($entrySlug, $commentSlug);
+        $this->approve($entrySlug, $entrySlugCustom, $commentSlug);
     }
 
-    #[NoReturn] public function delete(string $entrySlug, string $commentSlug): void
+    #[NoReturn] public function delete(string $entrySlug, string $entrySlugCustom, string $commentSlug): void
     {
-        $this->approve($entrySlug, $commentSlug, self::STATUS_DELETE);
+        $this->approve($entrySlug, $entrySlugCustom, $commentSlug, self::STATUS_DELETE);
     }
 }

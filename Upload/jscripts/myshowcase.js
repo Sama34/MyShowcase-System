@@ -35,18 +35,18 @@ var Showcase = {
         }
     },
 
-	reportEntry: function(entryID, showcaseID) {
-		MyBB.popupWindow("/report.php?modal=1&type=showcase_entries&pid=" + entryID + "&showcaseID=" + showcaseID);
+	reportEntry: function(entrySlug, showcaseID) {
+		MyBB.popupWindow("/report.php?modal=1&type=showcase_entries&pid=" + entrySlug + "&showcaseID=" + showcaseID);
 	},
 
 	reportComment: function(commentSlug, showcaseID) {
 		MyBB.popupWindow("/report.php?modal=1&type=showcase_comments&pid=" + commentSlug + "&showcaseID=" + showcaseID);
 	},
 
-	showDeletedEntry: function(entryID)
+	showDeletedEntry: function(entrySlug)
 	{
-		$('#deleted_entry_' + entryID).slideToggle("slow");
-		$('#entryBody' + entryID).slideToggle("slow");
+		$('#deleted_entry_' + entrySlug).slideToggle("slow");
+		$('#entryBody' + entrySlug).slideToggle("slow");
 	},
 
 	showDeletedComment: function(commentSlug)
@@ -55,10 +55,10 @@ var Showcase = {
 		$('#commentBody' + commentSlug).slideToggle("slow");
 	},
 
-	showIgnoredEntry: function(entryID)
+	showIgnoredEntry: function(entrySlug)
 	{
-		$('#ignored_entry_' + entryID).slideToggle("slow");
-		$('#entryBody' + entryID).slideToggle("slow");
+		$('#ignored_entry_' + entrySlug).slideToggle("slow");
+		$('#entryBody' + entrySlug).slideToggle("slow");
 	},
 
 	showIgnoredComment: function(commentSlug)

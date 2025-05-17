@@ -46,6 +46,7 @@ require_once ROOT . '/System/FieldDefaultTypes.php';
 require_once ROOT . '/System/FieldHtmlTypes.php';
 require_once ROOT . '/System/FieldTypes.php';
 require_once ROOT . '/System/FormatTypes.php';
+require_once ROOT . '/System/FilterTypes.php';
 require_once ROOT . '/System/ModeratorPermissions.php';
 require_once ROOT . '/System/UserPermissions.php';
 

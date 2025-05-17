@@ -40,15 +40,17 @@ use const MyShowcase\Core\ENTRY_STATUS_VISIBLE;
 
 class Attachments extends Base
 {
-    #[NoReturn] public function viewAttachment(
+    #[NoReturn] public function downloadAttachment(
         string $entrySlug,
+        string $entrySlugCustom,
         string $attachmentHash
     ): void {
-        $this->viewThumbnail($entrySlug, $attachmentHash, false);
+        $this->viewThumbnail($entrySlug, $entrySlugCustom, $attachmentHash, false);
     }
 
     #[NoReturn] public function viewThumbnail(
         string $entrySlug,
+        string $entrySlugCustom,
         string $attachmentHash,
         bool $isThumbnail = true,
     ): void {

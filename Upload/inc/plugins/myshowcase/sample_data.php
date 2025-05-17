@@ -73,7 +73,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'make',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -115,7 +115,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'transspeed',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -129,7 +129,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'transtype',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -185,7 +185,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'cabstyle',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -199,7 +199,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'bedsize',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -269,7 +269,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'susplift',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,
@@ -297,7 +297,7 @@ $custom_fields[] = [
 $custom_fields[] = [
     1,
     'bodylift',
-    FieldHtmlTypes::SelectSingle,
+    FieldHtmlTypes::Select,
     1,
     FieldTypes::Integer,
     0,

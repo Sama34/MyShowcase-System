@@ -15,24 +15,30 @@ namespace MyShowcase\System;
 
 class FieldHtmlTypes
 {
-    public const TextArea = 'textarea';
-    public const SelectSingle = 'db';
-    //public const SelectMultiple = 0;
-    //public const Button = 0;
-    public const CheckBox = 'checkbox';
-    //public const Color = 0;
+    public const CheckBox = 'checkbox'; // build select2?
+    public const Color = 'color';
     public const Date = 'date';
-    //public const DateTimeLocal = 0;
-    //public const Email = 0;
-    //public const Hidden = 0;
-    //public const Month = 0;
-    //public const Number = 0;
-    //public const Password = 0;
+    public const DateTimeLocal = 'datetime-local';
+    public const Email = 'email';
+    public const File = 'file';
+    public const Month = 'month';
+    public const Number = 'number';
+    public const Password = 'password';
     public const Radio = 'radio';
-    //public const Search = 0; // select 2 users search ?
-    //public const Telephone = 0;
-    public const Text = 'textbox';
-    //public const Time = 0;
+    public const Range = 'range';
+    public const Search = 'search'; // select 2 users search ?
+    public const Telephone = 'tel';
+    public const Text = 'text';
+    public const Time = 'time';
     public const Url = 'url';
-    //public const Week = 0;
+    public const Week = 'week';
+    public const TextArea = 'textarea';
+    public const Select = 'select'; // build select2?
+    public const SelectUsers = 'select2_users';
+    public const SelectEntries = 'select2_entries';
+    public const SelectThreads = 'select2_threads';
+
+    // ? tab vs block ? (section) ?
+    // custom page field type (Pages)
+    // user field type allows for group filter
 }

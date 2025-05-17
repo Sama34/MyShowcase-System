@@ -24,8 +24,6 @@ use function MyShowcase\Core\fieldDataDelete;
 use function MyShowcase\Core\fieldDataGet;
 use function MyShowcase\Core\fieldDataInsert;
 use function MyShowcase\Core\fieldDataUpdate;
-use function MyShowcase\Core\fieldDefaultTypes;
-use function MyShowcase\Core\fieldHtmlTypes;
 use function MyShowcase\Core\fieldsDelete;
 use function MyShowcase\Core\fieldsetDelete;
 use function MyShowcase\Core\fieldsetGet;
@@ -34,8 +32,6 @@ use function MyShowcase\Core\fieldsetUpdate;
 use function MyShowcase\Core\fieldsGet;
 use function MyShowcase\Core\fieldsInsert;
 use function MyShowcase\Core\fieldsUpdate;
-use function MyShowcase\Core\fieldTypesGet;
-use function MyShowcase\Core\formatTypes;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\showcaseDataTableExists;
@@ -47,6 +43,11 @@ use function MyShowcase\Core\urlHandlerBuild;
 use function MyShowcase\Core\urlHandlerSet;
 
 use const MyShowcase\Core\TABLES_DATA;
+use const MyShowcase\Core\FORM_TYPE_NUMERIC_FIELD;
+use const MyShowcase\Core\FORM_TYPE_SELECT_FIELD;
+use const MyShowcase\Core\FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD;
+use const MyShowcase\Core\FORM_TYPE_TEXT_FIELD;
+use const MyShowcase\Core\FORM_TYPE_YES_NO_FIELD;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -130,6 +131,62 @@ if (in_array($pageAction, ['viewFields', 'newField', 'editField', 'editOption'])
     }
 }
 
+$groupsSelectFunction = function (string $settingKey) use ($mybb, $lang): string {
+    global $form;
+
+    $selectedValues = $mybb->get_input($settingKey, MyBB::INPUT_ARRAY);
+
+    $groupChecked = ['all' => '', 'custom' => '', 'none' => ''];
+
+    if (in_array(-1, $selectedValues)) {
+        $groupChecked['all'] = 'checked="checked"';
+    } elseif (count($selectedValues) > 0) {
+        $groupChecked['custom'] = 'checked="checked"';
+    } else {
+        $groupChecked['none'] = 'checked="checked"';
+    }
+
+    print_selection_javascript();
+
+    return <<<EOL
+                    <dl style="margin-top: 0; margin-bottom: 0; width: 100%">
+                        <dt>
+                            <label style="display: block;">
+                                <input type="radio" name="{$settingKey}_type" value="all" {$groupChecked['all']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" />
+                                <strong>{$lang->all_groups}</strong>
+                            </label>
+                        </dt>
+                        <dt>
+                            <label style="display: block;">
+                                <input type="radio" name="{$settingKey}_type" value="custom" {$groupChecked['custom']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" />
+                                <strong>{$lang->select_groups}</strong>
+                            </label>
+                        </dt>
+                        <dd style="margin-top: 4px;" id="{$settingKey}_forums_groups_custom" class="{$settingKey}_forums_groups">
+                            <table cellpadding="4">
+                                <tr>
+                                    <td valign="top"><small>{$lang->groups_colon}</small></td>
+                                    <td>{$form->generate_group_select(
+        "{$settingKey}[]",
+        $selectedValues,
+        ['id' => $settingKey, 'multiple' => true, 'size' => 5]
+    )}</td>
+                                </tr>
+                            </table>
+                        </dd>
+                        <dt>
+                            <label style="display: block;"><input type="radio" name="{$settingKey}_type" value="none" {$groupChecked['none']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" /> 
+                            <strong>{$lang->none}</strong></label>
+                        </dt>
+                    </dl>
+                    <script type="text/javascript">
+                        checkAction('{$settingKey}');
+                    </script>
+    EOL;
+};
+
+$tableFields = TABLES_DATA;
+
 if (in_array($pageAction, ['newField', 'editField'])) {
     $newPage = $pageAction === 'newField';
 
@@ -143,7 +200,7 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         admin_redirect($pageTabs['myShowcaseAdminFieldSets']['link']);
     }
 
-    $queryFields = TABLES_DATA['myshowcase_fields'];
+    $queryFields = $tableFields['myshowcase_fields'];
 
     unset($queryFields['unique_keys']);
 
@@ -186,137 +243,102 @@ if (in_array($pageAction, ['newField', 'editField'])) {
     }
 
     if ($mybb->request_method === 'post') {
-        if ($mybb->get_input('allowed_groups_fill_type') === 'all') {
-            $mybb->input['allowed_groups_fill'] = [-1];
-        } elseif ($mybb->get_input('allowed_groups_fill_type') !== 'custom') {
-            $mybb->input['allowed_groups_fill'] = [];
-        }
-
-        if ($mybb->get_input('allowed_groups_view_type') === 'all') {
-            $mybb->input['allowed_groups_view'] = [-1];
-        } elseif ($mybb->get_input('allowed_groups_view_type') !== 'custom') {
-            $mybb->input['allowed_groups_view'] = [];
-        }
-
         if (!verify_post_check($mybb->get_input('my_post_key'), true)) {
             flash_message($lang->myShowcaseAdminErrorInvalidPostKey, 'error');
 
             admin_redirect(urlHandlerBuild());
         }
 
+        foreach (['allowed_groups_fill', 'allowed_groups_view'] as $settingName) {
+            if ($mybb->get_input($settingName . '_type') === 'all') {
+                $mybb->input[$settingName] = [-1];
+            } elseif ($mybb->get_input($settingName . '_type') !== 'custom') {
+                $mybb->input[$settingName] = [];
+            }
+        }
+
+        $insertData = [
+            'set_id' => $fieldsetID,
+        ];
+
+        (function () use ($mybb, $tableFields, &$insertData): void {
+            foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldData) {
+                if (!isset($fieldData['formType'])) {
+                    continue;
+                }
+
+                switch ($fieldData['formType']) {
+                    case FORM_TYPE_TEXT_FIELD:
+                    case FORM_TYPE_SELECT_FIELD:
+                        $insertData[$fieldName] = $mybb->get_input($fieldName);
+
+                        break;
+                    case FORM_TYPE_YES_NO_FIELD:
+                    case FORM_TYPE_NUMERIC_FIELD:
+                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+
+                        break;
+                    case FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD:
+                        $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_ARRAY);
+
+                        break;
+                }
+            }
+        })();
+
+        if (isset($insertData['field_key'])) {
+            $insertData['field_key'] = trim(
+                my_strtolower(
+                    preg_replace(
+                        '#[^\w]#',
+                        '_',
+                        $insertData['field_key']
+                    )
+                ),
+                '_'
+            );
+        }
+
         $errorMessages = [];
 
-        $mybb->input['field_key'] = trim(
-            my_strtolower(
-                preg_replace(
-                    '#[^\w]#',
-                    '_',
-                    $mybb->get_input('field_key')
-                )
-            ),
-            '_'
-        );
-
-        if (!$mybb->get_input('field_key')) {
+        if (!$insertData['field_key']) {
             $errorMessages[] = $lang->myShowcaseAdminErrorMissingRequiredFields;
         }
 
-        if ($mybb->get_input('minimum_length', MyBB::INPUT_INT) >
-            $mybb->get_input('maximum_length', MyBB::INPUT_INT)) {
+        if ($insertData['minimum_length'] > $insertData['maximum_length']) {
             $errorMessages[] = $lang->myShowcaseAdminErrorInvalidMinMax;
         }
 
         $existingFields = cacheGet(CACHE_TYPE_FIELDS)[$fieldsetID] ?? [];
 
-        if (in_array($mybb->get_input('field_key'), array_column($existingFields, 'field_key')) &&
-            (function (string $fieldKey) use ($fieldsetID, $existingFields): bool {
+        if (in_array($insertData['field_key'], array_column($existingFields, 'field_key')) &&
+            (function (string $fieldKey) use ($fieldsetID, $existingFields, $fieldID): bool {
                 $duplicatedName = false;
 
                 foreach ($existingFields as $fieldData) {
-                    if ($fieldData['field_key'] === $fieldKey && $fieldData['set_id'] !== $fieldsetID) {
+                    if ($fieldData['field_key'] === $fieldKey &&
+                        /*$fieldData['set_id'] !== $fieldsetID &&*/
+                        $fieldData['field_id'] !== $fieldID) {
                         $duplicatedName = true;
                     }
                 }
 
                 return $duplicatedName;
             })(
-                $mybb->get_input('field_key')
+                $insertData['field_key']
             )) {
             $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
         }
 
         $fieldDefaultOption = 0;
 
-        /*switch ($mybb->get_input('html_type')) {
-            case \MyShowcase\System\FieldHtmlTypes::SelectSingle:
-                $mybb->input['field_type'] = \MyShowcase\System\FieldTypes::Integer;
+        if (!$newPage && $insertData['field_key'] === $fieldData['field_key']) {
+            unset($insertData['field_key']);
+        }
 
-                $mybb->input['maximum_length'] = 3;
-
-                $fieldDefaultOption = 1;
-                break;
-            case \MyShowcase\System\FieldHtmlTypes::Radio:
-                $mybb->input['field_type'] = \MyShowcase\System\FieldTypes::Integer;
-
-                $mybb->input['maximum_length'] = 1;
-
-                $fieldDefaultOption = 1;
-                break;
-            case \MyShowcase\System\FieldHtmlTypes::CheckBox:
-                $mybb->input['field_type'] = \MyShowcase\System\FieldTypes::Integer;
-
-                $mybb->input['maximum_length'] = 1;
-                break;
-            case \MyShowcase\System\FieldHtmlTypes::Date:
-                $mybb->input['field_type'] = \MyShowcase\System\FieldTypes::VarChar;
-
-                $mybb->input['minimum_length'] = max(
-                    $mybb->get_input('minimum_length', MyBB::INPUT_INT),
-                    1901
-                );
-
-                $mybb->input['maximum_length'] = min(
-                    $mybb->get_input('maximum_length', MyBB::INPUT_INT),
-                    2038
-                );
-
-                break;
-            case \MyShowcase\System\FieldHtmlTypes::Url:
-                $mybb->input['field_type'] = \MyShowcase\System\FieldTypes::VarChar;
-
-                $mybb->input['maximum_length'] = 255;
-                break;
-        }*/
-
-        $insertData = [
-            'set_id' => $fieldsetID,
-            'html_type' => $mybb->get_input('html_type'),
-            //'enabled' => $mybb->get_input('enabled', MyBB::INPUT_INT),
-            'field_type' => $mybb->get_input('field_type'),
-            'display_in_create_update_page' => $mybb->get_input('display_in_create_update_page', MyBB::INPUT_INT),
-            'display_in_view_page' => $mybb->get_input('display_in_view_page', MyBB::INPUT_INT),
-            'display_in_main_page' => $mybb->get_input('display_in_main_page', MyBB::INPUT_INT),
-            'minimum_length' => $mybb->get_input('minimum_length', MyBB::INPUT_INT),
-            'maximum_length' => $mybb->get_input('maximum_length', MyBB::INPUT_INT),
-            'is_required' => $mybb->get_input('is_required', MyBB::INPUT_INT),
-            'allowed_groups_fill' => $mybb->get_input('allowed_groups_fill', MyBB::INPUT_ARRAY),
-            'allowed_groups_view' => $mybb->get_input('allowed_groups_view', MyBB::INPUT_ARRAY),
-            'default_value' => $mybb->get_input('default_value'),
-            'default_type' => $mybb->get_input('default_type'),
-            //'parse' => $mybb->get_input('parse', MyBB::INPUT_INT),
-            'display_order' => $mybb->get_input('display_order', MyBB::INPUT_INT),
-            'render_order' => $mybb->get_input('render_order', MyBB::INPUT_INT),
-            //'enable_search' => $mybb->get_input('enable_search', MyBB::INPUT_INT),
-            'enable_slug' => $mybb->get_input('enable_slug', MyBB::INPUT_INT),
-            'enable_subject' => $mybb->get_input('enable_subject', MyBB::INPUT_INT),
-            'format' => $mybb->get_input('format'),
-            'enable_editor' => $mybb->get_input('enable_editor', MyBB::INPUT_INT),
-        ];
-
-        $keyUpdate = !$newPage && $mybb->get_input('field_key') !== $fieldData['field_key'];
-
-        if ($keyUpdate) {
-            $insertData['field_key'] = $mybb->get_input('field_key');
+        if (!empty($insertData['regular_expression']) &&
+            preg_match("/{$insertData['regular_expression']}/i", '') === false) {
+            $errorMessages[] = $lang->myShowcaseAdminErrorRegularExpression;
         }
 
         if ($errorMessages) {
@@ -327,12 +349,13 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             if ($newPage) {
                 $fieldID = fieldsInsert($insertData);
             } else {
-                if ($fieldIsInUse && $insertData['field_key'] !== $fieldData['field_key']) {
+                if ($fieldIsInUse && isset($insertData['field_key']) && $insertData['field_key'] !== $fieldData['field_key']) {
                     foreach (showcaseGet(["field_set_id='{$fieldsetID}'"]) as $showcaseID => $showcaseData) {
                         if (showcaseDataTableExists($showcaseID)) {
                             $dataTableStructure = dataTableStructureGet($showcaseID);
 
-                            if (showcaseDataTableFieldExists($showcaseID, $fieldData['field_key'])) {
+                            if (showcaseDataTableFieldExists($showcaseID, $fieldData['field_key']) &&
+                                !showcaseDataTableFieldExists($showcaseID, $insertData['field_key'])) {
                                 showcaseDataTableFieldRename(
                                     $showcaseID,
                                     $fieldData['field_key'],
@@ -347,7 +370,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                 fieldsUpdate($insertData, $fieldID);
 
                 if (isset($fieldData['field_key']) &&
-                    in_array($fieldData['html_type'], [FieldHtmlTypes::SelectSingle, FieldHtmlTypes::Radio])) {
+                    in_array($fieldData['html_type'], [
+                        FieldHtmlTypes::CheckBox,
+                        FieldHtmlTypes::Radio,
+                        FieldHtmlTypes::Select,
+                    ])) {
                     foreach (
                         fieldDataGet(
                             ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"]
@@ -402,9 +429,11 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         }
     }
 
-    $mybb->input['allowed_groups_fill'] = array_filter(array_map('intval', $mybb->input['allowed_groups_fill']));
-
-    $mybb->input['allowed_groups_view'] = array_filter(array_map('intval', $mybb->input['allowed_groups_view']));
+    foreach (['allowed_groups_fill', 'allowed_groups_view'] as $settingName) {
+        $mybb->input[$settingName] = array_filter(
+            array_map('intval', $mybb->get_input($settingName, MyBB::INPUT_ARRAY))
+        );
+    }
 
     $mybb->input = array_merge($fieldData, $mybb->input);
 
@@ -420,271 +449,74 @@ if (in_array($pageAction, ['newField', 'editField'])) {
         $pageTabs[$newPage ? 'myShowcaseAdminFieldsNew' : 'myShowcaseAdminFieldsEdit']['title']
     );
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormKey . '<em>*</em>',
-        $lang->myShowcaseAdminFieldsNewFormKeyDescription,
-        $form->generate_text_box(
-            'field_key',
-            $mybb->get_input('field_key'),
-            ['id' => 'field_key']
-        ),
-        'field_key'
-    );
-
-    if (!$newPage) {
-        include_once $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php';
-
-        $mybb->input['label'] = $l['myshowcase_field_' . $mybb->get_input('field_key')] ?? $mybb->get_input('label');
-    }
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormLabel,
-        $lang->myShowcaseAdminFieldsNewFormLabelDescription,
-        $form->generate_text_box(
-            'label',
-            $mybb->get_input('label'),
-            ['id' => 'label', 'style' => $canEditLanguageFile ? '' : '" disabled="disabled']
-        ),
-        'label'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormHtmlType,
-        $lang->myShowcaseAdminFieldsNewFormHtmlTypeDescription,
-        $form->generate_select_box(
-            'html_type',
-            fieldHtmlTypes(),
-            $mybb->get_input('html_type'),
-            ['id' => 'html_type']
-        ),
-        'html_type'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormFieldType,
-        $lang->myShowcaseAdminFieldsNewFormFieldTypeDescription . ($fieldIsInUse ? $lang->myShowcaseAdminFieldsNewFormFieldTypeExisting : ''),
-        $form->generate_select_box(
-            'field_type',
-            fieldTypesGet(),
-            $mybb->get_input('field_type'),
-            ['id' => 'field_type']
-        ),
-        'field_type'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormDisplayInCreateUpdatePage,
-        $lang->myShowcaseAdminFieldsNewFormDisplayInCreateUpdatePageDescription,
-        $form->generate_yes_no_radio(
-            'display_in_create_update_page',
-            $mybb->get_input('display_in_create_update_page', MyBB::INPUT_INT)
-        ),
-        'display_in_create_update_page'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormDisplayInViewPage,
-        $lang->myShowcaseAdminFieldsNewFormDisplayInViewPageDescription,
-        $form->generate_yes_no_radio(
-            'display_in_view_page',
-            $mybb->get_input('display_in_view_page', MyBB::INPUT_INT)
-        ),
-        'display_in_view_page'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormDisplayInMainPage,
-        $lang->myShowcaseAdminFieldsNewFormDisplayInMainPageDescription,
-        $form->generate_yes_no_radio(
-            'display_in_main_page',
-            $mybb->get_input('display_in_main_page', MyBB::INPUT_INT)
-        ),
-        'display_in_main_page'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormDefaultValue,
-        $lang->myShowcaseAdminFieldsNewFormDefaultValueDescription,
-        $form->generate_text_box(
-            'default_value',
-            $mybb->get_input('default_value'),
-            ['id' => 'default_value']
-        ),
-        'default_value'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormDefaultType,
-        $lang->myShowcaseAdminFieldsNewFormDefaultTypeDescription,
-        $form->generate_select_box(
-            'default_type',
-            fieldDefaultTypes(),
-            $mybb->get_input('default_type', MyBB::INPUT_INT),
-            ['id' => 'default_type']
-        ),
-        'default_type'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormMinimumLength,
-        $lang->myShowcaseAdminFieldsNewFormMinimumLengthDescription,
-        $form->generate_numeric_field(
-            'minimum_length',
-            $mybb->get_input('minimum_length'),
-            ['id' => 'minimum_length', 'class' => 'field150', 'min' => 0],
-        ),
-        'minimum_length'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormMaximumLength,
-        $lang->myShowcaseAdminFieldsNewFormMaximumLengthDescription,
-        $form->generate_numeric_field(
-            'maximum_length',
-            $mybb->get_input('maximum_length'),
-            ['id' => 'maximum_length', 'class' => 'field150', 'min' => 0],
-        ),
-        'maximum_length'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormRequired,
-        $lang->myShowcaseAdminFieldsNewFormRequiredDescription,
-        $form->generate_yes_no_radio(
-            'is_required',
-            $mybb->get_input('is_required', MyBB::INPUT_INT)
-        ),
-        'is_required'
-    );
-
-    $groupsSelectFunction = function (string $settingKey) use ($mybb, $lang, $form): string {
-        $selectedValues = $mybb->get_input($settingKey, MyBB::INPUT_ARRAY);
-
-        $groupChecked = ['all' => '', 'custom' => '', 'none' => ''];
-
-        if (in_array(-1, $selectedValues)) {
-            $groupChecked['all'] = 'checked="checked"';
-        } elseif (count($selectedValues) > 0) {
-            $groupChecked['custom'] = 'checked="checked"';
-        } else {
-            $groupChecked['none'] = 'checked="checked"';
+    foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldData) {
+        if (!isset($fieldData['formType']) || isset($fieldData['quickSetting'])) {
+            continue;
         }
 
-        print_selection_javascript();
+        $formInput = '';
 
-        $selectField = <<<EOL
-				<dl style="margin-top: 0; margin-bottom: 0; width: 100%">
-					<dt>
-                        <label style="display: block;">
-                            <input type="radio" name="{$settingKey}_type" value="all" {$groupChecked['all']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" />
-                            <strong>{$lang->all_groups}</strong>
-                        </label>
-					</dt>
-					<dt>
-                        <label style="display: block;">
-                            <input type="radio" name="{$settingKey}_type" value="custom" {$groupChecked['custom']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" />
-                            <strong>{$lang->select_groups}</strong>
-                        </label>
-					</dt>
-					<dd style="margin-top: 4px;" id="{$settingKey}_forums_groups_custom" class="{$settingKey}_forums_groups">
-						<table cellpadding="4">
-							<tr>
-								<td valign="top"><small>{$lang->groups_colon}</small></td>
-								<td>{$form->generate_group_select(
-            "{$settingKey}[]",
-            $selectedValues,
-            ['id' => $settingKey, 'multiple' => true, 'size' => 5]
-        )}</td>
-							</tr>
-						</table>
-					</dd>
-					<dt>
-                        <label style="display: block;"><input type="radio" name="{$settingKey}_type" value="none" {$groupChecked['none']} class="{$settingKey}_forums_groups_check" onclick="checkAction('{$settingKey}');" style="vertical-align: middle;" /> 
-                        <strong>{$lang->none}</strong></label>
-					</dt>
-				</dl>
-				<script type="text/javascript">
-					checkAction('{$settingKey}');
-				</script>
-EOL;
+        switch ($fieldData['formType']) {
+            case FORM_TYPE_TEXT_FIELD:
+                $formInput .= $form->generate_text_box(
+                    $fieldName,
+                    $mybb->get_input($fieldName),
+                    ['id' => $fieldName . '" maxlength="' . ($fieldData['size'] ?? '')]
+                );
 
-        return $selectField;
-    };
+                break;
+            case FORM_TYPE_NUMERIC_FIELD:
+                $formInput = $form->generate_numeric_field(
+                    $fieldName,
+                    $mybb->get_input($fieldName, MyBB::INPUT_INT),
+                    [
+                        'id' => $fieldName,
+                        'min' => empty($fieldData['unsigned']) ? '' : 0,
+                        'max' => $fieldData['size'] ?? '',
+                        'class' => $fieldData['formClass'] ?? ''
+                    ]
+                );
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewAllowedGroupsFill,
-        $lang->myShowcaseAdminFieldsNewAllowedGroupsFillDescription,
-        $groupsSelectFunction('allowed_groups_fill'),
-        'allowed_groups_fill'
-    );
+                break;
+            case FORM_TYPE_SELECT_FIELD:
+                $formInput = $form->generate_select_box(
+                    $fieldName,
+                    $fieldData['formFunction'](),
+                    $mybb->get_input($fieldName),
+                    [
+                        'id' => $fieldName,
+                        'class' => $fieldData['formClass'] ?? ''
+                    ]
+                );
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormAllowedGroupsView,
-        $lang->myShowcaseAdminFieldsNewFormAllowedGroupsViewDescription,
-        $groupsSelectFunction('allowed_groups_view'),
-        'allowed_groups_view'
-    );
+                break;
+            case FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD:
+                $formInput = $groupsSelectFunction($fieldName);
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormOrderList,
-        $lang->myShowcaseAdminFieldsNewFormOrderListDescription,
-        $form->generate_numeric_field(
-            'render_order',
-            $mybb->get_input('render_order'),
-            ['id' => 'render_order', 'class' => 'align_center field50', 'min' => 0],
-        ),
-        'render_order'
-    );
+                break;
+            case FORM_TYPE_YES_NO_FIELD:
+                $formInput = $form->generate_yes_no_radio(
+                    $fieldName,
+                    $mybb->get_input($fieldName, MyBB::INPUT_INT),
+                    [
+                        'id' => $fieldName,
+                        'class' => $fieldData['formClass'] ?? ''
+                    ]
+                );
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormEnableSubject,
-        $lang->myShowcaseAdminFieldsNewFormEnableSubjectDescription,
-        $form->generate_yes_no_radio(
-            'enable_subject',
-            $mybb->get_input('enable_subject', MyBB::INPUT_INT)
-        ),
-        'enable_subject'
-    );
+                break;
+        }
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormEnableSlug,
-        $lang->myShowcaseAdminFieldsNewFormEnableSlugDescription,
-        $form->generate_yes_no_radio(
-            'enable_slug',
-            $mybb->get_input('enable_slug', MyBB::INPUT_INT)
-        ),
-        'enable_slug'
-    );
+        $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormFormat,
-        $lang->myShowcaseAdminFieldsNewFormFormatDescription,
-        $form->generate_select_box(
-            'format',
-            (function (): array {
-                $selectOptions = [];
-
-                foreach (formatTypes() as $formatTypeKey => $formatTypeName) {
-                    $selectOptions[$formatTypeKey] = $formatTypeName;
-                }
-
-                return $selectOptions;
-            })(),
-            $mybb->get_input('format'),
-            ['id' => 'format']
-        ),
-        'format'
-    );
-
-    $formContainer->output_row(
-        $lang->myShowcaseAdminFieldsNewFormEnableEditor,
-        $lang->myShowcaseAdminFieldsNewFormEnableEditorDescription,
-        $form->generate_yes_no_radio(
-            'enable_editor',
-            $mybb->get_input('enable_editor', MyBB::INPUT_INT)
-        ),
-        'enable_editor'
-    );
+        $formContainer->output_row(
+            $lang->{'myShowcaseAdminFieldsCreateUpdateForm' . $key} . (empty($fieldData['formRequired']) ? '' : '<em>*</em>'),
+            $lang->{'myShowcaseAdminFieldsCreateUpdateForm' . $key . 'Description'},
+            $formInput,
+            $fieldName,
+            ['id' => $fieldName . '_row']
+        );
+    }
 
     hooksRun('admin_field_new_edit_end');
 
@@ -696,6 +528,22 @@ EOL;
     ]);
 
     $form->end();
+
+    //checkbox|color|date|datetime-local|email|file|month|number|password|radio|range|search|tel|text|time|url|week|textarea|select|select2_users|select2_entries|select2_threads
+    echo '<script type="text/javascript" src="./jscripts/peeker.js?ver=1821"></script>
+	<script type="text/javascript">
+		$(function() {
+				new Peeker($("#html_type"), $("#placeholder_row"), /email|password|search|tel|text|url|textarea/, false);
+				new Peeker($("#html_type"), $("#file_capture_row"), /file/, false);
+				new Peeker($("#html_type"), $("#allow_multiple_values_row"), /checkbox|email|file|text|textarea|select|select2_users|select2_entries|select2_threads/, false);
+				new Peeker($("#html_type"), $("#regular_expression_row"), /email|password|search|tel|text|url/, false);
+				new Peeker($("#html_type"), $("#minimum_length_row"), /date|datetime-local|month|number|password|range|search|tel|text|time|url|week|textarea|select|select2_users|select2_entries|select2_threads/, false);
+				new Peeker($("#html_type"), $("#maximum_length_row"), /date|datetime-local|month|number|password|range|search|tel|text|time|url|week|textarea|select|select2_users|select2_entries|select2_threads/, false);
+				
+				new Peeker($("#html_type"), $("#step_size_row"), /date|datetime-local|month|number|range|time|week/, false);
+				
+		});
+	</script>';
 
     $page->output_footer();
 } elseif (in_array($pageAction, ['new', 'edit'])) {
@@ -845,16 +693,21 @@ EOL;
 
     if ($mybb->request_method === 'post') {
         foreach (fieldsGet(["set_id='{$fieldsetID}'"]) as $fieldID => $insertData) {
-            $insertData = [
-                'display_order' => (int)($mybb->get_input('display_order', MyBB::INPUT_ARRAY)[$fieldID] ?? 0),
-                'enabled' => (int)!empty($mybb->get_input('enabled', MyBB::INPUT_ARRAY)[$fieldID]),
-                'parse' => (int)!empty($mybb->get_input('parse', MyBB::INPUT_ARRAY)[$fieldID]),
-                'enable_search' => (int)!empty($mybb->get_input('enable_search', MyBB::INPUT_ARRAY)[$fieldID]),
-            ];
+            $insertData = [];
+
+            foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldData) {
+                if (empty($fieldData['quickSetting'])) {
+                    continue;
+                }
+
+                $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_ARRAY)[$fieldID] ?? 0;
+            }
 
             $insertData = hooksRun('admin_view_fields_update_post', $insertData);
 
-            fieldsUpdate($insertData, $fieldID);
+            if ($insertData) {
+                fieldsUpdate($insertData, $fieldID);
+            }
         }
 
         flash_message($lang->myshowcase_field_update_success, 'success');
@@ -871,55 +724,48 @@ EOL;
     $formContainer = new FormContainer($lang->myshowcase_field_list);
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_fid,
+        $lang->myShowcaseAdminFieldsTableHeaderID,
         ['width' => '1%', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_name,
+        $lang->myShowcaseAdminFieldsTableHeaderName,
         ['class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_label,
+        $lang->myShowcaseAdminFieldsTableHeaderLabel,
         ['class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_html_type,
+        $lang->myShowcaseAdminFieldsTableHeaderHtmlType,
         ['width' => '5%', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_field_type,
+        $lang->myShowcaseAdminFieldsTableHeaderFieldType,
         ['width' => '5%', 'class' => 'align_center']
     );
 
-    $formContainer->output_row_header(
-        $lang->myshowcase_field_field_order,
-        ['width' => '5%', 'class' => 'align_center']
-    );
+    foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldData) {
+        if (empty($fieldData['quickSetting'])) {
+            continue;
+        }
 
-    $formContainer->output_row_header(
-        $lang->myshowcase_field_enabled,
-        ['width' => '4%', 'class' => 'align_center']
-    );
+        $key = str_replace(' ', '', ucwords(str_replace('_', ' ', $fieldName)));
 
-    $formContainer->output_row_header(
-        $lang->myshowcase_field_parse,
-        ['width' => '4%', 'class' => 'align_center']
-    );
-
-    $formContainer->output_row_header(
-        $lang->myshowcase_field_searchable,
-        ['width' => '4%', 'class' => 'align_center']
-    );
+        $formContainer->output_row_header(
+            $lang->{'myShowcaseAdminFieldsTableHeader' . $key},
+            ['width' => '4%', 'class' => 'align_center']
+        );
+    }
 
     $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
     $maximumViewOrder = 0;
 
-    $queryFields = TABLES_DATA['myshowcase_fields'];
+    $queryFields = $tableFields['myshowcase_fields'];
 
     unset($queryFields['unique_keys']);
 
@@ -933,6 +779,8 @@ EOL;
 
         $formContainer->construct_row();
     } else {
+        $l = [];
+
         include_once $languagePath . '/myshowcase_fs' . $fieldsetID . '.lang.php';
 
         $maximumViewOrder = 1;
@@ -942,7 +790,11 @@ EOL;
 
             $viewOptionsUrl = '';
 
-            if ($fieldData['html_type'] == FieldHtmlTypes::SelectSingle || $fieldData['html_type'] == FieldHtmlTypes::Radio) {
+            if (in_array($fieldData['html_type'], [
+                FieldHtmlTypes::CheckBox,
+                FieldHtmlTypes::Radio,
+                FieldHtmlTypes::Select,
+            ])) {
                 $viewOptionsUrl = urlHandlerBuild(
                     ['action' => 'editOption', 'field_id' => $fieldID, 'set_id' => $fieldsetID]
                 );
@@ -953,8 +805,12 @@ EOL;
                 ['class' => 'align_left']
             );
 
+            if (empty($fieldData['field_label'])) {
+                $fieldData['field_label'] = $l['myshowcase_field_' . $fieldData['field_key']] ?? '';
+            }
+
             $formContainer->output_cell(
-                $l['myshowcase_field_' . $fieldData['field_key']] ?? '',
+                $fieldData['field_label'],
                 ['class' => 'align_left']
             );
 
@@ -968,46 +824,24 @@ EOL;
                 ['class' => 'align_center']
             );
 
-            $formContainer->output_cell(
-                $form->generate_numeric_field(
-                    "display_order[{$fieldID}]",
-                    $fieldData['display_order'],
-                    ['id' => "display_order[{$fieldID}]", 'class' => 'align_center field50', 'min' => 0],
-                ),
-                ['class' => 'align_center']
-            );
+            (function (array $values) use ($tableFields, $fieldID, $formContainer, $form) {
+                foreach ($tableFields['myshowcase_fields'] as $fieldName => $fieldData) {
+                    if (empty($fieldData['quickSetting'])) {
+                        continue;
+                    }
 
-            $formContainer->output_cell(
-                $form->generate_check_box(
-                    'enabled[' . $fieldID . ']',
-                    'true',
-                    '',
-                    ['checked' => $fieldData['enabled']],
-                    ''
-                ),
-                ['class' => 'align_center']
-            );
-
-            $formContainer->output_cell(
-                $form->generate_check_box(
-                    'parse[' . $fieldID . ']',
-                    'true',
-                    '',
-                    ['checked' => $fieldData['parse']],
-                    ''
-                ),
-                ['class' => 'align_center']
-            );
-
-            $formContainer->output_cell(
-                $form->generate_check_box(
-                    'enable_search[' . $fieldID . ']',
-                    'true',
-                    '',
-                    ['checked' => $fieldData['enable_search']],
-                    ''
-                ),
-                ['class' => 'align_center']
+                    $formContainer->output_cell(
+                        $form->generate_check_box(
+                            $fieldName . '[' . $fieldID . ']',
+                            1,
+                            '',
+                            ['checked' => $values[$fieldName]],
+                        ),
+                        ['class' => 'align_center']
+                    );
+                }
+            })(
+                $fieldData
             );
 
             $popup = new PopupMenu("field_{$fieldID}", $lang->options);
@@ -1022,8 +856,11 @@ EOL;
                 urlHandlerBuild(['action' => 'deleteField', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
             );
 
-            //add option to edit list items if db type
-            if ($fieldData['html_type'] == FieldHtmlTypes::SelectSingle || $fieldData['html_type'] == FieldHtmlTypes::Radio) {
+            if (in_array($fieldData['html_type'], [
+                FieldHtmlTypes::CheckBox,
+                FieldHtmlTypes::Radio,
+                FieldHtmlTypes::Select,
+            ])) {
                 $popup->add_item(
                     $lang->myshowcase_field_edit_options,
                     urlHandlerBuild(['action' => 'editOption', 'field_id' => $fieldID, 'set_id' => $fieldsetID]),
@@ -1122,12 +959,16 @@ EOL;
     );
 } elseif ($pageAction == 'editOption') {
     $fieldData = fieldsGet(
-        ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'", "html_type In ('db', 'radio')"],
-        ['field_key'],
+        ["field_id='{$fieldID}'", "set_id='{$fieldsetID}'"],
+        ['field_key', 'html_type'],
         ['limit' => 1]
     );
 
-    if (!$fieldData) {
+    if (!$fieldData || !in_array($fieldData['html_type'], [
+            FieldHtmlTypes::CheckBox,
+            FieldHtmlTypes::Radio,
+            FieldHtmlTypes::Select,
+        ])) {
         flash_message($lang->myshowcase_field_invalid_id, 'error');
 
         admin_redirect(urlHandlerBuild(['action' => 'viewFields', 'set_id' => $fieldsetID]));
@@ -1168,40 +1009,84 @@ EOL;
 
         $displayOrderInput = $mybb->get_input('display_order', MyBB::INPUT_ARRAY);
 
-        foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
-            $fieldDataID = (int)$fieldOptionData['field_data_id'];
+        if (!$mybb->get_input('create', MyBB::INPUT_INT)) {
+            foreach ($fieldOptionObjects as $fieldOptionID => $fieldOptionData) {
+                $fieldDataID = (int)$fieldOptionData['field_data_id'];
 
-            $updateData = [];
+                $insertData = [];
 
-            if (isset($valueInput[$fieldDataID])) {
-                $updateData['value'] = $valueInput[$fieldDataID];
+                (function () use ($mybb, $tableFields, &$insertData, $fieldDataID): void {
+                    foreach ($tableFields['myshowcase_field_data'] as $fieldName => $fieldData) {
+                        if (!isset($fieldData['formType'])) {
+                            continue;
+                        }
+
+                        switch ($fieldData['formType']) {
+                            case FORM_TYPE_TEXT_FIELD:
+                                $insertData[$fieldName] = $mybb->get_input(
+                                    $fieldName,
+                                    MyBB::INPUT_ARRAY
+                                )[$fieldDataID];
+
+                                break;
+                            case FORM_TYPE_NUMERIC_FIELD:
+                                $insertData[$fieldName] = (int)$mybb->get_input(
+                                    $fieldName,
+                                    MyBB::INPUT_ARRAY
+                                )[$fieldDataID];
+
+                                break;
+                            case FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD:
+                                $insertData[$fieldName] = implode(
+                                    ',',
+                                    (array)($mybb->get_input(
+                                        $fieldName,
+                                        MyBB::INPUT_ARRAY
+                                    )[$fieldDataID] ?? [])
+                                );
+
+                                break;
+                        }
+                    }
+                })();
+
+                fieldDataUpdate($insertData, $fieldDataID);
             }
-
-            if (isset($displayStyleInput[$fieldDataID])) {
-                $updateData['display_style'] = $displayStyleInput[$fieldDataID];
-            }
-
-            if (isset($displayOrderInput[$fieldDataID])) {
-                $updateData['display_order'] = $displayOrderInput[$fieldDataID];
-            }
-
-            fieldDataUpdate($updateData, $fieldDataID);
         }
 
         if ($mybb->get_input('value') &&
             $fieldOptionValue &&
             $mybb->get_input('display_order', MyBB::INPUT_INT)) {
-            $fieldOptionData = [
+            $insertData = [
                 'set_id' => $fieldsetID,
                 'field_id' => $fieldID,
                 'field_key' => $db->escape_string($mybb->get_input('field_key')),
-                'value' => $db->escape_string($mybb->get_input('value')),
-                'display_style' => $db->escape_string($mybb->get_input('display_style')),
-                'value_id' => $fieldOptionValue,
-                'display_order' => $mybb->get_input('display_order', MyBB::INPUT_INT)
             ];
 
-            fieldDataInsert($fieldOptionData);
+            (function () use ($mybb, $tableFields, &$insertData): void {
+                foreach ($tableFields['myshowcase_field_data'] as $fieldName => $fieldData) {
+                    if (!isset($fieldData['formType'])) {
+                        continue;
+                    }
+
+                    switch ($fieldData['formType']) {
+                        case FORM_TYPE_TEXT_FIELD:
+                            $insertData[$fieldName] = $mybb->get_input($fieldName);
+
+                            break;
+                        case FORM_TYPE_NUMERIC_FIELD:
+                            $insertData[$fieldName] = $mybb->get_input($fieldName, MyBB::INPUT_INT);
+
+                            break;
+                        case FORM_TYPE_SELECT_MULTIPLE_GROUP_FIELD:
+                            $insertData[$fieldName] = implode(',', $mybb->get_input($fieldName, MyBB::INPUT_ARRAY));
+
+                            break;
+                    }
+                }
+            })();
+
+            fieldDataInsert($insertData);
         }
 
         hooksRun('admin_option_edit_post');
@@ -1231,32 +1116,51 @@ EOL;
 
     $formContainer->output_row_header(
         $lang->myshowcase_field_fdid,
-        ['width' => '5%', 'class' => 'align_center']
+        ['width' => '1%', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_option_text,
+        $lang->myshowcase_field_option_value_id,
+        ['width' => '10%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_option_value,
         ['width' => '10%', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
         $lang->myshowcase_field_display_style,
+        ['width' => '15%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_AllowedGroupsFill,
         ['width' => '10%', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_disporder,
+        $lang->myshowcase_field_AllowedGroupsView,
+        ['width' => '10%', 'class' => 'align_center']
+    );
+
+    $formContainer->output_row_header(
+        $lang->myshowcase_field_display_order,
         ['width' => '5%', 'class' => 'align_center']
     );
 
-    $formContainer->output_row_header($lang->controls, ['width' => '10%', 'class' => 'align_center']);
+    $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
     $maximumViewOrder = 0;
 
+    $queryFields = array_flip(array_keys($tableFields['myshowcase_field_data']));
+
+    unset($queryFields['unique_keys']);
+
     $fieldOptionObjects = fieldDataGet(
         ["set_id='{$fieldsetID}'", "field_id='{$fieldID}'"],
-        ['value_id', 'value', 'display_style', 'display_order', 'field_data_id'],
-        ['order_by' => 'value_id']
+        array_flip($queryFields),
+        ['order_by' => 'display_order']
     );
 
     if (!$fieldOptionObjects) {
@@ -1276,10 +1180,17 @@ EOL;
 
             $maximumViewOrder = max($maximumViewOrder, $fieldOptionData['display_order']);
 
-            $maximumViewOrder = max($maximumViewOrder, $fieldOptionData['value_id']);
-
             $formContainer->output_cell(
                 my_number_format($fieldDataID),
+                ['class' => 'align_center']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_text_box(
+                    "value_id[{$fieldDataID}]",
+                    $fieldOptionData['value_id'],
+                    ['id' => "value_id[{$fieldDataID}]", 'class' => 'field150']
+                ),
                 ['class' => 'align_center']
             );
 
@@ -1302,6 +1213,24 @@ EOL;
             );
 
             $formContainer->output_cell(
+                $form->generate_group_select(
+                    "allowed_groups_fill[{$fieldDataID}][]",
+                    explode(',', $fieldOptionData['allowed_groups_fill'] ?? ''),
+                    ['id' => 'allowed_groups_fill_' . $fieldDataID, 'multiple' => true, 'size' => 5]
+                ),
+                ['style' => 'text-align: center;']
+            );
+
+            $formContainer->output_cell(
+                $form->generate_group_select(
+                    "allowed_groups_view[{$fieldDataID}][]",
+                    explode(',', $fieldOptionData['allowed_groups_view'] ?? ''),
+                    ['id' => 'allowed_groups_view' . $fieldDataID, 'multiple' => true, 'size' => 5]
+                ),
+                ['style' => 'text-align: center;']
+            );
+
+            $formContainer->output_cell(
                 $form->generate_numeric_field(
                     "display_order[{$fieldDataID}]",
                     $fieldOptionData['display_order'],
@@ -1312,21 +1241,15 @@ EOL;
 
             $popup = new PopupMenu("field_{$fieldDataID}", $lang->options);
 
-            if ($can_edit) {
-                $popup->add_item(
-                    $lang->myshowcase_field_delete,
-                    urlHandlerBuild([
-                        'action' => 'deleteOption',
-                        'field_data_id' => $fieldDataID
-                    ]),
-                );
-            }
+            $popup->add_item(
+                $lang->myshowcase_field_delete,
+                urlHandlerBuild([
+                    'action' => 'deleteOption',
+                    'field_data_id' => $fieldDataID
+                ]),
+            );
 
-            if ($can_edit) {
-                $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
-            } else {
-                $formContainer->output_cell('N/A', ['class' => 'align_center']);
-            }
+            $formContainer->output_cell($popup->fetch(), ['class' => 'align_center']);
 
             $formContainer->construct_row();
         }
@@ -1349,12 +1272,12 @@ EOL;
     $formContainer = new FormContainer($lang->myshowcase_field_new_option);
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_option_text . ' *',
+        $lang->myshowcase_field_option_value . ' *',
         ['width' => '65', 'class' => 'align_center']
     );
 
     $formContainer->output_row_header(
-        $lang->myshowcase_field_disporder,
+        $lang->myshowcase_field_display_order,
         ['width' => '65', 'class' => 'align_center']
     );
 
@@ -1366,6 +1289,8 @@ EOL;
     echo $form->generate_hidden_field('field_key', $fieldData['field_key']);
 
     echo $form->generate_hidden_field('value_id', ++$maximumViewOrder);
+
+    echo $form->generate_hidden_field('create', 1);
 
     $formContainer->output_cell(
         $form->generate_numeric_field(

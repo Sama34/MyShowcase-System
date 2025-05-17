@@ -21,9 +21,8 @@ class FormatTypes
     public const numberFormat2 = 3;
     public const htmlSpecialCharactersUni = 4;
     public const stripTags = 5;
+
+    public const ParserUrlAuto = 100;
+
+    public const ParseVideoYoutube = 101;
 }
-//'no' => '',
-//'decimal0' => '#,###',
-//'decimal1' => '#,###.#',
-//'decimal2' => '#,###.##',
-//0 => 'htmlspecialchars_uni',

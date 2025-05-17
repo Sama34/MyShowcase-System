@@ -11,4 +11,10 @@
  *
  */
 
-declare(strict_types=1);
+namespace MyShowcase\System;
+
+class FilterTypes
+{
+    public const NoFilter = 0;
+    public const UUID = 1;
+}

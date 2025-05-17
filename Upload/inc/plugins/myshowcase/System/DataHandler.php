@@ -128,14 +128,14 @@ class DataHandler extends CoreDataHandler
             $this->set_error('invalid entry identifier');
         }
 
-        if (isset($entryData['entry_slug']) || $this->method === DATA_HANDLER_METHOD_INSERT) {
-            $slugLength = my_strlen($this->data['entry_slug']);
+        if (isset($entryData['entry_slug_custom'])) {
+            $slugLength = my_strlen($this->data['entry_slug_custom']);
 
             if ($slugLength < 1) {
                 $this->set_error('the slug is too short');
             }
 
-            if ($slugLength > DATA_TABLE_STRUCTURE['myshowcase_data']['entry_slug']['size']) {
+            if ($slugLength > DATA_TABLE_STRUCTURE['myshowcase_data']['entry_slug_custom']['size']) {
                 $this->set_error('the slug is too large');
             }
         }
@@ -180,17 +180,44 @@ class DataHandler extends CoreDataHandler
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
             $fieldKey = $fieldData['field_key'];
 
-            if (!$fieldData['enabled'] || !isset($entryData[$fieldKey])) {
+            if (!$fieldData['enabled'] ||
+                !isset($entryData[$fieldKey]) ||
+                !is_member($fieldData['allowed_groups_fill'])) {
+                // todo, send user to data handler to check instead of current user
                 continue;
             }
 
-            if ($fieldData['is_required']) {
-                if (empty($entryData[$fieldKey])) {
-                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
-                } elseif ($fieldData['html_type'] === FieldHtmlTypes::SelectSingle && empty($entryData[$fieldKey])) {
-                    $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
-                }
+            if ($fieldData['is_required'] && empty($entryData[$fieldKey])) {
+                $this->set_error('missing_field', [$lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey]);
             }
+            /*
+             * array(1) {
+  [0]=>
+  array(32) {
+    ["html_type"]=>
+    string(8) "checkbox"
+    ["field_type"]=>
+    string(7) "tinyint"
+    ["allow_multiple_values"]=>
+    int(1)
+    ["regular_expression"]=>
+    string(7) "varchar"
+    ["display_in_create_update_page"]=>
+    int(1)
+    ["display_in_view_page"]=>
+    int(1)
+    ["display_in_main_page"]=>
+    int(1)
+    ["minimum_length"]=>
+    int(0)
+    ["maximum_length"]=>
+    int(1)
+    ["step_size"]=>
+    int(0)
+  }
+}
+
+             */
 
             $fieldValueLength = my_strlen($entryData[$fieldKey]);
 
@@ -230,6 +257,14 @@ class DataHandler extends CoreDataHandler
                         }
                     }
                 }
+            }
+
+            if (empty($entryData[$fieldKey]) && $fieldData['default_value'] !== '') {
+                _dump('default_value', $fieldData['default_value']);
+            }
+
+            if ($fieldData['filter_on_save']) {
+                _dump('filter_on_save', $fieldData['filter_on_save']);
             }
         }
 
@@ -314,7 +349,7 @@ class DataHandler extends CoreDataHandler
                 ["entry_id='{$this->entry_id}'"],
                 ['entry_slug'],
                 ['limit' => 1]
-            )['entry_slug'] ?? '';
+            )['entry_slug'];
         }
 
         if (isset($this->insertData['status'])) {
@@ -417,7 +452,8 @@ class DataHandler extends CoreDataHandler
         if ($isUpdate && !isset($this->returnData['comment_slug'])) {
             $this->returnData['comment_slug'] = commentsGet(
                 ["comment_id='{$this->comment_id}'"],
-                ['comment_slug']
+                ['comment_slug'],
+                ['limit' => 1]
             )['comment_slug'];
         } elseif (!$isUpdate) {
             $this->returnData['comment_slug'] = $this->data['comment_slug'] = slugGenerateComment();

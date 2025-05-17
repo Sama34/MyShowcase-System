@@ -18,18 +18,17 @@ namespace MyShowcase\System;
 use MyBB;
 
 use function MyShowcase\Core\attachmentGet;
+use function MyShowcase\Core\fieldGetObject;
 use function MyShowcase\Core\formatField;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
 use function MyShowcase\Core\loadLanguage;
-use function MyShowcase\Core\postParser;
 use function MyShowcase\Core\templateGetCachedName;
 use function MyShowcase\SimpleRouter\url;
 
+use const MyShowcase\Core\DEBUG;
 use const MyShowcase\Core\ALL_UNLIMITED_VALUE;
 use const MyShowcase\Core\ATTACHMENT_THUMBNAIL_SMALL;
-use const MyShowcase\Core\DEBUG;
-use const MyShowcase\Core\CHECK_BOX_IS_CHECKED;
 use const MyShowcase\Core\COMMENT_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\COMMENT_STATUS_SOFT_DELETED;
 use const MyShowcase\Core\COMMENT_STATUS_VISIBLE;
@@ -224,6 +223,8 @@ class Render
             $templatePrefix = 'pageViewEntry';
         }
 
+        $entrySlug = $this->showcaseObject->entryData['entry_slug'];
+
         if ($postType === self::POST_TYPE_COMMENT) {
             $commentMessage = $this->showcaseObject->parseMessage($commentData['comment'], $this->parserOptions);
 
@@ -245,7 +246,10 @@ class Render
 
             $entryUrl = url(
                 URL_TYPE_ENTRY_VIEW,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                [
+                    'entry_slug' => $entrySlug,
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom']
+                ]
             )->getRelativeUrl();
 
             $entryUrl = eval($this->templateGet($templatePrefix . 'Url'));
@@ -379,7 +383,10 @@ class Render
         if (!$isPreview && $postType === self::POST_TYPE_ENTRY && ($moderatorCanManageEntries || $userCanUpdateEntries)) {
             $editUrl = url(
                 URL_TYPE_ENTRY_UPDATE,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                [
+                    'entry_slug' => $entrySlug,
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                ]
             )->getRelativeUrl();
 
             $buttonEdit = eval($this->templateGet($templatePrefix . 'ButtonEdit'));
@@ -387,7 +394,8 @@ class Render
             $editUrl = url(
                 URL_TYPE_COMMENT_UPDATE,
                 [
-                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'entry_slug' => $entrySlug,
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                     'comment_slug' => $commentSlug
                 ]
             )->getRelativeUrl();
@@ -560,14 +568,20 @@ class Render
             if ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_PENDING_APPROVAL) {
                 $approveUrl = url(
                     URL_TYPE_ENTRY_APPROVE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    [
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                    ]
                 )->getRelativeUrl();
 
                 $buttonApprove = eval($this->templateGet($templatePrefix . 'ButtonApprove'));
             } elseif ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_VISIBLE) {
                 $unapproveUrl = url(
                     URL_TYPE_ENTRY_UNAPPROVE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    [
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                    ]
                 )->getRelativeUrl();
 
                 $buttonUnpprove = eval($this->templateGet($templatePrefix . 'ButtonUnapprove'));
@@ -576,14 +590,20 @@ class Render
             if ($moderatorCanManageEntries && $postStatus === ENTRY_STATUS_SOFT_DELETED) {
                 $restoreUrl = url(
                     URL_TYPE_ENTRY_RESTORE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    [
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                    ]
                 )->getRelativeUrl();
 
                 $buttonRestore = eval($this->templateGet($templatePrefix . 'ButtonRestore'));
             } elseif ($postStatus === ENTRY_STATUS_VISIBLE && $userCanSoftDeleteEntries) {
                 $softDeleteUrl = url(
                     URL_TYPE_ENTRY_SOFT_DELETE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    [
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                    ]
                 )->getRelativeUrl();
 
                 $buttonSoftDelete = eval($this->templateGet($templatePrefix . 'ButtonSoftDelete'));
@@ -593,7 +613,10 @@ class Render
             if ($moderatorCanManageEntries) {
                 $deleteUrl = url(
                     URL_TYPE_ENTRY_DELETE,
-                    ['entry_slug' => $this->showcaseObject->entryData['entry_slug']]
+                    [
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                    ]
                 )->getRelativeUrl();
 
                 $buttonDelete = eval($this->templateGet($templatePrefix . 'ButtonDelete'));
@@ -603,7 +626,8 @@ class Render
         if (!$isPreview && $postType === self::POST_TYPE_COMMENT && ($moderatorCanManageComments || $userCanSoftDeleteComments)) {
             if ($moderatorCanManageComments && $postStatus === COMMENT_STATUS_PENDING_APPROVAL) {
                 $approveUrl = $this->showcaseObject->urlGetCommentApprove(
-                    $this->showcaseObject->entryData['entry_slug'],
+                    $entrySlug,
+                    $this->showcaseObject->entryData['entry_slug_custom'],
                     $commentSlug
                 );
 
@@ -612,7 +636,8 @@ class Render
                 $unapproveUrl = url(
                     URL_TYPE_COMMENT_UNAPPROVE,
                     [
-                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                         'comment_slug' => $commentSlug
                     ]
                 )->getRelativeUrl();
@@ -624,7 +649,8 @@ class Render
                 $restoreUrl = url(
                     URL_TYPE_COMMENT_RESTORE,
                     [
-                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                         'comment_slug' => $commentSlug
                     ]
                 )->getRelativeUrl();
@@ -634,7 +660,8 @@ class Render
                 $softDeleteUrl = url(
                     URL_TYPE_COMMENT_SOFT_DELETE,
                     [
-                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                         'comment_slug' => $commentSlug
                     ]
                 )->getRelativeUrl();
@@ -647,7 +674,8 @@ class Render
                 $deleteUrl = url(
                     URL_TYPE_COMMENT_DELETE,
                     [
-                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                         'comment_slug' => $commentSlug
                     ]
                 )->getRelativeUrl();
@@ -793,156 +821,150 @@ class Render
         $entryFieldsList = [];
 
         foreach ($this->showcaseObject->fieldSetCache as $fieldID => $fieldData) {
-            $fieldKey = $fieldData['field_key'];
+            $fieldObject = fieldGetObject($this->showcaseObject, $fieldData);
 
-            $htmlType = $fieldData['html_type'];
+            $entryFieldsList[$fieldData['field_key']] = $fieldObject->setUserValue(
+                $this->showcaseObject->entryData[$fieldData['field_key']]
+            )->renderEntry();
+            /*
+                        _dump($fieldID, $fieldData, $this->showcaseObject->fields);
+                        $fieldKey = $fieldData['field_key'];
 
-            $fieldHeader = $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey;
+                        $htmlType = $fieldData['html_type'];
 
-            //set parser options for current field
+                        $fieldHeader = $lang->{'myshowcase_field_' . $fieldKey} ?? $fieldKey;
 
-            $entryFieldValue = $this->showcaseObject->entryData[$fieldKey] ?? '';
+                        //set parser options for current field
 
-            switch ($htmlType) {
-                case FieldHtmlTypes::TextArea:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->parserOptions,
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                        $entryFieldValue = $this->showcaseObject->entryData[$fieldKey] ?? '';
 
-                            $entryFieldValue = nl2br($entryFieldValue);
-                        }
+                        switch ($htmlType) {
+                            case FieldHtmlTypes::TextArea:
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } elseif ($fieldData['parse'] || $this->highlightTerms) {
+                                        $entryFieldValue = $this->showcaseObject->parseMessage(
+                                            $entryFieldValue,
+                                            $this->parserOptions,
+                                        );
+                                    } else {
+                                        $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
 
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextArea'));
-                    }
+                                        $entryFieldValue = nl2br($entryFieldValue);
+                                    }
 
-                    break;
-                case FieldHtmlTypes::Text:
-                    //format values as requested
-                    formatField((int)$fieldData['format'], $entryFieldValue);
-
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->parserOptions
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextBox'));
-                    }
-                    break;
-                case FieldHtmlTypes::Url:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($fieldData['parse']) {
-                            $entryFieldValue = postParser()->mycode_parse_url(
-                                $entryFieldValue
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldUrl'));
-                    }
-                    break;
-                case FieldHtmlTypes::Radio:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldRadio'));
-                    }
-                    break;
-                case FieldHtmlTypes::CheckBox:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $entryFieldValueImage = $lang->myShowcaseEntryFieldValueEmpty;
-                        } else {
-                            if ((int)$entryFieldValue === CHECK_BOX_IS_CHECKED) {
-                                $imageName = 'valid';
-
-                                $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxYes;
-                            } else {
-                                $imageName = 'invalid';
-
-                                $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxNo;
-                            }
-
-                            $entryFieldValueImage = eval($this->templateGet('pageViewDataFieldCheckBoxImage'));
-                        }
-
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldCheckBox'));
-                    }
-                    break;
-                case FieldHtmlTypes::SelectSingle:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } elseif ($fieldData['parse'] || $this->highlightTerms) {
-                            $entryFieldValue = $this->showcaseObject->parseMessage(
-                                $entryFieldValue,
-                                $this->parserOptions
-                            );
-                        } else {
-                            $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
-                        }
-
-                        $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldDataBase'));
-                    }
-                    break;
-                case FieldHtmlTypes::Date:
-                    if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
-                        if (empty($entryFieldValue)) {
-                            $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
-                        } else {
-                            $entryFieldValue = '';
-
-                            list($month, $day, $year) = array_pad(
-                                array_map('intval', explode('|', $entryFieldValue)),
-                                3,
-                                0
-                            );
-
-                            if ($month > 0 && $day > 0 && $year > 0) {
-                                $entryFieldValue = my_date(
-                                    $mybb->settings['dateformat'],
-                                    mktime(0, 0, 0, $month, $day, $year)
-                                );
-                            } else {
-                                if ($month) {
-                                    $entryFieldValue .= $month;
+                                    $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextArea'));
                                 }
 
-                                if ($day) {
-                                    $entryFieldValue .= ($entryFieldValue ? '-' : '') . $day;
+                                break;
+                            case FieldHtmlTypes::Text:
+                                //format values as requested
+                                formatField((int)$fieldData['format'], $entryFieldValue);
+
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } elseif ($fieldData['parse'] || $this->highlightTerms) {
+                                        $entryFieldValue = $this->showcaseObject->parseMessage(
+                                            $entryFieldValue,
+                                            $this->parserOptions
+                                        );
+                                    } else {
+                                        $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                                    }
+
+                                    $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldTextBox'));
+                                }
+                                break;
+                            case FieldHtmlTypes::Url:
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } elseif ($fieldData['parse']) {
+                                        $entryFieldValue = postParser()->mycode_parse_url(
+                                            $entryFieldValue
+                                        );
+                                    } else {
+                                        $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                                    }
+
+                                    $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldUrl'));
+                                }
+                                break;
+                            case FieldHtmlTypes::Radio:
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } else {
+                                        $entryFieldValue = htmlspecialchars_uni($entryFieldValue);
+                                    }
+
+                                    $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldRadio'));
+                                }
+                                break;
+                            case FieldHtmlTypes::CheckBox:
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $entryFieldValueImage = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } else {
+                                        if ((int)$entryFieldValue === CHECK_BOX_IS_CHECKED) {
+                                            $imageName = 'valid';
+
+                                            $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxYes;
+                                        } else {
+                                            $imageName = 'invalid';
+
+                                            $imageAlternativeText = $lang->myShowcaseEntryFieldValueCheckBoxNo;
+                                        }
+
+                                        $entryFieldValueImage = eval($this->templateGet('pageViewDataFieldCheckBoxImage'));
+                                    }
+
+                                    $entryFieldsList[$fieldKey] = eval($this->templateGet('pageViewDataFieldCheckBox'));
+                                }
+                                break;
+                            case FieldHtmlTypes::SelectSingle:
+                                break;
+                            case FieldHtmlTypes::Date:
+                                if (!empty($entryFieldValue) || $this->showcaseObject->config['display_empty_fields']) {
+                                    if (empty($entryFieldValue)) {
+                                        $entryFieldValue = $lang->myShowcaseEntryFieldValueEmpty;
+                                    } else {
+                                        $entryFieldValue = '';
+
+                                        list($month, $day, $year) = array_pad(
+                                            array_map('intval', explode('|', $entryFieldValue)),
+                                            3,
+                                            0
+                                        );
+
+                                        if ($month > 0 && $day > 0 && $year > 0) {
+                                            $entryFieldValue = my_date(
+                                                $mybb->settings['dateformat'],
+                                                mktime(0, 0, 0, $month, $day, $year)
+                                            );
+                                        } else {
+                                            if ($month) {
+                                                $entryFieldValue .= $month;
+                                            }
+
+                                            if ($day) {
+                                                $entryFieldValue .= ($entryFieldValue ? '-' : '') . $day;
+                                            }
+
+                                            if ($year) {
+                                                $entryFieldValue .= ($entryFieldValue ? '-' : '') . $year;
+                                            }
+                                        }
+                                    }
+
+                                    $entryFieldsList[$fieldKey] = eval(getTemplate('pageViewDataFieldDate'));
                                 }
 
-                                if ($year) {
-                                    $entryFieldValue .= ($entryFieldValue ? '-' : '') . $year;
-                                }
-                            }
+                                break;
                         }
-
-                        $entryFieldsList[$fieldKey] = eval(getTemplate('pageViewDataFieldDate'));
-                    }
-
-                    break;
-            }
+            */
         }
 
         return $entryFieldsList;
@@ -971,6 +993,8 @@ class Render
             return '';
         }
 
+        $entrySlug = $this->showcaseObject->entryData['entry_slug'];
+
         $entryID = $this->showcaseObject->entryID;
 
         global $mybb, $theme, $templates, $lang;
@@ -985,7 +1009,8 @@ class Render
             $attachmentUrl = url(
                 URL_TYPE_ATTACHMENT_VIEW,
                 [
-                    'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                    'entry_slug' => $entrySlug,
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                     'attachment_hash' => $attachmentData['attachment_hash']
                 ]
             )->getRelativeUrl();
@@ -996,7 +1021,8 @@ class Render
                 $attachmentThumbnailUrl = url(
                     URL_TYPE_THUMBNAIL_VIEW,
                     [
-                        'entry_slug' => $this->showcaseObject->entryData['entry_slug'],
+                        'entry_slug' => $entrySlug,
+                        'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
                         'attachment_hash' => $attachmentData['attachment_hash']
                     ]
                 )->getRelativeUrl();
@@ -1155,10 +1181,15 @@ class Render
             $version = TIME_NOW;
         }
 
+        $entrySlug = $this->showcaseObject->entryData['entry_slug'];
+
         if ($isEditPage) {
             $createUpdateUrl = url(
                 URL_TYPE_ENTRY_UPDATE,
-                ['entry_slug' => $this->showcaseObject->entryData['entry_slug']],
+                [
+                    'entry_slug' => $entrySlug,
+                    'entry_slug_custom' => $this->showcaseObject->entryData['entry_slug_custom'],
+                ],
                 $this->showcaseObject->urlParams
             )->getRelativeUrl();
         } else {

@@ -67,15 +67,41 @@ function global_start(): bool
                     'pageEntryCommentCreateUpdateContentsPreview',
                     'pageEntryCreateUpdateContents',
                     'pageEntryCreateUpdateContentsPreview',
+
+                    'pageEntryCommentCreateUpdateAttachmentsBox',
+                    'pageEntryCommentCreateUpdateAttachmentsBoxViewLink',
+                    'pageEntryCommentCreateUpdateContents',
+                    'pageEntryCommentCreateUpdateContentsPreview',
+                    'pageEntryCreateUpdateContents',
+                    'pageEntryCreateUpdateContentsPreview',
+                    'pageEntryCreateUpdateDataField',
                     'pageEntryCreateUpdateDataFieldCheckBox',
-                    'pageEntryCreateUpdateDataFieldDataBase',
-                    'pageEntryCreateUpdateDataFieldDataBaseOption',
+                    'pageEntryCreateUpdateDataFieldCheckBoxItem',
+                    'pageEntryCreateUpdateDataFieldColor',
                     'pageEntryCreateUpdateDataFieldDate',
+                    'pageEntryCreateUpdateDataFieldDateTimeLocal',
+                    'pageEntryCreateUpdateDataFieldDescription',
+                    'pageEntryCreateUpdateDataFieldEmail',
+                    'pageEntryCreateUpdateDataFieldFile',
+                    'pageEntryCreateUpdateDataFieldMonth',
+                    'pageEntryCreateUpdateDataFieldNumber',
+                    'pageEntryCreateUpdateDataFieldPassword',
                     'pageEntryCreateUpdateDataFieldRadio',
-                    'pageEntryCreateUpdateDataTextArea',
-                    'pageEntryCreateUpdateDataTextBox',
+                    'pageEntryCreateUpdateDataFieldRadioItem',
+                    'pageEntryCreateUpdateDataFieldRange',
+                    'pageEntryCreateUpdateDataFieldSearch',
+                    'pageEntryCreateUpdateDataFieldSelect',
+                    'pageEntryCreateUpdateDataFieldSelectEntries',
+                    'pageEntryCreateUpdateDataFieldSelectItem',
+                    'pageEntryCreateUpdateDataFieldSelectThreads',
+                    'pageEntryCreateUpdateDataFieldSelectUsers',
+                    'pageEntryCreateUpdateDataFieldTelephone',
+                    'pageEntryCreateUpdateDataFieldText',
+                    'pageEntryCreateUpdateDataFieldTextArea',
+                    'pageEntryCreateUpdateDataFieldTime',
+                    'pageEntryCreateUpdateDataFieldUrl',
+                    'pageEntryCreateUpdateDataFieldWeek',
                     'pageEntryCreateUpdateDataTextUrl',
-                    'pageEntryCreateUpdateRow',
                     'pageMetaCanonical',
                     'pageView',
                     'pageViewCommentsComment',
@@ -110,11 +136,17 @@ function global_start(): bool
                     'pageViewCommentsNone',
                     'pageViewDataFieldCheckBox',
                     'pageViewDataFieldCheckBoxImage',
+                    'pageViewDataFieldCheckBoxValue',
                     'pageViewDataFieldDataBase',
                     'pageViewDataFieldDate',
                     'pageViewDataFieldRadio',
+                    'pageViewDataFieldSelect',
+                    'pageViewDataFieldSelectValue',
+                    'pageViewDataFieldText',
                     'pageViewDataFieldTextArea',
+                    'pageViewDataFieldTextAreaValue',
                     'pageViewDataFieldTextBox',
+                    'pageViewDataFieldTextValue',
                     'pageViewDataFieldUrl',
                     'pageViewEntry',
                     'pageViewEntryAttachments',
@@ -666,7 +698,7 @@ function modcp_reports_report(): void
         $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
-            ['showcase_id', 'user_id', 'entry_slug'],
+            ['showcase_id', 'user_id', 'entry_slug', 'entry_slug_custom'],
             ['limit' => 1]
         );
 
@@ -678,7 +710,8 @@ function modcp_reports_report(): void
             $lang->myShowcaseReportEntryContent,
             $showcaseObject->urlBuild(
                 $showcaseObject->urlViewEntry,
-                $entryData['entry_slug']
+                $entryData['entry_slug'],
+                $entryData['entry_slug_custom']
             ) . '#entryID' . $entryID,
             build_profile_link(
                 htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
@@ -705,7 +738,7 @@ function modcp_reports_report(): void
         $entryData = entryGet(
             $showcaseID,
             ["entry_id='{$entryID}'"],
-            ['user_id', 'entry_slug'],
+            ['user_id', 'entry_slug', 'entry_slug_custom'],
             ['limit' => 1]
         );
 
@@ -714,7 +747,7 @@ function modcp_reports_report(): void
         $report_data['content'] = $lang->sprintf(
             $lang->myShowcaseReportCommentContent,
             $showcaseObject->getBasicUrl(
-            ) . "/view/{$entryData['entry_slug']}/comment/{$commentData['comment_slug']}" . '#commentID' . $commentData['comment_slug'],
+            ) . "/view/{$entryData['entry_slug']}/{$entryData['entry_slug_custom']}/comment/{$commentData['comment_slug']}" . '#commentID' . $commentData['comment_slug'],
             build_profile_link(
                 htmlspecialchars_uni(get_user($report['id2'])['username'] ?? ''),
                 $report['id2'] ?? 0

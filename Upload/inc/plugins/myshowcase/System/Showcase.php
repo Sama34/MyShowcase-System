@@ -28,7 +28,9 @@ use function MyShowcase\Core\entryInsert;
 use function MyShowcase\Core\getSetting;
 use function MyShowcase\Core\getTemplate;
 use function MyShowcase\Core\hooksRun;
+use function MyShowcase\Core\loadLanguage;
 use function MyShowcase\Core\postParser;
+use function MyShowcase\Core\renderGetObject;
 use function MyShowcase\Core\sanitizeTableFieldValue;
 use function MyShowcase\Core\showcaseDataTableExists;
 use function MyShowcase\Core\entryUpdate;
@@ -47,7 +49,6 @@ use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
 use const MyShowcase\Core\ENTRY_STATUS_PENDING_APPROVAL;
 use const MyShowcase\Core\ERROR_TYPE_NOT_CONFIGURED;
 use const MyShowcase\Core\ERROR_TYPE_NOT_INSTALLED;
-use const MyShowcase\Core\FILTER_TYPE_USER_ID;
 use const MyShowcase\Core\GUEST_GROUP_ID;
 use const MyShowcase\Core\ORDER_DIRECTION_ASCENDING;
 use const MyShowcase\Core\ORDER_DIRECTION_DESCENDING;
@@ -69,6 +70,7 @@ class Showcase
      */
     public function __construct(
         public string $scriptName,
+        public ?Render &$renderObject = null,
         public string $selfPhpScript = '',
         public string $dataTableName = '',
         public string $prefix = '',
@@ -129,6 +131,8 @@ class Showcase
         public array $config = [],
         public array $urlParams = [],
         public array $whereClauses = [],
+        // ***/
+        public array $fields = [],
     ) {
         global $db, $mybb, $cache;
 
@@ -307,48 +311,52 @@ class Showcase
 
             $this->urlPaged = $this->prefix . '.php?page={page}';
 
-            $this->urlViewEntry = $this->selfPhpScript . '/view/{entry_slug}';
+            $this->urlViewEntry = $this->selfPhpScript . '/view/{entry_slug_custom}';
 
-            $this->urlViewEntryPage = $this->selfPhpScript . '/view/{entry_slug}/page/{current_page}';
+            $this->urlViewEntryPage = $this->selfPhpScript . '/view/{entry_slug_custom}/page/{current_page}';
 
-            $this->urlViewComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}';
+            $this->urlViewComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}';
 
             $this->urlCreateEntry = $this->selfPhpScript . '/create';
 
-            $this->urlUpdateEntry = $this->selfPhpScript . '/view/{entry_slug}/update';
+            $this->urlUpdateEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/update';
 
-            $this->urlApproveEntry = $this->selfPhpScript . '/view/{entry_slug}/approve';
+            $this->urlApproveEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/approve';
 
-            $this->urlUnapproveEntry = $this->selfPhpScript . '/view/{entry_slug}/unapprove';
+            $this->urlUnapproveEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/unapprove';
 
-            $this->urlSoftDeleteEntry = $this->selfPhpScript . '/view/{entry_slug}/soft_delete';
+            $this->urlSoftDeleteEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/soft_delete';
 
-            $this->urlRestoreEntry = $this->selfPhpScript . '/view/{entry_slug}/restore';
+            $this->urlRestoreEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/restore';
 
-            $this->urlDeleteEntry = $this->selfPhpScript . '/view/{entry_slug}/delete';
+            $this->urlDeleteEntry = $this->selfPhpScript . '/view/{entry_slug_custom}/delete';
 
-            $this->urlCreateComment = $this->selfPhpScript . '/view/{entry_slug}/comment';
+            $this->urlCreateComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment';
 
-            $this->urlUpdateComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/update';
+            $this->urlUpdateComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/update';
 
-            $this->urlApproveComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/approve';
+            $this->urlApproveComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/approve';
 
-            $this->urlUnapproveComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/unapprove';
+            $this->urlUnapproveComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/unapprove';
 
-            $this->urlRestoreComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/restore';
+            $this->urlRestoreComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/restore';
 
-            $this->urlSoftDeleteComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/soft_delete';
+            $this->urlSoftDeleteComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/soft_delete';
 
-            $this->urlDeleteComment = $this->selfPhpScript . '/view/{entry_slug}/comment/{comment_id}/delete';
+            $this->urlDeleteComment = $this->selfPhpScript . '/view/{entry_slug_custom}/comment/{comment_id}/delete';
 
-            $this->urlViewAttachment = $this->selfPhpScript . '/view/{entry_slug}/attachment/{attachment_id}';
+            $this->urlViewAttachment = $this->selfPhpScript . '/view/{entry_slug_custom}/attachment/{attachment_id}';
 
-            //$this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_slug}/attachment/{thumbnail_id}/thumbnail';
+            //$this->urlViewAttachmentThumbnail = $this->showcaseSlug . '/view/{entry_slug_custom}/attachment/{thumbnail_id}/thumbnail';
 
             $this->urlViewAttachmentItem = $this->prefix . '.php?action=item&attachment_id={attachment_id}';
         }
 
         $mybb->binary_fields[$this->dataTableName]['ipaddress'] = true;
+
+        $this->renderObject = renderGetObject($this);
+
+        loadLanguage('myshowcase_fs' . $this->config['field_set_id']);
 
         $hookArguments = [
             'showcaseObject' => &$this,
@@ -366,7 +374,7 @@ class Showcase
 
     public function urlGetUpdateEntry(): string
     {
-        return $this->urlBuild($this->urlUpdateEntry, $this->entryData['entry_slug']);
+        return $this->urlBuild($this->urlUpdateEntry, $this->entryData['entry_slug_custom']);
     }
 
     public function urlBuild(
@@ -377,7 +385,7 @@ class Showcase
         int|string $currentPage = 0
     ): string {
         return 'showcase.php?route=/' . str_replace(
-                ['{entry_slug}', '{comment_id}', '{current_page}'],
+                ['{entry_slug_custom}', '{comment_id}', '{current_page}'],
                 [$entrySlug, $commentID, $currentPage],
                 $url
             );
@@ -736,8 +744,8 @@ class Showcase
     ): int {
         return entryUpdate(
             $this->showcase_id,
+            $updateData,
             $this->entryID,
-            $updateData
         );
     }
 
@@ -778,7 +786,7 @@ class Showcase
     }
 
     public function getDefaultFilter(): void
-    {
+    {/*
         if (!$this->config['filter_force_field']) {
             return;
         }
@@ -796,7 +804,7 @@ class Showcase
                 //$this->whereClauses[] = "user_id='{$this->urlParams['user_id']}'";
 
                 break;
-        }
+        }*/
     }
 
     public function entryDelete(): void
@@ -833,45 +841,52 @@ class Showcase
         return url(URL_TYPE_MAIN)->getRelativeUrl();
     }
 
-    public function urlGetEntry(string $entrySlug, bool $addAnchor = true): string
+    public function urlGetEntry(string $entrySlug, string $entrySlugCustom, bool $addAnchor = true): string
     {
         return url(
                 URL_TYPE_ENTRY_VIEW,
-                ['entry_slug' => $entrySlug]
+                ['entry_slug' => $entrySlug, 'entry_slug_custom' => $entrySlugCustom],
             )->getRelativeUrl() . ($addAnchor ? '#' . $entrySlug : '');
     }
 
     public function urlGetComment(string $commentSlug, bool $addAnchor = true): string
     {
-        return url(URL_TYPE_COMMENT, ['entry_slug' => $commentSlug])->getRelativeUrl();
+        return url(URL_TYPE_COMMENT, ['comment_slug' => $commentSlug])->getRelativeUrl();
     }
 
-    public function urlGetEntryComment(string $entrySlug, string $commentSlug, bool $addAnchor = true): string
-    {
+    public function urlGetEntryComment(
+        string $entrySlug,
+        string $entrySlugCustom,
+        string $commentSlug,
+        bool $addAnchor = true
+    ): string {
         return url(
                 URL_TYPE_COMMENT_VIEW,
-                ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+                ['entry_slug' => $entrySlug, 'entry_slug_custom' => $entrySlugCustom, 'comment_slug' => $commentSlug]
             )->getRelativeUrl() . ($addAnchor ? '#' . $commentSlug : '');
     }
 
-    public function urlGetCommentCreate(string $entrySlug): string
-    {
-        return url(URL_TYPE_COMMENT_CREATE, ['entry_slug' => $entrySlug])->getRelativeUrl();
-    }
-
-    public function urlGetCommentUpdate(string $entrySlug, string $commentSlug): string
+    public function urlGetCommentCreate(string $entrySlug, string $entrySlugCustom): string
     {
         return url(
-            URL_TYPE_COMMENT_UPDATE,
-            ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+            URL_TYPE_COMMENT_CREATE,
+            ['entry_slug' => $entrySlug, 'entry_slug_custom' => $entrySlugCustom]
         )->getRelativeUrl();
     }
 
-    public function urlGetCommentApprove(string $entrySlug, string $commentSlug): string
+    public function urlGetCommentUpdate(string $entrySlug, string $entrySlugCustom, string $commentSlug): string
+    {
+        return url(
+            URL_TYPE_COMMENT_UPDATE,
+            ['entry_slug' => $entrySlug, 'entry_slug_custom' => $entrySlugCustom, 'comment_slug' => $commentSlug]
+        )->getRelativeUrl();
+    }
+
+    public function urlGetCommentApprove(string $entrySlug, string $entrySlugCustom, string $commentSlug): string
     {
         return url(
             URL_TYPE_COMMENT_APPROVE,
-            ['entry_slug' => $entrySlug, 'comment_slug' => $commentSlug]
+            ['entry_slug' => $entrySlug, 'entry_slug_custom' => $entrySlugCustom, 'comment_slug' => $commentSlug]
         )->getRelativeUrl();
     }
 
@@ -933,7 +948,7 @@ class Showcase
 
                 $fieldID = (int)$fieldData['field_id'];
 
-                if ($htmlType === FieldHtmlTypes::SelectSingle || $htmlType === FieldHtmlTypes::Radio) {
+                if ($htmlType === FieldHtmlTypes::Select || $htmlType === FieldHtmlTypes::Radio) {
                     $queryTables[] = "myshowcase_field_data table_{$fieldKey} ON (table_{$fieldKey}.field_data_id=entryData.{$fieldKey} AND table_{$fieldKey}.field_id='{$fieldID}')";
 
                     //$queryFields[] = "table_{$fieldKey}.value AS {$fieldKey}";

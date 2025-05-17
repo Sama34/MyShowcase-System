@@ -453,7 +453,7 @@ $(function() {
                         $formInput .= $form->generate_numeric_field(
                             "permissions[{$permissionName}]",
                             isset($permission_data[$permissionName]) ? (int)$permission_data[$permissionName] : 0,
-                            ['id' => $permissionName, 'class' => $fieldData['form_class'] ?? '']
+                            ['id' => $permissionName, 'class' => $fieldData['formClass'] ?? '']
                         );
 
                         $formInput .= '</div>';
@@ -597,7 +597,7 @@ $(function() {
                     $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedName;
                 }
 
-                if (isset($insertData['script_name']) && (!$insertData['script_name'] || in_array(
+                if (!empty($insertData['script_name']) && (!$insertData['script_name'] || in_array(
                             $insertData['script_name'],
                             array_column($existingShowcases, 'script_name')
                         ) && (function (
@@ -626,7 +626,7 @@ $(function() {
                     );
                 }
 
-                if (isset($insertData['custom_theme_template_prefix']) && (!$insertData['custom_theme_template_prefix'] || in_array(
+                if (!empty($insertData['custom_theme_template_prefix']) && (!$insertData['custom_theme_template_prefix'] || in_array(
                             $insertData['custom_theme_template_prefix'],
                             array_column($existingShowcases, 'custom_theme_template_prefix')
                         ) && (function (
@@ -644,7 +644,7 @@ $(function() {
                         })(
                             $insertData['custom_theme_template_prefix']
                         ))) {
-                    $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedShowcaseSlug;
+                    $errorMessages[] = $lang->myShowcaseAdminErrorDuplicatedTemplatePrefix;
                 }
 
                 hooksRun('admin_summary_add_edit_post_main_other');
@@ -2013,7 +2013,7 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
 
     $formContainer->output_row_header($lang->controls, ['width' => '5%', 'class' => 'align_center']);
 
-    $showcaseObjects = showcaseGet([], array_keys($tablesData['myshowcase_config']));
+    $showcaseObjects = showcaseGet([], array_keys($tablesData['myshowcase_config']), ['order_by' => 'display_order']);
 
     if (!$showcaseObjects) {
         $formContainer->output_cell($lang->myshowcase_summary_no_myshowcases, ['colspan' => 9]);
@@ -2030,9 +2030,8 @@ document.write('" . str_replace('/', '\/', $field_select) . "');
             if ($showcaseDataTableExists) {
                 $showcaseTotalEntries = entryGet(
                     $showcaseID,
-                    [],
-                    ['COUNT(entry_id) AS showcaseTotalEntries'],
-                    ['group_by' => 'entry_id']
+                    queryFields: ['COUNT(entry_id) AS showcaseTotalEntries'],
+                    queryOptions: ['group_by' => 'entry_id']
                 )['showcaseTotalEntries'] ?? 0;
 
                 $showcaseTotalAttachments = attachmentGet(
