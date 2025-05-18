@@ -17,12 +17,10 @@ use MyShowcase\System\ModeratorPermissions;
 
 use function MyShowcase\Admin\buildPermissionsRow;
 use function MyShowcase\Admin\dbVerifyTables;
-use function MyShowcase\Core\attachmentDelete;
 use function MyShowcase\Core\attachmentGet;
 use function MyShowcase\Core\cacheGet;
 use function MyShowcase\Core\cacheUpdate;
 use function MyShowcase\Core\castTableFieldValue;
-use function MyShowcase\Core\commentsDelete;
 use function MyShowcase\Core\commentsGet;
 use function MyShowcase\Core\dataTableStructureGet;
 use function MyShowcase\Core\fieldsetGet;
@@ -103,6 +101,8 @@ $fieldsetObjects = (function (): array {
     }, cacheGet(CACHE_TYPE_FIELD_SETS));
 })();
 
+$cachedPermissions = cacheGet(CACHE_TYPE_PERMISSIONS);
+
 hooksRun('admin_summary_start');
 
 $page->extra_header .= <<<EOL
@@ -112,8 +112,6 @@ $page->extra_header .= <<<EOL
     }
 </style>
 EOL;
-
-$cachedPermissions = cacheGet(CACHE_TYPE_PERMISSIONS);
 
 if ($mybb->input['action'] == 'clear_permission') {
     $showcaseID = $mybb->get_input('showcaseID', MyBB::INPUT_INT);
@@ -780,24 +778,24 @@ $(function() {
                         'user_id' => $groupID,
                         'is_group' => MODERATOR_TYPE_GROUP,
                         ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'gcanmodapprove',
-                            MyBB::INPUT_INT
-                        ),
-                        ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'gcanmodedit',
-                            MyBB::INPUT_INT
-                        ),
-                        ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'gcanmoddelete',
+                            ModeratorPermissions::CanManageEntries,
                             MyBB::INPUT_INT
                         ),
                         ModeratorPermissions::CanManageComments => $mybb->get_input(
-                            'gcanmoddelcomment',
+                            ModeratorPermissions::CanManageComments,
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanManageAttachments => $mybb->get_input(
+                            ModeratorPermissions::CanManageAttachments,
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanManageReports => $mybb->get_input(
+                            ModeratorPermissions::CanManageReports,
                             MyBB::INPUT_INT
                         ),
                     ];
 
-                    moderatorsInsert($moderatorData);
+                    moderatorsInsert($showcaseID, $moderatorData);
                 } elseif ($mybb->get_input('add') == 'user') {
                     $userData = get_user_by_username($mybb->get_input('username'));
 
@@ -816,24 +814,24 @@ $(function() {
                         'user_id' => (int)$userData['uid'],
                         'is_group' => MODERATOR_TYPE_USER,
                         ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'ucanmodapprove',
-                            MyBB::INPUT_INT
-                        ),
-                        ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'ucanmodedit',
-                            MyBB::INPUT_INT
-                        ),
-                        ModeratorPermissions::CanManageEntries => $mybb->get_input(
-                            'ucanmoddelete',
+                            ModeratorPermissions::CanManageEntries,
                             MyBB::INPUT_INT
                         ),
                         ModeratorPermissions::CanManageComments => $mybb->get_input(
-                            'ucanmoddelcomment',
+                            ModeratorPermissions::CanManageComments,
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanManageAttachments => $mybb->get_input(
+                            ModeratorPermissions::CanManageAttachments,
+                            MyBB::INPUT_INT
+                        ),
+                        ModeratorPermissions::CanManageReports => $mybb->get_input(
+                            ModeratorPermissions::CanManageReports,
                             MyBB::INPUT_INT
                         ),
                     ];
 
-                    moderatorsInsert($moderatorData);
+                    moderatorsInsert($showcaseID, $moderatorData);
                 }
 
                 cacheUpdate(CACHE_TYPE_MODERATORS);

@@ -98,8 +98,8 @@ $l['myshowcase_field_option_value_id'] = 'Value Identifier';
 $l['myshowcase_field_option_value'] = 'Display Value';
 $l['myshowcase_field_display_style'] = 'Display Style';
 $l['myshowcase_field_display_order'] = 'Display Order';
-$l['myshowcase_field_AllowedGroupsFill'] = 'Allowed Fill Groups (None for all)';
-$l['myshowcase_field_AllowedGroupsView'] = 'Allowed View Groups (None for all)';
+$l['myshowcase_field_AllowedGroupsFill'] = 'Allowed Fill Groups';
+$l['myshowcase_field_AllowedGroupsView'] = 'Allowed View Groups';
 $l['myshowcase_field_invalid_opt'] = 'The selected field option is invalid.';
 
 $l['myshowcase_field_year_order'] = 'For the DATE field the MIN and MAX values need to be in the proper order.';

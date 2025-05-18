@@ -1045,6 +1045,10 @@ if (in_array($pageAction, ['newField', 'editField'])) {
                                     )[$fieldDataID] ?? [])
                                 );
 
+                                if (my_strpos(',' . $insertData[$fieldName] . ',', ',-1,') !== false) {
+                                    $insertData[$fieldName] = -1;
+                                }
+
                                 break;
                         }
                     }
@@ -1171,6 +1175,20 @@ if (in_array($pageAction, ['newField', 'editField'])) {
 
         $formContainer->construct_row();
     } else {
+        $groupObjects = (function () use ($lang): array {
+            global $cache;
+
+            $groupList = [
+                -1 => $lang->all_groups
+            ];
+
+            foreach ((array)$cache->read('usergroups') as $groupData) {
+                $groupList[(int)$groupData['gid']] = strip_tags($groupData['title']);
+            }
+
+            return $groupList;
+        })();
+
         $maximumViewOrder = 1;
 
         $maximumViewOrder = 0;
@@ -1213,8 +1231,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             );
 
             $formContainer->output_cell(
-                $form->generate_group_select(
+                $form->generate_select_box(
                     "allowed_groups_fill[{$fieldDataID}][]",
+                    $groupObjects,
                     explode(',', $fieldOptionData['allowed_groups_fill'] ?? ''),
                     ['id' => 'allowed_groups_fill_' . $fieldDataID, 'multiple' => true, 'size' => 5]
                 ),
@@ -1222,8 +1241,9 @@ if (in_array($pageAction, ['newField', 'editField'])) {
             );
 
             $formContainer->output_cell(
-                $form->generate_group_select(
+                $form->generate_select_box(
                     "allowed_groups_view[{$fieldDataID}][]",
+                    $groupObjects,
                     explode(',', $fieldOptionData['allowed_groups_view'] ?? ''),
                     ['id' => 'allowed_groups_view' . $fieldDataID, 'multiple' => true, 'size' => 5]
                 ),

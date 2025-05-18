@@ -2105,6 +2105,8 @@ function cacheUpdate(string $cacheKey): array
         'tableFields' => &$tableFields,
     ];
 
+    $hookArguments = hooksRun('cache_update_start', $hookArguments);
+
     switch ($cacheKey) {
         case CACHE_TYPE_CONFIG:
             $showcaseObjects = showcaseGet(

@@ -36,6 +36,9 @@ use function MyShowcase\Core\showcaseGet;
 use function MyShowcase\Core\slugGenerateComment;
 use function MyShowcase\Core\slugGenerateEntry;
 
+use const MyShowcase\Core\VERSION;
+use const MyShowcase\Core\TABLES_DATA;
+use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\CACHE_TYPE_CONFIG;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_DATA;
 use const MyShowcase\Core\CACHE_TYPE_FIELD_SETS;
@@ -43,12 +46,12 @@ use const MyShowcase\Core\CACHE_TYPE_FIELDS;
 use const MyShowcase\Core\CACHE_TYPE_MODERATORS;
 use const MyShowcase\Core\CACHE_TYPE_PERMISSIONS;
 use const MyShowcase\Core\DATA_TABLE_STRUCTURE;
-use const MyShowcase\Core\FIELDS_DATA;
 use const MyShowcase\Core\FORM_TYPE_CHECK_BOX;
 use const MyShowcase\Core\FORM_TYPE_NUMERIC_FIELD;
 use const MyShowcase\Core\FORM_TYPE_SELECT_FIELD;
 use const MyShowcase\Core\FORM_TYPE_TEXT_FIELD;
 use const MyShowcase\Core\FORM_TYPE_YES_NO_FIELD;
+use const MyShowcase\Core\VERSION_CODE;
 
 function pluginInformation(): array
 {
@@ -283,7 +286,15 @@ function pluginActivation(): bool
 
     /*~*~* RUN UPDATES END *~*~*/
 
-    dbVerifyTables();
+    $tablesData = TABLES_DATA;
+
+    $hookArguments = [
+        'tablesData' => &$tablesData
+    ];
+
+    $hookArguments = \MyShowcase\Core\hooksRun('admin_activate_intermediate', $hookArguments);
+
+    dbVerifyTables($tablesData);
 
     dbVerifyColumns();
 
@@ -336,7 +347,15 @@ function pluginDeactivation(): bool
 
 function pluginIsInstalled(): bool
 {
-    return dbVerifyTablesExists() && dbVerifyColumnsExists() && dbVerifyColumnsExists(TABLES_DATA);
+    $tablesData = TABLES_DATA;
+
+    $hookArguments = [
+        'tablesData' => &$tablesData
+    ];
+
+    $hookArguments = \MyShowcase\Core\hooksRun('admin_is_installed_start', $hookArguments);
+
+    return dbVerifyTablesExists($tablesData) && dbVerifyColumnsExists() && dbVerifyColumnsExists($tablesData);
 }
 
 function pluginUninstallation(): bool

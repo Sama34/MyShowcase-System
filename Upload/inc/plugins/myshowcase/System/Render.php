@@ -824,7 +824,7 @@ class Render
             $fieldObject = fieldGetObject($this->showcaseObject, $fieldData);
 
             $entryFieldsList[$fieldData['field_key']] = $fieldObject->setUserValue(
-                $this->showcaseObject->entryData[$fieldData['field_key']]
+                $this->showcaseObject->entryData[$fieldData['field_key']] ?? ''
             )->renderEntry();
             /*
                         _dump($fieldID, $fieldData, $this->showcaseObject->fields);

@@ -37,8 +37,8 @@ define('MyShowcase\Core\SETTINGS', [
     'slugLength' => 5,
     'slugBcryptCost' => 10,
 ]);
-define('MyShowcase\Core\DEBUG', false);
 
+define('MyShowcase\Core\DEBUG', true);
 
 define('MyShowcase\ROOT', constant('MYBB_ROOT') . 'inc/plugins/MyShowcase');
 
